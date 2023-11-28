@@ -430,6 +430,7 @@
     <field name="Depth bias/scissor" size="1" start="8" type="bool"/>
     <field name="Region clip" size="1" start="10" type="bool"/>
     <field name="Viewport" size="1" start="11" type="bool"/>
+    <field name="Viewport count" size="4" start="12" type="uint" default="1" modifier="minus(1)"/>
     <field name="W clamp" size="1" start="16" type="bool"/>
     <field name="Output select" size="1" start="17" type="bool"/>
     <field name="Varying counts 32" size="1" start="18" type="bool"/>
@@ -445,12 +446,17 @@
   </struct>
 
   <!-- Acts like a scissor at 32x32 tile boundaries, ignored unless clip tile is set -->
-  <struct name="Region clip" size="12">
+  <struct name="Region clip" size="8">
     <field name="Max X" size="9" start="0" type="uint" modifier="minus(1)"/>
     <field name="Min X" size="9" start="16" type="uint"/>
     <field name="Enable" size="1" start="31" type="bool"/>
     <field name="Max Y" size="9" start="32" type="uint" modifier="minus(1)"/>
     <field name="Min Y" size="9" start="48" type="uint"/>
+  </struct>
+
+  <struct name="Viewport control" size="4">
+     <!-- so far only seen zeroes, but it stands to reason this is meant as a
+          control word for the viewports -->
   </struct>
 
   <!-- Used to convert clip space coordinates to NDC, does not clip -->

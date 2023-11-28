@@ -1040,6 +1040,7 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                                   .depth_bias_scissor = true,
                                   .region_clip = true,
                                   .viewport = true,
+                                  .viewport_count = 1,
                                });
 
    agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
@@ -1057,6 +1058,9 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
       cfg.max_x = DIV_ROUND_UP(MAX2(maxx, 1), 32);
       cfg.max_y = DIV_ROUND_UP(MAX2(maxy, 1), 32);
    }
+
+   agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg)
+      ;
 
    agx_ppp_push(&ppp, VIEWPORT, cfg) {
       cfg.translate_x = vp->translate[0];
@@ -2951,6 +2955,7 @@ agx_batch_init_state(struct agx_batch *batch)
                                           .occlusion_query_2 = true,
                                           .output_unknown = true,
                                           .varying_word_2 = true,
+                                          .viewport_count = 1, /* irrelevant */
                                        });
 
    /* clang-format off */
@@ -3139,6 +3144,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          IS_DIRTY(FS) || varyings_dirty || IS_DIRTY(SAMPLE_MASK),
       .occlusion_query = IS_DIRTY(QUERY),
       .output_size = IS_DIRTY(VS_PROG),
+      .viewport_count = 1, /* irrelevant */
    };
 
    struct agx_ppp_update ppp = agx_new_ppp_update(pool, dirty);

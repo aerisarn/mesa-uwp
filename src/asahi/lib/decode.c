@@ -517,8 +517,38 @@ agxdecode_record(uint64_t va, size_t size, bool verbose, decoder_params *params)
    PPP_PRINT(map, fragment_back_face_2, FRAGMENT_FACE_2, "Back face 2");
    PPP_PRINT(map, fragment_back_stencil, FRAGMENT_STENCIL, "Back stencil");
    PPP_PRINT(map, depth_bias_scissor, DEPTH_BIAS_SCISSOR, "Depth bias/scissor");
-   PPP_PRINT(map, region_clip, REGION_CLIP, "Region clip");
-   PPP_PRINT(map, viewport, VIEWPORT, "Viewport");
+
+   if (hdr.region_clip) {
+      if (((map + (AGX_REGION_CLIP_LENGTH * hdr.viewport_count)) >
+           (base + size))) {
+         fprintf(agxdecode_dump_stream, "Buffer overrun in PPP update\n");
+         return;
+      }
+
+      for (unsigned i = 0; i < hdr.viewport_count; ++i) {
+         DUMP_CL(REGION_CLIP, map, "Region clip");
+         map += AGX_REGION_CLIP_LENGTH;
+         fflush(agxdecode_dump_stream);
+      }
+   }
+
+   if (hdr.viewport) {
+      if (((map + AGX_VIEWPORT_CONTROL_LENGTH +
+            (AGX_VIEWPORT_LENGTH * hdr.viewport_count)) > (base + size))) {
+         fprintf(agxdecode_dump_stream, "Buffer overrun in PPP update\n");
+         return;
+      }
+
+      DUMP_CL(VIEWPORT_CONTROL, map, "Viewport control");
+      map += AGX_VIEWPORT_CONTROL_LENGTH;
+
+      for (unsigned i = 0; i < hdr.viewport_count; ++i) {
+         DUMP_CL(VIEWPORT, map, "Viewport");
+         map += AGX_VIEWPORT_LENGTH;
+         fflush(agxdecode_dump_stream);
+      }
+   }
+
    PPP_PRINT(map, w_clamp, W_CLAMP, "W clamp");
    PPP_PRINT(map, output_select, OUTPUT_SELECT, "Output select");
    PPP_PRINT(map, varying_counts_32, VARYING_COUNTS, "Varying counts 32");
