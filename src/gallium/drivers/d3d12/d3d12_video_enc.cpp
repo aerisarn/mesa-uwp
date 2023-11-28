@@ -1296,6 +1296,12 @@ bool d3d12_video_encoder_negotiate_requested_features_and_d3d12_driver_caps(stru
       }
    }
 
+   if (memcmp(&pD3D12Enc->m_prevFrameEncodeConfig.m_encoderRateControlDesc,
+              &pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc,
+              sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc)) != 0) {
+      pD3D12Enc->m_currentEncodeConfig.m_ConfigDirtyFlags |= d3d12_video_encoder_config_dirty_flag_rate_control;
+   }
+
    return configSupported;
 }
 
@@ -1461,6 +1467,8 @@ d3d12_video_encoder_update_current_encoder_config_state(struct d3d12_video_encod
                                                         D3D12_VIDEO_SAMPLE srcTextureDesc,
                                                         struct pipe_picture_desc *  picture)
 {
+   pD3D12Enc->m_prevFrameEncodeConfig = pD3D12Enc->m_currentEncodeConfig;
+
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
 #if VIDEO_CODEC_H264ENC

@@ -410,6 +410,7 @@ struct d3d12_video_encoder
 
    struct D3D12EncodeCapabilities m_currentEncodeCapabilities = {};
    struct D3D12EncodeConfiguration m_currentEncodeConfig = {};
+   struct D3D12EncodeConfiguration m_prevFrameEncodeConfig = {};
 
    struct InFlightEncodeResources
    {
