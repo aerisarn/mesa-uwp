@@ -1483,4 +1483,10 @@
     <field name="PSS Done" start="26" end="26" type="bool" />
     <field name="AMFS Done" start="27" end="27" type="bool" />
   </register>
+  <register name="VD0_AUX_TABLE_BASE_ADDR" length="2" num="0x4210">
+    <field name="Address" start="0" end="63" type="uint" />
+  </register>
+  <register name="VD0_CCS_AUX_INV" length="1" num="0x4218">
+    <field name="Aux Inv" start="0" end="0" type="bool" />
+  </register>
 </genxml>
