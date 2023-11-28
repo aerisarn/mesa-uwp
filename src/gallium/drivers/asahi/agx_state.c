@@ -1016,7 +1016,7 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
 
    agx_get_scissor_extents(vp, ss, &batch->key, &minx, &miny, &maxx, &maxy);
 
-   assert(maxx > minx && maxy > miny);
+   assert(maxx >= minx && maxy >= miny);
 
    float minz, maxz;
    util_viewport_zmin_zmax(vp, clip_halfz, &minz, &maxz);
@@ -1054,8 +1054,8 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
       cfg.enable = true;
       cfg.min_x = minx / 32;
       cfg.min_y = miny / 32;
-      cfg.max_x = DIV_ROUND_UP(maxx, 32);
-      cfg.max_y = DIV_ROUND_UP(maxy, 32);
+      cfg.max_x = DIV_ROUND_UP(MAX2(maxx, 1), 32);
+      cfg.max_y = DIV_ROUND_UP(MAX2(maxy, 1), 32);
    }
 
    agx_ppp_push(&ppp, VIEWPORT, cfg) {
@@ -3362,17 +3362,6 @@ agx_index_buffer_ptr(struct agx_batch *batch, const struct pipe_draw_info *info,
       return agx_index_buffer_rsrc_ptr(batch, info, extent);
 }
 
-static bool
-agx_scissor_culls_everything(struct agx_context *ctx)
-{
-   unsigned minx, miny, maxx, maxy;
-   agx_get_scissor_extents(&ctx->viewport,
-                           ctx->rast->base.scissor ? &ctx->scissor : NULL,
-                           &ctx->framebuffer, &minx, &miny, &maxx, &maxy);
-
-   return (minx >= maxx) || (miny >= maxy);
-}
-
 static void
 agx_ensure_vdm_cmdbuf_has_space(struct agx_batch *batch, size_t space)
 {
@@ -4030,9 +4019,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (unlikely(agx_device(pctx->screen)->debug & AGX_DBG_DIRTY))
       agx_dirty_all(ctx);
 #endif
-
-   if (agx_scissor_culls_everything(ctx))
-      return;
 
    /* We don't support side effects in vertex stages (only used internally for
     * transform feedback lowering), so this is trivial.
