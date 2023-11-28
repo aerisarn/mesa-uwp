@@ -2959,7 +2959,7 @@
     </function>
 
     <function name="PushMatrix" es1="1.0" deprecated="3.1" exec="dlist"
-              marshal="custom">
+              marshal="custom" marshal_struct="public">
         <glx rop="184"/>
     </function>
 
@@ -3210,7 +3210,8 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="DrawArrays" es1="1.0" es2="2.0" marshal="custom" exec="dlist">
+    <function name="DrawArrays" es1="1.0" es2="2.0" marshal="custom" exec="dlist"
+              marshal_struct="public">
         <param name="mode" type="GLenum"/>
         <param name="first" type="GLint"/>
         <param name="count" type="GLsizei"/>

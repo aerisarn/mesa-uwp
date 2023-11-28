@@ -282,14 +282,6 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
 }
 
 /* DrawArrays without user buffers. */
-struct marshal_cmd_DrawArrays
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum mode;
-   GLint first;
-   GLsizei count;
-};
-
 uint32_t
 _mesa_unmarshal_DrawArrays(struct gl_context *ctx,
                            const struct marshal_cmd_DrawArrays *restrict cmd)
@@ -305,16 +297,6 @@ _mesa_unmarshal_DrawArrays(struct gl_context *ctx,
 }
 
 /* DrawArraysInstancedBaseInstance without user buffers. */
-struct marshal_cmd_DrawArraysInstancedBaseInstance
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum mode;
-   GLint first;
-   GLsizei count;
-   GLsizei instance_count;
-   GLuint baseinstance;
-};
-
 uint32_t
 _mesa_unmarshal_DrawArraysInstancedBaseInstance(struct gl_context *ctx,
                                                 const struct marshal_cmd_DrawArraysInstancedBaseInstance *restrict cmd)
@@ -631,16 +613,6 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
 }
 
 /* DrawElementsInstanced without user buffers. */
-struct marshal_cmd_DrawElementsInstanced
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   GLsizei count;
-   GLsizei instance_count;
-   const GLvoid *indices;
-};
-
 uint32_t
 _mesa_unmarshal_DrawElementsInstanced(struct gl_context *ctx,
                                       const struct marshal_cmd_DrawElementsInstanced *restrict cmd)
@@ -659,16 +631,6 @@ _mesa_unmarshal_DrawElementsInstanced(struct gl_context *ctx,
 }
 
 /* DrawElementsBaseVertex without user buffers. */
-struct marshal_cmd_DrawElementsBaseVertex
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   GLsizei count;
-   GLint basevertex;
-   const GLvoid *indices;
-};
-
 uint32_t
 _mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx,
                                        const struct marshal_cmd_DrawElementsBaseVertex *restrict cmd)
@@ -687,18 +649,6 @@ _mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx,
 }
 
 /* DrawElementsInstancedBaseVertexBaseInstance without user buffers. */
-struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   GLsizei count;
-   GLsizei instance_count;
-   GLint basevertex;
-   GLuint baseinstance;
-   const GLvoid *indices;
-};
-
 uint32_t
 _mesa_unmarshal_DrawElementsInstancedBaseVertexBaseInstance(struct gl_context *ctx,
                                                             const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *restrict cmd)
@@ -1383,13 +1333,6 @@ draw_indirect_async_allowed(struct gl_context *ctx, unsigned user_buffer_mask)
           (ctx->GLThread.CurrentDrawIndirectBufferName && !user_buffer_mask);
 }
 
-struct marshal_cmd_DrawArraysIndirect
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   const GLvoid * indirect;
-};
-
 uint32_t
 _mesa_unmarshal_DrawArraysIndirect(struct gl_context *ctx,
                                    const struct marshal_cmd_DrawArraysIndirect *cmd)
@@ -1426,14 +1369,6 @@ _mesa_marshal_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
    _mesa_glthread_finish_before(ctx, "DrawArraysIndirect");
    lower_draw_arrays_indirect(ctx, mode, (GLintptr)indirect, 0, 1);
 }
-
-struct marshal_cmd_DrawElementsIndirect
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   const GLvoid * indirect;
-};
 
 uint32_t
 _mesa_unmarshal_DrawElementsIndirect(struct gl_context *ctx,
@@ -1474,15 +1409,6 @@ _mesa_marshal_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indir
    _mesa_glthread_finish_before(ctx, "DrawElementsIndirect");
    lower_draw_elements_indirect(ctx, mode, type, (GLintptr)indirect, 0, 1);
 }
-
-struct marshal_cmd_MultiDrawArraysIndirect
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLsizei primcount;
-   GLsizei stride;
-   const GLvoid * indirect;
-};
 
 uint32_t
 _mesa_unmarshal_MultiDrawArraysIndirect(struct gl_context *ctx,
@@ -1529,16 +1455,6 @@ _mesa_marshal_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
    _mesa_glthread_finish_before(ctx, "MultiDrawArraysIndirect");
    lower_draw_arrays_indirect(ctx, mode, (GLintptr)indirect, stride, primcount);
 }
-
-struct marshal_cmd_MultiDrawElementsIndirect
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   GLsizei primcount;
-   GLsizei stride;
-   const GLvoid * indirect;
-};
 
 uint32_t
 _mesa_unmarshal_MultiDrawElementsIndirect(struct gl_context *ctx,
@@ -1590,16 +1506,6 @@ _mesa_marshal_MultiDrawElementsIndirect(GLenum mode, GLenum type,
    lower_draw_elements_indirect(ctx, mode, type, (GLintptr)indirect, stride,
                                 primcount);
 }
-
-struct marshal_cmd_MultiDrawArraysIndirectCountARB
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLsizei maxdrawcount;
-   GLsizei stride;
-   GLintptr indirect;
-   GLintptr drawcount;
-};
 
 uint32_t
 _mesa_unmarshal_MultiDrawArraysIndirectCountARB(struct gl_context *ctx,
@@ -1655,17 +1561,6 @@ _mesa_marshal_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
    lower_draw_arrays_indirect(ctx, mode, indirect, stride,
                               read_draw_indirect_count(ctx, drawcount));
 }
-
-struct marshal_cmd_MultiDrawElementsIndirectCountARB
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   GLsizei maxdrawcount;
-   GLsizei stride;
-   GLintptr indirect;
-   GLintptr drawcount;
-};
 
 uint32_t
 _mesa_unmarshal_MultiDrawElementsIndirectCountARB(struct gl_context *ctx,
@@ -1967,11 +1862,6 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstanceDrawID(void)
 {
    unreachable("should never end up here");
 }
-
-struct marshal_cmd_PushMatrix
-{
-   struct marshal_cmd_base cmd_base;
-};
 
 uint32_t
 _mesa_unmarshal_PushMatrix(struct gl_context *ctx,

@@ -34,7 +34,6 @@
 #include "main/context.h"
 #include "main/macros.h"
 #include "main/matrix.h"
-#include "marshal_generated.h"
 
 struct marshal_cmd_base
 {
@@ -48,6 +47,9 @@ struct marshal_cmd_base
     */
    uint16_t cmd_size;
 };
+
+/* This must be included after "struct marshal_cmd_base" because it uses it. */
+#include "marshal_generated.h"
 
 typedef uint32_t (*_mesa_unmarshal_func)(struct gl_context *ctx,
                                          const void *restrict cmd);
