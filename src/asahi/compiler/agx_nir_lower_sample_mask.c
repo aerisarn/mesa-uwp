@@ -16,7 +16,7 @@
  *
  *    foreach sample in TARGET {
  *       if sample in LIVE {
- *          run depth/stencil test and update
+ *          run depth/stencil/occlusion test/update
  *       } else {
  *          kill sample
  *       }
