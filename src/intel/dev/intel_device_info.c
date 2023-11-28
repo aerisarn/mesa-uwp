@@ -1555,8 +1555,16 @@ static unsigned
 intel_device_info_calc_engine_prefetch(const struct intel_device_info *devinfo,
                                        enum intel_engine_class engine_class)
 {
-   if (devinfo->verx10 < 125)
-      return 512;
+   if (devinfo->verx10 >= 200) {
+      switch (engine_class) {
+      case INTEL_ENGINE_CLASS_RENDER:
+         return 4096;
+      case INTEL_ENGINE_CLASS_COMPUTE:
+         return 1024;
+      default:
+         return 512;
+      }
+   }
 
    if (intel_device_info_is_mtl(devinfo)) {
       switch (engine_class) {
@@ -1569,7 +1577,12 @@ intel_device_info_calc_engine_prefetch(const struct intel_device_info *devinfo,
       }
    }
 
-   return 1024;
+   /* DG2 */
+   if (devinfo->verx10 == 125)
+      return 1024;
+
+   /* Older than DG2/MTL */
+   return 512;
 }
 
 bool
