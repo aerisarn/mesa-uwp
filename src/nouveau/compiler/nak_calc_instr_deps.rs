@@ -74,6 +74,7 @@ impl<T> Index<RegRef> for RegTracker<T> {
             RegFile::UGPR => &self.ureg[range],
             RegFile::Pred => &self.pred[range],
             RegFile::UPred => &self.upred[range],
+            RegFile::Bar => &[], // Barriers have a HW scoreboard
             RegFile::Mem => panic!("Not a register"),
         }
     }
@@ -92,6 +93,7 @@ impl<T> IndexMut<RegRef> for RegTracker<T> {
             RegFile::UGPR => &mut self.ureg[range],
             RegFile::Pred => &mut self.pred[range],
             RegFile::UPred => &mut self.upred[range],
+            RegFile::Bar => &mut [], // Barriers have a HW scoreboard
             RegFile::Mem => panic!("Not a register"),
         }
     }
@@ -244,6 +246,9 @@ fn assign_barriers(f: &mut Function) {
             }
             for src in instr.srcs() {
                 if let SrcRef::Reg(reg) = &src.src_ref {
+                    if reg.file() == RegFile::Bar {
+                        continue;
+                    }
                     for c in 0..reg.comps() {
                         srcs.insert(reg.comp(c));
                     }
@@ -253,6 +258,9 @@ fn assign_barriers(f: &mut Function) {
             let mut dsts = HashSet::new();
             for dst in instr.dsts() {
                 if let Dst::Reg(reg) = dst {
+                    if reg.file() == RegFile::Bar {
+                        continue;
+                    }
                     for c in 0..reg.comps() {
                         dsts.insert(reg.comp(c));
                         // Remove any sources which this instruction overwrites.

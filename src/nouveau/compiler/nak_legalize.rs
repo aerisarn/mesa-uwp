@@ -283,6 +283,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
                     SrcType::Pred => {
                         panic!("Predicates must be legalized explicitly");
                     }
+                    SrcType::Bar => (),
                 }
             }
         }

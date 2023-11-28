@@ -72,20 +72,25 @@ pub enum RegFile {
     /// Uniform predicate registers are 1 bit and uniform across a wave.
     UPred = 3,
 
+    /// The barrier register file
+    ///
+    /// This is a lane mask used for wave re-convergence instructions.
+    Bar = 4,
+
     /// The memory register file
     ///
     /// This is a virtual register file for things which will get spilled to
     /// local memory.  Each memory location is 32 bits per SIMT channel.
-    Mem = 4,
+    Mem = 5,
 }
 
-const NUM_REG_FILES: usize = 5;
+const NUM_REG_FILES: usize = 6;
 
 impl RegFile {
     /// Returns true if the register file is uniform across a wave
     pub fn is_uniform(&self) -> bool {
         match self {
-            RegFile::GPR | RegFile::Pred | RegFile::Mem => false,
+            RegFile::GPR | RegFile::Pred | RegFile::Bar | RegFile::Mem => false,
             RegFile::UGPR | RegFile::UPred => true,
         }
     }
@@ -94,14 +99,16 @@ impl RegFile {
     pub fn is_gpr(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::UGPR => true,
-            RegFile::Pred | RegFile::UPred | RegFile::Mem => false,
+            RegFile::Pred | RegFile::UPred | RegFile::Bar | RegFile::Mem => {
+                false
+            }
         }
     }
 
     /// Returns true if the register file is a predicate register file
     pub fn is_predicate(&self) -> bool {
         match self {
-            RegFile::GPR | RegFile::UGPR | RegFile::Mem => false,
+            RegFile::GPR | RegFile::UGPR | RegFile::Bar | RegFile::Mem => false,
             RegFile::Pred | RegFile::UPred => true,
         }
     }
@@ -136,6 +143,13 @@ impl RegFile {
                     0
                 }
             }
+            RegFile::Bar => {
+                if sm >= 70 {
+                    16
+                } else {
+                    0
+                }
+            }
             RegFile::Mem => 1 << 24,
         }
     }
@@ -146,6 +160,7 @@ impl RegFile {
             RegFile::UGPR => "ur",
             RegFile::Pred => "p",
             RegFile::UPred => "up",
+            RegFile::Bar => "b",
             RegFile::Mem => "m",
         }
     }
@@ -158,6 +173,7 @@ impl fmt::Display for RegFile {
             RegFile::UGPR => write!(f, "UGPR"),
             RegFile::Pred => write!(f, "Pred"),
             RegFile::UPred => write!(f, "UPred"),
+            RegFile::Bar => write!(f, "Bar"),
             RegFile::Mem => write!(f, "Mem"),
         }
     }
@@ -178,7 +194,8 @@ impl TryFrom<u32> for RegFile {
             1 => Ok(RegFile::UGPR),
             2 => Ok(RegFile::Pred),
             3 => Ok(RegFile::UPred),
-            4 => Ok(RegFile::Mem),
+            4 => Ok(RegFile::Bar),
+            5 => Ok(RegFile::Mem),
             _ => Err("Invalid register file number"),
         }
     }
@@ -299,6 +316,7 @@ impl<T> PerRegFile<T> {
                 f(RegFile::UGPR),
                 f(RegFile::Pred),
                 f(RegFile::UPred),
+                f(RegFile::Bar),
                 f(RegFile::Mem),
             ],
         }
@@ -569,6 +587,7 @@ impl RegRef {
             RegFile::UGPR => 63,
             RegFile::Pred => 7,
             RegFile::UPred => 7,
+            RegFile::Bar => panic!("Bar has no zero index"),
             RegFile::Mem => panic!("Mem has no zero index"),
         }
     }
@@ -786,6 +805,14 @@ impl SrcRef {
         }
     }
 
+    pub fn is_barrier(&self) -> bool {
+        match self {
+            SrcRef::SSA(ssa) => ssa.file() == RegFile::Bar,
+            SrcRef::Reg(reg) => reg.file() == RegFile::Bar,
+            _ => false,
+        }
+    }
+
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
             SrcRef::Reg(r) => Some(r),
@@ -989,6 +1016,7 @@ pub enum SrcType {
     F64,
     I32,
     Pred,
+    Bar,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -1161,6 +1189,7 @@ impl Src {
 
                 self.src_ref.is_predicate()
             }
+            SrcType::Bar => self.src_mod.is_none() && self.src_ref.is_barrier(),
         }
     }
 }

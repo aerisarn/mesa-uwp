@@ -300,6 +300,7 @@ impl CopyPropPass {
             SrcType::F64 => {
                 self.prop_to_f64_src(src);
             }
+            SrcType::Bar => (),
         }
     }
 
