@@ -777,6 +777,13 @@ key_u64_equals(const void *a, const void *b)
 
 #define FREED_KEY_VALUE 0
 
+static void _mesa_hash_table_u64_delete_keys(void *data)
+{
+   struct hash_table_u64 *ht = ralloc_parent(data);
+
+   _mesa_hash_table_u64_clear(ht);
+}
+
 struct hash_table_u64 *
 _mesa_hash_table_u64_create(void *mem_ctx)
 {
@@ -793,6 +800,31 @@ _mesa_hash_table_u64_create(void *mem_ctx)
    } else {
       ht->table = _mesa_hash_table_create(ht, key_u64_hash,
                                           key_u64_equals);
+
+      /* Allocate a ralloc sub-context which takes the u64 hash table
+       * as a parent and attach a destructor to it so we can free the
+       * hash_key_u64 objects that were allocated by
+       * _mesa_hash_table_u64_insert().
+       *
+       * The order of creation of this sub-context is crucial: it needs
+       * to happen after the _mesa_hash_table_create() call to guarantee
+       * that the destructor is called before ht->table and its children
+       * are freed, otherwise the _mesa_hash_table_u64_clear() call in the
+       * destructor leads to a use-after-free situation.
+       */
+      if (ht->table) {
+         void *dummy_ctx = ralloc_context(ht);
+
+         /* If we can't allocate a sub-context, free the hash table
+          * immediately and return NULL to avoid future leaks.
+          */
+         if (!dummy_ctx) {
+            ralloc_free(ht);
+            return NULL;
+         }
+
+         ralloc_set_destructor(dummy_ctx, _mesa_hash_table_u64_delete_keys);
+      }
    }
 
    if (ht->table)
