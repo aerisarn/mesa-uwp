@@ -1933,6 +1933,15 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
 
    key.ps.epilog = radv_pipeline_generate_ps_epilog_key(device, state, disable_mrt_compaction);
 
+   if (device->physical_device->rad_info.gfx_level >= GFX11) {
+      /* On GFX11, alpha to coverage is exported via MRTZ when depth/stencil/samplemask are also
+       * exported. Though, when a PS epilog is needed and the MS state is NULL (with dynamic
+       * rendering), it's not possible to know the info at compile time and MRTZ needs to be
+       * exported in the epilog.
+       */
+      key.ps.exports_mrtz_via_epilog = key.ps.has_epilog && !state->ms;
+   }
+
    key.dynamic_patch_control_points = !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
 
    key.dynamic_rasterization_samples = !!(pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) ||
