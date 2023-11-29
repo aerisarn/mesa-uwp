@@ -92,6 +92,12 @@ rusticl_args = [
   '-Aclippy::type_complexity',
 ]
 
+if with_platform_x11
+  rusticl_args += [
+    '--cfg', 'glx',
+  ]
+endif
+
 rusticl_gen_args = [
   # can't do anything about it anyway
   '-Aclippy::all',
@@ -159,6 +165,7 @@ rusticl_opencl_bindings_rs = rust.bindgen(
   ],
   c_args : [
     rusticl_bindgen_c_args,
+    pre_args,
     cl_c_args,
   ],
   args : [

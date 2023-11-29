@@ -16,6 +16,7 @@ use mesa_rust::pipe::resource::*;
 use mesa_rust::pipe::screen::*;
 
 use std::collections::HashMap;
+use std::ffi::CStr;
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
@@ -25,6 +26,7 @@ use std::sync::Arc;
 type CLGLMappings = Option<HashMap<Arc<PipeResource>, Arc<PipeResource>>>;
 
 pub struct XPlatManager {
+    #[cfg(glx)]
     glx_get_proc_addr: PFNGLXGETPROCADDRESSPROC,
     egl_get_proc_addr: PFNEGLGETPROCADDRESSPROC,
 }
@@ -38,6 +40,7 @@ impl Default for XPlatManager {
 impl XPlatManager {
     pub fn new() -> Self {
         Self {
+            #[cfg(glx)]
             glx_get_proc_addr: Self::get_proc_address_func("glXGetProcAddress"),
             egl_get_proc_addr: Self::get_proc_address_func("eglGetProcAddress"),
         }
@@ -51,14 +54,28 @@ impl XPlatManager {
         }
     }
 
+    #[cfg(glx)]
+    unsafe fn get_func_glx(&self, cname: &CStr) -> CLResult<__GLXextFuncPtr> {
+        unsafe {
+            Ok(self
+                .glx_get_proc_addr
+                .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?(
+                cname.as_ptr().cast(),
+            ))
+        }
+    }
+
+    // in theory it should return CLResult<__GLXextFuncPtr> but luckily it's identical
+    #[cfg(not(glx))]
+    unsafe fn get_func_glx(&self, _: &CStr) -> CLResult<__eglMustCastToProperFunctionPointerType> {
+        Err(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)
+    }
+
     fn get_func<T>(&self, name: &str) -> CLResult<T> {
         let cname = CString::new(name).unwrap();
         unsafe {
             let raw_func = if name.starts_with("glX") {
-                self.glx_get_proc_addr
-                    .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?(
-                    cname.as_ptr().cast()
-                )
+                self.get_func_glx(&cname)?
             } else if name.starts_with("egl") {
                 self.egl_get_proc_addr
                     .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?(
@@ -160,7 +177,7 @@ impl GLCtxManager {
                 interop_dev_info: info,
                 xplat_manager: xplat_manager,
             }))
-        } else if !glx_display.is_null() {
+        } else if !glx_display.is_null() && cfg!(glx) {
             let glx_query_device_info_func = xplat_manager
                 .MesaGLInteropGLXQueryDeviceInfo()?
                 .ok_or(CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR)?;
