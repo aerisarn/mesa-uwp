@@ -25,6 +25,9 @@ try_extract_additions(nir_builder *b, nir_scalar scalar, uint64_t *out_const,
          *out_const += nir_scalar_as_uint(src);
       } else if (nir_scalar_is_alu(src) && nir_scalar_alu_op(src) == nir_op_u2u64) {
          nir_scalar offset_scalar = nir_scalar_chase_alu_src(src, 0);
+         if (offset_scalar.def->bit_size != 32)
+            continue;
+
          nir_def *offset = nir_channel(b, offset_scalar.def, offset_scalar.comp);
          if (*out_offset)
             *out_offset = nir_iadd(b, *out_offset, offset);
