@@ -940,10 +940,10 @@ agx_set_scissor_states(struct pipe_context *pctx, unsigned start_slot,
 {
    struct agx_context *ctx = agx_context(pctx);
 
-   assert(start_slot == 0 && "no geometry shaders");
-   assert(num_scissors == 1 && "no geometry shaders");
+   STATIC_ASSERT(sizeof(ctx->scissor[0]) == sizeof(*scissor));
+   assert(start_slot + num_scissors <= AGX_MAX_VIEWPORTS);
 
-   ctx->scissor = *scissor;
+   memcpy(&ctx->scissor[start_slot], scissor, sizeof(*scissor) * num_scissors);
    ctx->dirty |= AGX_DIRTY_SCISSOR_ZBIAS;
 }
 
@@ -963,11 +963,11 @@ agx_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
 {
    struct agx_context *ctx = agx_context(pctx);
 
-   assert(start_slot == 0 && "no geometry shaders");
-   assert(num_viewports == 1 && "no geometry shaders");
+   STATIC_ASSERT(sizeof(ctx->viewport[0]) == sizeof(*vp));
+   assert(start_slot + num_viewports <= AGX_MAX_VIEWPORTS);
 
+   memcpy(&ctx->viewport[start_slot], vp, sizeof(*vp) * num_viewports);
    ctx->dirty |= AGX_DIRTY_VIEWPORT;
-   ctx->viewport = *vp;
 }
 
 static void
@@ -1010,28 +1010,39 @@ static void
 agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                             uint8_t **out, const struct pipe_viewport_state *vp,
                             const struct pipe_scissor_state *ss,
-                            bool clip_halfz)
+                            bool clip_halfz, bool multi_viewport)
 {
-   unsigned minx, miny, maxx, maxy;
+   /* Number of viewports/scissors isn't precisely determinable in Gallium, so
+    * just key off whether we can write to anything other than viewport 0. This
+    * could be tuned in the future.
+    */
+   unsigned count = multi_viewport ? AGX_MAX_VIEWPORTS : 1;
 
-   agx_get_scissor_extents(vp, ss, &batch->key, &minx, &miny, &maxx, &maxy);
-
-   assert(maxx >= minx && maxy >= miny);
-
-   float minz, maxz;
-   util_viewport_zmin_zmax(vp, clip_halfz, &minz, &maxz);
-
-   /* Allocate a new scissor descriptor */
+   /* Allocate scissor descriptors */
    unsigned index = batch->scissor.size / AGX_SCISSOR_LENGTH;
-   void *ptr = util_dynarray_grow_bytes(&batch->scissor, 1, AGX_SCISSOR_LENGTH);
+   struct agx_scissor_packed *scissors =
+      util_dynarray_grow_bytes(&batch->scissor, count, AGX_SCISSOR_LENGTH);
 
-   agx_pack(ptr, SCISSOR, cfg) {
-      cfg.min_x = minx;
-      cfg.min_y = miny;
-      cfg.min_z = minz;
-      cfg.max_x = maxx;
-      cfg.max_y = maxy;
-      cfg.max_z = maxz;
+   unsigned minx[AGX_MAX_VIEWPORTS], miny[AGX_MAX_VIEWPORTS];
+   unsigned maxx[AGX_MAX_VIEWPORTS], maxy[AGX_MAX_VIEWPORTS];
+
+   /* Upload each scissor */
+   for (unsigned i = 0; i < count; ++i) {
+      agx_get_scissor_extents(&vp[i], &ss[i], &batch->key, &minx[i], &miny[i],
+                              &maxx[i], &maxy[i]);
+      assert(maxx[i] >= minx[i] && maxy[i] >= miny[i]);
+
+      float minz, maxz;
+      util_viewport_zmin_zmax(vp, clip_halfz, &minz, &maxz);
+
+      agx_pack(scissors + i, SCISSOR, cfg) {
+         cfg.min_x = minx[i];
+         cfg.min_y = miny[i];
+         cfg.min_z = minz;
+         cfg.max_x = maxx[i];
+         cfg.max_y = maxy[i];
+         cfg.max_z = maxz;
+      }
    }
 
    /* Upload state */
@@ -1040,7 +1051,7 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                                   .depth_bias_scissor = true,
                                   .region_clip = true,
                                   .viewport = true,
-                                  .viewport_count = 1,
+                                  .viewport_count = count,
                                });
 
    agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
@@ -1051,28 +1062,33 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
       cfg.depth_bias = count ? count - 1 : 0;
    };
 
-   agx_ppp_push(&ppp, REGION_CLIP, cfg) {
-      cfg.enable = true;
-      cfg.min_x = minx / 32;
-      cfg.min_y = miny / 32;
-      cfg.max_x = DIV_ROUND_UP(MAX2(maxx, 1), 32);
-      cfg.max_y = DIV_ROUND_UP(MAX2(maxy, 1), 32);
+   for (unsigned i = 0; i < count; ++i) {
+      agx_ppp_push(&ppp, REGION_CLIP, cfg) {
+         cfg.enable = true;
+         cfg.min_x = minx[i] / 32;
+         cfg.min_y = miny[i] / 32;
+         cfg.max_x = DIV_ROUND_UP(MAX2(maxx[i], 1), 32);
+         cfg.max_y = DIV_ROUND_UP(MAX2(maxy[i], 1), 32);
+      }
    }
 
    agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg)
       ;
 
-   agx_ppp_push(&ppp, VIEWPORT, cfg) {
-      cfg.translate_x = vp->translate[0];
-      cfg.translate_y = vp->translate[1];
-      cfg.translate_z = vp->translate[2];
-      cfg.scale_x = vp->scale[0];
-      cfg.scale_y = vp->scale[1];
-      cfg.scale_z = vp->scale[2];
+   /* Upload viewports */
+   for (unsigned i = 0; i < count; ++i) {
+      agx_ppp_push(&ppp, VIEWPORT, cfg) {
+         cfg.translate_x = vp[i].translate[0];
+         cfg.translate_y = vp[i].translate[1];
+         cfg.translate_z = vp[i].translate[2];
+         cfg.scale_x = vp[i].scale[0];
+         cfg.scale_y = vp[i].scale[1];
+         cfg.scale_z = vp[i].scale[2];
 
-      if (should_lower_clip_m1_1(pool->dev, clip_halfz)) {
-         cfg.translate_z -= cfg.scale_z;
-         cfg.scale_z *= 2;
+         if (should_lower_clip_m1_1(pool->dev, clip_halfz)) {
+            cfg.translate_z -= cfg.scale_z;
+            cfg.scale_z *= 2;
+         }
       }
    }
 
@@ -3096,13 +3112,13 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       ctx->dirty |= AGX_DIRTY_SCISSOR_ZBIAS;
    }
 
-   if (ctx->dirty &
-       (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS | AGX_DIRTY_RS)) {
+   if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS |
+                     AGX_DIRTY_RS | AGX_DIRTY_VS)) {
 
-      agx_upload_viewport_scissor(
-         pool, batch, &out, &ctx->viewport,
-         ctx->rast->base.scissor ? &ctx->scissor : NULL,
-         ctx->rast->base.clip_halfz);
+      agx_upload_viewport_scissor(pool, batch, &out, ctx->viewport,
+                                  ctx->rast->base.scissor ? ctx->scissor : NULL,
+                                  ctx->rast->base.clip_halfz,
+                                  ctx->vs->info.nonzero_viewport);
    }
 
    bool varyings_dirty = false;
@@ -4263,8 +4279,10 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    /* The scissor/zbias arrays are indexed with 16-bit integers, imposigin a
     * maximum of UINT16_MAX descriptors. Flush if the next draw would overflow
     */
-   if (unlikely((batch->scissor.size / AGX_SCISSOR_LENGTH) >= UINT16_MAX) ||
-       (batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH) >= UINT16_MAX) {
+   if (unlikely(
+          (((batch->scissor.size / AGX_SCISSOR_LENGTH) + AGX_MAX_VIEWPORTS) >
+           UINT16_MAX) ||
+          (batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH) >= UINT16_MAX)) {
       agx_flush_batch_for_reason(ctx, batch, "Scissor/depth bias overflow");
    } else if (unlikely(batch->draws > 100000)) {
       /* Mostly so drawoverhead doesn't OOM */

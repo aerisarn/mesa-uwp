@@ -41,6 +41,8 @@
 #include "agx_device.h"
 #include "agx_disk_cache.h"
 #include "agx_fence.h"
+#include "agx_helpers.h"
+#include "agx_pack.h"
 #include "agx_public.h"
 #include "agx_state.h"
 #include "agx_tilebuffer.h"
@@ -1732,6 +1734,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DRAW_INDIRECT:
    case PIPE_CAP_TEXTURE_QUERY_SAMPLES:
       return true;
+
+   case PIPE_CAP_MAX_VIEWPORTS:
+      return AGX_MAX_VIEWPORTS;
 
    case PIPE_CAP_VIDEO_MEMORY: {
       uint64_t system_memory;

@@ -13,6 +13,8 @@
 #include "agx_pack.h"
 #include "agx_ppp.h"
 
+#define AGX_MAX_VIEWPORTS (16)
+
 #define agx_push(ptr, T, cfg)                                                  \
    for (unsigned _loop = 0; _loop < 1; ++_loop, ptr += AGX_##T##_LENGTH)       \
       agx_pack(ptr, T, cfg)

@@ -26,6 +26,7 @@
 #include "util/disk_cache.h"
 #include "util/hash_table.h"
 #include "util/u_range.h"
+#include "agx_helpers.h"
 #include "agx_meta.h"
 
 #ifdef __GLIBC__
@@ -482,8 +483,8 @@ struct agx_context {
    struct agx_zsa *zs;
    struct agx_blend *blend;
    struct pipe_blend_color blend_color;
-   struct pipe_viewport_state viewport;
-   struct pipe_scissor_state scissor;
+   struct pipe_viewport_state viewport[AGX_MAX_VIEWPORTS];
+   struct pipe_scissor_state scissor[AGX_MAX_VIEWPORTS];
    struct pipe_stencil_ref stencil_ref;
    struct agx_streamout streamout;
    uint16_t sample_mask;
