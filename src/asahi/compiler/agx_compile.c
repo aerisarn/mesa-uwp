@@ -2502,6 +2502,10 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings,
    /* These are always flat-shaded from the FS perspective */
    key->vs.outputs_flat_shaded |= VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT;
 
+   /* The internal cull distance slots are always linearly-interpolated */
+   key->vs.outputs_linear_shaded |=
+      BITFIELD64_RANGE(VARYING_SLOT_CULL_PRIMITIVE, 2);
+
    assert(!(key->vs.outputs_flat_shaded & key->vs.outputs_linear_shaded));
 
    /* Smooth 32-bit user bindings go next */
@@ -2941,6 +2945,10 @@ agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
       }
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       out->has_edgeflags = nir->info.outputs_written & VARYING_BIT_EDGE;
+      out->cull_distance_size = nir->info.cull_distance_array_size;
+
+      if (out->cull_distance_size)
+         NIR_PASS_V(nir, agx_nir_lower_cull_distance_vs);
    }
 
    /* Clean up deref gunk after lowering I/O */

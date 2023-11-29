@@ -1817,6 +1817,12 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
          NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
       }
 
+      /* Similarly for cull distancing lowering */
+      if (key->cull_distance_size) {
+         NIR_PASS_V(nir, agx_nir_lower_cull_distance_fs,
+                    key->cull_distance_size);
+      }
+
       /* Discards must be lowering before lowering MSAA to handle discards */
       NIR_PASS_V(nir, agx_nir_lower_discard_zs_emit);
 
@@ -2280,8 +2286,9 @@ agx_update_fs(struct agx_batch *batch)
     * sample_mask: SAMPLE_MASK
     * reduced_prim: PRIM
     */
-   if (!(ctx->dirty & (AGX_DIRTY_FS_PROG | AGX_DIRTY_RS | AGX_DIRTY_BLEND |
-                       AGX_DIRTY_SAMPLE_MASK | AGX_DIRTY_PRIM)))
+   if (!(ctx->dirty &
+         (AGX_DIRTY_VS_PROG | AGX_DIRTY_FS_PROG | AGX_DIRTY_RS |
+          AGX_DIRTY_BLEND | AGX_DIRTY_SAMPLE_MASK | AGX_DIRTY_PRIM)))
       return false;
 
    unsigned nr_samples = util_framebuffer_get_num_samples(&batch->key);
@@ -2289,6 +2296,8 @@ agx_update_fs(struct agx_batch *batch)
 
    struct asahi_fs_shader_key key = {
       .nr_cbufs = batch->key.nr_cbufs,
+      .cull_distance_size =
+         ctx->stage[MESA_SHADER_VERTEX].shader->info.cull_distance_size,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
       .nr_samples = nr_samples,
       .layered = util_framebuffer_get_num_layers(&batch->key) > 1,

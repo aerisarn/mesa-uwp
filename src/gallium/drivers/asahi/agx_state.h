@@ -385,6 +385,7 @@ struct asahi_fs_shader_key {
     */
    bool api_sample_mask;
 
+   uint8_t cull_distance_size;
    uint8_t clip_plane_enable;
    uint8_t nr_samples;
    bool multisample;

@@ -98,6 +98,7 @@ union agx_varyings {
 struct agx_uncompiled_shader_info {
    uint64_t inputs_flat_shaded;
    uint64_t inputs_linear_shaded;
+   uint8_t cull_distance_size;
    bool has_edgeflags;
 };
 
@@ -242,6 +243,9 @@ void agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
                         struct agx_uncompiled_shader_info *out);
 
 bool agx_nir_lower_discard_zs_emit(nir_shader *s);
+
+void agx_nir_lower_cull_distance_fs(struct nir_shader *s,
+                                    unsigned nr_distances);
 
 bool agx_nir_needs_texture_crawl(nir_instr *instr);
 

@@ -15,3 +15,4 @@ GL_ARB_shader_texture_image_samples on Asahi
 GL_ARB_indirect_parameters on Asahi
 GL_ARB_viewport_array on Asahi
 GL_ARB_fragment_layer_viewport on Asahi
+GL_ARB_cull_distance on Asahi

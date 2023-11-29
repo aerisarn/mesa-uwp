@@ -1589,6 +1589,8 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_SHADER_PACK_HALF_FLOAT:
    case PIPE_CAP_FS_FINE_DERIVATIVE:
+   case PIPE_CAP_CULL_DISTANCE_NOCOMBINE:
+   case PIPE_CAP_NIR_COMPACT_ARRAYS:
       return 1;
 
    case PIPE_CAP_CLIP_HALFZ:
@@ -1647,6 +1649,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DRAW_PARAMETERS:
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
+   case PIPE_CAP_CULL_DISTANCE:
       return 1;
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
       /* TODO: MSRTT */
