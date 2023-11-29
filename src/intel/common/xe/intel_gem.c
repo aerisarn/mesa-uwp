@@ -69,7 +69,9 @@ xe_gem_read_correlate_cpu_gpu_timestamp(int fd,
 #endif
    case CLOCK_REALTIME:
    case CLOCK_BOOTTIME:
+#ifdef CLOCK_TAI
    case CLOCK_TAI:
+#endif
       break;
    default:
       return false;
