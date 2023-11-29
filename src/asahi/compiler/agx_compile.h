@@ -122,6 +122,9 @@ struct agx_shader_info {
    /* Does the shader write point size? */
    bool writes_psiz;
 
+   /* Does the shader potentially draw to a nonzero viewport? */
+   bool nonzero_viewport;
+
    /* Does the shader write layer and/or viewport index? Written together */
    bool writes_layer_viewport;
 

@@ -3125,6 +3125,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       out->writes_psiz =
          nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ);
 
+      out->nonzero_viewport = nir->info.outputs_written & VARYING_BIT_VIEWPORT;
+
       out->writes_layer_viewport =
          nir->info.outputs_written & (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT);
 
