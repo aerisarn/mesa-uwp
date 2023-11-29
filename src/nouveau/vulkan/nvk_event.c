@@ -167,6 +167,8 @@ nvk_CmdSetEvent2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_event, event, _event);
 
+   nvk_cmd_flush_wait_dep(cmd, pDependencyInfo, false);
+
    VkPipelineStageFlags2 stages = 0;
    for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
       stages |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
@@ -232,4 +234,6 @@ nvk_CmdWaitEvents2(VkCommandBuffer commandBuffer,
          .release_size = RELEASE_SIZE_4BYTE,
       });
    }
+
+   nvk_cmd_invalidate_deps(cmd, eventCount, pDependencyInfos);
 }

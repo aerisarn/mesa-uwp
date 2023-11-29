@@ -234,6 +234,14 @@ VkResult nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
 VkResult nvk_cmd_buffer_cond_render_alloc(struct nvk_cmd_buffer *cmd,
 					  uint64_t *addr);
 
+void nvk_cmd_flush_wait_dep(struct nvk_cmd_buffer *cmd,
+                            const VkDependencyInfo *dep,
+                            bool wait);
+
+void nvk_cmd_invalidate_deps(struct nvk_cmd_buffer *cmd,
+                             uint32_t dep_count,
+                             const VkDependencyInfo *deps);
+
 void
 nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
                                       struct nvk_descriptor_state *desc);
