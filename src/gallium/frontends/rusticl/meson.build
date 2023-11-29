@@ -154,6 +154,9 @@ rusticl_opencl_bindings_rs = rust.bindgen(
   include_directories : [
     inc_include,
   ],
+  dependencies : [
+    dep_x11,
+  ],
   c_args : [
     rusticl_bindgen_c_args,
     cl_c_args,

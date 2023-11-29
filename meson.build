@@ -2069,6 +2069,9 @@ if with_platform_x11
   if with_xlib_lease
     dep_xlib_xrandr = dependency('xrandr', version : '>= 1.3')
   endif
+elif with_gallium_rusticl
+  # needed for GL sharing extension
+  dep_x11 = dependency('x11')
 endif
 
 if with_dri
