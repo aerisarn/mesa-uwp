@@ -1121,7 +1121,7 @@ _mesa_store_teximage(struct gl_context *ctx,
 {
    assert(dims == 1 || dims == 2 || dims == 3);
 
-   if (texImage->Width == 0 || texImage->Height == 0 || texImage->Depth == 0)
+   if (_mesa_is_zero_size_texture(texImage))
       return;
 
    /* allocate storage for texture data */
