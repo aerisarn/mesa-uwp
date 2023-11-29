@@ -230,7 +230,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
    cs_stage.feedback.duration += os_time_get_nano() - stage_start;
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert(device, cache, &pipeline->base, NULL, hash);
+      radv_pipeline_cache_insert(device, cache, &pipeline->base, hash);
    }
 
    free(cs_binary);

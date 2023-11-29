@@ -439,8 +439,7 @@ bool radv_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_c
                                 bool *found_in_application_cache);
 
 void radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache *cache,
-                                struct radv_pipeline *pipeline, struct radv_shader_part_binary *ps_epilog_binary,
-                                const unsigned char *sha1);
+                                struct radv_pipeline *pipeline, const unsigned char *sha1);
 
 struct radv_ray_tracing_pipeline;
 bool radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_cache *cache,
@@ -1648,7 +1647,6 @@ struct radv_cmd_state {
    VkShaderStageFlags active_stages;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
    struct radv_shader *gs_copy_shader;
-   struct radv_shader_part *ps_epilog;
    struct radv_shader *last_vgt_shader;
    struct radv_shader *rt_prolog;
 
@@ -2336,9 +2334,6 @@ struct radv_graphics_pipeline {
 
    /* For vk_graphics_pipeline_state */
    void *state_data;
-
-   /* Not NULL if graphics pipeline uses a PS epilog. */
-   struct radv_shader_part *ps_epilog;
 
    /* Custom blend mode for internal operations. */
    unsigned custom_blend_mode;
