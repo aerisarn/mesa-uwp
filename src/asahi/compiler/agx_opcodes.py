@@ -448,13 +448,13 @@ op("stack_adjust",
 # source is offset
 op("stack_load",
       encoding_32 = (0x35, (1 << 20) - 1, 6, 8),
-      srcs = 1, imms = [FORMAT, MASK], can_reorder = False,
+      srcs = 1, imms = [FORMAT, MASK, SCOREBOARD], can_reorder = False,
       schedule_class = "load")
 
 # sources are value and offset
 op("stack_store",
       encoding_32 = (0xb5, (1 << 20) - 1, 6, 8),
-      dests = 0, srcs = 2, imms = [FORMAT, MASK],
+      dests = 0, srcs = 2, imms = [FORMAT, MASK, SCOREBOARD],
       can_eliminate=False, schedule_class = "store")
 
 # Convenient aliases.

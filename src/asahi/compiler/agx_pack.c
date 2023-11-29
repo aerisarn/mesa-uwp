@@ -1026,13 +1026,12 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned i1 = 1; // XXX
       unsigned i2 = 0; // XXX
       unsigned i5 = 4; // XXX
-      unsigned i6 = 0; // XXX: scoreboard index?
 
       uint64_t raw =
          agx_opcodes_info[I->op].encoding.exact |
          ((format & BITFIELD_MASK(2)) << 8) | ((R & BITFIELD_MASK(6)) << 10) |
          ((O & BITFIELD_MASK(4)) << 20) | (Ot ? (1 << 24) : 0) |
-         ((uint64_t)i1 << 26) | ((uint64_t)i6 << 30) |
+         ((uint64_t)i1 << 26) | ((uint64_t)I->scoreboard << 30) |
          (((uint64_t)((O >> 4) & BITFIELD_MASK(4))) << 32) |
          ((uint64_t)i2 << 36) |
          (((uint64_t)((R >> 6) & BITFIELD_MASK(2))) << 40) |
