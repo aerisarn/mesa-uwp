@@ -261,21 +261,32 @@ radv_format_meta_fs_key(struct radv_device *device, VkFormat format)
 }
 
 static bool
-radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
+radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline,
+                                      VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
+   /* Use a PS epilog when the fragment shader is compiled without the fragment output interface. */
+   if ((pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) &&
+       (lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+       !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT))
+      return true;
+
    /* These dynamic states need to compile PS epilogs on-demand. */
-   return !!(pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE | RADV_DYNAMIC_COLOR_WRITE_MASK |
-                                         RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE | RADV_DYNAMIC_COLOR_BLEND_EQUATION));
+   if (pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE | RADV_DYNAMIC_COLOR_WRITE_MASK |
+                                   RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE | RADV_DYNAMIC_COLOR_BLEND_EQUATION))
+      return true;
+
+   return false;
 }
 
 static struct radv_blend_state
-radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline, const struct vk_graphics_pipeline_state *state)
+radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline, const struct vk_graphics_pipeline_state *state,
+                               VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
    const struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    struct radv_blend_state blend = {0};
    unsigned spi_shader_col_format = 0;
 
-   if (radv_pipeline_needs_dynamic_ps_epilog(pipeline))
+   if (radv_pipeline_needs_dynamic_ps_epilog(pipeline, lib_flags))
       return blend;
 
    if (ps) {
@@ -1920,7 +1931,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    if (device->primitives_generated_query)
       key.primitives_generated_query = true;
 
-   if (radv_pipeline_needs_dynamic_ps_epilog(pipeline))
+   if (radv_pipeline_needs_dynamic_ps_epilog(pipeline, lib_flags))
       key.ps.dynamic_ps_epilog = true;
 
    /* The fragment shader needs an epilog when both:
@@ -2450,7 +2461,7 @@ radv_skip_graphics_pipeline_compile(const struct radv_device *device, const stru
       return false;
 
    /* Do not skip when the PS epilog needs to be compiled. */
-   if (!radv_pipeline_needs_dynamic_ps_epilog(pipeline) && pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
+   if (!radv_pipeline_needs_dynamic_ps_epilog(pipeline, lib_flags) && pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.has_epilog && !pipeline->ps_epilog)
       return false;
 
@@ -3991,7 +4002,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_init_input_assembly_state(device, pipeline);
    radv_pipeline_init_dynamic_state(device, pipeline, &state, pCreateInfo);
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state);
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state, needed_lib_flags);
 
    /* Copy the non-compacted SPI_SHADER_COL_FORMAT which is used to emit RBPLUS state. */
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
