@@ -684,7 +684,6 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    struct vpe_build_param *build_param = vpeproc->vpe_build_param;
    struct pipe_surface **src_surfaces;
    struct vpe_bufs_req bufs_required;
-   struct pipe_fence_handle *process_fence = NULL;
 
    assert(codec);
    assert(process_properties);
@@ -906,12 +905,6 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->src_surfaces, RADEON_USAGE_READ);
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->dst_surfaces, RADEON_USAGE_WRITE);
 
-   vpeproc->ws->cs_flush(&vpeproc->cs, PIPE_FLUSH_ASYNC, &process_fence);
-
-   if (process_fence)
-      vpeproc->process_fence = process_fence;
-   SIVPE_INFO(vpeproc->log_level, "Flush success\n");
-
    FREE(build_param->streams);
    SIVPE_DBG(vpeproc->log_level, "Success\n");
    return;
@@ -929,22 +922,27 @@ si_vpe_processor_end_frame(struct pipe_video_codec *codec,
                            struct pipe_picture_desc *picture)
 {
    struct vpe_video_processor *vpeproc = (struct vpe_video_processor *)codec;
+   struct pipe_fence_handle *process_fence = NULL;
    assert(codec);
 
-   if (picture->fence && vpeproc->process_fence) {
-      *picture->fence = vpeproc->process_fence;
+   vpeproc->ws->cs_flush(&vpeproc->cs, PIPE_FLUSH_ASYNC, &process_fence);
+
+   if (picture->fence && process_fence) {
+      *picture->fence = process_fence;
       SIVPE_INFO(vpeproc->log_level, "Assign process fence\n");
-   }
+   } else
+      SIVPE_WARN(vpeproc->log_level, "Fence may have problem!\n");
+
    SIVPE_INFO(vpeproc->log_level, "Success\n");
 }
 
 static void
 si_vpe_processor_flush(struct pipe_video_codec *codec)
 {
-   struct vpe_video_processor *vpeproc = (struct vpe_video_processor *)codec;
-   assert(codec);
+   //struct vpe_video_processor *vpeproc = (struct vpe_video_processor *)codec;
+   //assert(codec);
 
-   SIVPE_DBG(vpeproc->log_level, "Success\n");
+   //SIVPE_DBG(vpeproc->log_level, "Success\n");
    return;
 }
 
