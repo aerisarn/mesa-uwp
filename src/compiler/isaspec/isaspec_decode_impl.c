@@ -961,6 +961,13 @@ static int
 cmp_entrypoints(const void *_a, const void *_b)
 {
 	const struct isa_entrypoint *a = _a, *b = _b;
+
+	/* For stable output, if we have multiple entrypoints with the same
+	 * offset, sort them by string name:
+	 */
+	if (a->offset == b->offset)
+		return strcmp(a->name, b->name);
+
 	return (int)a->offset - (int)b->offset;
 }
 
