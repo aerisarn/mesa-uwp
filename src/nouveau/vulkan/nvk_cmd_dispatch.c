@@ -282,16 +282,11 @@ nvk_CmdDispatchBase(VkCommandBuffer commandBuffer,
       (uint64_t)local_size * (uint64_t)groupCountX *
       (uint64_t)groupCountY * (uint64_t)groupCountZ;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
 
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_ADD_CS_INVOCATIONS));
    P_INLINE_DATA(p, cs_invocations >> 32);
    P_INLINE_DATA(p, cs_invocations);
-
-   P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
-   P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
-      .constant = CONSTANT_TRUE
-   });
 
    P_MTHD(p, NVA0C0, SEND_PCAS_A);
    P_NVA0C0_SEND_PCAS_A(p, qmd_addr >> 8);
@@ -394,7 +389,7 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    if (unlikely(qmd_addr == 0))
       return;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 18);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 16);
 
    P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
@@ -406,11 +401,6 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    P_INLINE_DATA(p, root_desc_addr);
    P_INLINE_DATA(p, qmd_addr >> 32);
    P_INLINE_DATA(p, qmd_addr);
-
-   P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
-   P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
-      .constant = CONSTANT_TRUE
-   });
 
    P_MTHD(p, NVA0C0, SEND_PCAS_A);
    P_NVA0C0_SEND_PCAS_A(p, qmd_addr >> 8);

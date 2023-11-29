@@ -1564,7 +1564,7 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    desc->root.root_desc_addr = root_desc_addr;
    memcpy(root_desc_map, &desc->root, sizeof(desc->root));
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 26);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 24);
 
    P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, sizeof(desc->root));
@@ -1581,11 +1581,6 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
          .shader_slot = 1,
       });
    }
-
-   assert(nvk_cmd_buffer_3d_cls(cmd) >= KEPLER_A);
-   P_IMMD(p, NVA097, INVALIDATE_SHADER_CACHES_NO_WFI, {
-      .constant = CONSTANT_TRUE,
-   });
 }
 
 static void
@@ -2679,8 +2674,6 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
    }
 }
 
-#include "nvk_cla0c0.h"
-
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
                                uint32_t firstCounterBuffer,
@@ -2690,7 +2683,7 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 5 * counterBufferCount + 6);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 5 * counterBufferCount + 2);
 
    P_IMMD(p, NV9097, SET_STREAM_OUTPUT, ENABLE_FALSE);
 
@@ -2712,11 +2705,6 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          .report = REPORT_STREAMING_BYTE_COUNT,
          .structure_size = STRUCTURE_SIZE_ONE_WORD,
       });
-   }
-
-   if (counterBufferCount > 0) {
-      P_IMMD(p, NV9097, WAIT_FOR_IDLE, 0);
-      __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
    }
 }
 
