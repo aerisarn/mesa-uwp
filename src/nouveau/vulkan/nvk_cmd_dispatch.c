@@ -389,9 +389,8 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    if (unlikely(qmd_addr == 0))
       return;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 16);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 14);
 
-   P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DISPATCH_INDIRECT));
    P_INLINE_DATA(p, nvk_compute_local_size(cmd));
