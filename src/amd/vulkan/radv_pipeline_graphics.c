@@ -1225,12 +1225,9 @@ radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shad
 {
    bool fixup_derefs = false;
 
-   /* Do not remove color exports when a PS epilog is used because the format isn't known. */
+   /* Do not remove color exports when a PS epilog is used because the format isn't known and the color write mask can
+    * be dynamic. */
    if (pipeline_key->ps.has_epilog)
-      return;
-
-   /* Do not remove color exports when the write mask is dynamic. */
-   if (pipeline_key->dynamic_color_write_mask)
       return;
 
    nir_foreach_shader_out_variable (var, nir) {
@@ -1951,8 +1948,6 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
 
    key.dynamic_rasterization_samples = !!(pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) ||
                                        (!!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !state->ms);
-
-   key.dynamic_color_write_mask = !!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK);
 
    if (device->physical_device->use_ngg) {
       VkShaderStageFlags ngg_stage;
