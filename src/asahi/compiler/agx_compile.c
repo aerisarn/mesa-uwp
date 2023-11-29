@@ -2549,7 +2549,7 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings,
       base += 1;
    }
 
-   if (nir->info.outputs_written & VARYING_BIT_LAYER) {
+   if (nir->info.outputs_written & (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT)) {
       varyings->layer_viewport_slot = base;
       base += 1;
    }
