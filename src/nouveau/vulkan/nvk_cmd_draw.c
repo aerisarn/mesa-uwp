@@ -2577,6 +2577,152 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
+                                       uint32_t firstBinding,
+                                       uint32_t bindingCount,
+                                       const VkBuffer *pBuffers,
+                                       const VkDeviceSize *pOffsets,
+                                       const VkDeviceSize *pSizes)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   for (uint32_t i = 0; i < bindingCount; i++) {
+      VK_FROM_HANDLE(nvk_buffer, buffer, pBuffers[i]);
+      uint32_t idx = firstBinding + i;
+      uint64_t size = pSizes ? pSizes[i] : VK_WHOLE_SIZE;
+      struct nvk_addr_range addr_range =
+         nvk_buffer_addr_range(buffer, pOffsets[i], size);
+      assert(addr_range.range <= UINT32_MAX);
+
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
+
+      P_MTHD(p, NV9097, SET_STREAM_OUT_BUFFER_ENABLE(idx));
+      P_NV9097_SET_STREAM_OUT_BUFFER_ENABLE(p, idx, V_TRUE);
+      P_NV9097_SET_STREAM_OUT_BUFFER_ADDRESS_A(p, idx, addr_range.addr >> 32);
+      P_NV9097_SET_STREAM_OUT_BUFFER_ADDRESS_B(p, idx, addr_range.addr);
+      P_NV9097_SET_STREAM_OUT_BUFFER_SIZE(p, idx, (uint32_t)addr_range.range);
+   }
+
+   // TODO: do we need to SET_STREAM_OUT_BUFFER_ENABLE V_FALSE ?
+}
+
+void
+nvk_mme_xfb_counter_load(struct mme_builder *b)
+{
+   struct mme_value buffer = mme_load(b);
+
+   struct mme_value counter;
+   if (b->devinfo->cls_eng3d >= TURING_A) {
+      struct mme_value64 counter_addr = mme_load_addr64(b);
+
+      mme_tu104_read_fifoed(b, counter_addr, mme_imm(1));
+      mme_free_reg(b, counter_addr.lo);
+      mme_free_reg(b, counter_addr.hi);
+
+      counter = mme_load(b);
+   } else {
+      counter = mme_load(b);
+   }
+
+   mme_mthd_arr(b, NV9097_SET_STREAM_OUT_BUFFER_LOAD_WRITE_POINTER(0), buffer);
+   mme_emit(b, counter);
+
+   mme_free_reg(b, counter);
+   mme_free_reg(b, buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
+                                 uint32_t firstCounterBuffer,
+                                 uint32_t counterBufferCount,
+                                 const VkBuffer *pCounterBuffers,
+                                 const VkDeviceSize *pCounterBufferOffsets)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   const uint32_t max_buffers = 4;
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 2 + 2 * max_buffers);
+
+   P_IMMD(p, NV9097, SET_STREAM_OUTPUT, ENABLE_TRUE);
+   for (uint32_t i = 0; i < max_buffers; ++i) {
+      P_IMMD(p, NV9097, SET_STREAM_OUT_BUFFER_LOAD_WRITE_POINTER(i), 0);
+   }
+
+   for (uint32_t i = 0; i < counterBufferCount; ++i) {
+      if (pCounterBuffers[i] == VK_NULL_HANDLE)
+         continue;
+
+      VK_FROM_HANDLE(nvk_buffer, buffer, pCounterBuffers[i]);
+      // index of counter buffer corresponts to index of transform buffer
+      uint32_t cb_idx = firstCounterBuffer + i;
+      uint64_t offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0;
+      uint64_t cb_addr = nvk_buffer_address(buffer, offset);
+
+      if (nvk_cmd_buffer_device(cmd)->pdev->info.cls_eng3d >= TURING_A) {
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+         P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
+         P_INLINE_DATA(p, cb_idx);
+         P_INLINE_DATA(p, cb_addr >> 32);
+         P_INLINE_DATA(p, cb_addr);
+      } else {
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+         /* Stall the command streamer */
+         __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
+
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
+         P_INLINE_DATA(p, cb_idx);
+         nv_push_update_count(p, 1);
+         nvk_cmd_buffer_push_indirect_buffer(cmd, buffer, offset, 4);
+      }
+   }
+}
+
+#include "nvk_cla0c0.h"
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
+                               uint32_t firstCounterBuffer,
+                               uint32_t counterBufferCount,
+                               const VkBuffer *pCounterBuffers,
+                               const VkDeviceSize *pCounterBufferOffsets)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   for (uint32_t i = 0; i < counterBufferCount; ++i) {
+      if (pCounterBuffers[i] == VK_NULL_HANDLE)
+         continue;
+
+      VK_FROM_HANDLE(nvk_buffer, buffer, pCounterBuffers[i]);
+      uint64_t offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0;
+      uint64_t cb_addr = nvk_buffer_address(buffer, offset);
+
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
+      P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+      P_NV9097_SET_REPORT_SEMAPHORE_A(p, cb_addr >> 32);
+      P_NV9097_SET_REPORT_SEMAPHORE_B(p, cb_addr);
+      P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
+      P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+         .operation = OPERATION_REPORT_ONLY,
+         .pipeline_location = PIPELINE_LOCATION_STREAMING_OUTPUT,
+         .report = REPORT_STREAMING_BYTE_COUNT,
+         .structure_size = STRUCTURE_SIZE_ONE_WORD,
+      });
+   }
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, counterBufferCount ? 4 : 2);
+   P_IMMD(p, NV9097, SET_STREAM_OUTPUT, ENABLE_FALSE);
+
+   // TODO: this probably needs to move to CmdPipelineBarrier
+   if (counterBufferCount > 0) {
+      P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
+      P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
+         .constant = CONSTANT_TRUE
+      });
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
                                     const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
 {
