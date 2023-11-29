@@ -1178,6 +1178,7 @@ vn_graphics_pipeline_state_fill(
             !valid.multisample_state &&
             info->pMultisampleState,
          .multisample_state_sample_mask =
+            valid.multisample_state &&
             !valid.multisample_state_sample_mask &&
             info->pMultisampleState &&
             info->pMultisampleState->pSampleMask,
