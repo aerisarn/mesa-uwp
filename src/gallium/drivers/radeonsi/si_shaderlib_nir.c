@@ -624,6 +624,37 @@ void *si_clear_12bytes_buffer_shader(struct si_context *sctx)
    return create_shader_state(sctx, b.shader);
 }
 
+void *si_create_ubyte_to_ushort_compute_shader(struct si_context *sctx)
+{
+   const nir_shader_compiler_options *options =
+      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   unsigned store_qualifier = ACCESS_COHERENT | ACCESS_RESTRICT;
+
+   /* Don't cache loads, because there is no reuse. */
+   unsigned load_qualifier = store_qualifier | ACCESS_NON_TEMPORAL;
+
+   nir_builder b =
+      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "ubyte_to_ushort");
+
+   unsigned default_wave_size = si_determine_wave_size(sctx->screen, NULL);
+
+   b.shader->info.workgroup_size[0] = default_wave_size;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.num_ssbos = 2;
+
+   nir_def *load_address = get_global_ids(&b, 1);
+   nir_def *store_address = nir_imul_imm(&b, load_address, 2);
+
+   nir_def *ubyte_value = nir_load_ssbo(&b, 1, 8, nir_imm_int(&b, 1),
+                                        load_address, .access = load_qualifier);
+   nir_store_ssbo(&b, nir_u2uN(&b, ubyte_value, 16), nir_imm_int(&b, 0),
+                  store_address, .access = store_qualifier);
+
+   return create_shader_state(sctx, b.shader);
+}
+
 /* Create a compute shader implementing clear_buffer or copy_buffer. */
 void *si_create_dma_compute_shader(struct si_context *sctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy)

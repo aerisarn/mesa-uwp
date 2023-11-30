@@ -526,6 +526,41 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
    }
 }
 
+void si_compute_shorten_ubyte_buffer(struct si_context *sctx, struct pipe_resource *dst, struct pipe_resource *src,
+                                     uint64_t dst_offset, uint64_t src_offset, unsigned size, unsigned flags)
+{
+   if (!size)
+      return;
+
+   if (!sctx->cs_ubyte_to_ushort)
+      sctx->cs_ubyte_to_ushort = si_create_ubyte_to_ushort_compute_shader(sctx);
+
+   enum si_coherency coher = SI_COHERENCY_SHADER;
+
+   si_improve_sync_flags(sctx, dst, src, &flags);
+
+   struct pipe_grid_info info = {};
+   info.block[0] = si_determine_wave_size(sctx->screen, NULL);
+   info.block[1] = 1;
+   info.block[2] = 1;
+   info.grid[0] = DIV_ROUND_UP(size, info.block[0]);
+   info.grid[1] = 1;
+   info.grid[2] = 1;
+   info.last_block[0] = size % info.block[0];
+
+   struct pipe_shader_buffer sb[2] = {};
+   sb[0].buffer = dst;
+   sb[0].buffer_offset = dst_offset;
+   sb[0].buffer_size = dst->width0;
+
+   sb[1].buffer = src;
+   sb[1].buffer_offset = src_offset;
+   sb[1].buffer_size = src->width0;
+
+   si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_ubyte_to_ushort, flags, coher,
+                                 2, sb, 0x1);
+}
+
 static unsigned
 set_work_size(struct pipe_grid_info *info, unsigned block_x, unsigned block_y, unsigned block_z,
               unsigned work_x, unsigned work_y, unsigned work_z)

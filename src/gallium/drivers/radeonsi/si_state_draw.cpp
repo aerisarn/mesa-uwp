@@ -2044,23 +2044,22 @@ static void si_draw(struct pipe_context *ctx,
       /* Translate or upload, if needed. */
       /* 8-bit indices are supported on GFX8. */
       if (!IS_DRAW_VERTEX_STATE && GFX_VERSION <= GFX7 && index_size == 1) {
-         unsigned start, count, start_offset, size, offset;
-         void *ptr;
+         unsigned start, count, start_offset, size;
 
          si_get_draw_start_count(sctx, info, indirect, draws, num_draws, &start, &count);
          start_offset = start * 2;
          size = count * 2;
 
-         indexbuf = NULL;
-         u_upload_alloc(ctx->stream_uploader, start_offset, size,
-                        si_optimal_tcc_alignment(sctx, size), &offset, &indexbuf, &ptr);
+         /* Don't use u_upload_alloc because we don't need to map the buffer for CPU access. */
+         indexbuf = pipe_buffer_create(&sctx->screen->b, 0, PIPE_USAGE_IMMUTABLE, start_offset + size);
          if (unlikely(!indexbuf))
             return;
 
-         util_shorten_ubyte_elts_to_userptr(&sctx->b, info, 0, 0, index_offset + start, count, ptr);
+         si_compute_shorten_ubyte_buffer(sctx, indexbuf, info->index.resource,
+                                         start_offset, index_offset + start, count,
+                                         SI_OP_SYNC_AFTER);
 
-         /* info->start will be added by the drawing code */
-         index_offset = offset - start_offset;
+         index_offset = 0;
          index_size = 2;
       } else if (!IS_DRAW_VERTEX_STATE && info->has_user_indices) {
          unsigned start_offset;
