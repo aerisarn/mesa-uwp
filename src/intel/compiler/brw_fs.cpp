@@ -7788,30 +7788,74 @@ brw_compile_fs(const struct brw_compiler *compiler,
    }
 
    if (devinfo->ver >= 12 && !has_spilled &&
-       v8 && v8->max_dispatch_width >= 16 &&
-       params->max_polygons >= 2 && !key->coarse_pixel &&
-       2 * prog_data->num_varying_inputs <= MAX_VARYING &&
-       INTEL_SIMD(FS, 2X8)) {
-      /* Try a dual-SIMD8 compile */
-      vmulti = std::make_unique<fs_visitor>(compiler, &params->base, key,
-                                            prog_data, nir, 16, 2,
-                                            params->base.stats != NULL,
-                                            debug_enabled);
-      if (v8)
-         vmulti->import_uniforms(v8.get());
-      else if (v16)
-         vmulti->import_uniforms(v16.get());
+       params->max_polygons >= 2 && !key->coarse_pixel) {
+      fs_visitor *vbase = v8 ? v8.get() : v16 ? v16.get() : v32.get();
+      assert(vbase);
 
-      if (!vmulti->run_fs(allow_spilling, params->use_rep_send)) {
-         brw_shader_perf_log(compiler, params->base.log_data,
-                             "Dual-SIMD8 shader failed to compile: %s\n",
-                             vmulti->fail_msg);
-      } else {
-         multi_cfg = vmulti->cfg;
-         prog_data->base.dispatch_grf_start_reg = vmulti->payload().num_regs;
+      if (devinfo->ver >= 20 &&
+          params->max_polygons >= 4 &&
+          vbase->max_dispatch_width >= 32 &&
+          4 * prog_data->num_varying_inputs <= MAX_VARYING &&
+          INTEL_SIMD(FS, 4X8)) {
+         /* Try a quad-SIMD8 compile */
+         vmulti = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                               prog_data, nir, 32, 4,
+                                               params->base.stats != NULL,
+                                               debug_enabled);
+         vmulti->import_uniforms(vbase);
+         if (!vmulti->run_fs(false, params->use_rep_send)) {
+            brw_shader_perf_log(compiler, params->base.log_data,
+                                "Quad-SIMD8 shader failed to compile: %s\n",
+                                vmulti->fail_msg);
+         } else {
+            multi_cfg = vmulti->cfg;
+            assert(!vmulti->spilled_any_registers);
+         }
+      }
+
+      if (!multi_cfg && devinfo->ver >= 20 &&
+          vbase->max_dispatch_width >= 32 &&
+          2 * prog_data->num_varying_inputs <= MAX_VARYING &&
+          INTEL_SIMD(FS, 2X16)) {
+         /* Try a dual-SIMD16 compile */
+         vmulti = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                               prog_data, nir, 32, 2,
+                                               params->base.stats != NULL,
+                                               debug_enabled);
+         vmulti->import_uniforms(vbase);
+         if (!vmulti->run_fs(false, params->use_rep_send)) {
+            brw_shader_perf_log(compiler, params->base.log_data,
+                                "Dual-SIMD16 shader failed to compile: %s\n",
+                                vmulti->fail_msg);
+         } else {
+            multi_cfg = vmulti->cfg;
+            assert(!vmulti->spilled_any_registers);
+         }
+      }
+
+      if (!multi_cfg && vbase->max_dispatch_width >= 16 &&
+          2 * prog_data->num_varying_inputs <= MAX_VARYING &&
+          INTEL_SIMD(FS, 2X8)) {
+         /* Try a dual-SIMD8 compile */
+         vmulti = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                               prog_data, nir, 16, 2,
+                                               params->base.stats != NULL,
+                                               debug_enabled);
+         vmulti->import_uniforms(vbase);
+         if (!vmulti->run_fs(allow_spilling, params->use_rep_send)) {
+            brw_shader_perf_log(compiler, params->base.log_data,
+                                "Dual-SIMD8 shader failed to compile: %s\n",
+                                vmulti->fail_msg);
+         } else {
+            multi_cfg = vmulti->cfg;
+         }
+      }
+
+      if (multi_cfg) {
+         assert(vmulti->payload().num_regs % reg_unit(devinfo) == 0);
+         prog_data->base.dispatch_grf_start_reg = vmulti->payload().num_regs / reg_unit(devinfo);
+
          prog_data->reg_blocks_8 = brw_register_blocks(vmulti->grf_used);
-         has_spilled = vmulti->spilled_any_registers;
-         allow_spilling = false;
       }
    }
 
