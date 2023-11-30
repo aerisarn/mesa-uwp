@@ -27,8 +27,8 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
 
    AGX_FMT(R5G5B5A1_UNORM,          R5G5B5A1,      UNORM,  T, F16),
    AGX_FMT(B5G5R5A1_UNORM,          R5G5B5A1,      UNORM,  T, F16),
-   AGX_FMT(R5G5B5A1_UNORM,          R5G5B5A1,      UNORM,  T, F16),
-   AGX_FMT(B5G5R5A1_UNORM,          R5G5B5A1,      UNORM,  T, F16),
+   AGX_FMT(R5G5B5X1_UNORM,          R5G5B5A1,      UNORM,  T, F16),
+   AGX_FMT(B5G5R5X1_UNORM,          R5G5B5A1,      UNORM,  T, F16),
 
    AGX_FMT(R4G4B4A4_UNORM,          R4G4B4A4,      UNORM,  T, F16),
    AGX_FMT(B4G4R4A4_UNORM,          R4G4B4A4,      UNORM,  T, F16),
