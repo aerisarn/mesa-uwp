@@ -151,10 +151,12 @@ xe_vm_bind_op(struct anv_device *device,
          .op = DRM_XE_VM_BIND_OP_UNMAP,
          .flags = 0,
          .prefetch_mem_region_instance = 0,
-         .pat_index = anv_device_get_pat_entry(device, bo->alloc_flags)->index,
       };
 
       if (bind->op == ANV_VM_BIND) {
+         const enum anv_bo_alloc_flags alloc_flags = bo ? bo->alloc_flags : 0;
+
+         xe_bind->pat_index = anv_device_get_pat_entry(device, alloc_flags)->index;
          if (!bo) {
             xe_bind->op = DRM_XE_VM_BIND_OP_MAP;
             xe_bind->flags |= DRM_XE_VM_BIND_FLAG_NULL;
