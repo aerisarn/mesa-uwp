@@ -370,7 +370,7 @@ static bool color_update_input_cs(struct vpe_priv *vpe_priv, enum color_space in
     return true;
 }
 
-/* This function generates software points for the blnd gam and ogam programming blocks.
+/* This function generates software points for the blnd gam programming block.
    The logic for the blndgam/ogam programming sequence is a function of:
    1. Output Range (Studio Full)
    2. 3DLUT usage
@@ -392,87 +392,113 @@ static bool color_update_input_cs(struct vpe_priv *vpe_priv, enum color_space in
          OGAM    : L -> NL
 
 */
- 
-static bool vpe_update_output_gamma_sequence(struct vpe_priv *vpe_priv,
-    const struct vpe_build_param *param)
+
+static enum vpe_status vpe_update_blnd_gamma(
+    struct vpe_priv                 *vpe_priv,
+    const struct vpe_build_param    *param,
+    const struct vpe_tonemap_params *tm_params,
+    struct transfer_func            *blnd_tf)
 {
 
-    struct stream_ctx       *stream_ctx;
-    struct output_ctx       *output_ctx;
+    struct output_ctx *output_ctx;
     struct vpe_color_space   tm_out_cs;
-    struct fixed31_32        x_scale;
-    struct fixed31_32        y_scale;
-    struct fixed31_32        y_bias;
-    enum vpe_status          status;
-    bool                     is_studio;
+    struct fixed31_32        x_scale       = vpe_fixpt_one;
+    struct fixed31_32        y_scale       = vpe_fixpt_one;
+    struct fixed31_32        y_bias        = vpe_fixpt_zero;
+    bool                     is_studio     = false;
     bool                     can_bypass    = false;
     bool                     lut3d_enabled = false;
+    enum color_space         cs            = COLOR_SPACE_2020_RGB_FULLRANGE;
+    enum color_transfer_func tf            = TRANSFER_FUNC_LINEAR_0_1;
+    enum vpe_status          status        = VPE_STATUS_OK;
 
-
-    status   = VPE_STATUS_OK;
-    x_scale  = vpe_fixpt_one;
-    y_bias   = vpe_fixpt_zero;
-    y_scale  = vpe_fixpt_one;
     is_studio = (param->dst_surface.cs.range == VPE_COLOR_RANGE_STUDIO);
+    output_ctx = &vpe_priv->output_ctx;
+    lut3d_enabled = tm_params->enable_3dlut;
 
     if (is_studio) {
 
         if (vpe_is_rgb8(param->dst_surface.format)) {
             y_scale = STUDIO_RANGE_SCALE_8_BIT;
-            y_bias  = STUDIO_RANGE_FOOT_ROOM_8_BIT;
-        } else {
-            y_scale = STUDIO_RANGE_SCALE_10_BIT;
-            y_bias  = STUDIO_RANGE_FOOT_ROOM_10_BIT;
-        }
-    }
-
-    output_ctx = &vpe_priv->output_ctx;
-
-    for (uint32_t stream_idx = 0; stream_idx < param->num_streams; stream_idx++) {
-
-        enum color_space         cs;
-        enum color_transfer_func tf = TRANSFER_FUNC_LINEAR_0_1;
-
-        stream_ctx    = &vpe_priv->stream_ctx[stream_idx];
-        lut3d_enabled = stream_ctx->enable_3dlut;
-
-        //If SDR out -> Blend should be NL
-        //If studio out -> No choice but to blend in NL
-        if (!vpe_is_HDR(output_ctx->tf) || is_studio) {
-            if (lut3d_enabled) {
-                tf = TRANSFER_FUNC_LINEAR_0_1;
-            }
-            else {
-                tf = output_ctx->tf;
-            }
-
-            color_update_regamma_tf(vpe_priv,
-                tf,
-                x_scale,
-                y_scale,
-                y_bias,
-                can_bypass,
-                stream_ctx->blend_tf);
+            y_bias = STUDIO_RANGE_FOOT_ROOM_8_BIT;
         }
         else {
 
-            if (lut3d_enabled) {
-                vpe_color_build_tm_cs(&stream_ctx->stream.tm_params, param->dst_surface, &tm_out_cs);
-                vpe_color_get_color_space_and_tf(&tm_out_cs, &cs, &tf);
-            }
-            else {
-                can_bypass = true;
-            }
-
-            color_update_degamma_tf(vpe_priv,
-                tf,
-                x_scale,
-                y_scale,
-                y_bias,
-                can_bypass,
-                stream_ctx->blend_tf);
+            y_scale = STUDIO_RANGE_SCALE_10_BIT;
+            y_bias = STUDIO_RANGE_FOOT_ROOM_10_BIT;
         }
     }
+
+    //If SDR out -> Blend should be NL
+    //If studio out -> No choice but to blend in NL
+    if (!vpe_is_HDR(output_ctx->tf) || is_studio) {
+        if (lut3d_enabled) {
+            tf = TRANSFER_FUNC_LINEAR_0_1;
+        }
+        else {
+            tf = output_ctx->tf;
+        }
+
+        color_update_regamma_tf(vpe_priv,
+            tf,
+            x_scale,
+            y_scale,
+            y_bias,
+            can_bypass,
+            blnd_tf);
+    }
+    else {
+
+        if (lut3d_enabled) {
+            vpe_color_build_tm_cs(tm_params, param->dst_surface, &tm_out_cs);
+            vpe_color_get_color_space_and_tf(&tm_out_cs, &cs, &tf);
+        }
+        else {
+            can_bypass = true;
+        }
+
+        color_update_degamma_tf(vpe_priv,
+            tf,
+            x_scale,
+            y_scale,
+            y_bias,
+            can_bypass,
+            blnd_tf);
+    }
+    return status;
+}
+
+/* This function generates software points for the ogam gamma programming block.
+   The logic for the blndgam/ogam programming sequence is a function of:
+   1. Output Range (Studio Full)
+   2. 3DLUT usage
+   3. Output format (HDR SDR)
+
+   SDR Out or studio range out
+      TM Case
+         BLNDGAM : NL -> NL*S + B
+         OGAM    : Bypass
+      Non TM Case
+         BLNDGAM : L -> NL*S + B
+         OGAM    : Bypass
+   Full range HDR Out
+      TM Case
+         BLNDGAM : NL -> L
+         OGAM    : L -> NL
+      Non TM Case
+         BLNDGAM : Bypass
+         OGAM    : L -> NL
+
+*/
+static enum vpe_status vpe_update_output_gamma(
+    struct vpe_priv              *vpe_priv,
+    const struct vpe_build_param *param,
+    struct transfer_func         *output_tf)
+{
+    bool               can_bypass = false;
+    struct output_ctx *output_ctx = &vpe_priv->output_ctx;
+    bool               is_studio  = (param->dst_surface.cs.range == VPE_COLOR_RANGE_STUDIO);
+    enum vpe_status    status     = VPE_STATUS_OK;
 
     if (vpe_is_HDR(output_ctx->tf) && !is_studio)
         can_bypass = false; //Blending is done in linear light so ogam needs to handle the regam
@@ -485,7 +511,7 @@ static bool vpe_update_output_gamma_sequence(struct vpe_priv *vpe_priv,
         vpe_fixpt_one,
         vpe_fixpt_zero,
         can_bypass,
-        output_ctx->output_tf);
+        output_tf);
 
     return status;
 }
@@ -684,12 +710,20 @@ enum vpe_status vpe_color_update_color_space_and_tf(
                 status = vpe_color_update_gamut(vpe_priv, stream_ctx->cs, output_ctx->cs,
                     stream_ctx->gamut_remap, stream_ctx->stream.tm_params.enable_3dlut);
             }
+
+            
+            if (output_ctx->dirty_bits.transfer_function ||
+                output_ctx->dirty_bits.color_space ||
+                stream_ctx->update_3dlut) {
+                vpe_update_blnd_gamma(vpe_priv, param, &stream_ctx->stream.tm_params, stream_ctx->blend_tf);
+            }
         }
 
         if (status == VPE_STATUS_OK) {
             if (output_ctx->dirty_bits.transfer_function ||
-                output_ctx->dirty_bits.color_space)
-                vpe_update_output_gamma_sequence(vpe_priv, param);
+                output_ctx->dirty_bits.color_space) {
+                vpe_update_output_gamma(vpe_priv, param, output_ctx->output_tf);
+            }
         }
 
     }
