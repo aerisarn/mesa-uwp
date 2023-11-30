@@ -15,7 +15,7 @@
     <param name="divisor" type="GLuint"/>
   </function>
 
-  <function name="VertexArrayVertexAttribDivisorEXT"
+  <function name="VertexArrayVertexAttribDivisorEXT" deprecated="3.1"
             marshal_call_after="if (COMPAT) _mesa_glthread_AttribDivisor(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), divisor);">
 	<param name="vaobj" type="GLuint"/>
     <param name="index" type="GLuint"/>
