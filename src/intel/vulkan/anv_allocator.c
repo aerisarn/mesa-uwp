@@ -1443,7 +1443,7 @@ anv_bo_get_mmap_mode(struct anv_device *device, struct anv_bo *bo)
        * LLC in older platforms DRM_IOCTL_I915_GEM_SET_CACHING needs to be
        * supported and set.
        */
-      if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT)
+      if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED)
          return INTEL_DEVICE_INFO_MMAP_MODE_WB;
 
       return INTEL_DEVICE_INFO_MMAP_MODE_WC;
@@ -1463,9 +1463,15 @@ anv_device_alloc_bo(struct anv_device *device,
                     uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
-   /* bo can only be one: cached+coherent, cached(incoherent) or coherent(no flags) */
-   assert(!(!!(alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) &&
-            !!(alloc_flags & ANV_BO_ALLOC_HOST_CACHED)));
+   /* bo that needs CPU access needs to be HOST_CACHED, HOST_COHERENT or both */
+   assert((alloc_flags & ANV_BO_ALLOC_MAPPED) == 0 ||
+          (alloc_flags & (ANV_BO_ALLOC_HOST_CACHED | ANV_BO_ALLOC_HOST_COHERENT)));
+
+   /* KMD requires a valid PAT index, so setting HOST_COHERENT/WC to bos that
+    * don't need CPU access
+    */
+   if ((alloc_flags & ANV_BO_ALLOC_MAPPED) == 0)
+      alloc_flags |= ANV_BO_ALLOC_HOST_COHERENT;
 
    const uint32_t bo_flags =
          device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
@@ -1594,7 +1600,8 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                                    struct anv_bo **bo_out)
 {
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
-                           ANV_BO_ALLOC_HOST_CACHED_COHERENT |
+                           ANV_BO_ALLOC_HOST_CACHED |
+                           ANV_BO_ALLOC_HOST_COHERENT |
                            ANV_BO_ALLOC_DEDICATED |
                            ANV_BO_ALLOC_PROTECTED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
@@ -1651,7 +1658,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      /* Makes sure that userptr gets WB mmap caching and right VM PAT index */
+      /* Makes sure that userptr gets WB+1way host caching */
       alloc_flags |= (ANV_BO_ALLOC_HOST_CACHED_COHERENT | ANV_BO_ALLOC_NO_LOCAL_MEM);
       struct anv_bo new_bo = {
          .name = "host-ptr",
@@ -1698,7 +1705,8 @@ anv_device_import_bo(struct anv_device *device,
                      struct anv_bo **bo_out)
 {
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
-                           ANV_BO_ALLOC_HOST_CACHED_COHERENT |
+                           ANV_BO_ALLOC_HOST_CACHED |
+                           ANV_BO_ALLOC_HOST_COHERENT |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
    assert(alloc_flags & ANV_BO_ALLOC_EXTERNAL);
 
@@ -1741,7 +1749,7 @@ anv_device_import_bo(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      /* so imported bos get WB and correct PAT index */
+      /* so imported bos get WB+1way host caching */
       alloc_flags |= (ANV_BO_ALLOC_HOST_CACHED_COHERENT | ANV_BO_ALLOC_NO_LOCAL_MEM);
       struct anv_bo new_bo = {
          .name = "imported",

@@ -59,7 +59,7 @@ i915_gem_create(struct anv_device *device,
       if (intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create))
          return 0;
 
-      if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) {
+      if ((alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) == ANV_BO_ALLOC_HOST_CACHED_COHERENT) {
          /* We don't want to change these defaults if it's going to be shared
           * with another process.
           */
@@ -128,7 +128,7 @@ i915_gem_create(struct anv_device *device,
 
    *actual_size = gem_create.size;
 
-   if (alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) {
+   if ((alloc_flags & ANV_BO_ALLOC_HOST_CACHED_COHERENT) == ANV_BO_ALLOC_HOST_CACHED_COHERENT) {
       /* We don't want to change these defaults if it's going to be shared
        * with another process.
        */

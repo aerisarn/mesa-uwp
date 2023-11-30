@@ -2929,7 +2929,8 @@ static VkResult
 anv_device_init_trivial_batch(struct anv_device *device)
 {
    VkResult result = anv_device_alloc_bo(device, "trivial-batch", 4096,
-                                         ANV_BO_ALLOC_MAPPED,
+                                         ANV_BO_ALLOC_MAPPED |
+                                         ANV_BO_ALLOC_HOST_COHERENT,
                                          0 /* explicit_address */,
                                          &device->trivial_batch_bo);
    if (result != VK_SUCCESS)
@@ -2943,11 +2944,6 @@ anv_device_init_trivial_batch(struct anv_device *device)
 
    anv_batch_emit(&batch, GFX7_MI_BATCH_BUFFER_END, bbe);
    anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
-
-#ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_flush)
-      intel_flush_range(batch.start, batch.next - batch.start);
-#endif
 
    return VK_SUCCESS;
 }
@@ -3515,6 +3511,7 @@ VkResult anv_CreateDevice(
 
    result = anv_device_alloc_bo(device, "workaround", 8192,
                                 ANV_BO_ALLOC_CAPTURE |
+                                ANV_BO_ALLOC_HOST_COHERENT |
                                 ANV_BO_ALLOC_MAPPED,
                                 0 /* explicit_address */,
                                 &device->workaround_bo);
@@ -4161,14 +4158,6 @@ VkResult anv_AllocateMemory(
    if (mem->vk.export_handle_types || mem->vk.import_handle_type)
       alloc_flags |= (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_IMPLICIT_SYNC);
 
-   if ((alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT)) == 0) {
-      if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) &&
-          (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
-         alloc_flags |= ANV_BO_ALLOC_HOST_CACHED_COHERENT;
-      else if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
-         alloc_flags |= ANV_BO_ALLOC_HOST_CACHED;
-   }
-
    if (mem->vk.ahardware_buffer) {
       result = anv_import_ahw_memory(_device, mem);
       if (result != VK_SUCCESS)
@@ -4243,6 +4232,18 @@ VkResult anv_AllocateMemory(
          goto fail;
 
       goto success;
+   }
+
+   if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT)) {
+      alloc_flags |= ANV_BO_ALLOC_HOST_COHERENT;
+   } else if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+         alloc_flags |= ANV_BO_ALLOC_HOST_COHERENT;
+      if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+         alloc_flags |= ANV_BO_ALLOC_HOST_CACHED;
+   } else {
+      /* Required to set some host mode to have a valid pat index set */
+      alloc_flags |= ANV_BO_ALLOC_HOST_COHERENT;
    }
 
    /* Regular allocate (not importing memory). */
@@ -5212,7 +5213,7 @@ anv_device_get_pat_entry(struct anv_device *device,
       return &device->info->pat.writecombining;
    }
 
-   if (alloc_flags & (ANV_BO_ALLOC_HOST_CACHED_COHERENT))
+   if ((alloc_flags & (ANV_BO_ALLOC_HOST_CACHED_COHERENT)) == ANV_BO_ALLOC_HOST_CACHED_COHERENT)
       return &device->info->pat.cached_coherent;
    else if (alloc_flags & (ANV_BO_ALLOC_EXTERNAL | ANV_BO_ALLOC_SCANOUT))
       return &device->info->pat.scanout;

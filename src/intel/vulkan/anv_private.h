@@ -375,8 +375,12 @@ enum anv_bo_alloc_flags {
    /** Specifies that the BO should be mapped */
    ANV_BO_ALLOC_MAPPED =                  (1 << 2),
 
-   /** Specifies that the BO should be cached and coherent */
-   ANV_BO_ALLOC_HOST_CACHED_COHERENT =    (1 << 3),
+   /** Specifies that the BO should be coherent.
+    *
+    * Note: In platforms with LLC where HOST_CACHED + HOST_COHERENT is free,
+    * bo can get upgraded to HOST_CACHED_COHERENT
+    */
+   ANV_BO_ALLOC_HOST_COHERENT =           (1 << 3),
 
    /** Specifies that the BO should be captured in error states */
    ANV_BO_ALLOC_CAPTURE =                 (1 << 4),
@@ -426,15 +430,14 @@ enum anv_bo_alloc_flags {
    /** Protected buffer */
    ANV_BO_ALLOC_PROTECTED =               (1 << 15),
 
-   /** Specifies that the BO should be cached and incoherent.
-    *
-    * If ANV_BO_ALLOC_HOST_CACHED or ANV_BO_ALLOC_HOST_CACHED_COHERENT are not
-    * set it will allocate a coherent BO.
-    **/
+   /** Specifies that the BO should be cached and incoherent. */
    ANV_BO_ALLOC_HOST_CACHED =             (1 << 16),
 
    /** For sampler pools */
    ANV_BO_ALLOC_SAMPLER_POOL =            (1 << 17),
+
+   /** Specifies that the BO should be cached and coherent. */
+   ANV_BO_ALLOC_HOST_CACHED_COHERENT =    (ANV_BO_ALLOC_HOST_COHERENT | ANV_BO_ALLOC_HOST_CACHED),
 };
 
 struct anv_bo {
