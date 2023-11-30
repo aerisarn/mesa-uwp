@@ -620,6 +620,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_ald_nv:
    case nir_intrinsic_ipa_nv:
    case nir_intrinsic_ldtram_nv:
+   case nir_intrinsic_printf:
       is_divergent = true;
       break;
 
