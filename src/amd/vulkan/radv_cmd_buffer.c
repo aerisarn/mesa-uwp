@@ -9794,6 +9794,11 @@ radv_dgc_before_dispatch(struct radv_cmd_buffer *cmd_buffer)
    radv_upload_compute_shader_descriptors(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE);
 
    if (pipeline_is_dirty) {
+      const bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
+
+      if (has_prefetch)
+         radv_emit_shader_prefetch(cmd_buffer, compute_shader);
+
       /* Raytracing uses compute shaders but has separate bind points and pipelines.
        * So if we set compute userdata & shader registers we should dirty the raytracing
        * ones and the other way around.
@@ -9808,14 +9813,7 @@ radv_dgc_before_dispatch(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_dgc_after_dispatch(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_compute_pipeline *pipeline = cmd_buffer->state.compute_pipeline;
    struct radv_shader *compute_shader = cmd_buffer->state.shaders[MESA_SHADER_COMPUTE];
-   bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
-   bool pipeline_is_dirty = pipeline != cmd_buffer->state.emitted_compute_pipeline;
-
-   if (has_prefetch && pipeline_is_dirty) {
-      radv_emit_shader_prefetch(cmd_buffer, compute_shader);
-   }
 
    if (compute_shader->info.cs.regalloc_hang_bug)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
