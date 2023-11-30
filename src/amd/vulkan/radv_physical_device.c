@@ -980,7 +980,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       .extendedDynamicState3TessellationDomainOrigin = true,
       .extendedDynamicState3PolygonMode = true,
       .extendedDynamicState3SampleMask = true,
-      .extendedDynamicState3AlphaToCoverageEnable = pdevice->rad_info.gfx_level < GFX11 && !pdevice->use_llvm,
+      .extendedDynamicState3AlphaToCoverageEnable = !pdevice->use_llvm,
       .extendedDynamicState3LogicOpEnable = true,
       .extendedDynamicState3LineStippleEnable = true,
       .extendedDynamicState3ColorBlendEnable = !pdevice->use_llvm,
