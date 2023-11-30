@@ -12936,14 +12936,7 @@
     </function>
 
     <function name="DrawElementsUserBuf" es1="1.0" es2="2.0" marshal="custom">
-        <param name="indexBuf" type="GLintptr"/> <!-- "struct gl_buffer_object *" really -->
-        <param name="mode" type="GLenum"/>
-        <param name="count" type="GLsizei"/>
-        <param name="type" type="GLenum"/>
-        <param name="indices" type="const GLvoid *"/>
-        <param name="instancecount" type="GLsizei"/>
-        <param name="basevertex" type="GLint"/>
-        <param name="baseinstance" type="GLuint"/>
+        <param name="cmd" type="const GLvoid *"/> <!-- struct marshal_cmd_DrawElementsUserBuf -->
     </function>
 
     <function name="MultiDrawArraysUserBuf" es1="1.0" es2="2.0" marshal="custom">

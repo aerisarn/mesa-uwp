@@ -42,6 +42,7 @@
 #include "transformfeedback.h"
 #include "pipe/p_state.h"
 #include "api_exec_decl.h"
+#include "glthread_marshal.h"
 
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_draw.h"
@@ -1983,10 +1984,7 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstance(GLenum mode,
  * GL_ELEMENT_ARRAY_BUFFER if indexBuf != NULL.
  */
 void GLAPIENTRY
-_mesa_DrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
-                          GLsizei count, GLenum type,
-                          const GLvoid *indices, GLsizei numInstances,
-                          GLint basevertex, GLuint baseInstance)
+_mesa_DrawElementsUserBuf(const GLvoid *ptr)
 {
    GET_CURRENT_CONTEXT(ctx);
    FLUSH_FOR_DRAW(ctx);
@@ -1996,19 +1994,31 @@ _mesa_DrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
+   const struct marshal_cmd_DrawElementsUserBuf *cmd =
+      (const struct marshal_cmd_DrawElementsUserBuf *)ptr;
+   const GLenum mode = cmd->mode;
+   const GLsizei count = cmd->count;
+   const GLenum type = cmd->type;
+   const GLsizei instance_count = cmd->instance_count;
+
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                             numInstances))
+                                             instance_count))
       return;
 
    struct gl_buffer_object *index_bo =
-      indexBuf ? (struct gl_buffer_object*)indexBuf :
-                 ctx->Array.VAO->IndexBufferObj;
+      cmd->index_buffer ? cmd->index_buffer : ctx->Array.VAO->IndexBufferObj;
 
+   const GLvoid *indices = cmd->indices;
+   const GLint basevertex = cmd->basevertex;
+   const GLuint baseinstance = cmd->baseinstance;
+
+   ctx->DrawID = cmd->drawid;
    _mesa_validated_drawrangeelements(ctx, index_bo,
                                      mode, false, 0, ~0,
                                      count, type, indices, basevertex,
-                                     numInstances, baseInstance);
+                                     instance_count, baseinstance);
+   ctx->DrawID = 0;
 }
 
 

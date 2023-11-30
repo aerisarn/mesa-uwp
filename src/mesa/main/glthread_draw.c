@@ -707,21 +707,6 @@ _mesa_unmarshal_DrawElementsInstancedBaseVertexBaseInstanceDrawID(struct gl_cont
    return cmd_size;
 }
 
-struct marshal_cmd_DrawElementsUserBuf
-{
-   struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
-   GLenum16 type;
-   GLsizei count;
-   GLsizei instance_count;
-   GLint basevertex;
-   GLuint baseinstance;
-   GLuint drawid;
-   GLuint user_buffer_mask;
-   const GLvoid *indices;
-   struct gl_buffer_object *index_buffer;
-};
-
 uint32_t
 _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
                                     const struct marshal_cmd_DrawElementsUserBuf *restrict cmd)
@@ -735,21 +720,9 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
       _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
    /* Draw. */
-   const GLenum mode = cmd->mode;
-   const GLsizei count = cmd->count;
-   const GLenum type = cmd->type;
-   const GLvoid *indices = cmd->indices;
-   const GLsizei instance_count = cmd->instance_count;
-   const GLint basevertex = cmd->basevertex;
-   const GLuint baseinstance = cmd->baseinstance;
-   struct gl_buffer_object *index_buffer = cmd->index_buffer;
+   CALL_DrawElementsUserBuf(ctx->Dispatch.Current, (cmd));
 
-   ctx->DrawID = cmd->drawid;
-   CALL_DrawElementsUserBuf(ctx->Dispatch.Current,
-                            ((GLintptr)index_buffer, mode, count, type,
-                             indices, instance_count, basevertex,
-                             baseinstance));
-   ctx->DrawID = 0;
+   struct gl_buffer_object *index_buffer = cmd->index_buffer;
    _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
    return cmd->cmd_base.cmd_size;
 }
@@ -1803,10 +1776,7 @@ _mesa_marshal_DrawArraysUserBuf(void)
 }
 
 void GLAPIENTRY
-_mesa_marshal_DrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
-                                  GLsizei count, GLenum type,
-                                  const GLvoid *indices, GLsizei numInstances,
-                                  GLint basevertex, GLuint baseInstance)
+_mesa_marshal_DrawElementsUserBuf(const GLvoid *cmd)
 {
    unreachable("should never end up here");
 }

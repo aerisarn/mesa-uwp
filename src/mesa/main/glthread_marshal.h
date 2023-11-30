@@ -55,6 +55,21 @@ typedef uint32_t (*_mesa_unmarshal_func)(struct gl_context *ctx,
                                          const void *restrict cmd);
 extern const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD];
 
+struct marshal_cmd_DrawElementsUserBuf
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLenum16 type;
+   GLsizei count;
+   GLsizei instance_count;
+   GLint basevertex;
+   GLuint baseinstance;
+   GLuint drawid;
+   GLuint user_buffer_mask;
+   const GLvoid *indices;
+   struct gl_buffer_object *index_buffer;
+};
+
 static inline void *
 _mesa_glthread_allocate_command(struct gl_context *ctx,
                                 uint16_t cmd_id,
