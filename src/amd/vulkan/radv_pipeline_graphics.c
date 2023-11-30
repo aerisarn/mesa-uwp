@@ -1948,7 +1948,8 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
        * rendering), it's not possible to know the info at compile time and MRTZ needs to be
        * exported in the epilog.
        */
-      key.ps.exports_mrtz_via_epilog = key.ps.has_epilog && !state->ms;
+      key.ps.exports_mrtz_via_epilog =
+         key.ps.has_epilog && (!state->ms || (pipeline->dynamic_states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE));
    }
 
    key.dynamic_patch_control_points = !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
