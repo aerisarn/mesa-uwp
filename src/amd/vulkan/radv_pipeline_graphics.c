@@ -557,9 +557,6 @@ radv_pipeline_needed_dynamic_state(const struct radv_device *device, const struc
        (!state->ms || !state->ms->sample_locations_enable))
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
-   if (!(pipeline->dynamic_states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) && !state->rs->line.stipple.enable)
-      states &= ~RADV_DYNAMIC_LINE_STIPPLE;
-
    if (!has_color_att || !radv_pipeline_is_blend_enabled(pipeline, state->cb))
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
 
