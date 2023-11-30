@@ -448,11 +448,16 @@ agx_nir_create_geometry_count_shader(nir_shader *gs, const nir_shader *libagx,
 static nir_shader *
 agx_nir_create_gs_copy_shader(struct lower_gs_state *state,
                               uint64_t outputs_written,
+                              unsigned clip_distance_array_size,
+                              unsigned cull_distance_array_size,
                               enum mesa_prim output_primitive)
 {
    nir_builder b_ = nir_builder_init_simple_shader(MESA_SHADER_VERTEX,
                                                    &agx_nir_options, "GS copy");
    nir_builder *b = &b_;
+
+   b->shader->info.clip_distance_array_size = clip_distance_array_size;
+   b->shader->info.cull_distance_array_size = cull_distance_array_size;
 
    /* Get the base for this vertex */
    nir_def *vert_offs = nir_imul_imm(b, nir_load_vertex_id(b), state->stride_B);
@@ -471,8 +476,15 @@ agx_nir_create_gs_copy_shader(struct lower_gs_state *state,
 
       nir_def *value = nir_load_global_constant(b, addr, 4, components, 32);
 
-      nir_store_output(b, value, nir_imm_int(b, 0),
-                       .io_semantics.location = slot,
+      /* We set NIR_COMPACT_ARRAYS so clip/cull distance needs to come all in
+       * DIST0. Undo the offset if we need to.
+       */
+      unsigned offset = 0;
+      if (slot == VARYING_SLOT_CULL_DIST1 || slot == VARYING_SLOT_CLIP_DIST1)
+         offset = 1;
+
+      nir_store_output(b, value, nir_imm_int(b, offset),
+                       .io_semantics.location = slot - offset,
                        .io_semantics.num_slots = 1,
                        .write_mask = nir_component_mask(components));
 
@@ -1144,8 +1156,9 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    /* Create auxiliary programs */
-   *gs_copy = agx_nir_create_gs_copy_shader(&gs_state, outputs_rasterized(gs),
-                                            gs->info.gs.output_primitive);
+   *gs_copy = agx_nir_create_gs_copy_shader(
+      &gs_state, outputs_rasterized(gs), gs->info.clip_distance_array_size,
+      gs->info.cull_distance_array_size, gs->info.gs.output_primitive);
 
    *pre_gs = agx_nir_create_pre_gs(
       &gs_state, libagx, gs->info.gs.output_primitive != MESA_PRIM_POINTS,
