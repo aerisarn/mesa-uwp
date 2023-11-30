@@ -796,7 +796,9 @@ collect_components(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    unsigned count = nir_intrinsic_component(intr) +
                     util_last_bit(nir_intrinsic_write_mask(intr));
 
-   unsigned loc = nir_intrinsic_io_semantics(intr).location;
+   unsigned loc =
+      nir_intrinsic_io_semantics(intr).location + nir_src_as_uint(intr->src[1]);
+
    uint8_t *total_count = &counts[loc];
 
    *total_count = MAX2(*total_count, count);
