@@ -23,7 +23,6 @@
 
 #include "nvk_cl902d.h"
 #include "nvk_cl9039.h"
-#include "nvk_cl906f.h"
 #include "nvk_cl90b5.h"
 #include "nvk_cl90c0.h"
 #include "nvk_clb0c0.h"
@@ -2139,10 +2138,6 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
       P_INLINE_DATA(p, drawCount);
       P_INLINE_DATA(p, stride);
    } else {
-      /* Stall the command streamer */
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
-      __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
-
       const uint32_t max_draws_per_push =
          ((NV_PUSH_MAX_COUNT - 3) * 4) / stride;
       while (drawCount) {
@@ -2256,10 +2251,6 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
       P_INLINE_DATA(p, drawCount);
       P_INLINE_DATA(p, stride);
    } else {
-      /* Stall the command streamer */
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
-      __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
-
       const uint32_t max_draws_per_push =
          ((NV_PUSH_MAX_COUNT - 3) * 4) / stride;
       while (drawCount) {
@@ -2550,9 +2541,7 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       P_INLINE_DATA(p, counter_addr >> 32);
       P_INLINE_DATA(p, counter_addr);
    } else {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 11);
-      /* Stall the command streamer */
-      __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
 
@@ -2656,10 +2645,7 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          P_INLINE_DATA(p, cb_addr >> 32);
          P_INLINE_DATA(p, cb_addr);
       } else {
-         struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
-         /* Stall the command streamer */
-         __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
-
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
          P_INLINE_DATA(p, cb_idx);
          nv_push_update_count(p, 1);
