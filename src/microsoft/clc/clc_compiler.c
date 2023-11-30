@@ -252,7 +252,6 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
    context->metadata->args[context->metadata_index].image.num_buf_ids = context->num_buf_ids;
 
    nir_instr_remove(&context->deref->instr);
-   exec_node_remove(&in_var->node);
 }
 
 static void
@@ -277,6 +276,11 @@ clc_lower_images(nir_shader *nir, struct clc_image_lower_context *context)
             }
          }
       }
+   }
+
+   nir_foreach_variable_with_modes_safe(var, nir, nir_var_image) {
+      if (glsl_type_is_image(var->type) && glsl_get_sampler_result_type(var->type) == GLSL_TYPE_VOID)
+         exec_node_remove(&var->node);
    }
 }
 
@@ -855,8 +859,6 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, nir_lower_samplers);
    NIR_PASS_V(nir, dxil_lower_sample_to_txf_for_integer_tex,
               sampler_id, int_sampler_states, NULL, 14.0f);
-
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_mem_shared | nir_var_function_temp, NULL);
 
    nir->scratch_size = 0;
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
