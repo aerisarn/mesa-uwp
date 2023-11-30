@@ -7,6 +7,73 @@
 #include "nir_builder.h"
 
 static nir_def *
+cluster_mask(nir_builder *b, unsigned cluster_size)
+{
+   nir_def *mask = nir_ballot(b, 1, 32, nir_imm_true(b));
+
+   if (cluster_size < 32) {
+      nir_def *idx = nir_load_subgroup_invocation(b);
+      nir_def *cluster = nir_iand_imm(b, idx, ~(uint64_t)(cluster_size - 1));
+
+      nir_def *cluster_mask = nir_imm_int(b, BITFIELD_MASK(cluster_size));
+      cluster_mask = nir_ishl(b, cluster_mask, cluster);
+
+      mask = nir_iand(b, mask, cluster_mask);
+   }
+
+   return mask;
+}
+
+static nir_def *
+build_scan_bool(nir_builder *b, nir_intrinsic_op op, nir_op red_op,
+                nir_def *data, unsigned cluster_size)
+{
+   /* Handle a couple of special cases first */
+   if (op == nir_intrinsic_reduce && cluster_size == 32) {
+      switch (red_op) {
+      case nir_op_iand:
+         return nir_vote_all(b, 1, data);
+      case nir_op_ior:
+         return nir_vote_any(b, 1, data);
+      case nir_op_ixor:
+         /* The generic path is fine */
+         break;
+      default:
+         unreachable("Unsupported boolean reduction op");
+      }
+   }
+
+   nir_def *mask = cluster_mask(b, cluster_size);
+   switch (op) {
+   case nir_intrinsic_exclusive_scan:
+      mask = nir_iand(b, mask, nir_load_subgroup_lt_mask(b, 1, 32));
+      break;
+   case nir_intrinsic_inclusive_scan:
+      mask = nir_iand(b, mask, nir_load_subgroup_le_mask(b, 1, 32));
+      break;
+   case nir_intrinsic_reduce:
+      break;
+   default:
+      unreachable("Unsupported scan/reduce op");
+   }
+
+   data = nir_ballot(b, 1, 32, data);
+
+   switch (red_op) {
+   case nir_op_iand:
+      return nir_ieq_imm(b, nir_iand(b, nir_inot(b, data), mask), 0);
+   case nir_op_ior:
+      return nir_ine_imm(b, nir_iand(b, data, mask), 0);
+   case nir_op_ixor: {
+      nir_def *count = nir_bit_count(b, nir_iand(b, data, mask));
+      return nir_ine_imm(b, nir_iand_imm(b, count, 1), 0);
+   }
+   default:
+      unreachable("Unsupported boolean reduction op");
+   }
+}
+
+static nir_def *
 build_identity(nir_builder *b, nir_op op)
 {
    nir_const_value ident_const = nir_alu_binop_identity(op, 32);
@@ -152,21 +219,15 @@ nak_nir_lower_scan_reduce_intrin(nir_builder *b,
       /* Simple case where we're not actually doing any reducing at all. */
       assert(intrin->intrinsic == nir_intrinsic_reduce);
       data = intrin->src[0].ssa;
+   } else if (intrin->src[0].ssa->bit_size == 1) {
+      data = build_scan_bool(b, intrin->intrinsic, red_op,
+                             intrin->src[0].ssa, cluster_size);
    } else {
       /* First, we need a mask of all invocations to be included in the
        * reduction or scan.  For trivial cluster sizes, that's just the mask
        * of enabled channels.
        */
-      nir_def *mask = nir_ballot(b, 1, 32, nir_imm_true(b));
-      if (cluster_size < 32) {
-         nir_def *idx = nir_load_subgroup_invocation(b);
-         nir_def *cluster = nir_iand_imm(b, idx, ~(uint64_t)(cluster_size - 1));
-
-         nir_def *cluster_mask = nir_imm_int(b, BITFIELD_MASK(cluster_size));
-         cluster_mask = nir_ishl(b, cluster_mask, cluster);
-
-         mask = nir_iand(b, mask, cluster_mask);
-      }
+      nir_def *mask = cluster_mask(b, cluster_size);
 
       nir_def *full, *partial;
       nir_push_if(b, nir_ieq_imm(b, mask, -1));
