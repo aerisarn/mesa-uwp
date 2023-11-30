@@ -2110,16 +2110,6 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
       }
    }
 
-   if (*pCount > idx) {
-      *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
-         .queueFlags = VK_QUEUE_SPARSE_BINDING_BIT,
-         .queueCount = 1,
-         .timestampValidBits = 64,
-         .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
-      };
-      idx++;
-   }
-
    if (pdevice->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE) {
       if (pdevice->rad_info.ip[pdevice->vid_decode_ip].num_queues > 0) {
          if (*pCount > idx) {
@@ -2132,6 +2122,16 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
             idx++;
          }
       }
+   }
+
+   if (*pCount > idx) {
+      *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
+         .queueFlags = VK_QUEUE_SPARSE_BINDING_BIT,
+         .queueCount = 1,
+         .timestampValidBits = 64,
+         .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
+      };
+      idx++;
    }
 
    *pCount = idx;
