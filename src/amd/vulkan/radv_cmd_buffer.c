@@ -2213,10 +2213,10 @@ static void
 radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   uint32_t auto_reset_cntl = 1;
+   uint32_t auto_reset_cntl = 2;
 
-   if (d->vk.ia.primitive_topology == V_008958_DI_PT_LINESTRIP)
-      auto_reset_cntl = 2;
+   if (d->vk.ia.primitive_topology == V_008958_DI_PT_LINELIST)
+      auto_reset_cntl = 1;
 
    radeon_set_context_reg(cmd_buffer->cs, R_028A0C_PA_SC_LINE_STIPPLE,
                           S_028A0C_LINE_PATTERN(d->vk.rs.line.stipple.pattern) |
@@ -6810,8 +6810,8 @@ radv_CmdSetPrimitiveTopology(VkCommandBuffer commandBuffer, VkPrimitiveTopology 
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned primitive_topology = si_translate_prim(primitiveTopology);
 
-   if ((state->dynamic.vk.ia.primitive_topology == V_008958_DI_PT_LINESTRIP) !=
-       (primitive_topology == V_008958_DI_PT_LINESTRIP))
+   if ((state->dynamic.vk.ia.primitive_topology == V_008958_DI_PT_LINELIST) !=
+       (primitive_topology == V_008958_DI_PT_LINELIST))
       state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
 
    if (radv_prim_is_points_or_lines(state->dynamic.vk.ia.primitive_topology) !=
