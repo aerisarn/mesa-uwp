@@ -6391,16 +6391,17 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
 {
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
+   int num_data = lsc_op_num_data_values(op);
 
    fs_reg dest = get_nir_def(instr->def);
 
    fs_reg addr = get_nir_src(instr->src[0]);
 
    fs_reg data;
-   if (op != LSC_OP_ATOMIC_INC && op != LSC_OP_ATOMIC_DEC)
+   if (num_data >= 1)
       data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
 
-   if (op == LSC_OP_ATOMIC_CMPXCHG) {
+   if (num_data >= 2) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
