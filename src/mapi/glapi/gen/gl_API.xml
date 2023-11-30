@@ -4340,13 +4340,12 @@
         <glx rop="198"/>
     </function>
 
-    <function name="MultiTexCoord1f" alias="MultiTexCoord1fARB" deprecated="3.1">
+    <function name="MultiTexCoord1f" alias="MultiTexCoord1fARB">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord1fv" alias="MultiTexCoord1fvARB"
-              deprecated="3.1">
+    <function name="MultiTexCoord1fv" alias="MultiTexCoord1fvARB">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *"/>
     </function>
@@ -4385,15 +4384,13 @@
         <glx rop="202"/>
     </function>
 
-    <function name="MultiTexCoord2f" alias="MultiTexCoord2fARB"
-              deprecated="3.1">
+    <function name="MultiTexCoord2f" alias="MultiTexCoord2fARB">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
         <param name="t" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord2fv" alias="MultiTexCoord2fvARB"
-              deprecated="3.1">
+    <function name="MultiTexCoord2fv" alias="MultiTexCoord2fvARB">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *"/>
     </function>
@@ -4435,16 +4432,14 @@
         <glx rop="206"/>
     </function>
 
-    <function name="MultiTexCoord3f" alias="MultiTexCoord3fARB"
-              deprecated="3.1">
+    <function name="MultiTexCoord3f" alias="MultiTexCoord3fARB">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
         <param name="t" type="GLfloat"/>
         <param name="r" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord3fv" alias="MultiTexCoord3fvARB"
-              deprecated="3.1">
+    <function name="MultiTexCoord3fv" alias="MultiTexCoord3fvARB">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *"/>
     </function>
@@ -4489,8 +4484,7 @@
         <glx rop="210"/>
     </function>
 
-    <function name="MultiTexCoord4f" alias="MultiTexCoord4fARB" es1="1.0"
-              deprecated="3.1">
+    <function name="MultiTexCoord4f" alias="MultiTexCoord4fARB" es1="1.0">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
         <param name="t" type="GLfloat"/>
@@ -4498,8 +4492,7 @@
         <param name="q" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord4fv" alias="MultiTexCoord4fvARB"
-              deprecated="3.1">
+    <function name="MultiTexCoord4fv" alias="MultiTexCoord4fvARB">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *"/>
     </function>
@@ -4771,11 +4764,11 @@
         <glx rop="4134"/>
     </function>
 
-    <function name="FogCoordf" alias="FogCoordfEXT" deprecated="3.1">
+    <function name="FogCoordf" alias="FogCoordfEXT">
         <param name="coord" type="GLfloat"/>
     </function>
 
-    <function name="FogCoordfv" alias="FogCoordfvEXT" deprecated="3.1">
+    <function name="FogCoordfv" alias="FogCoordfvEXT">
         <param name="coord" type="const GLfloat *"/>
     </function>
 
@@ -4862,14 +4855,14 @@
     </function>
 
     <function name="SecondaryColor3f" alias="SecondaryColor3fEXT"
-              deprecated="3.1" exec="beginend">
+              exec="beginend">
         <param name="red" type="GLfloat"/>
         <param name="green" type="GLfloat"/>
         <param name="blue" type="GLfloat"/>
     </function>
 
     <function name="SecondaryColor3fv" alias="SecondaryColor3fvEXT"
-              deprecated="3.1" exec="beginend">
+              exec="beginend">
         <param name="v" type="const GLfloat *"/>
     </function>
 
@@ -6044,13 +6037,13 @@
         <param name="v" type="const GLdouble *"/>
     </function>
 
-    <function name="MultiTexCoord1fARB"
+    <function name="MultiTexCoord1fARB" deprecated="3.1"
               vectorequiv="MultiTexCoord1fvARB" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord1fvARB" exec="beginend">
+    <function name="MultiTexCoord1fvARB" deprecated="3.1" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *" count="1"/>
         <glx rop="199"/>
@@ -6090,14 +6083,14 @@
         <param name="v" type="const GLdouble *"/>
     </function>
 
-    <function name="MultiTexCoord2fARB"
+    <function name="MultiTexCoord2fARB" deprecated="3.1"
               vectorequiv="MultiTexCoord2fvARB" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
         <param name="t" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord2fvARB" exec="beginend">
+    <function name="MultiTexCoord2fvARB" deprecated="3.1" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *" count="2"/>
         <glx rop="203"/>
@@ -6140,7 +6133,7 @@
         <param name="v" type="const GLdouble *"/>
     </function>
 
-    <function name="MultiTexCoord3fARB"
+    <function name="MultiTexCoord3fARB" deprecated="3.1"
               vectorequiv="MultiTexCoord3fvARB" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
@@ -6148,7 +6141,7 @@
         <param name="r" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord3fvARB" exec="beginend">
+    <function name="MultiTexCoord3fvARB" deprecated="3.1" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *" count="3"/>
         <glx rop="207"/>
@@ -6194,7 +6187,7 @@
         <param name="v" type="const GLdouble *"/>
     </function>
 
-    <function name="MultiTexCoord4fARB"
+    <function name="MultiTexCoord4fARB" deprecated="3.1"
               vectorequiv="MultiTexCoord4fvARB" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="s" type="GLfloat"/>
@@ -6203,7 +6196,7 @@
         <param name="q" type="GLfloat"/>
     </function>
 
-    <function name="MultiTexCoord4fvARB" exec="beginend">
+    <function name="MultiTexCoord4fvARB" deprecated="3.1" exec="beginend">
         <param name="target" type="GLenum"/>
         <param name="v" type="const GLfloat *" count="4"/>
         <glx rop="211"/>
@@ -7303,25 +7296,25 @@
         <glx rop="4217" large="true"/>
     </function>
 
-    <function name="BindProgramARB" exec="dlist">
+    <function name="BindProgramARB" deprecated="3.1" exec="dlist">
         <param name="target" type="GLenum"/>
         <param name="program" type="GLuint"/>
         <glx rop="4180"/>
     </function>
 
-    <function name="DeleteProgramsARB">
+    <function name="DeleteProgramsARB" deprecated="3.1">
         <param name="n" type="GLsizei" counter="true"/>
         <param name="programs" type="const GLuint *" count="n"/>
         <glx vendorpriv="1294"/>
     </function>
 
-    <function name="GenProgramsARB">
+    <function name="GenProgramsARB" deprecated="3.1">
         <param name="n" type="GLsizei" counter="true"/>
         <param name="programs" type="GLuint *" output="true" count="n"/>
         <glx vendorpriv="1295" always_array="true"/>
     </function>
 
-    <function name="IsProgramARB">
+    <function name="IsProgramARB" deprecated="3.1">
         <param name="program" type="GLuint"/>
         <return type="GLboolean"/>
         <glx vendorpriv="1304"/>
@@ -9773,13 +9766,13 @@
         <param name="v" type="const GLdouble *"/>
     </function>
 
-    <function name="SecondaryColor3fEXT" vectorequiv="SecondaryColor3fvEXT">
+    <function name="SecondaryColor3fEXT" deprecated="3.1" vectorequiv="SecondaryColor3fvEXT">
         <param name="red" type="GLfloat"/>
         <param name="green" type="GLfloat"/>
         <param name="blue" type="GLfloat"/>
     </function>
 
-    <function name="SecondaryColor3fvEXT">
+    <function name="SecondaryColor3fvEXT" deprecated="3.1">
         <param name="v" type="const GLfloat *" count="3"/>
         <glx rop="4129"/>
     </function>
@@ -9872,11 +9865,11 @@
 </category>
 
 <category name="GL_EXT_fog_coord" number="149">
-    <function name="FogCoordfEXT" vectorequiv="FogCoordfvEXT" exec="beginend">
+    <function name="FogCoordfEXT" deprecated="3.1" vectorequiv="FogCoordfvEXT" exec="beginend">
         <param name="coord" type="GLfloat"/>
     </function>
 
-    <function name="FogCoordfvEXT" exec="beginend">
+    <function name="FogCoordfvEXT" deprecated="3.1" exec="beginend">
         <param name="coord" type="const GLfloat *" count="1"/>
         <glx rop="4124"/>
     </function>
@@ -11391,12 +11384,12 @@
         <glx vendorpriv="1293"/>
     </function>
 
-    <function name="BindProgramNV" deprecated="3.1" alias="BindProgramARB">
+    <function name="BindProgramNV" alias="BindProgramARB">
         <param name="target" type="GLenum"/>
         <param name="program" type="GLuint"/>
     </function>
 
-    <function name="DeleteProgramsNV" deprecated="3.1" alias="DeleteProgramsARB">
+    <function name="DeleteProgramsNV" alias="DeleteProgramsARB">
         <param name="n" type="GLsizei"/>
         <param name="programs" type="const GLuint *"/>
     </function>
@@ -11408,7 +11401,7 @@
         <glx rop="4181"/>
     </function>
 
-    <function name="GenProgramsNV" deprecated="3.1" alias="GenProgramsARB">
+    <function name="GenProgramsNV" alias="GenProgramsARB">
         <param name="n" type="GLsizei"/>
         <param name="programs" type="GLuint *"/>
      </function>
@@ -11484,7 +11477,7 @@
         <param name="pointer" type="GLvoid **"/>
     </function>
 
-    <function name="IsProgramNV" deprecated="3.1" alias="IsProgramARB">
+    <function name="IsProgramNV" alias="IsProgramARB">
         <param name="program" type="GLuint"/>
         <return type="GLboolean"/>
     </function>
