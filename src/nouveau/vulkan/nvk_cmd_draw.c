@@ -2659,7 +2659,8 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       uint64_t cb_addr = nvk_buffer_address(buffer, offset);
 
       if (nvk_cmd_buffer_device(cmd)->pdev->info.cls_eng3d >= TURING_A) {
-         struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
+         P_IMMD(p, NVC597, MME_DMA_SYSMEMBAR, 0);
          P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
          P_INLINE_DATA(p, cb_idx);
@@ -2689,6 +2690,10 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 5 * counterBufferCount + 6);
+
+   P_IMMD(p, NV9097, SET_STREAM_OUTPUT, ENABLE_FALSE);
+
    for (uint32_t i = 0; i < counterBufferCount; ++i) {
       if (pCounterBuffers[i] == VK_NULL_HANDLE)
          continue;
@@ -2697,7 +2702,6 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       uint64_t offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0;
       uint64_t cb_addr = nvk_buffer_address(buffer, offset);
 
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
       P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
       P_NV9097_SET_REPORT_SEMAPHORE_A(p, cb_addr >> 32);
       P_NV9097_SET_REPORT_SEMAPHORE_B(p, cb_addr);
@@ -2710,15 +2714,9 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       });
    }
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, counterBufferCount ? 4 : 2);
-   P_IMMD(p, NV9097, SET_STREAM_OUTPUT, ENABLE_FALSE);
-
-   // TODO: this probably needs to move to CmdPipelineBarrier
    if (counterBufferCount > 0) {
-      P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
-      P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
-         .constant = CONSTANT_TRUE
-      });
+      P_IMMD(p, NV9097, WAIT_FOR_IDLE, 0);
+      __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
    }
 }
 
