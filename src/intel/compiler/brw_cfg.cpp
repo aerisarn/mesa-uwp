@@ -802,6 +802,11 @@ cfg_t::validate(const char *stage_abbrev)
 
       backend_instruction *first_inst = block->start();
       if (first_inst->opcode == BRW_OPCODE_DO) {
+         /* DO instructions both begin and end a block, so the DO instruction
+          * must be the only instruction in the block.
+          */
+         cfgv_assert(exec_list_is_singular(&block->instructions));
+
          /* A block starting with DO should have exactly two successors. One
           * is a physical link to the block starting after the WHILE
           * instruction. The other is a logical link to the block starting the
