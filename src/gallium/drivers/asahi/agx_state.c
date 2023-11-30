@@ -1257,16 +1257,17 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
       cfg.srgb = util_format_is_srgb(view->format);
 
       assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
-      cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]) & 3;
 
-      if (desc->nr_channels >= 2)
-         cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]) & 3;
-
-      if (desc->nr_channels >= 3)
-         cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]) & 3;
-
-      if (desc->nr_channels >= 4)
-         cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]) & 3;
+      for (unsigned i = 0; i < desc->nr_channels; ++i) {
+         if (desc->swizzle[i] == 0)
+            cfg.swizzle_r = i;
+         else if (desc->swizzle[i] == 1)
+            cfg.swizzle_g = i;
+         else if (desc->swizzle[i] == 2)
+            cfg.swizzle_b = i;
+         else if (desc->swizzle[i] == 3)
+            cfg.swizzle_a = i;
+      }
 
       cfg.buffer = agx_map_texture_gpu(tex, layer);
       cfg.unk_mipmapped = tex->mipmapped;
