@@ -149,16 +149,17 @@ lower_output_to_var(nir_builder *b, nir_instr *instr, void *data)
    unsigned component = nir_intrinsic_component(intr);
    nir_def *value = intr->src[0].ssa;
 
-   nir_variable *var = state->outputs[sem.location];
+   assert(nir_src_is_const(intr->src[1]) && "no indirect outputs");
+   assert(nir_intrinsic_write_mask(intr) == nir_component_mask(1) &&
+          "should be scalarized");
+
+   nir_variable *var =
+      state->outputs[sem.location + nir_src_as_uint(intr->src[1])];
    if (!var) {
       assert(sem.location == VARYING_SLOT_PSIZ &&
              "otherwise in outputs_written");
       return true;
    }
-
-   assert(nir_src_as_uint(intr->src[1]) == 0 && "no indirect outputs");
-   assert(nir_intrinsic_write_mask(intr) == nir_component_mask(1) &&
-          "should be scalarized");
 
    unsigned nr_components = glsl_get_components(glsl_without_array(var->type));
    assert(component < nr_components);
@@ -205,18 +206,21 @@ lower_gs_inputs(nir_builder *b, nir_intrinsic_instr *intr, void *data)
     * complicated and probably pointless (versus the lowering the frontend would
     * otherwise do). GS lowering is hard enough as it is.
     */
-   assert(nir_src_as_uint(intr->src[1]) == 0 && "no indirect GS inputs");
-   assert(nir_intrinsic_component(intr) == 0 && "TODO");
+   assert(nir_src_is_const(intr->src[1]) && "no indirect GS inputs");
 
    b->cursor = nir_instr_remove(&intr->instr);
    nir_def *vertex = intr->src[0].ssa;
    nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
-   nir_variable *var = vs_state->outputs[sem.location];
+   nir_variable *var =
+      vs_state->outputs[sem.location + nir_src_as_uint(intr->src[1])];
+
    nir_def *val = nir_load_array_var(b, var, vertex);
 
    assert(intr->def.bit_size == 32);
-   val = nir_trim_vector(b, val, intr->def.num_components);
+   unsigned start = nir_intrinsic_component(intr);
+   unsigned count = intr->def.num_components;
+   val = nir_channels(b, val, nir_component_mask(count) << start);
 
    nir_def_rewrite_uses(&intr->def, val);
    return true;
