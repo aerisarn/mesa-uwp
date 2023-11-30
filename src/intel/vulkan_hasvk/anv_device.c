@@ -70,6 +70,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_ANV_ASSUME_FULL_SUBGROUPS(false)
       DRI_CONF_ANV_SAMPLE_MASK_OUT_OPENGL_BEHAVIOUR(false)
       DRI_CONF_NO_16BIT(false)
+      DRI_CONF_ANV_HASVK_OVERRIDE_API_VERSION(false)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
@@ -1333,6 +1334,8 @@ anv_init_dri_options(struct anv_instance *instance)
             driQueryOptionf(&instance->dri_options, "lower_depth_range_rate");
     instance->no_16bit =
             driQueryOptionb(&instance->dri_options, "no_16bit");
+    instance->report_vk_1_3 =
+            driQueryOptionb(&instance->dri_options, "hasvk_report_vk_1_3_version");
 }
 
 VkResult anv_CreateInstance(
@@ -1571,7 +1574,8 @@ void anv_GetPhysicalDeviceProperties(
 #ifdef ANDROID
       .apiVersion = ANV_API_VERSION,
 #else
-      .apiVersion = pdevice->use_softpin ? ANV_API_VERSION_1_3 : ANV_API_VERSION_1_2,
+      .apiVersion =  (pdevice->use_softpin || pdevice->instance->report_vk_1_3) ?
+                     ANV_API_VERSION_1_3 : ANV_API_VERSION_1_2,
 #endif
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x8086,

@@ -750,6 +750,10 @@
    DRI_CONF_OPT_B(anv_disable_fcv, def, \
                   "Disable FCV optimization")
 
+#define DRI_CONF_ANV_HASVK_OVERRIDE_API_VERSION(def) \
+   DRI_CONF_OPT_B(hasvk_report_vk_1_3_version, def, \
+                  "Override intel_hasvk API version")
+
 /**
  * \brief DZN specific configuration options
  */
