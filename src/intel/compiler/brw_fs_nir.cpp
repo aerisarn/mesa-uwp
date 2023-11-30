@@ -4446,7 +4446,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
       } else {
          unsigned num_srcs = info->num_srcs;
-         int op = lsc_aop_for_nir_intrinsic(instr);
+         enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
          if (op == LSC_OP_ATOMIC_INC || op == LSC_OP_ATOMIC_DEC) {
             assert(num_srcs == 4);
             num_srcs = 3;
@@ -6390,7 +6390,7 @@ void
 fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
 {
-   int op = lsc_aop_for_nir_intrinsic(instr);
+   enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
 
    fs_reg dest = get_nir_def(instr->def);
 
