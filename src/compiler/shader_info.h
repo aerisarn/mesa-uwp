@@ -342,6 +342,11 @@ typedef struct shader_info {
    bool workgroup_size_variable:1;
 
    /**
+    * Whether the shader uses printf instructions.
+    */
+   bool uses_printf:1;
+
+   /**
      * Set if this shader uses legacy (DX9 or ARB assembly) math rules.
      *
      * From the ARB_fragment_program specification:

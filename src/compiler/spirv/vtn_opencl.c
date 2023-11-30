@@ -830,6 +830,8 @@ handle_printf(struct vtn_builder *b, uint32_t opcode,
    nir_def *fmt_idx = nir_imm_int(&b->nb, info_idx);
    nir_def *ret = nir_printf(&b->nb, fmt_idx, &deref_var->def);
    vtn_push_nir_ssa(b, w_dest[1], ret);
+
+   b->nb.shader->info.uses_printf = true;
 }
 
 static nir_def *

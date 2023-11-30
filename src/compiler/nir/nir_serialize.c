@@ -2024,7 +2024,7 @@ nir_serialize(struct blob *blob, const nir_shader *nir, bool strip)
 
    write_xfb_info(&ctx, nir->xfb_info);
 
-   if (nir->info.stage == MESA_SHADER_KERNEL)
+   if (nir->info.uses_printf)
       nir_serialize_printf_info(blob, nir->printf_info, nir->printf_info_count);
 
    blob_overwrite_uint32(blob, idx_size_offset, ctx.next_idx);
@@ -2084,7 +2084,7 @@ nir_deserialize(void *mem_ctx,
 
    ctx.nir->xfb_info = read_xfb_info(&ctx);
 
-   if (ctx.nir->info.stage == MESA_SHADER_KERNEL) {
+   if (ctx.nir->info.uses_printf) {
       ctx.nir->printf_info =
          nir_deserialize_printf_info(ctx.nir, blob,
                                      &ctx.nir->printf_info_count);
