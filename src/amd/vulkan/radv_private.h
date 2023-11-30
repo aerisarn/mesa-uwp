@@ -3389,6 +3389,12 @@ radv_polygon_mode_is_points_or_lines(unsigned polygon_mode)
    return radv_polygon_mode_is_point(polygon_mode) || radv_polygon_mode_is_line(polygon_mode);
 }
 
+static inline bool
+radv_primitive_topology_is_line_list(unsigned primitive_topology)
+{
+   return primitive_topology == V_008958_DI_PT_LINELIST || primitive_topology == V_008958_DI_PT_LINELIST_ADJ;
+}
+
 static inline unsigned
 radv_get_num_vertices_per_prim(const struct radv_pipeline_key *pipeline_key)
 {
