@@ -175,7 +175,7 @@ static bool vpe10_init_scaler_data(struct vpe_priv *vpe_priv, struct stream_ctx 
     struct dpp *dpp = vpe_priv->resource.dpp[0];
     calculate_scaling_ratios(scl_data, src_rect, dst_rect, stream_ctx->stream.surface_info.format);
 
-    if (!dpp->funcs->get_optimal_number_of_taps(
+    if (!vpe_priv->init.debug.skip_optimal_tap_check && !dpp->funcs->get_optimal_number_of_taps(
             dpp, scl_data, &stream_ctx->stream.scaling_info.taps))
         return false;
 

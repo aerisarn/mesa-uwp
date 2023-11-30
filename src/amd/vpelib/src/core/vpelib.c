@@ -113,6 +113,9 @@ static void override_debug_option(
 
     if (user_debug->flags.visual_confirm)
         debug->visual_confirm_params = user_debug->visual_confirm_params;
+
+    if (user_debug->flags.skip_optimal_tap_check)
+        debug->skip_optimal_tap_check = user_debug->skip_optimal_tap_check;
 }
 
 struct vpe *vpe_create(const struct vpe_init_data *params)

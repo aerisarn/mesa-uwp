@@ -73,6 +73,7 @@ static const struct vpe_debug_options debug_defaults = {
     .dpp_crc_ctrl                            = 0,
     .mpc_crc_ctrl                            = 0,
     .visual_confirm_params                   = {{{0}}},
+    .skip_optimal_tap_check                  = 0,
 };
 
 enum vpe_ip_level vpe_resource_parse_ip_version(

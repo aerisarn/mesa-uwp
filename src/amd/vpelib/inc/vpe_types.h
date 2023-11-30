@@ -344,6 +344,7 @@ struct vpe_debug_options {
         uint32_t mpc_crc_ctrl            : 1;
         uint32_t bg_bit_depth            : 1;
         uint32_t visual_confirm          : 1;
+        uint32_t skip_optimal_tap_check  : 1;
     } flags;
 
     // valid only if the corresponding flag is set
@@ -365,6 +366,7 @@ struct vpe_debug_options {
     uint32_t dpp_crc_ctrl            : 1;
     uint32_t opp_pipe_crc_ctrl       : 1;
     uint32_t mpc_crc_ctrl            : 1;
+    uint32_t skip_optimal_tap_check  : 1;
     uint32_t bg_bit_depth;
 
     struct vpe_mem_low_power_enable_options enable_mem_low_power;
