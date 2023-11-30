@@ -25,18 +25,36 @@
 
 import gl_XML
 
-def get_type_size(str):
-    if str.find('*') != -1:
+# We decrease the type size when it's safe, such as when the maximum value
+# and all greater values are invalid.
+def get_marshal_type(func_name, param):
+    type = param.type_string()
+
+    if type == 'GLenum':
+        return 'GLenum16' # clamped to 0xffff (always invalid enum)
+
+    # Use int16_t for the vertex stride, the max value is usually 2048.
+    if ((type, param.name) == ('GLsizei', 'stride') and
+        ('Vertex' in func_name or 'Pointer' in func_name or 'Interleaved' in func_name)):
+        return 'int16_t' # clamped to INT16_MAX (always invalid value)
+
+    return type
+
+def get_type_size(func_name, param):
+    type = get_marshal_type(func_name, param)
+
+    if type.find('*') != -1:
         return 8;
 
     mapping = {
         'GLboolean': 1,
         'GLbyte': 1,
         'GLubyte': 1,
-        'GLenum': 2, # uses GLenum16, clamped to 0xffff (invalid enum)
+        'GLenum16': 2, # clamped by glthread
         'GLshort': 2,
         'GLushort': 2,
         'GLhalfNV': 2,
+        'int16_t': 2, # clamped by glthread
         'GLint': 4,
         'GLuint': 4,
         'GLbitfield': 4,
@@ -57,9 +75,9 @@ def get_type_size(str):
         'GLuint64EXT': 8,
         'GLsync': 8,
     }
-    val = mapping.get(str, 9999)
+    val = mapping.get(type, 9999)
     if val == 9999:
-        print('Unhandled type in marshal_XML.get_type_size: ' + str, file=sys.stderr)
+        print('Unhandled type in marshal_XML.get_type_size: ' + type, file=sys.stderr)
         assert False
     return val
 
@@ -157,15 +175,12 @@ class marshal_function(gl_XML.gl_function):
             print('   struct marshal_cmd_base cmd_base;')
 
             # Sort the parameters according to their size to pack the structure optimally
-            for p in sorted(fixed_params, key=lambda p: get_type_size(p.type_string())):
+            for p in sorted(fixed_params, key=lambda p: get_type_size(self.name, p)):
                 if p.count:
                     print('   {0} {1}[{2}];'.format(
                             p.get_base_type_string(), p.name, p.count))
                 else:
-                    type = p.type_string()
-                    if type == 'GLenum':
-                        type = 'GLenum16'
-                    print('   {0} {1};'.format(type, p.name))
+                    print('   {0} {1};'.format(get_marshal_type(self.name, p), p.name))
 
             for p in variable_params:
                 if p.img_null_flag:

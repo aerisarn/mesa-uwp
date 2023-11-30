@@ -121,7 +121,7 @@ class PrintCode(gl_XML.gl_print_base):
                             p.get_base_type_string(), p.name)
                 else:
                     p_decl = '{0} {1} = cmd->{1};'.format(
-                            p.type_string(), p.name)
+                            marshal_XML.get_marshal_type(func.name, p), p.name)
 
                 if not p_decl.startswith('const ') and p.count:
                     # Declare all local function variables as const, even if
@@ -220,11 +220,15 @@ class PrintCode(gl_XML.gl_print_base):
                 'DISPATCH_CMD_{0}, cmd_size);'.format(func.name))
 
             for p in fixed_params:
+                type = marshal_XML.get_marshal_type(func.name, p)
+
                 if p.count:
                     out('memcpy(cmd->{0}, {0}, {1});'.format(
                             p.name, p.size_string()))
-                elif p.type_string() == 'GLenum':
+                elif type == 'GLenum16':
                     out('cmd->{0} = MIN2({0}, 0xffff); /* clamped to 0xffff (invalid enum) */'.format(p.name))
+                elif type == 'int16_t':
+                    out('cmd->{0} = CLAMP({0}, INT16_MIN, INT16_MAX);'.format(p.name))
                 else:
                     out('cmd->{0} = {0};'.format(p.name))
             if variable_params:
