@@ -106,12 +106,12 @@
    <!-- OpenGL 1.1 -->
 
     <function name="ClientAttribDefaultEXT" deprecated="3.1"
-              marshal_call_after="if (COMPAT) _mesa_glthread_ClientAttribDefault(ctx, mask);">
+              marshal_call_after="_mesa_glthread_ClientAttribDefault(ctx, mask);">
        <param name="mask" type="GLbitfield" />
     </function>
 
     <function name="PushClientAttribDefaultEXT" deprecated="3.1"
-              marshal_call_after="if (COMPAT) _mesa_glthread_PushClientAttrib(ctx, mask, true);">
+              marshal_call_after="_mesa_glthread_PushClientAttrib(ctx, mask, true);">
        <param name="mask" type="GLbitfield" />
     </function>
 
@@ -677,7 +677,7 @@
    </function>
 
    <function name="MultiTexCoordPointerEXT" deprecated="3.1" marshal="async"
-             marshal_call_after="if (COMPAT) _mesa_glthread_AttribPointer(ctx, VERT_ATTRIB_TEX(texunit - GL_TEXTURE0), MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride,  pointer);">
+             marshal_call_after="_mesa_glthread_AttribPointer(ctx, VERT_ATTRIB_TEX(texunit - GL_TEXTURE0), MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride,  pointer);">
       <param name="texunit" type="GLenum" />
       <param name="size" type="GLint" />
       <param name="type" type="GLenum" />
@@ -1024,13 +1024,13 @@
    </function>
 
    <function name="EnableClientStateiEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_TEX(index), true);">
+             marshal_call_after="_mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_TEX(index), true);">
       <param name="array" type="GLenum" />
       <param name="index" type="GLuint" />
    </function>
 
    <function name="DisableClientStateiEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_TEX(index), false);">
+             marshal_call_after="_mesa_glthread_ClientState(ctx, NULL, VERT_ATTRIB_TEX(index), false);">
       <param name="array" type="GLenum" />
       <param name="index" type="GLuint" />
    </function>
@@ -1093,7 +1093,7 @@
    </function>
 
    <function name="VertexArrayVertexOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_POS, MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_POS, MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="size" type="GLint" />
@@ -1103,7 +1103,7 @@
    </function>
 
    <function name="VertexArrayColorOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_COLOR0, MESA_PACK_VFORMAT(type, size, 1, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_COLOR0, MESA_PACK_VFORMAT(type, size, 1, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="size" type="GLint" />
@@ -1113,7 +1113,7 @@
    </function>
 
    <function name="VertexArrayEdgeFlagOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_EDGEFLAG, MESA_PACK_VFORMAT(GL_UNSIGNED_BYTE, 1, 0, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_EDGEFLAG, MESA_PACK_VFORMAT(GL_UNSIGNED_BYTE, 1, 0, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="stride" type="GLsizei" />
@@ -1121,7 +1121,7 @@
    </function>
 
    <function name="VertexArrayIndexOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_COLOR_INDEX, MESA_PACK_VFORMAT(type, 1, 0, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_COLOR_INDEX, MESA_PACK_VFORMAT(type, 1, 0, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="type" type="GLenum" />
@@ -1130,7 +1130,7 @@
    </function>
 
    <function name="VertexArrayNormalOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_NORMAL, MESA_PACK_VFORMAT(type, 3, 1, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_NORMAL, MESA_PACK_VFORMAT(type, 3, 1, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="type" type="GLenum" />
@@ -1139,7 +1139,7 @@
    </function>
 
    <function name="VertexArrayTexCoordOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_TEX(ctx->GLThread.ClientActiveTexture), MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_TEX(ctx->GLThread.ClientActiveTexture), MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="size" type="GLint" />
@@ -1149,7 +1149,7 @@
    </function>
 
    <function name="VertexArrayMultiTexCoordOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_TEX(texunit - GL_TEXTURE0), MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_TEX(texunit - GL_TEXTURE0), MESA_PACK_VFORMAT(type, size, 0, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="texunit" type="GLenum" />
@@ -1160,7 +1160,7 @@
    </function>
 
    <function name="VertexArrayFogCoordOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_FOG, MESA_PACK_VFORMAT(type, 1, 0, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_FOG, MESA_PACK_VFORMAT(type, 1, 0, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="type" type="GLenum" />
@@ -1169,7 +1169,7 @@
    </function>
 
    <function name="VertexArraySecondaryColorOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_COLOR1, MESA_PACK_VFORMAT(type, size, 1, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_COLOR1, MESA_PACK_VFORMAT(type, size, 1, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="size" type="GLint" />
@@ -1179,7 +1179,7 @@
    </function>
 
    <function name="VertexArrayVertexAttribOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_GENERIC(index), MESA_PACK_VFORMAT(type, size, normalized, 0, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_GENERIC(index), MESA_PACK_VFORMAT(type, size, normalized, 0, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="index" type="GLuint" />
@@ -1191,7 +1191,7 @@
    </function>
 
    <function name="VertexArrayVertexAttribIOffsetEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_GENERIC(index), MESA_PACK_VFORMAT(type, size, 0, 1, 0), stride, offset);">
+             marshal_call_after="_mesa_glthread_DSAAttribPointer(ctx, vaobj, buffer, VERT_ATTRIB_GENERIC(index), MESA_PACK_VFORMAT(type, size, 0, 1, 0), stride, offset);">
       <param name="vaobj" type="GLuint" />
       <param name="buffer" type="GLuint" />
       <param name="index" type="GLuint" />
@@ -1202,25 +1202,25 @@
    </function>
 
    <function name="EnableVertexArrayEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, _mesa_array_to_attrib(ctx, array), true);">
+             marshal_call_after="_mesa_glthread_ClientState(ctx, &amp;vaobj, _mesa_array_to_attrib(ctx, array), true);">
       <param name="vaobj" type="GLuint" />
       <param name="array" type="GLenum" />
    </function>
 
    <function name="DisableVertexArrayEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, _mesa_array_to_attrib(ctx, array), false);">
+             marshal_call_after="_mesa_glthread_ClientState(ctx, &amp;vaobj, _mesa_array_to_attrib(ctx, array), false);">
       <param name="vaobj" type="GLuint" />
       <param name="array" type="GLenum" />
    </function>
 
    <function name="EnableVertexArrayAttribEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), true);">
+             marshal_call_after="_mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), true);">
       <param name="vaobj" type="GLuint" />
       <param name="index" type="GLuint" />
    </function>
 
    <function name="DisableVertexArrayAttribEXT" deprecated="3.1"
-             marshal_call_after="if (COMPAT) _mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), false);">
+             marshal_call_after="_mesa_glthread_ClientState(ctx, &amp;vaobj, VERT_ATTRIB_GENERIC(index), false);">
       <param name="vaobj" type="GLuint" />
       <param name="index" type="GLuint" />
    </function>
