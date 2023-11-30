@@ -88,6 +88,8 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(R8G8_UINT,               R8G8,          UINT,   T, I8),
    AGX_FMT(R8G8B8X8_UINT,           R8G8B8A8,      UINT,   T, I8),
    AGX_FMT(R8G8B8A8_UINT,           R8G8B8A8,      UINT,   T, I8),
+   AGX_FMT(B8G8R8X8_UINT,           R8G8B8A8,      UINT,   T, I8),
+   AGX_FMT(B8G8R8A8_UINT,           R8G8B8A8,      UINT,   T, I8),
 
    AGX_FMT(R16_UINT,                R16,           UINT,   T, I16),
    AGX_FMT(R16G16_UINT,             R16G16,        UINT,   T, I16),
@@ -103,6 +105,8 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(R8G8_SINT,               R8G8,          SINT,   T, I8),
    AGX_FMT(R8G8B8X8_SINT,           R8G8B8A8,      SINT,   T, I8),
    AGX_FMT(R8G8B8A8_SINT,           R8G8B8A8,      SINT,   T, I8),
+   AGX_FMT(B8G8R8X8_SINT,           R8G8B8A8,      SINT,   T, I8),
+   AGX_FMT(B8G8R8A8_SINT,           R8G8B8A8,      SINT,   T, I8),
 
    AGX_FMT(R16_SINT,                R16,           SINT,   T, I16),
    AGX_FMT(R16G16_SINT,             R16G16,        SINT,   T, I16),
