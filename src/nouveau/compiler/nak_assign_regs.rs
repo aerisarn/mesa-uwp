@@ -1154,7 +1154,10 @@ impl Shader {
         let mut live = SimpleLiveness::for_function(f);
         let mut max_live = live.calc_max_live(f);
 
-        let spill_files = [RegFile::Pred];
+        // We want at least one temporary GPR reserved for parallel copies.
+        let mut tmp_gprs = 1_u8;
+
+        let spill_files = [RegFile::Pred, RegFile::Bar];
         for file in spill_files {
             let num_regs = file.num_regs(self.info.sm);
             if max_live[file] > num_regs {
@@ -1163,14 +1166,19 @@ impl Shader {
                 // Re-calculate liveness after we spill
                 live = SimpleLiveness::for_function(f);
                 max_live = live.calc_max_live(f);
+
+                match file {
+                    RegFile::Bar => {
+                        tmp_gprs = max(tmp_gprs, 2);
+                    }
+                    _ => (),
+                }
             }
         }
 
         // An instruction can have at most 4 vector sources/destinations.  In
         // order to ensure we always succeed at allocation, regardless of
-        // arbitrary choices, we need at least 16 GPRs.  We also want at least
-        // one temporary GPR reserved for parallel copies.
-        let mut tmp_gprs = 1_u8;
+        // arbitrary choices, we need at least 16 GPRs.
         let mut gpr_limit = max(max_live[RegFile::GPR], 16);
         let mut total_gprs = gpr_limit + u32::from(tmp_gprs);
 
@@ -1179,7 +1187,7 @@ impl Shader {
             // If we're spilling GPRs, we need to reserve 2 GPRs for OpParCopy
             // lowering because it needs to be able lower Mem copies which
             // require a temporary
-            tmp_gprs = 2_u8;
+            tmp_gprs = max(tmp_gprs, 2);
             total_gprs = max_gprs;
             gpr_limit = total_gprs - u32::from(tmp_gprs);
 

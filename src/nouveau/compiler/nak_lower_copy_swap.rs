@@ -43,6 +43,13 @@ impl LowerCopySwap {
                             quad_lanes: 0xf,
                         });
                     }
+                    RegFile::Bar => {
+                        b.push_op(OpBMov {
+                            dst: copy.dst,
+                            src: copy.src,
+                            clear: false,
+                        });
+                    }
                     RegFile::Mem => {
                         let access = MemAccess {
                             mem_type: MemType::B32,
@@ -95,6 +102,19 @@ impl LowerCopySwap {
                     _ => panic!("Cannot copy to Pred"),
                 },
                 SrcRef::SSA(_) => panic!("Should be run after RA"),
+            },
+            RegFile::Bar => match copy.src.src_ref {
+                SrcRef::Reg(src_reg) => match src_reg.file() {
+                    RegFile::GPR => {
+                        b.push_op(OpBMov {
+                            dst: copy.dst,
+                            src: copy.src,
+                            clear: false,
+                        });
+                    }
+                    _ => panic!("Cannot copy to Bar"),
+                },
+                _ => panic!("Cannot copy to Bar"),
             },
             RegFile::Mem => match copy.src.src_ref {
                 SrcRef::Reg(src_reg) => match src_reg.file() {

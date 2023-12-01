@@ -62,7 +62,8 @@ impl CopyGraph {
 
 fn copy_needs_tmp(dst: &RegRef, src: &SrcRef) -> bool {
     if let Some(src_reg) = src.as_reg() {
-        dst.file() == RegFile::Mem && src_reg.file() == RegFile::Mem
+        (dst.file() == RegFile::Mem && src_reg.file() == RegFile::Mem)
+            || (dst.file() == RegFile::Bar && src_reg.file() == RegFile::Bar)
     } else {
         false
     }
@@ -78,7 +79,7 @@ fn cycle_use_swap(pc: &OpParCopy, file: RegFile) -> bool {
                 true
             }
         }
-        RegFile::Mem => {
+        RegFile::Bar | RegFile::Mem => {
             let tmp = &pc.tmp.expect("This copy needs a temporary");
             assert!(tmp.comps() >= 2, "Memory cycles need 2 temporaries");
             false
@@ -230,7 +231,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
                 let j_reg = *vals[j].as_reg().unwrap();
                 debug_assert!(j_reg.file() == file);
 
-                if file == RegFile::Mem {
+                if file == RegFile::Bar || file == RegFile::Mem {
                     let copy_tmp = pc_tmp.comp(1);
                     b.copy_to(copy_tmp.into(), j_reg.into());
                     b.copy_to(p_reg.into(), copy_tmp.into());

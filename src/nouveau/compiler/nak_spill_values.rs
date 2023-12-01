@@ -138,6 +138,39 @@ impl Spill for SpillPred {
     }
 }
 
+struct SpillBar {}
+
+impl SpillBar {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Spill for SpillBar {
+    fn spill_file(&self, file: RegFile) -> RegFile {
+        assert!(file == RegFile::Bar);
+        RegFile::GPR
+    }
+
+    fn spill(&self, dst: SSAValue, src: Src) -> Box<Instr> {
+        assert!(dst.file() == RegFile::GPR);
+        Instr::new_boxed(OpBMov {
+            dst: dst.into(),
+            src: src.into(),
+            clear: false,
+        })
+    }
+
+    fn fill(&self, dst: Dst, src: SSAValue) -> Box<Instr> {
+        assert!(src.file() == RegFile::GPR);
+        Instr::new_boxed(OpBMov {
+            dst: dst.into(),
+            src: src.into(),
+            clear: false,
+        })
+    }
+}
+
 struct SpillGPR {}
 
 impl SpillGPR {
@@ -862,6 +895,10 @@ impl Function {
             }
             RegFile::Pred => {
                 let spill = SpillPred::new();
+                spill_values(self, file, limit, spill);
+            }
+            RegFile::Bar => {
+                let spill = SpillBar::new();
                 spill_values(self, file, limit, spill);
             }
             _ => panic!("Don't know how to spill {} registers", file),
