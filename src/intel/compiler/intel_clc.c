@@ -297,6 +297,9 @@ int main(int argc, char **argv)
    bool print_info = false;
 
    struct clc_binary spirv_obj = {0};
+   struct clc_binary final_spirv = {0};
+   struct clc_parsed_spirv parsed_spirv_data = {0};
+   struct disk_cache *disk_cache = NULL;
 
    void *mem_ctx = ralloc_context(NULL);
 
@@ -443,7 +446,6 @@ int main(int argc, char **argv)
       .num_in_objs = 1,
       .create_library = true,
    };
-   struct clc_binary final_spirv;
    if (!clc_link_spirv(&link_args, &logger, &final_spirv)) {
       goto fail;
    }
@@ -454,7 +456,6 @@ int main(int argc, char **argv)
       fclose(fp);
    }
 
-   struct clc_parsed_spirv parsed_spirv_data;
    if (!clc_parse_spirv(&final_spirv, &logger, &parsed_spirv_data)) {
       goto fail;
    }
@@ -477,7 +478,7 @@ int main(int argc, char **argv)
    struct brw_compiler *compiler = brw_compiler_create(mem_ctx, devinfo);
    compiler->shader_debug_log = compiler_log;
    compiler->shader_perf_log = compiler_log;
-   struct disk_cache *disk_cache = get_disk_cache(compiler);
+   disk_cache = get_disk_cache(compiler);
 
    glsl_type_singleton_init_or_ref();
 
@@ -530,6 +531,9 @@ fail:
    exit_code = 1;
 
 end:
+   disk_cache_destroy(disk_cache);
+   clc_free_parsed_spirv(&parsed_spirv_data);
+   clc_free_spirv(&final_spirv);
    clc_free_spirv(&spirv_obj);
    ralloc_free(mem_ctx);
 
