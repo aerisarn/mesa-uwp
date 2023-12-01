@@ -427,8 +427,7 @@ _mesa_hash_table_rehash(struct hash_table *ht, unsigned new_size_index)
 }
 
 static struct hash_entry *
-hash_table_insert(struct hash_table *ht, uint32_t hash,
-                  const void *key, void *data)
+hash_table_get_entry(struct hash_table *ht, uint32_t hash, const void *key)
 {
    struct hash_entry *available_entry = NULL;
 
@@ -469,11 +468,8 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
        */
       if (!entry_is_deleted(ht, entry) &&
           entry->hash == hash &&
-          ht->key_equals_function(key, entry->key)) {
-         entry->key = key;
-         entry->data = data;
+          ht->key_equals_function(key, entry->key))
          return entry;
-      }
 
       hash_address += double_hash;
       if (hash_address >= size)
@@ -484,8 +480,6 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
       if (entry_is_deleted(ht, available_entry))
          ht->deleted_entries--;
       available_entry->hash = hash;
-      available_entry->key = key;
-      available_entry->data = data;
       ht->entries++;
       return available_entry;
    }
@@ -494,6 +488,20 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
     * application could ignore this result.
     */
    return NULL;
+}
+
+static struct hash_entry *
+hash_table_insert(struct hash_table *ht, uint32_t hash,
+                  const void *key, void *data)
+{
+   struct hash_entry *entry = hash_table_get_entry(ht, hash, key);
+
+   if (entry) {
+      entry->key = key;
+      entry->data = data;
+   }
+
+   return entry;
 }
 
 /**
@@ -847,7 +855,19 @@ _mesa_hash_table_u64_insert(struct hash_table_u64 *ht, uint64_t key,
          return;
       _key->value = key;
 
-      _mesa_hash_table_insert(ht->table, _key, data);
+      struct hash_entry *entry =
+         hash_table_get_entry(ht->table, key_u64_hash(_key), _key);
+
+      if (!entry) {
+         FREE(_key);
+         return;
+      }
+
+      entry->data = data;
+      if (!entry_is_present(ht->table, entry))
+         entry->key = _key;
+      else
+         FREE(_key);
    }
 }
 
