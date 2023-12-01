@@ -59,22 +59,30 @@ store_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
          value = nir_f2f32(b, value);
    }
 
-   /* 8-bit formats must be clamped in software, so do so on store. Piglit
-    * gl-3.0-render-integer checks this.
+   /* Pure integer formatss need to be clamped in software, at least in some
+    * cases. We do so on store. Piglit gl-3.0-render-integer checks this, as
+    * does KHR-GL33.packed_pixels.*.
     */
-   const struct util_format_description *desc = util_format_description(format);
-   unsigned c = util_format_get_first_non_void_channel(format);
+   const struct util_format_description *desc =
+      util_format_description(logical_format);
+   unsigned c = util_format_get_first_non_void_channel(logical_format);
 
-   if (desc->channel[c].size == 8 && util_format_is_pure_integer(format)) {
-      assert(desc->is_array);
+   if (desc->channel[c].size <= 16 &&
+       util_format_is_pure_integer(logical_format)) {
+
+      unsigned bits[4] = {
+         desc->channel[0].size,
+         desc->channel[1].size,
+         desc->channel[2].size,
+         desc->channel[3].size,
+      };
+
+      if (util_format_is_pure_sint(logical_format))
+         value = nir_format_clamp_sint(b, value, bits);
+      else
+         value = nir_format_clamp_uint(b, value, bits);
 
       value = nir_u2u16(b, value);
-      if (util_format_is_pure_sint(logical_format)) {
-         value = nir_iclamp(b, value, nir_imm_intN_t(b, INT8_MIN, 16),
-                            nir_imm_intN_t(b, INT8_MAX, 16));
-      } else {
-         value = nir_umin(b, value, nir_imm_intN_t(b, UINT8_MAX, 16));
-      }
    }
 
    uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
