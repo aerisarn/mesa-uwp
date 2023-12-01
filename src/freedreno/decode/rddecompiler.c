@@ -369,7 +369,7 @@ decompile_domain(uint32_t pkt, uint32_t *dwords, uint32_t sizedwords,
 }
 
 static void
-decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level)
+decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level, uint32_t *cond_count)
 {
    int dwords_left = sizedwords;
    uint32_t count = 0; /* dword count including packet header */
@@ -396,7 +396,7 @@ decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level)
             printlvl(level + 1, "begin_ib();\n");
 
             uint32_t *ptr = hostptr(ibaddr);
-            decompile_commands(ptr, ibsize, level + 1);
+            decompile_commands(ptr, ibsize, level + 1, NULL);
 
             printlvl(level + 1, "end_ib();\n");
             printlvl(level, "}\n");
@@ -412,7 +412,7 @@ decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level)
                   printlvl(level + 1, "begin_draw_state();\n");
 
                   uint32_t *ptr = hostptr(ibaddr);
-                  decompile_commands(ptr, state_count, level + 1);
+                  decompile_commands(ptr, state_count, level + 1, NULL);
 
                   printlvl(level + 1, "end_draw_state(%u);\n", unchanged);
                   printlvl(level, "}\n");
@@ -466,11 +466,41 @@ decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level)
             printlvl(level, "{\n");
             printlvl(level + 1, "/* BEGIN COND (%d DWORDS) */\n", cond_count);
 
-            decompile_commands(dwords + count, cond_count, level + 1);
+            decompile_commands(dwords + count, cond_count, level + 1, &cond_count);
             count += cond_count;
 
             printlvl(level + 1, "/* END COND */\n");
             printlvl(level, "}\n");
+         } else if (val == CP_NOP) {
+            /* Prop will often use NOP past the end of cond execs
+             * which basically create an else path for the cond exec
+             */
+            const char *packet_name = pktname(val);
+            const char *dom_name = packet_name;
+
+            if (count > dwords_left) {
+               int else_cond_count = count - dwords_left;
+
+               assert(cond_count);
+               *cond_count += else_cond_count;
+
+               printlvl(level, "pkt7(cs, %s, %u);\n", packet_name, count - 1);
+               for (int i = 1; i < dwords_left; i++) {
+                  printlvl(level, "pkt(cs, 0x%x);\n", dwords[i]);
+               }
+
+               printlvl(level, "/* TO ELSE COND */\n");
+               printlvl(level - 1, "}\n");
+
+               printlvl(level - 1, "{\n");
+               printlvl(level, "/* ELSE COND (%d DWORDS) */\n", else_cond_count);
+               decompile_commands(dwords + dwords_left, else_cond_count, level, NULL);
+
+               return;
+            } else {
+               decompile_domain(val, dwords + 1, count - 1, dom_name, packet_name,
+                                level);
+            }
          } else {
             const char *packet_name = pktname(val);
             const char *dom_name = packet_name;
@@ -596,7 +626,7 @@ handle_file(const char *filename, uint32_t submit_to_decompile)
          parse_addr(ps.buf, ps.sz, &sizedwords, &gpuaddr);
 
          if (submit == submit_to_decompile) {
-            decompile_commands(hostptr(gpuaddr), sizedwords, 0);
+            decompile_commands(hostptr(gpuaddr), sizedwords, 0, NULL);
          }
 
          submit++;
