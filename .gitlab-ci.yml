@@ -196,8 +196,8 @@ include:
     - !reference [.disable-farm-mr-rules, rules]
     # Never run immediately after merging, as we just ran everything
     - !reference [.never-post-merge-rules, rules]
-    # Run pipeline by default if it was triggered by Marge Bot, is for a
-    # merge request, and any files affecting the pipeline were changed
+    # Build everything in merge pipelines, if any files affecting the pipeline
+    # were changed
     - if: *is-merge-attempt
       changes: &all_paths
         - VERSION
@@ -224,8 +224,8 @@ include:
       changes:
         *all_paths
       when: manual
-    # Just skip everything for MRs which don't actually change anything in the
-    # build - the same rules as above, but without the file-change rules
+    # Skip everything for pre-merge and merge pipelines which don't change
+    # anything in the build
     - if: *is-merge-attempt
       when: never
     - if: *is-pre-merge
@@ -236,7 +236,8 @@ include:
     # Build everything in scheduled pipelines
     - if: *is-scheduled-pipeline
       when: on_success
-    # Always allow user branches etc to trigger jobs manually
+    # Allow building everything in fork pipelines, but build nothing unless
+    # manually triggered
     - when: manual
 
 
