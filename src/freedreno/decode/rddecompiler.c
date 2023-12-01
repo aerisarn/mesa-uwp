@@ -456,6 +456,21 @@ decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level)
                }
             }
             printlvl(level, "}\n");
+         } else if (val == CP_COND_REG_EXEC) {
+            const char *packet_name = pktname(val);
+            const char *dom_name = packet_name;
+            uint32_t cond_count = dwords[count - 1];
+
+            decompile_domain(val, dwords + 1, count - 1, dom_name, packet_name, level);
+
+            printlvl(level, "{\n");
+            printlvl(level + 1, "/* BEGIN COND (%d DWORDS) */\n", cond_count);
+
+            decompile_commands(dwords + count, cond_count, level + 1);
+            count += cond_count;
+
+            printlvl(level + 1, "/* END COND */\n");
+            printlvl(level, "}\n");
          } else {
             const char *packet_name = pktname(val);
             const char *dom_name = packet_name;
