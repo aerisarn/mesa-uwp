@@ -4735,7 +4735,7 @@ impl Instr {
             | Op::MemBar(_) => false,
 
             // Control-flow ops
-            Op::BClear(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => false,
+            Op::BClear(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => true,
             Op::Bra(_) | Op::Exit(_) => true,
             Op::WarpSync(_) => false,
 
@@ -4775,6 +4775,13 @@ impl Instr {
             13
         } else {
             6
+        }
+    }
+
+    pub fn needs_yield(&self) -> bool {
+        match &self.op {
+            Op::Bar(_) | Op::BSync(_) => true,
+            _ => false,
         }
     }
 

@@ -227,6 +227,10 @@ fn assign_barriers(f: &mut Function) {
                 wait_mask &= !(1 << bar);
             }
 
+            if instr.needs_yield() {
+                instr.deps.set_yield(true);
+            }
+
             if instr.has_fixed_latency() {
                 continue;
             }
