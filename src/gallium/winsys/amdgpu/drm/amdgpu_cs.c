@@ -775,7 +775,6 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
    struct amdgpu_cs_context *cs = (struct amdgpu_cs_context*)rcs->csc;
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_cs_buffer *buffer;
-   int index;
 
    /* Fast exit for no-op calls.
     * This is very effective with suballocators and linear uploaders that
@@ -787,36 +786,30 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
    if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       if (!bo->bo) {
-         index = amdgpu_lookup_or_add_slab_buffer(rcs, cs, bo);
+         int index = amdgpu_lookup_or_add_slab_buffer(rcs, cs, bo);
          if (index < 0)
             return 0;
 
          buffer = &cs->slab_buffers[index];
-         buffer->usage |= usage;
-         cs->last_added_bo_usage = buffer->usage;
-
-         index = buffer->slab_real_idx;
-         buffer = &cs->real_buffers[index];
-         buffer->usage |= usage & ~RADEON_USAGE_SYNCHRONIZED;
+         cs->real_buffers[buffer->slab_real_idx].usage |= usage & ~RADEON_USAGE_SYNCHRONIZED;
       } else {
-         index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
+         int index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
          if (index < 0)
             return 0;
 
          buffer = &cs->real_buffers[index];
-         buffer->usage |= usage;
-         cs->last_added_bo_usage = buffer->usage;
       }
    } else {
-      index = amdgpu_lookup_or_add_sparse_buffer(rcs, cs, bo);
+      int index = amdgpu_lookup_or_add_sparse_buffer(rcs, cs, bo);
       if (index < 0)
          return 0;
 
       buffer = &cs->sparse_buffers[index];
-      buffer->usage |= usage;
-      cs->last_added_bo_usage = buffer->usage;
    }
 
+   buffer->usage |= usage;
+
+   cs->last_added_bo_usage = buffer->usage;
    cs->last_added_bo = bo;
    return 0;
 }
