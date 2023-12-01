@@ -1084,12 +1084,7 @@ impl Src {
     }
 
     pub fn is_predicate(&self) -> bool {
-        match self.src_ref {
-            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
-            SrcRef::True | SrcRef::False => true,
-            SrcRef::SSA(ssa) => ssa.is_predicate(),
-            SrcRef::Reg(reg) => reg.is_predicate(),
-        }
+        self.src_ref.is_predicate()
     }
 
     pub fn is_zero(&self) -> bool {
