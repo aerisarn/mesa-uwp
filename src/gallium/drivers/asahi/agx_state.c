@@ -1294,7 +1294,9 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
           * image_write_block instructions.
           */
          unsigned blocksize_B = util_format_get_blocksize(view->format);
-         unsigned size_px = tex->layout.size_B / blocksize_B;
+         unsigned size_px =
+            (tex->layout.size_B - tex->layout.layer_stride_B * layer) /
+            blocksize_B;
 
          cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = AGX_LAYOUT_LINEAR;
