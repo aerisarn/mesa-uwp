@@ -512,6 +512,13 @@ anv_bo_ref(struct anv_bo *bo)
 enum intel_device_info_mmap_mode
 anv_bo_get_mmap_mode(struct anv_device *device, struct anv_bo *bo);
 
+static inline bool
+anv_bo_needs_host_cache_flush(enum anv_bo_alloc_flags alloc_flags)
+{
+   return (alloc_flags & (ANV_BO_ALLOC_HOST_CACHED | ANV_BO_ALLOC_HOST_COHERENT)) ==
+          ANV_BO_ALLOC_HOST_CACHED;
+}
+
 struct anv_address {
    struct anv_bo *bo;
    int64_t offset;

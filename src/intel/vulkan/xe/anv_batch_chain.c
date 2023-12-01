@@ -244,7 +244,8 @@ xe_queue_exec_utrace_locked(struct anv_queue *queue,
    xe_exec_fill_sync(&xe_sync, utrace_submit->sync, 0, TYPE_SIGNAL);
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_flush) {
+   if (device->physical->memory.need_flush &&
+       anv_bo_needs_host_cache_flush(device->utrace_bo_pool.bo_alloc_flags)) {
       util_dynarray_foreach(&utrace_submit->batch_bos, struct anv_bo *, bo)
          intel_flush_range((*bo)->map, (*bo)->size);
    }
@@ -362,7 +363,8 @@ xe_queue_exec_locked(struct anv_queue *queue,
       anv_cmd_buffer_chain_command_buffers(cmd_buffers, cmd_buffer_count);
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-      if (device->physical->memory.need_flush)
+      if (device->physical->memory.need_flush &&
+          anv_bo_needs_host_cache_flush(device->batch_bo_pool.bo_alloc_flags))
          anv_cmd_buffer_clflush(cmd_buffers, cmd_buffer_count);
 #endif
 

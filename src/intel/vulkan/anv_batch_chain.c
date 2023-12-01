@@ -361,7 +361,8 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
    *map = intel_canonical_address(next_bbo->bo->offset + next_bbo_offset);
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (cmd_buffer->device->physical->memory.need_flush)
+   if (cmd_buffer->device->physical->memory.need_flush &&
+       anv_bo_needs_host_cache_flush(prev_bbo->bo->alloc_flags))
       intel_flush_range(map, sizeof(uint64_t));
 #endif
 }
@@ -1673,7 +1674,8 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
    memcpy(batch_bo->map, batch->start, batch_size);
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_flush)
+   if (device->physical->memory.need_flush &&
+       anv_bo_needs_host_cache_flush(batch_bo->alloc_flags))
       intel_flush_range(batch_bo->map, batch_size);
 #endif
 
@@ -1713,7 +1715,8 @@ anv_queue_submit_trtt_batch(struct anv_sparse_submission *submit,
 
    memcpy(trtt_bbo->bo->map, batch->start, trtt_bbo->size);
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_flush)
+   if (device->physical->memory.need_flush &&
+       anv_bo_needs_host_cache_flush(trtt_bbo->bo->alloc_flags))
       intel_flush_range(trtt_bbo->bo->map, trtt_bbo->size);
 #endif
 

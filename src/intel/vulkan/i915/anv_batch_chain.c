@@ -481,7 +481,8 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    }
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_flush)
+   if (device->physical->memory.need_flush &&
+       anv_bo_needs_host_cache_flush(device->batch_bo_pool.bo_alloc_flags))
       anv_cmd_buffer_clflush(cmd_buffers, num_cmd_buffers);
 #endif
 
@@ -561,7 +562,8 @@ setup_utrace_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue,
          return result;
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-      if (device->physical->memory.need_flush)
+      if (device->physical->memory.need_flush &&
+          anv_bo_needs_host_cache_flush(bo->alloc_flags))
          intel_flush_range(bo->map, bo->size);
 #endif
    }
