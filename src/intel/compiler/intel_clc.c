@@ -291,6 +291,8 @@ set_module_spirv_version(uint32_t *spirv, size_t size, uint32_t version)
 
 int main(int argc, char **argv)
 {
+   int exit_code = 0;
+
    brw_process_intel_debug_variable();
 
    static struct option long_options[] ={
@@ -326,7 +328,7 @@ int main(int argc, char **argv)
       {
       case 'h':
          print_usage(argv[0], stdout);
-         return 0;
+         goto end;
       case 'e':
          entry_point = optarg;
          break;
@@ -351,7 +353,7 @@ int main(int argc, char **argv)
       default:
          fprintf(stderr, "Unrecognized option \"%s\".\n", optarg);
          print_usage(argv[0], stderr);
-         return 1;
+         goto fail;
       }
    }
 
@@ -362,30 +364,30 @@ int main(int argc, char **argv)
    if (util_dynarray_num_elements(&input_files, char *) == 0) {
       fprintf(stderr, "No input file(s).\n");
       print_usage(argv[0], stderr);
-      return -1;
+      goto fail;
    }
 
    if (platform == NULL) {
       fprintf(stderr, "No target platform name specified.\n");
       print_usage(argv[0], stderr);
-      return -1;
+      goto fail;
    }
 
    int pci_id = intel_device_name_to_pci_device_id(platform);
    if (pci_id < 0) {
       fprintf(stderr, "Invalid target platform name: %s\n", platform);
-      return -1;
+      goto fail;
    }
 
    struct intel_device_info _devinfo, *devinfo = &_devinfo;
    if (!intel_get_device_info_from_pci_id(pci_id, devinfo)) {
       fprintf(stderr, "Failed to get device information.\n");
-      return -1;
+      goto fail;
    }
 
    if (devinfo->verx10 < 125) {
       fprintf(stderr, "Platform currently not supported.\n");
-      return -1;
+      goto fail;
    }
 
    struct brw_isa_info _isa, *isa = &_isa;
@@ -394,7 +396,7 @@ int main(int argc, char **argv)
    if (entry_point == NULL) {
       fprintf(stderr, "No entry-point name specified.\n");
       print_usage(argv[0], stderr);
-      return -1;
+      goto fail;
    }
 
    struct clc_logger logger = {
@@ -408,8 +410,7 @@ int main(int argc, char **argv)
       int fd = open(*infile, O_RDONLY);
       if (fd < 0) {
          fprintf(stderr, "Failed to open %s\n", *infile);
-         ralloc_free(mem_ctx);
-         return 1;
+         goto fail;
       }
 
       off_t len = lseek(fd, 0, SEEK_END);
@@ -417,8 +418,7 @@ int main(int argc, char **argv)
       all_inputs = reralloc_size(mem_ctx, all_inputs, new_size + 1);
       if (!all_inputs) {
          fprintf(stderr, "Failed to allocate memory\n");
-         ralloc_free(mem_ctx);
-         return 1;
+         goto fail;
       }
       lseek(fd, 0, SEEK_SET);
       read(fd, all_inputs + total_size, len);
@@ -455,8 +455,7 @@ int main(int argc, char **argv)
       util_dynarray_grow(&spirv_objs, struct clc_binary, 1);
 
    if (!clc_compile_c_to_spirv(&clc_args, &logger, spirv_out)) {
-      ralloc_free(mem_ctx);
-      return 1;
+      goto fail;
    }
 
    util_dynarray_foreach(&spirv_objs, struct clc_binary, p) {
@@ -496,8 +495,7 @@ int main(int argc, char **argv)
    };
    struct clc_binary final_spirv;
    if (!clc_link_spirv(&link_args, &logger, &final_spirv)) {
-      ralloc_free(mem_ctx);
-      return 1;
+      goto fail;
    }
 
    if (spv_outfile) {
@@ -508,8 +506,7 @@ int main(int argc, char **argv)
 
    struct clc_parsed_spirv parsed_spirv_data;
    if (!clc_parse_spirv(&final_spirv, &logger, &parsed_spirv_data)) {
-      ralloc_free(mem_ctx);
-      return 1;
+      goto fail;
    }
 
    const struct clc_kernel_info *kernel_info = NULL;
@@ -521,8 +518,7 @@ int main(int argc, char **argv)
    }
    if (kernel_info == NULL) {
       fprintf(stderr, "Kernel entrypoint %s not found\n", entry_point);
-      ralloc_free(mem_ctx);
-      return 1;
+      goto fail;
    }
 
    struct brw_kernel kernel = {};
@@ -539,8 +535,7 @@ int main(int argc, char **argv)
                               final_spirv.data, final_spirv.size,
                               entry_point, &error_str)) {
       fprintf(stderr, "Compile failed: %s\n", error_str);
-      ralloc_free(mem_ctx);
-      return 1;
+      goto fail;
    }
 
    if (print_info) {
@@ -579,7 +574,13 @@ int main(int argc, char **argv)
       print_kernel(stdout, prefix, &kernel, isa);
    }
 
+   goto end;
+
+fail:
+   exit_code = 1;
+
+end:
    ralloc_free(mem_ctx);
 
-   return 0;
+   return exit_code;
 }
