@@ -783,7 +783,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
     */
    if (bo == cs->last_added_bo &&
        (usage & cs->last_added_bo_usage) == usage)
-      return cs->last_added_bo_index;
+      return 0;
 
    if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       if (!bo->bo) {
@@ -818,8 +818,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
    }
 
    cs->last_added_bo = bo;
-   cs->last_added_bo_index = index;
-   return index;
+   return 0;
 }
 
 static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,

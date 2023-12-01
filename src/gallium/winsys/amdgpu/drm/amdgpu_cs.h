@@ -95,7 +95,6 @@ struct amdgpu_cs_context {
    int16_t                     *buffer_indices_hashlist;
 
    struct amdgpu_winsys_bo     *last_added_bo;
-   unsigned                    last_added_bo_index;
    unsigned                    last_added_bo_usage;
 
    struct amdgpu_fence_list    fence_dependencies;
