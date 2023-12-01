@@ -1140,8 +1140,9 @@ heap_to_mmap_mode(struct iris_bufmgr *bufmgr, enum iris_heap heap)
 
    switch (heap) {
    case IRIS_HEAP_DEVICE_LOCAL:
-   case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
       return intel_vram_all_mappable(devinfo) ? IRIS_MMAP_WC : IRIS_MMAP_NONE;
+   case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
+      return IRIS_MMAP_WC;
    case IRIS_HEAP_SYSTEM_MEMORY_CACHED_COHERENT:
       return IRIS_MMAP_WB;
    case IRIS_HEAP_SYSTEM_MEMORY_UNCACHED:
