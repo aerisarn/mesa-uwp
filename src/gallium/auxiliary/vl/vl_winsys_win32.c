@@ -78,6 +78,8 @@ vl_win32_screen_create(LUID *adapter)
    return &vscreen->base;
 
 release_pipe:
+   if(winsys)
+      winsys->destroy(winsys);
    vl_win32_screen_destroy(&vscreen->base);
    return NULL;
 }
@@ -106,6 +108,8 @@ vl_win32_screen_create_from_d3d12_device(IUnknown* d3d12_device)
    return &vscreen->base;
 
 release_pipe:
+   if(winsys)
+      winsys->destroy(winsys);
    vl_win32_screen_destroy(&vscreen->base);
    return NULL;
 }
