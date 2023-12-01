@@ -113,6 +113,8 @@ si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs)
       radeon_emit(cs, 0); /* R_00B894_COMPUTE_USER_ACCUM_1 */
       radeon_emit(cs, 0); /* R_00B898_COMPUTE_USER_ACCUM_2 */
       radeon_emit(cs, 0); /* R_00B89C_COMPUTE_USER_ACCUM_3 */
+
+      radeon_set_sh_reg(cs, R_00B9F4_COMPUTE_DISPATCH_TUNNEL, 0);
    }
 
    /* This register has been moved to R_00CD20_COMPUTE_MAX_WAVE_ID

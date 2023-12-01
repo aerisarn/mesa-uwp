@@ -988,6 +988,13 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
        */
       device->dispatch_initiator |= S_00B800_ORDER_MODE(1);
    }
+   if (device->physical_device->rad_info.gfx_level >= GFX10) {
+      /* Enable asynchronous compute tunneling. The KMD restricts this feature
+       * to high-priority compute queues, so setting the bit on any other queue
+       * is a no-op. PAL always sets this bit as well.
+       */
+      device->dispatch_initiator |= S_00B800_TUNNEL_ENABLE(1);
+   }
 
    /* Disable partial preemption for task shaders.
     * The kernel may not support preemption, but PAL always sets this bit,
