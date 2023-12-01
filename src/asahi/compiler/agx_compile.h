@@ -302,7 +302,7 @@ static const nir_shader_compiler_options agx_nir_options = {
       (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),
    .lower_int64_options =
       (nir_lower_int64_options) ~(nir_lower_iadd64 | nir_lower_imul_2x32_64),
-   .lower_doubles_options = nir_lower_dmod,
+   .lower_doubles_options = (nir_lower_doubles_options)(~0),
    .lower_fquantize2f16 = true,
 };
 
