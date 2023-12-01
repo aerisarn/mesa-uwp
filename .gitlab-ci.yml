@@ -219,9 +219,16 @@ include:
         - include/**/*
         - src/**/*
       when: on_success
+    # Same as above, but for pre-merge pipelines
+    - if: *is-pre-merge
+      changes:
+        *all_paths
+      when: manual
     # Just skip everything for MRs which don't actually change anything in the
     # build - the same rules as above, but without the file-change rules
     - if: *is-merge-attempt
+      when: never
+    - if: *is-pre-merge
       when: never
     # Build everything after someone bypassed the CI
     - if: *is-direct-push
