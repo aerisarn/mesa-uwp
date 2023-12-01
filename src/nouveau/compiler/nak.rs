@@ -16,6 +16,7 @@ mod nak_legalize;
 mod nak_liveness;
 mod nak_lower_copy_swap;
 mod nak_lower_par_copies;
+mod nak_opt_bar_prop;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nak_opt_lop;
@@ -251,6 +252,11 @@ pub extern "C" fn nak_compile_shader(
 
     if DEBUG.print() {
         eprintln!("NAK IR:\n{}", &s);
+    }
+
+    s.opt_bar_prop();
+    if DEBUG.print() {
+        eprintln!("NAK IR after opt_bar_prop:\n{}", &s);
     }
 
     s.opt_copy_prop();
