@@ -9,19 +9,22 @@ readonly venv_dir
 readonly venv_req=$venv_dir/requirements.txt
 readonly venv_python_version=$venv_dir/python-version.txt
 
-if [ -d "$venv_dir" ] && [ ! -r "$venv_python_version" ]
+if [ -d "$venv_dir" ]
 then
-  echo "Python environment predates Python version checks."
-  echo "It might be invalid and needs to be regenerated."
-  rm -rf "$venv_dir"
-elif ! cmp --quiet <(python --version) "$venv_python_version"
-then
-  old=$(cat "$venv_python_version")
-  new=$(python --version)
-  echo "Python version has changed ($old -> $new)."
-  echo "Python environment needs to be regenerated."
-  unset old new
-  rm -rf "$venv_dir"
+  if [ ! -r "$venv_python_version" ]
+  then
+    echo "Python environment predates Python version checks."
+    echo "It might be invalid and needs to be regenerated."
+    rm -rf "$venv_dir"
+  elif ! cmp --quiet <(python --version) "$venv_python_version"
+  then
+    old=$(cat "$venv_python_version")
+    new=$(python --version)
+    echo "Python version has changed ($old -> $new)."
+    echo "Python environment needs to be regenerated."
+    unset old new
+    rm -rf "$venv_dir"
+  fi
 fi
 
 if ! [ -r "$venv_dir/bin/activate" ]
