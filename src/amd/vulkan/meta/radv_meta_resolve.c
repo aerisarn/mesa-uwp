@@ -344,14 +344,12 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
     *
     *    - The aspectMask member of srcSubresource and dstSubresource must
     *      only contain VK_IMAGE_ASPECT_COLOR_BIT
-    *
-    *    - The layerCount member of srcSubresource and dstSubresource must
-    *      match
     */
    assert(region->srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
    assert(region->dstSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
-   assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
-          vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource));
+   /* Multi-layer resolves are handled by compute */
+   assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) == 1 &&
+          vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource) == 1);
    /**
     * From Vulkan 1.0.6 spec: 18.6 Resolving Multisample Images
     *
