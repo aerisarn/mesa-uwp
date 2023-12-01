@@ -237,7 +237,7 @@ decompile_register(uint32_t regbase, uint32_t *dwords, uint16_t cnt, int level)
       printlvl(level, "/* pkt4: %s = %s */\n", info->name, decoded);
 
       if (cnt == 0) {
-         printlvl(level, "pkt(cs, %u);\n", dword);
+         printlvl(level, "pkt(cs, 0x%x);\n", dword);
       } else {
 #if 0
          char reg_name[33];
@@ -260,12 +260,12 @@ decompile_register(uint32_t regbase, uint32_t *dwords, uint16_t cnt, int level)
          /* TODO: We don't have easy way to get chip generation prefix,
           * so just emit raw packet offset as a workaround.
           */
-         printlvl(level, "pkt4(cs, 0x%04x, (%u), %u);\n", regbase, cnt, dword);
+         printlvl(level, "pkt4(cs, 0x%04x, (%u), 0x%x);\n", regbase, cnt, dword);
 #endif
       }
    } else {
       printlvl(level, "/* unknown pkt4 */\n");
-      printlvl(level, "pkt4(cs, 0x%04x, (%u), %u);\n", regbase, 1, dword);
+      printlvl(level, "pkt4(cs, 0x%04x, (%u), 0x%x);\n", regbase, 1, dword);
    }
 
    rnn_reginfo_free(info);
@@ -287,7 +287,7 @@ decompile_register_reg_bunch(uint32_t regbase, uint32_t *dwords, uint16_t cnt, i
    }
 
    printlvl(level, "pkt(cs, 0x%04x);\n", regbase);
-   printlvl(level, "pkt(cs, %u);\n", dword);
+   printlvl(level, "pkt(cs, 0x%x);\n", dword);
 
    rnn_reginfo_free(info);
 
@@ -331,7 +331,7 @@ decompile_domain(uint32_t pkt, uint32_t *dwords, uint32_t sizedwords,
 
       /* TODO: decompile all other state */
       if (state_type == ST6_SHADER && state_src == SS6_INDIRECT) {
-         printlvl(level, "pkt(cs, %u);\n", dwords[0]);
+         printlvl(level, "pkt(cs, 0x%x);\n", dwords[0]);
          decompile_shader(NULL, 0, dwords + 1, level);
          return;
       }
@@ -345,7 +345,7 @@ decompile_domain(uint32_t pkt, uint32_t *dwords, uint32_t sizedwords,
 
       char *decoded;
       if (!(info && info->typeinfo)) {
-         printlvl(level, "pkt(cs, %u);\n", dwords[i]);
+         printlvl(level, "pkt(cs, 0x%x);\n", dwords[i]);
          continue;
       }
       uint64_t value = dwords[i];
@@ -356,9 +356,9 @@ decompile_domain(uint32_t pkt, uint32_t *dwords, uint32_t sizedwords,
       decoded = rnndec_decodeval(rnn->vc, info->typeinfo, value);
 
       printlvl(level, "/* %s */\n", decoded);
-      printlvl(level, "pkt(cs, %u);\n", dwords[i]);
+      printlvl(level, "pkt(cs, 0x%x);\n", dwords[i]);
       if (reg64) {
-         printlvl(level, "pkt(cs, %u);\n", dwords[i + 1]);
+         printlvl(level, "pkt(cs, 0x%x);\n", dwords[i + 1]);
          i++;
       }
 
@@ -432,8 +432,8 @@ decompile_commands(uint32_t *dwords, uint32_t sizedwords, int level, uint32_t *c
                } else {
                   printlvl(level, "pkt7(cs, %s, %u);\n", "CP_CONTEXT_REG_BUNCH2", cnt);
                   printlvl(level, "{\n");
-                  printlvl(level + 1, "pkt(cs, %u);\n", dw[0]);
-                  printlvl(level + 1, "pkt(cs, %u);\n", dw[1]);
+                  printlvl(level + 1, "pkt(cs, 0x%x);\n", dw[0]);
+                  printlvl(level + 1, "pkt(cs, 0x%x);\n", dw[1]);
                }
 
                dw += 2;
