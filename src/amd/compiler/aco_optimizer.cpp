@@ -1890,13 +1890,19 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                bool neg1 = instr->operands[!i].constantEquals(fp16 ? 0xbc00 : 0xbf800000u);
 
                VALU_instruction* vop3 = instr->isVOP3() ? &instr->valu() : NULL;
-               if (vop3 && (vop3->abs[!i] || vop3->neg[!i] || vop3->clamp || vop3->omod))
+               if (vop3 && (vop3->abs[!i] || vop3->neg[!i] || vop3->omod))
                   continue;
 
                bool abs = vop3 && vop3->abs[i];
                bool neg = neg1 ^ (vop3 && vop3->neg[i]);
-
                Temp other = instr->operands[i].getTemp();
+
+               if (vop3 && vop3->clamp) {
+                  if (!abs && !neg && other.type() == RegType::vgpr)
+                     ctx.info[other.id()].set_clamp(instr.get());
+                  continue;
+               }
+
                if (abs && neg && other.type() == RegType::vgpr)
                   ctx.info[instr->definitions[0].tempId()].set_neg_abs(other);
                else if (abs && !neg && other.type() == RegType::vgpr)
@@ -4562,6 +4568,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       ctx.mad_infos.emplace_back(nullptr, 0);
       ctx.info[instr->definitions[0].tempId()].set_mad(ctx.mad_infos.size() - 1);
    } else if (instr->opcode == aco_opcode::v_med3_f32 || instr->opcode == aco_opcode::v_med3_f16) {
+      /* Optimize v_med3 to v_add so that it can be dual issued on GFX11. We start with v_med3 in
+       * case omod can be applied.
+       */
       unsigned idx;
       if (detect_clamp(instr.get(), &idx)) {
          instr->format = asVOP3(Format::VOP2);

@@ -2631,9 +2631,13 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          break;
       }
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (dst.regClass() == v2b) {
+      if (dst.regClass() == v2b && ctx->program->gfx_level >= GFX9) {
          bld.vop3(aco_opcode::v_med3_f16, Definition(dst), Operand::c16(0u), Operand::c16(0x3c00),
                   src);
+      } else if (dst.regClass() == v2b) {
+         bld.vop2_e64(aco_opcode::v_mul_f16, Definition(dst), Operand::c16(0x3c00), src)
+            ->valu()
+            .clamp = true;
       } else if (dst.regClass() == v1) {
          bld.vop3(aco_opcode::v_med3_f32, Definition(dst), Operand::zero(),
                   Operand::c32(0x3f800000u), src);
