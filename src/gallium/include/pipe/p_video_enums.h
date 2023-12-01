@@ -153,6 +153,10 @@ enum pipe_video_cap
    */
    PIPE_VIDEO_CAP_ENC_INTRA_REFRESH_MAX_DURATION = 46,
    PIPE_VIDEO_CAP_ENC_H264_SUPPORTS_CABAC_ENCODE = 47,
+   /*
+      crop and partial decode support
+   */
+   PIPE_VIDEO_CAP_ROI_CROP_DEC = 48,
 };
 
 enum pipe_video_h264_enc_dbk_filter_mode_flags

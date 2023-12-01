@@ -221,6 +221,23 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                                              PIPE_VIDEO_CAP_MAX_HEIGHT);
             value = value ? value : VA_ATTRIB_NOT_SUPPORTED;
          } break;
+#if VA_CHECK_VERSION(1, 21, 0)
+         case VAConfigAttribDecJPEG:
+         {
+            VAConfigAttribValDecJPEG attr_jpeg = { .value = 0 };
+            /* Check if ROI Decode is supported */
+            int supportsCropDec =
+                  pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                           PIPE_VIDEO_ENTRYPOINT_BITSTREAM,
+                                           PIPE_VIDEO_CAP_ROI_CROP_DEC);
+            if (supportsCropDec <= 0)
+               value = VA_ATTRIB_NOT_SUPPORTED;
+            else {
+               attr_jpeg.bits.crop = 1;
+               value = attr_jpeg.value;
+            }
+         } break;
+#endif
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;

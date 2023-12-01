@@ -982,6 +982,11 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
       }
    case PIPE_VIDEO_CAP_SUPPORTS_CONTIGUOUS_PLANES_MAP:
       return true;
+   case PIPE_VIDEO_CAP_ROI_CROP_DEC:
+      if (codec == PIPE_VIDEO_FORMAT_JPEG &&
+          sscreen->info.vcn_ip_version == VCN_4_0_3)
+         return true;
+      return false;
    default:
       return 0;
    }
