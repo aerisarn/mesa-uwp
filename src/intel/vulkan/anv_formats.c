@@ -1828,6 +1828,22 @@ void anv_GetPhysicalDeviceSparseImageFormatProperties2(
    vk_foreach_struct_const(ext, pFormatInfo->pNext)
       anv_debug_ignored_stype(ext->sType);
 
+   /* Check if the image is supported at all (regardless of being Sparse). */
+   const VkPhysicalDeviceImageFormatInfo2 img_info = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+      .pNext = NULL,
+      .format = pFormatInfo->format,
+      .type = pFormatInfo->type,
+      .tiling = pFormatInfo->tiling,
+      .usage = pFormatInfo->usage,
+      .flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
+               VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT,
+   };
+   VkImageFormatProperties img_props;
+   if (anv_get_image_format_properties(physical_device, &img_info,
+                                       &img_props, NULL, false) != VK_SUCCESS)
+      return;
+
    if (anv_sparse_image_check_support(physical_device,
                                       VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
                                       VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT,
