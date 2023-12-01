@@ -102,13 +102,6 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       });
    }
 
-   /* 2D state */
-   P_MTHD(p, NV902D, SET_OBJECT);
-   P_NV902D_SET_OBJECT(p, {
-      .class_id = dev->pdev->info.cls_eng2d,
-      .engine_id = 0,
-   });
-
    /* 3D state */
    P_MTHD(p, NV9097, SET_OBJECT);
    P_NV9097_SET_OBJECT(p, {
