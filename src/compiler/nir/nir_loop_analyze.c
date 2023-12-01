@@ -675,11 +675,19 @@ static nir_op invert_comparison_if_needed(nir_op alu_op, bool invert);
 
 /* Returns whether "limit_op(a, b) alu_op c" is equivalent to "(a alu_op c) || (b alu_op c)". */
 static bool
-is_min_compatible(nir_op limit_op, nir_op alu_op, bool limit_rhs, bool invert_cond)
+is_minmax_compatible(nir_op limit_op, nir_op alu_op, bool limit_rhs, bool invert_cond)
 {
+   bool is_max;
    switch (limit_op) {
    case nir_op_imin:
    case nir_op_fmin:
+   case nir_op_umin:
+      is_max = false;
+      break;
+   case nir_op_imax:
+   case nir_op_fmax:
+   case nir_op_umax:
+      is_max = true;
       break;
    default:
       return false;
@@ -690,15 +698,19 @@ is_min_compatible(nir_op limit_op, nir_op alu_op, bool limit_rhs, bool invert_co
 
    /* Comparisons we can split are:
     * - min(a, b) < c
+    * - c < max(a, b)
+    * - max(a, b) >= c
     * - c >= min(a, b)
     */
    switch (invert_comparison_if_needed(alu_op, invert_cond)) {
    case nir_op_ilt:
    case nir_op_flt:
-      return !limit_rhs;
+   case nir_op_ult:
+      return (!limit_rhs && !is_max) || (limit_rhs && is_max);
    case nir_op_ige:
    case nir_op_fge:
-      return limit_rhs;
+   case nir_op_uge:
+      return (!limit_rhs && is_max) || (limit_rhs && !is_max);
    default:
       return false;
    }
@@ -713,7 +725,7 @@ try_find_limit_of_alu(nir_scalar limit, nir_const_value *limit_val, nir_op alu_o
       return false;
 
    nir_op limit_op = nir_scalar_alu_op(limit);
-   if (is_min_compatible(limit_op, alu_op, !terminator->induction_rhs, invert_cond)) {
+   if (is_minmax_compatible(limit_op, alu_op, !terminator->induction_rhs, invert_cond)) {
       for (unsigned i = 0; i < 2; i++) {
          nir_scalar src = nir_scalar_chase_alu_src(limit, i);
          if (nir_scalar_is_const(src)) {

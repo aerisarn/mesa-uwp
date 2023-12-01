@@ -305,6 +305,7 @@ CMP_MIN_REV(ige, imin)
 CMP_MIN(ige, fmin)
 CMP_MIN(uge, imin)
 CMP_MIN(ilt, imin)
+CMP_MIN(ilt, imax)
 CMP_MIN_REV(ilt, imin)
 INOT_COMPARE(ilt_imin_rev)
 
@@ -1603,3 +1604,13 @@ UNKNOWN_COUNT_TEST(0x00000008, 0x00000004, 0xffffffff, ige_imin_rev, iadd)
  *    }
  */
 UNKNOWN_COUNT_TEST(0x00000008, 0x00000004, 0xffffffff, ilt_imin, iadd)
+
+/*    int i = 8;
+ *    while (true) {
+ *       if (i < imax(vertex_id, 4))
+ *          break;
+ *
+ *       i--;
+ *    }
+ */
+INEXACT_COUNT_TEST(0x00000008, 0x00000004, 0xffffffff, ilt_imax, iadd, 5)
