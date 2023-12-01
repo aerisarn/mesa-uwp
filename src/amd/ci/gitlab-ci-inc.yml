@@ -3,10 +3,7 @@
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
-    - changes: &radeonsi_file_list
-        - src/gallium/drivers/radeonsi/**/*
-        - src/gallium/include/winsys/**/*
-        - src/gallium/winsys/amdgpu/**/*
+    - changes: &amd_common_file_list
         - src/amd/*
         - src/amd/addrlib/**/*
         - src/amd/ci/gitlab-ci.yml
@@ -19,6 +16,11 @@
         - src/amd/common/**/*
         - src/amd/llvm/**/*
         - src/amd/registers/**/*
+      when: on_success
+    - changes: &radeonsi_file_list
+        - src/gallium/drivers/radeonsi/**/*
+        - src/gallium/include/winsys/**/*
+        - src/gallium/winsys/amdgpu/**/*
       when: on_success
 
 .radv-rules:
@@ -64,6 +66,9 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:
+        *amd_common_file_list
+      when: on_success
+    - changes:
         *radeonsi_file_list
       when: on_success
     - changes: &radeon_vcn_file_list
@@ -91,6 +96,9 @@
   rules:
     - !reference [.valve-farm-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
+    - changes:
+        *amd_common_file_list
+      when: manual
     - changes:
         *radeonsi_file_list
       when: manual
