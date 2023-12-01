@@ -629,6 +629,7 @@ handle_file(const char *filename, uint32_t submit_to_decompile)
             decompile_commands(hostptr(gpuaddr), sizedwords, 0, NULL);
          }
 
+         needs_reset = true;
          submit++;
          break;
       }
