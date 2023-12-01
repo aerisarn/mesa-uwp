@@ -297,7 +297,6 @@ int main(int argc, char **argv)
    bool print_info = false;
 
    struct clc_binary spirv_obj = {0};
-   struct clc_binary final_spirv = {0};
    struct clc_parsed_spirv parsed_spirv_data = {0};
    struct disk_cache *disk_cache = NULL;
 
@@ -440,23 +439,13 @@ int main(int argc, char **argv)
       goto fail;
    }
 
-   struct clc_binary const *linker_input[1] = { &spirv_obj };
-   struct clc_linker_args link_args = {
-      .in_objs = linker_input,
-      .num_in_objs = 1,
-      .create_library = true,
-   };
-   if (!clc_link_spirv(&link_args, &logger, &final_spirv)) {
-      goto fail;
-   }
-
    if (spv_outfile) {
       FILE *fp = fopen(spv_outfile, "w");
-      fwrite(final_spirv.data, final_spirv.size, 1, fp);
+      fwrite(spirv_obj.data, spirv_obj.size, 1, fp);
       fclose(fp);
    }
 
-   if (!clc_parse_spirv(&final_spirv, &logger, &parsed_spirv_data)) {
+   if (!clc_parse_spirv(&spirv_obj, &logger, &parsed_spirv_data)) {
       goto fail;
    }
 
@@ -483,7 +472,7 @@ int main(int argc, char **argv)
    glsl_type_singleton_init_or_ref();
 
    if (!brw_kernel_from_spirv(compiler, disk_cache, &kernel, NULL, mem_ctx,
-                              final_spirv.data, final_spirv.size,
+                              spirv_obj.data, spirv_obj.size,
                               entry_point, &error_str)) {
       fprintf(stderr, "Compile failed: %s\n", error_str);
       goto fail;
@@ -533,7 +522,6 @@ fail:
 end:
    disk_cache_destroy(disk_cache);
    clc_free_parsed_spirv(&parsed_spirv_data);
-   clc_free_spirv(&final_spirv);
    clc_free_spirv(&spirv_obj);
    ralloc_free(mem_ctx);
 
