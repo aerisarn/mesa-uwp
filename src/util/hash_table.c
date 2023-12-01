@@ -802,7 +802,7 @@ _mesa_hash_table_u64_delete_key(struct hash_entry *entry)
    struct hash_key_u64 *_key = (struct hash_key_u64 *)entry->key;
 
    if (_key)
-      free(_key);
+      FREE(_key);
 }
 
 void
@@ -905,6 +905,6 @@ _mesa_hash_table_u64_remove(struct hash_table_u64 *ht, uint64_t key)
       struct hash_key *_key = (struct hash_key *)entry->key;
 
       _mesa_hash_table_remove(ht->table, entry);
-      free(_key);
+      FREE(_key);
    }
 }
