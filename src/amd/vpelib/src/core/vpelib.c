@@ -549,11 +549,11 @@ enum vpe_status vpe_build_commands(
              *  becaues the supported check is already passed
              * and the caller can come again with correct buffer size.
              */
-            bufs->cmd_buf.size = (int64_t)vpe_priv->bufs_required.cmd_buf_size;
-            bufs->emb_buf.size = (int64_t)vpe_priv->bufs_required.emb_buf_size;
+            bufs->cmd_buf.size = vpe_priv->bufs_required.cmd_buf_size;
+            bufs->emb_buf.size = vpe_priv->bufs_required.emb_buf_size;
             return VPE_STATUS_OK;
-        } else if ((bufs->cmd_buf.size < (int32_t)vpe_priv->bufs_required.cmd_buf_size) ||
-                   (bufs->emb_buf.size < (int32_t)vpe_priv->bufs_required.emb_buf_size)) {
+        } else if ((bufs->cmd_buf.size < vpe_priv->bufs_required.cmd_buf_size) ||
+                   (bufs->emb_buf.size < vpe_priv->bufs_required.emb_buf_size)) {
             status = VPE_STATUS_INVALID_BUFFER_SIZE;
         }
     }

@@ -655,7 +655,7 @@ static void build_clamping_params(
 }
 
 static void frontend_config_callback(
-    void *ctx, uint64_t cfg_base_gpu, uint64_t cfg_base_cpu, int64_t size)
+    void *ctx, uint64_t cfg_base_gpu, uint64_t cfg_base_cpu, uint64_t size)
 {
     struct config_frontend_cb_ctx *cb_ctx     = (struct config_frontend_cb_ctx *)ctx;
     struct vpe_priv               *vpe_priv   = cb_ctx->vpe_priv;
@@ -781,7 +781,7 @@ int32_t vpe10_program_frontend(struct vpe_priv *vpe_priv, uint32_t pipe_idx, uin
 }
 
 static void backend_config_callback(
-    void *ctx, uint64_t cfg_base_gpu, uint64_t cfg_base_cpu, int64_t size)
+    void *ctx, uint64_t cfg_base_gpu, uint64_t cfg_base_cpu, uint64_t size)
 {
     struct config_backend_cb_ctx *cb_ctx     = (struct config_backend_cb_ctx *)ctx;
     struct vpe_priv              *vpe_priv   = cb_ctx->vpe_priv;
