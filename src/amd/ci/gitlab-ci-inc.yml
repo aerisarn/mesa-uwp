@@ -21,6 +21,7 @@
         - src/gallium/drivers/radeonsi/**/*
         - src/gallium/include/winsys/**/*
         - src/gallium/winsys/amdgpu/**/*
+        - src/amd/vpelib/**/*
       when: on_success
 
 .radv-rules:
