@@ -54,6 +54,7 @@ struct marshal_cmd_base
 typedef uint32_t (*_mesa_unmarshal_func)(struct gl_context *ctx,
                                          const void *restrict cmd);
 extern const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD];
+extern const char *_mesa_unmarshal_func_name[NUM_DISPATCH_CMD];
 
 struct marshal_cmd_DrawElementsUserBuf
 {
