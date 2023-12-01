@@ -812,6 +812,13 @@ anv_sparse_calc_image_format_properties(struct anv_physical_device *pdevice,
       if (pdevice->info.verx10 >= 125 && isl_format_is_yuv(surf->format))
          is_known_nonstandard_format = true;
 
+      /* The standard block shapes (and by extension, the tiling formats they
+       * require) are simply incompatible with getting a 2D view of a 3D
+       * image.
+       */
+      if (surf->usage & ISL_SURF_USAGE_2D_3D_COMPATIBLE_BIT)
+         is_known_nonstandard_format = true;
+
       is_standard = granularity.width == std_shape.width &&
                     granularity.height == std_shape.height &&
                     granularity.depth == std_shape.depth;
