@@ -1473,6 +1473,13 @@ anv_device_alloc_bo(struct anv_device *device,
    if ((alloc_flags & ANV_BO_ALLOC_MAPPED) == 0)
       alloc_flags |= ANV_BO_ALLOC_HOST_COHERENT;
 
+   /* In platforms with LLC we can promote all bos to cached+coherent for free */
+   const enum anv_bo_alloc_flags not_allowed_promotion = ANV_BO_ALLOC_SCANOUT |
+                                                         ANV_BO_ALLOC_EXTERNAL |
+                                                         ANV_BO_ALLOC_PROTECTED;
+   if (device->info->has_llc && ((alloc_flags & not_allowed_promotion) == 0))
+      alloc_flags |= ANV_BO_ALLOC_HOST_COHERENT;
+
    const uint32_t bo_flags =
          device->kmd_backend->bo_alloc_flags_to_bo_flags(device, alloc_flags);
 
