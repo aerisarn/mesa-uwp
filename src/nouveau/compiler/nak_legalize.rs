@@ -194,11 +194,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_not_reg(b, &mut op.low, RegFile::GPR);
             copy_src_if_not_reg(b, &mut op.high, RegFile::GPR);
         }
-        Op::F2F(_)
-        | Op::F2I(_)
-        | Op::I2F(_)
-        | Op::Mov(_)
-        | Op::FRnd(_) => (),
+        Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) | Op::FRnd(_) => (),
         Op::Prmt(op) => {
             copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
             copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);

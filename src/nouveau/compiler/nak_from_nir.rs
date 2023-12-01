@@ -251,10 +251,8 @@ impl<'a> ShaderFromNir<'a> {
             16 => (vec[usize::from(c / 2)].into(), (c * 2) % 4),
             32 => (vec[usize::from(c)].into(), 0),
             64 => {
-                let comps = [
-                    vec[usize::from(c) * 2 + 0],
-                    vec[usize::from(c) * 2 + 1],
-                ];
+                let comps =
+                    [vec[usize::from(c) * 2 + 0], vec[usize::from(c) * 2 + 1]];
                 (comps.into(), 0)
             }
             _ => panic!("Unsupported bit size: {}", def.bit_size),
@@ -314,8 +312,12 @@ impl<'a> ShaderFromNir<'a> {
             | nir_op_pack_32_4x8_split
             | nir_op_pack_32_2x16_split
             | nir_op_pack_64_2x32_split
-            | nir_op_vec2 | nir_op_vec3 | nir_op_vec4
-            | nir_op_vec5 | nir_op_vec8 | nir_op_vec16 => {
+            | nir_op_vec2
+            | nir_op_vec3
+            | nir_op_vec4
+            | nir_op_vec5
+            | nir_op_vec8
+            | nir_op_vec16 => {
                 let src_bit_size = alu.get_src(0).src.bit_size();
                 let bits = alu.def.num_components * alu.def.bit_size;
 
@@ -483,9 +485,7 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
-            nir_op_extract_u8
-            | nir_op_extract_i8
-            | nir_op_extract_u16
+            nir_op_extract_u8 | nir_op_extract_i8 | nir_op_extract_u16
             | nir_op_extract_i16 => {
                 let src1 = alu.get_src(1);
                 let elem = src1.src.comp_as_uint(src1.swizzle[0]).unwrap();
@@ -741,8 +741,8 @@ impl<'a> ShaderFromNir<'a> {
 
                 let mut prmt = [0_u8; 8];
                 match alu.op {
-                    nir_op_i2i8 | nir_op_i2i16
-                    | nir_op_i2i32 | nir_op_i2i64 => {
+                    nir_op_i2i8 | nir_op_i2i16 | nir_op_i2i32
+                    | nir_op_i2i64 => {
                         let sign = ((src_bits / 8) - 1) | 0x8;
                         for i in 0..8 {
                             if i < (src_bits / 8) {
@@ -752,8 +752,8 @@ impl<'a> ShaderFromNir<'a> {
                             }
                         }
                     }
-                    nir_op_u2u8 | nir_op_u2u16
-                    | nir_op_u2u32 | nir_op_u2u64 => {
+                    nir_op_u2u8 | nir_op_u2u16 | nir_op_u2u32
+                    | nir_op_u2u64 => {
                         for i in 0..8 {
                             if i < (src_bits / 8) {
                                 prmt[usize::from(i)] = i;
@@ -2325,40 +2325,51 @@ impl<'a> ShaderFromNir<'a> {
 
         let mut dst = Vec::new();
         match load_const.def.bit_size {
-            1 => for c in 0..load_const.def.num_components {
-                let imm_b1 = unsafe { values[usize::from(c)].b };
-                dst.push(b.copy(imm_b1.into())[0]);
-            }
-            8 => for dw in 0..load_const.def.num_components.div_ceil(4) {
-                let mut imm_u32 = 0;
-                for b in 0..4 {
-                    let c = dw * 4 + b;
-                    if c < load_const.def.num_components {
-                        let imm_u8 = unsafe { values[usize::from(c)].u8_ };
-                        imm_u32 |= u32::from(imm_u8) << b * 8;
-                    }
+            1 => {
+                for c in 0..load_const.def.num_components {
+                    let imm_b1 = unsafe { values[usize::from(c)].b };
+                    dst.push(b.copy(imm_b1.into())[0]);
                 }
-                dst.push(b.copy(imm_u32.into())[0]);
             }
-            16 => for dw in 0..load_const.def.num_components.div_ceil(2) {
-                let mut imm_u32 = 0;
-                for w in 0..2 {
-                    let c = dw * 2 + w;
-                    if c < load_const.def.num_components {
-                        let imm_u16 = unsafe { values[usize::from(c)].u16_ };
-                        imm_u32 |= u32::from(imm_u16) << w * 16;
+            8 => {
+                for dw in 0..load_const.def.num_components.div_ceil(4) {
+                    let mut imm_u32 = 0;
+                    for b in 0..4 {
+                        let c = dw * 4 + b;
+                        if c < load_const.def.num_components {
+                            let imm_u8 = unsafe { values[usize::from(c)].u8_ };
+                            imm_u32 |= u32::from(imm_u8) << b * 8;
+                        }
                     }
+                    dst.push(b.copy(imm_u32.into())[0]);
                 }
-                dst.push(b.copy(imm_u32.into())[0]);
             }
-            32 => for c in 0..load_const.def.num_components {
-                let imm_u32 = unsafe { values[usize::from(c)].u32_ };
-                dst.push(b.copy(imm_u32.into())[0]);
+            16 => {
+                for dw in 0..load_const.def.num_components.div_ceil(2) {
+                    let mut imm_u32 = 0;
+                    for w in 0..2 {
+                        let c = dw * 2 + w;
+                        if c < load_const.def.num_components {
+                            let imm_u16 =
+                                unsafe { values[usize::from(c)].u16_ };
+                            imm_u32 |= u32::from(imm_u16) << w * 16;
+                        }
+                    }
+                    dst.push(b.copy(imm_u32.into())[0]);
+                }
             }
-            64 => for c in 0..load_const.def.num_components {
-                let imm_u64 = unsafe { values[c as usize].u64_ };
-                dst.push(b.copy((imm_u64 as u32).into())[0]);
-                dst.push(b.copy(((imm_u64 >> 32) as u32).into())[0]);
+            32 => {
+                for c in 0..load_const.def.num_components {
+                    let imm_u32 = unsafe { values[usize::from(c)].u32_ };
+                    dst.push(b.copy(imm_u32.into())[0]);
+                }
+            }
+            64 => {
+                for c in 0..load_const.def.num_components {
+                    let imm_u64 = unsafe { values[c as usize].u64_ };
+                    dst.push(b.copy((imm_u64 as u32).into())[0]);
+                    dst.push(b.copy(((imm_u64 >> 32) as u32).into())[0]);
+                }
             }
             _ => panic!("Unknown bit size: {}", load_const.def.bit_size),
         }

@@ -49,7 +49,7 @@ pub trait Builder {
         }
     }
 
-    fn prmt_to(&mut self, dst: Dst, x: Src, y: Src, sel: [u8;4]) {
+    fn prmt_to(&mut self, dst: Dst, x: Src, y: Src, sel: [u8; 4]) {
         if sel == [0, 1, 2, 3] {
             self.copy_to(dst, x);
         } else if sel == [4, 5, 6, 7] {
@@ -227,13 +227,13 @@ pub trait SSABuilder: Builder {
         dst
     }
 
-    fn prmt(&mut self, x: Src, y: Src, sel: [u8;4]) -> SSARef {
+    fn prmt(&mut self, x: Src, y: Src, sel: [u8; 4]) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.prmt_to(dst.into(), x, y, sel);
         dst
     }
 
-    fn prmt4(&mut self, src: [Src;4], sel: [u8;4]) -> SSARef {
+    fn prmt4(&mut self, src: [Src; 4], sel: [u8; 4]) -> SSARef {
         let max_sel = *sel.iter().max().unwrap();
         if max_sel < 8 {
             self.prmt(src[0], src[1], sel)
