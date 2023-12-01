@@ -50,18 +50,17 @@ workflow:
         KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${KERNEL_TAG}
         JOB_PRIORITY: 40
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
-    # any other pipeline
-    - if: $GITLAB_USER_LOGIN != "marge-bot" && $FORCE_KERNEL_TAG != null
+    # pre-merge or fork pipeline
+    - if: $FORCE_KERNEL_TAG != null
       variables:
         KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
         JOB_PRIORITY: 50
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
-    - if: $GITLAB_USER_LOGIN != "marge-bot" && $FORCE_KERNEL_TAG == null
+    - if: $FORCE_KERNEL_TAG == null
       variables:
         KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${KERNEL_TAG}
         JOB_PRIORITY: 50
         VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
-    - when: always
 
 
 variables:
