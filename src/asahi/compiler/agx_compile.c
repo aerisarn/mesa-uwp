@@ -249,6 +249,12 @@ agx_subdivide_to(agx_builder *b, agx_index dst, agx_index s0, unsigned comp)
    assert((s0.size == (dst.size + 1)) && "only 2x subdivide handled");
    assert((comp == 0 || comp == 1) && "too many components");
 
+   /* Handle immediates specially so we don't have to constant fold splits. */
+   if (s0.type == AGX_INDEX_IMMEDIATE) {
+      unsigned bits = 16 * agx_size_align_16(dst.size);
+      return agx_mov_imm_to(b, dst, (s0.value >> bits) & BITFIELD64_MASK(bits));
+   }
+
    agx_instr *split = agx_split(b, 2, s0);
    split->dest[comp] = dst;
    split->dest[1 - comp] = agx_temp(b->shader, dst.size);

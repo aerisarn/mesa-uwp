@@ -163,6 +163,8 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I, unsigned srcs,
       if ((I->op == AGX_OPCODE_LOCAL_LOAD || I->op == AGX_OPCODE_DEVICE_LOAD) &&
           s != 1)
          continue;
+      if (I->op == AGX_OPCODE_SPLIT)
+         continue;
 
       if (I->op == AGX_OPCODE_IMAGE_WRITE &&
           !image_write_source_can_be_immediate(I, s))
