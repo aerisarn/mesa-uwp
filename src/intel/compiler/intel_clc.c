@@ -273,22 +273,6 @@ print_usage(char *exec_name, FILE *f)
 
 #define OPT_PREFIX 1000
 
-static uint32_t
-get_module_spirv_version(const uint32_t *spirv, size_t size)
-{
-   assert(size >= 8);
-   assert(spirv[0] == SPIR_V_MAGIC_NUMBER);
-   return spirv[1];
-}
-
-static void
-set_module_spirv_version(uint32_t *spirv, size_t size, uint32_t version)
-{
-   assert(size >= 8);
-   assert(spirv[0] == SPIR_V_MAGIC_NUMBER);
-   spirv[1] = version;
-}
-
 int main(int argc, char **argv)
 {
    int exit_code = 0;
@@ -310,16 +294,14 @@ int main(int argc, char **argv)
    char *entry_point = NULL, *platform = NULL, *outfile = NULL, *spv_outfile = NULL, *prefix = NULL;
    struct util_dynarray clang_args;
    struct util_dynarray input_files;
-   struct util_dynarray spirv_objs;
-   struct util_dynarray spirv_ptr_objs;
    bool print_info = false;
+
+   struct clc_binary spirv_obj = {0};
 
    void *mem_ctx = ralloc_context(NULL);
 
    util_dynarray_init(&clang_args, mem_ctx);
    util_dynarray_init(&input_files, mem_ctx);
-   util_dynarray_init(&spirv_objs, mem_ctx);
-   util_dynarray_init(&spirv_ptr_objs, mem_ctx);
 
    int ch;
    while ((ch = getopt_long(argc, argv, "he:p:s:i:o:v", long_options, NULL)) != -1)
@@ -451,46 +433,14 @@ int main(int argc, char **argv)
       .allowed_spirv_extensions = allowed_spirv_extensions,
    };
 
-   struct clc_binary *spirv_out =
-      util_dynarray_grow(&spirv_objs, struct clc_binary, 1);
-
-   if (!clc_compile_c_to_spirv(&clc_args, &logger, spirv_out)) {
+   if (!clc_compile_c_to_spirv(&clc_args, &logger, &spirv_obj)) {
       goto fail;
    }
 
-   util_dynarray_foreach(&spirv_objs, struct clc_binary, p) {
-      util_dynarray_append(&spirv_ptr_objs, struct clc_binary *, p);
-   }
-
-   /* The SPIRV-Tools linker started checking that all modules have the same
-    * version. But SPIRV-LLVM-Translator picks the lower required version for
-    * each module it compiles. So we have to iterate over all of them and set
-    * the max found to make SPIRV-Tools link our modules.
-    *
-    * TODO: This is not the correct thing to do. We need SPIRV-LLVM-Translator
-    *       to pick a given SPIRV version given to it and have all the modules
-    *       at that version. We should remove this hack when this issue is
-    *       fixed :
-    *       https://github.com/KhronosGroup/SPIRV-LLVM-Translator/issues/1445
-    */
-   uint32_t max_spirv_version = 0;
-   util_dynarray_foreach(&spirv_ptr_objs, struct clc_binary *, module) {
-      max_spirv_version = MAX2(max_spirv_version,
-                               get_module_spirv_version((*module)->data,
-                                                        (*module)->size));
-   }
-
-   assert(max_spirv_version > 0);
-   util_dynarray_foreach(&spirv_ptr_objs, struct clc_binary *, module) {
-      set_module_spirv_version((*module)->data, (*module)->size,
-                               max_spirv_version);
-   }
-
-
+   struct clc_binary const *linker_input[1] = { &spirv_obj };
    struct clc_linker_args link_args = {
-      .in_objs = util_dynarray_begin(&spirv_ptr_objs),
-      .num_in_objs = util_dynarray_num_elements(&spirv_ptr_objs,
-                                                struct clc_binary *),
+      .in_objs = linker_input,
+      .num_in_objs = 1,
       .create_library = true,
    };
    struct clc_binary final_spirv;
@@ -580,6 +530,7 @@ fail:
    exit_code = 1;
 
 end:
+   clc_free_spirv(&spirv_obj);
    ralloc_free(mem_ctx);
 
    return exit_code;
