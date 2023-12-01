@@ -375,7 +375,9 @@ static void parseEncSpsParamsH264(vlVaContext *context, struct vl_rbsp *rbsp)
 
    profile_idc = vl_rbsp_u(rbsp, 8);
 
-   vl_rbsp_u(rbsp, 8); /* constraint_set_flags */
+   context->desc.h264enc.seq.enc_constraint_set_flags =
+      vl_rbsp_u(rbsp, 6); /* constraint_set_flags */
+   vl_rbsp_u(rbsp, 2); /* reserved_zero_2bits */
    vl_rbsp_u(rbsp, 8); /* level_idc */
 
    vl_rbsp_ue(rbsp); /* seq_parameter_set_id */
