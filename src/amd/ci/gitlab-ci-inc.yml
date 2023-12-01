@@ -27,8 +27,12 @@
   stage: amd
   rules:
     - !reference [.vulkan-rules, rules]
+    - changes:
+        *amd_common_file_list
+      when: on_success
     - changes: &radv_file_list
-        - src/amd/**/*
+        - src/amd/compiler/**/*
+        - src/amd/vulkan/**/*
         - src/vulkan/**/*
       when: on_success
 
@@ -50,6 +54,9 @@
   rules:
     - !reference [.valve-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
+    - changes:
+        *amd_common_file_list
+      when: on_success
     - changes:
         *radv_file_list
       when: manual
