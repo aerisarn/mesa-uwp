@@ -892,8 +892,7 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                                                 minLvl,
                                                                 maxLvl,
                                                                 spD3D12VideoDevice.Get())) {
-            uint32_t constraintset3flag = false;
-            d3d12_video_encoder_convert_from_d3d12_level_h264(maxLvlSettingH264, maxLvlSpec, constraintset3flag);
+            d3d12_video_encoder_convert_from_d3d12_level_h264(maxLvlSettingH264, maxLvlSpec);
             supportsProfile = true;
 
             DXGI_FORMAT encodeFormat = d3d12_convert_pipe_video_profile_to_dxgi_format(profile);

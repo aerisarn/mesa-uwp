@@ -48,13 +48,8 @@ d3d12_video_nalu_writer_h264::write_sps_bytes(d3d12_video_encoder_bitstream *pBi
    assert(pSPS->seq_parameter_set_id < 32);
 
    pBitstream->put_bits(8, pSPS->profile_idc);
-   pBitstream->put_bits(1, 0);   // constraint_set0_flag
-   pBitstream->put_bits(1, pSPS->constraint_set1_flag);
-   pBitstream->put_bits(1, 0);   // constraint_set2_flag
-   pBitstream->put_bits(1, pSPS->constraint_set3_flag);
-   pBitstream->put_bits(1, 0);   // constraint_set4_flag
-   pBitstream->put_bits(1, 0);   // constraint_set5_flag
-   pBitstream->put_bits(2, 0);
+   pBitstream->put_bits(6, pSPS->constraint_set_flags);
+   pBitstream->put_bits(2, 0); // reserved_zero_2bits
    pBitstream->put_bits(8, pSPS->level_idc);
    pBitstream->exp_Golomb_ue(pSPS->seq_parameter_set_id);
 

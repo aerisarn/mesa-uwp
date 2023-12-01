@@ -591,11 +591,9 @@ d3d12_video_encoder_convert_level_h264(uint32_t h264SpecLevel)
 
 void
 d3d12_video_encoder_convert_from_d3d12_level_h264(D3D12_VIDEO_ENCODER_LEVELS_H264 level12,
-                                                  uint32_t &specLevel,
-                                                  uint32_t &constraint_set3_flag)
+                                                  uint32_t &specLevel)
 {
    specLevel = 0;
-   constraint_set3_flag = 0;
 
    switch (level12) {
       case D3D12_VIDEO_ENCODER_LEVELS_H264_1:
@@ -605,7 +603,6 @@ d3d12_video_encoder_convert_from_d3d12_level_h264(D3D12_VIDEO_ENCODER_LEVELS_H26
       case D3D12_VIDEO_ENCODER_LEVELS_H264_1b:
       {
          specLevel = 11;
-         constraint_set3_flag = 1;
       } break;
       case D3D12_VIDEO_ENCODER_LEVELS_H264_11:
       {

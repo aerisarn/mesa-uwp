@@ -132,8 +132,7 @@ struct d3d12_video_decode_output_conversion_arguments
 
 void
 d3d12_video_encoder_convert_from_d3d12_level_h264(D3D12_VIDEO_ENCODER_LEVELS_H264 level12,
-                                                  uint32_t &                      specLevel,
-                                                  uint32_t &                      constraint_set3_flag);
+                                                  uint32_t &                      specLevel);
 void
 d3d12_video_encoder_convert_from_d3d12_level_hevc(D3D12_VIDEO_ENCODER_LEVELS_HEVC level12,
                                                   uint32_t &                      specLevel);
