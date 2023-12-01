@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "vk_synchronization.h"
+
 #include "vk_alloc.h"
 #include "vk_command_buffer.h"
 #include "vk_common_entrypoints.h"

@@ -31,14 +31,60 @@
 extern "C" {
 #endif
 
+static inline bool
+vk_pipeline_stage_flags2_has_graphics_shader(VkPipelineStageFlags2 stages)
+{
+   return stages & (VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+                    VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+                    VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT |
+                    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+                    VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                    VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT);
+}
+
+static inline bool
+vk_pipeline_stage_flags2_has_compute_shader(VkPipelineStageFlags2 stages)
+{
+   return stages & (VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+                    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+                    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
+}
+
 /** Expands pipeline stage group flags
  *
  * Some stages like VK_PIPELINE_SHADER_STAGE_2_ALL_GRAPHICS_BIT represent more
  * than one stage.  This helper expands any such bits out to the full set of
  * individual stages bits they represent.
+ *
+ * Note: This helper does not handle BOTTOM/TOP_OF_PIPE.  You probably want to
+ * use vk_expand_src/dst_stage_flags2() instead.
  */
 VkPipelineStageFlags2
 vk_expand_pipeline_stage_flags2(VkPipelineStageFlags2 stages);
+
+static inline VkPipelineStageFlags2
+vk_expand_src_stage_flags2(VkPipelineStageFlags2 stages)
+{
+   if (stages & VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT)
+      stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+   return vk_expand_pipeline_stage_flags2(stages);
+}
+
+static inline VkPipelineStageFlags2
+vk_expand_dst_stage_flags2(VkPipelineStageFlags2 stages)
+{
+   if (stages & VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT)
+      stages |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+   return vk_expand_pipeline_stage_flags2(stages);
+}
 
 /** Returns the set of read accesses allowed in the given stages */
 VkAccessFlags2
