@@ -5500,7 +5500,8 @@ fs_visitor::lower_simd_width()
 bool
 fs_visitor::lower_barycentrics()
 {
-   const bool has_interleaved_layout = devinfo->has_pln || devinfo->ver >= 7;
+   const bool has_interleaved_layout = devinfo->has_pln ||
+      (devinfo->ver >= 7 && devinfo->ver < 20);
    bool progress = false;
 
    if (stage != MESA_SHADER_FRAGMENT || !has_interleaved_layout)
@@ -8367,6 +8368,8 @@ namespace brw {
    {
       if (!regs[0])
          return fs_reg();
+      else if (bld.shader->devinfo->ver >= 20)
+         return fetch_payload_reg(bld, regs, BRW_REGISTER_TYPE_F, 2);
 
       const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
       const brw::fs_builder hbld = bld.exec_all().group(8, 0);
