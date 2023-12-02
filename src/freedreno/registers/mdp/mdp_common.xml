@@ -48,7 +48,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 <enum name="mdp_bpc">
 	<brief>bits per component (non-alpha channel)</brief>
-	<value name="BPC1" value="0"/> <!-- 1 bit -->
+	<value name="BPC4" value="0"/> <!-- 4 bits -->
 	<value name="BPC5" value="1"/> <!-- 2 bits -->
 	<value name="BPC6" value="2"/> <!-- 6 bits -->
 	<value name="BPC8" value="3"/> <!-- 8 bits -->
