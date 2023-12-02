@@ -118,9 +118,28 @@ fn rewrite_cfg(func: &mut Function) {
     let _ = std::mem::replace(&mut func.blocks, builder.as_cfg());
 }
 
+/// Replace jumps to the following block with fall-through
+fn opt_fall_through(func: &mut Function) {
+    for i in 0..func.blocks.len() - 1 {
+        let remove_last_instr = match func.blocks[i].branch() {
+            Some(b) => match b.op {
+                Op::Bra(OpBra { target }) => target == func.blocks[i + 1].label,
+                _ => false,
+            },
+            None => false,
+        };
+
+        if remove_last_instr {
+            func.blocks[i].instrs.pop();
+        }
+    }
+}
+
 impl Function {
     pub fn opt_jump_thread(&mut self) {
-        jump_thread(self);
+        if jump_thread(self) {
+            opt_fall_through(self);
+        }
     }
 }
 
