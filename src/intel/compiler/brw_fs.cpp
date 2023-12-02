@@ -8126,6 +8126,9 @@ compile_single_bs(const struct brw_compiler *compiler,
 
       const unsigned dispatch_width = 8u << simd;
 
+      if (dispatch_width == 8 && compiler->devinfo->ver >= 20)
+         continue;
+
       v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
                                              &key->base,
                                              &prog_data->base, shader,
