@@ -7,6 +7,7 @@
 #define NAK_H
 
 #include "compiler/shader_enums.h"
+#include "nir.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -18,7 +19,6 @@ extern "C" {
 
 struct nak_compiler;
 struct nir_shader_compiler_options;
-typedef struct nir_shader nir_shader;
 struct nv_device_info;
 
 struct nak_compiler *nak_compiler_create(const struct nv_device_info *dev);
@@ -50,6 +50,7 @@ struct nak_fs_key {
 };
 
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak,
+                         nir_variable_mode robust2_modes,
                          const struct nak_fs_key *fs_key);
 
 enum PACKED nak_ts_domain {
@@ -143,6 +144,7 @@ void nak_shader_bin_destroy(struct nak_shader_bin *bin);
 struct nak_shader_bin *
 nak_compile_shader(nir_shader *nir, bool dump_asm,
                    const struct nak_compiler *nak,
+                   nir_variable_mode robust2_modes,
                    const struct nak_fs_key *fs_key);
 
 #ifdef __cplusplus

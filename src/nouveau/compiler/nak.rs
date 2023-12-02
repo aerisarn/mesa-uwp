@@ -229,9 +229,10 @@ pub extern "C" fn nak_compile_shader(
     nir: *mut nir_shader,
     dump_asm: bool,
     nak: *const nak_compiler,
+    robust2_modes: nir_variable_mode,
     fs_key: *const nak_fs_key,
 ) -> *mut nak_shader_bin {
-    unsafe { nak_postprocess_nir(nir, nak, fs_key) };
+    unsafe { nak_postprocess_nir(nir, nak, robust2_modes, fs_key) };
     let nak = unsafe { &*nak };
     let nir = unsafe { &*nir };
     let fs_key = if fs_key.is_null() {

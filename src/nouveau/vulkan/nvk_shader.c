@@ -412,13 +412,20 @@ static VkResult
 nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
                          nir_shader *nir,
                          VkPipelineCreateFlagBits2KHR pipeline_flags,
+                         const struct vk_pipeline_robustness_state *rs,
                          const struct nak_fs_key *fs_key,
                          struct nvk_shader *shader)
 {
    const bool dump_asm =
       pipeline_flags & VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
 
-   shader->nak = nak_compile_shader(nir, dump_asm, pdev->nak, fs_key);
+   nir_variable_mode robust2_modes = 0;
+   if (rs->uniform_buffers == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2_EXT)
+      robust2_modes |= nir_var_mem_ubo;
+   if (rs->storage_buffers == VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2_EXT)
+      robust2_modes |= nir_var_mem_ssbo;
+
+   shader->nak = nak_compile_shader(nir, dump_asm, pdev->nak, robust2_modes, fs_key);
    shader->info = shader->nak->info;
    shader->code_ptr = shader->nak->code;
    shader->code_size = shader->nak->code_size;
@@ -429,11 +436,12 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 VkResult
 nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
                 VkPipelineCreateFlagBits2KHR pipeline_flags,
+                const struct vk_pipeline_robustness_state *rs,
                 const struct nak_fs_key *fs_key,
                 struct nvk_shader *shader)
 {
    if (use_nak(pdev, nir->info.stage)) {
-      return nvk_compile_nir_with_nak(pdev, nir, pipeline_flags,
+      return nvk_compile_nir_with_nak(pdev, nir, pipeline_flags, rs,
                                       fs_key, shader);
    } else {
       return nvk_cg_compile_nir(pdev, nir, fs_key, shader);

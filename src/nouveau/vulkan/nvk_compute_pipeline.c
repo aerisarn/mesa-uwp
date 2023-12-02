@@ -186,7 +186,7 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
 
    nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout);
 
-   result = nvk_compile_nir(pdev, nir, pipeline_flags, NULL,
+   result = nvk_compile_nir(pdev, nir, pipeline_flags, &robustness, NULL,
                             &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    ralloc_free(nir);
    if (result != VK_SUCCESS)

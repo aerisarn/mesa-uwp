@@ -361,7 +361,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          fs_key = &fs_key_tmp;
       }
 
-      result = nvk_compile_nir(pdev, nir[stage], pipeline_flags, fs_key,
+      result = nvk_compile_nir(pdev, nir[stage], pipeline_flags,
+                               &robustness[stage], fs_key,
                                &pipeline->base.shaders[stage]);
       ralloc_free(nir[stage]);
       if (result != VK_SUCCESS)

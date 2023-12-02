@@ -1037,6 +1037,7 @@ nir_shader_has_local_variables(const nir_shader *nir)
 void
 nak_postprocess_nir(nir_shader *nir,
                     const struct nak_compiler *nak,
+                    nir_variable_mode robust2_modes,
                     const struct nak_fs_key *fs_key)
 {
    UNUSED bool progress = false;

@@ -91,6 +91,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
 VkResult
 nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
                 VkPipelineCreateFlagBits2KHR pipeline_flags,
+                const struct vk_pipeline_robustness_state *rstate,
                 const struct nak_fs_key *fs_key,
                 struct nvk_shader *shader);
 
