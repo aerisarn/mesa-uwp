@@ -7610,24 +7610,27 @@ brw_compile_fs(const struct brw_compiler *compiler,
    float throughput = 0;
    bool has_spilled = false;
 
-   v8 = std::make_unique<fs_visitor>(compiler, &params->base, key,
-                                     prog_data, nir, 8, 1,
-                                     params->base.stats != NULL,
-                                     debug_enabled);
-   if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
-      params->base.error_str = ralloc_strdup(params->base.mem_ctx, v8->fail_msg);
-      return NULL;
-   } else if (INTEL_SIMD(FS, 8)) {
-      simd8_cfg = v8->cfg;
+   if (devinfo->ver < 20) {
+      v8 = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                        prog_data, nir, 8, 1,
+                                        params->base.stats != NULL,
+                                        debug_enabled);
+      if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
+         params->base.error_str = ralloc_strdup(params->base.mem_ctx,
+                                                v8->fail_msg);
+         return NULL;
+      } else if (INTEL_SIMD(FS, 8)) {
+         simd8_cfg = v8->cfg;
 
-      assert(v8->payload().num_regs % reg_unit(devinfo) == 0);
-      prog_data->base.dispatch_grf_start_reg = v8->payload().num_regs / reg_unit(devinfo);
+         assert(v8->payload().num_regs % reg_unit(devinfo) == 0);
+         prog_data->base.dispatch_grf_start_reg = v8->payload().num_regs / reg_unit(devinfo);
 
-      prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
-      const performance &perf = v8->performance_analysis.require();
-      throughput = MAX2(throughput, perf.throughput);
-      has_spilled = v8->spilled_any_registers;
-      allow_spilling = false;
+         prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
+         const performance &perf = v8->performance_analysis.require();
+         throughput = MAX2(throughput, perf.throughput);
+         has_spilled = v8->spilled_any_registers;
+         allow_spilling = false;
+      }
    }
 
    /* Limit dispatch width to simd8 with dual source blending on gfx8.
@@ -7653,14 +7656,15 @@ brw_compile_fs(const struct brw_compiler *compiler,
       v8->limit_dispatch_width(16, "SIMD32 with ray queries.\n");
 
    if (!has_spilled &&
-       v8->max_dispatch_width >= 16 &&
+       (!v8 || v8->max_dispatch_width >= 16) &&
        (INTEL_SIMD(FS, 16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
       v16 = std::make_unique<fs_visitor>(compiler, &params->base, key,
                                          prog_data, nir, 16, 1,
                                          params->base.stats != NULL,
                                          debug_enabled);
-      v16->import_uniforms(v8.get());
+      if (v8)
+         v16->import_uniforms(v8.get());
       if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
          brw_shader_perf_log(compiler, params->base.log_data,
                              "SIMD16 shader failed to compile: %s\n",
@@ -7683,7 +7687,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    /* Currently, the compiler only supports SIMD32 on SNB+ */
    if (!has_spilled &&
-       v8->max_dispatch_width >= 32 && !params->use_rep_send &&
+       (!v8 || v8->max_dispatch_width >= 32) &&
+       (!v16 || v16->max_dispatch_width >= 32) && !params->use_rep_send &&
        devinfo->ver >= 6 && !simd16_failed &&
        INTEL_SIMD(FS, 32)) {
       /* Try a SIMD32 compile */
@@ -7691,7 +7696,11 @@ brw_compile_fs(const struct brw_compiler *compiler,
                                          prog_data, nir, 32, 1,
                                          params->base.stats != NULL,
                                          debug_enabled);
-      v32->import_uniforms(v8.get());
+      if (v8)
+         v32->import_uniforms(v8.get());
+      else if (v16)
+         v32->import_uniforms(v16.get());
+
       if (!v32->run_fs(allow_spilling, false)) {
          brw_shader_perf_log(compiler, params->base.log_data,
                              "SIMD32 shader failed to compile: %s\n",
@@ -7726,6 +7735,9 @@ brw_compile_fs(const struct brw_compiler *compiler,
                                             debug_enabled);
       if (v8)
          vmulti->import_uniforms(v8.get());
+      else if (v16)
+         vmulti->import_uniforms(v16.get());
+
       if (!vmulti->run_fs(allow_spilling, params->use_rep_send)) {
          brw_shader_perf_log(compiler, params->base.log_data,
                              "Dual-SIMD8 shader failed to compile: %s\n",
@@ -7774,7 +7786,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    }
 
    fs_generator g(compiler, &params->base, &prog_data->base,
-                  v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
+                  v8 && v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
    if (unlikely(debug_enabled)) {
       g.enable_debug(ralloc_asprintf(params->base.mem_ctx,
