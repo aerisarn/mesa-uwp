@@ -1797,29 +1797,43 @@ fs_visitor::assign_urb_setup()
             struct brw_reg reg;
             assert(max_polygons > 0);
 
+            /* Calculate the base register on the thread payload of
+             * either the block of vertex setup data or the block of
+             * per-primitive constant data depending on whether we're
+             * accessing a primitive or vertex input.  Also calculate
+             * the index of the input within that block.
+             */
+            const bool per_prim = inst->src[i].nr < prog_data->num_per_primitive_inputs;
+            const unsigned base = urb_start +
+               (per_prim ? 0 :
+                ALIGN(prog_data->num_per_primitive_inputs / 2,
+                      reg_unit(devinfo)) * max_polygons);
+            const unsigned idx = per_prim ? inst->src[i].nr :
+               inst->src[i].nr - prog_data->num_per_primitive_inputs;
+
             /* Translate the offset within the param_width-wide
              * representation described above into an offset and a
              * grf, which contains the plane parameters for the first
              * polygon processed by the thread.
              */
-            if (devinfo->ver >= 20) {
+            if (devinfo->ver >= 20 && !per_prim) {
                /* Gfx20+ is able to pack 5 logical input components
-                * per 64B register.
+                * per 64B register for vertex setup data.
                 */
-               const unsigned grf = urb_start + inst->src[i].nr / 5 * 2 * max_polygons;
+               const unsigned grf = base + idx / 5 * 2 * max_polygons;
                assert(inst->src[i].offset / param_width < 12);
-               const unsigned delta = inst->src[i].nr % 5 * 12 +
+               const unsigned delta = idx % 5 * 12 +
                   inst->src[i].offset / (param_width * chan_sz) * chan_sz +
                   inst->src[i].offset % chan_sz;
                reg = byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type),
                                  delta);
             } else {
-               /* Earlier platforms pack 2 logical input components
-                * per 32B register.
+               /* Earlier platforms and per-primitive block pack 2 logical
+                * input components per 32B register.
                 */
-               const unsigned grf = urb_start + inst->src[i].nr / 2 * max_polygons;
+               const unsigned grf = base + idx / 2 * max_polygons;
                assert(inst->src[i].offset / param_width < REG_SIZE / 2);
-               const unsigned delta = (inst->src[i].nr % 2) * (REG_SIZE / 2) +
+               const unsigned delta = (idx % 2) * (REG_SIZE / 2) +
                   inst->src[i].offset / (param_width * chan_sz) * chan_sz +
                   inst->src[i].offset % chan_sz;
                reg = byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type),
