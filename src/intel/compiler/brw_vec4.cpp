@@ -2649,10 +2649,11 @@ brw_compile_vs(const struct brw_compiler *compiler,
    }
 
    if (is_scalar) {
+      const unsigned dispatch_width = compiler->devinfo->ver >= 20 ? 16 : 8;
       prog_data->base.dispatch_mode = DISPATCH_MODE_SIMD8;
 
       fs_visitor v(compiler, &params->base, &key->base,
-                   &prog_data->base.base, nir, 8,
+                   &prog_data->base.base, nir, dispatch_width,
                    params->base.stats != NULL, debug_enabled);
       if (!v.run_vs()) {
          params->base.error_str =

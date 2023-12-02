@@ -447,9 +447,10 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    }
 
    if (is_scalar) {
+      const unsigned dispatch_width = devinfo->ver >= 20 ? 16 : 8;
       fs_visitor v(compiler, &params->base, &key->base,
-                   &prog_data->base.base, nir, 8, params->base.stats != NULL,
-                   debug_enabled);
+                   &prog_data->base.base, nir, dispatch_width,
+                   params->base.stats != NULL, debug_enabled);
       if (!v.run_tcs()) {
          params->base.error_str =
             ralloc_strdup(params->base.mem_ctx, v.fail_msg);

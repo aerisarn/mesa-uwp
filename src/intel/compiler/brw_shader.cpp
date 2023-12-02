@@ -1365,8 +1365,9 @@ brw_compile_tes(const struct brw_compiler *compiler,
    }
 
    if (is_scalar) {
+      const unsigned dispatch_width = devinfo->ver >= 20 ? 16 : 8;
       fs_visitor v(compiler, &params->base, &key->base,
-                   &prog_data->base.base, nir, 8,
+                   &prog_data->base.base, nir, dispatch_width,
                    params->base.stats != NULL, debug_enabled);
       if (!v.run_tes()) {
          params->base.error_str =

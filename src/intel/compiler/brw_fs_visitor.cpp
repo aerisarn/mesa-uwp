@@ -1211,7 +1211,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler,
      live_analysis(this), regpressure_analysis(this),
      performance_analysis(this),
      needs_register_pressure(needs_register_pressure),
-     dispatch_width(8),
+     dispatch_width(compiler->devinfo->ver >= 20 ? 16 : 8),
      max_polygons(0),
      api_subgroup_size(brw_nir_api_subgroup_size(shader, dispatch_width))
 {
