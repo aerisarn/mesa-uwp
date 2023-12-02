@@ -4,21 +4,21 @@
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &radeonsi_file_list
-      - src/gallium/drivers/radeonsi/**/*
-      - src/gallium/include/winsys/**/*
-      - src/gallium/winsys/amdgpu/**/*
-      - src/amd/*
-      - src/amd/addrlib/**/*
-      - src/amd/ci/gitlab-ci.yml
-      - src/amd/ci/gitlab-ci-inc.yml
-      - src/amd/ci/deqp-$DEQP_SUITE.toml
-      - src/amd/ci/$GPU_VERSION-fails.txt
-      - src/amd/ci/$GPU_VERSION-flakes.txt
-      - src/amd/ci/$GPU_VERSION-skips.txt
-      - src/amd/ci/$PIGLIT_TRACES_FILE
-      - src/amd/common/**/*
-      - src/amd/llvm/**/*
-      - src/amd/registers/**/*
+        - src/gallium/drivers/radeonsi/**/*
+        - src/gallium/include/winsys/**/*
+        - src/gallium/winsys/amdgpu/**/*
+        - src/amd/*
+        - src/amd/addrlib/**/*
+        - src/amd/ci/gitlab-ci.yml
+        - src/amd/ci/gitlab-ci-inc.yml
+        - src/amd/ci/deqp-$DEQP_SUITE.toml
+        - src/amd/ci/$GPU_VERSION-fails.txt
+        - src/amd/ci/$GPU_VERSION-flakes.txt
+        - src/amd/ci/$GPU_VERSION-skips.txt
+        - src/amd/ci/$PIGLIT_TRACES_FILE
+        - src/amd/common/**/*
+        - src/amd/llvm/**/*
+        - src/amd/registers/**/*
       when: on_success
 
 .radv-rules:
@@ -26,8 +26,8 @@
   rules:
     - !reference [.vulkan-rules, rules]
     - changes: &radv_file_list
-      - src/amd/**/*
-      - src/vulkan/**/*
+        - src/amd/**/*
+        - src/vulkan/**/*
       when: on_success
 
 .radv-collabora-rules:
@@ -67,8 +67,8 @@
         *radeonsi_file_list
       when: on_success
     - changes: &radeon_vcn_file_list
-      - src/gallium/frontends/va/**/*
-      - src/gallium/targets/va/**/*
+        - src/gallium/frontends/va/**/*
+        - src/gallium/targets/va/**/*
       when: on_success
 
 .radeonsi-vaapi-manual-rules:
