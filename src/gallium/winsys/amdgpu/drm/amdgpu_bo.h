@@ -49,7 +49,8 @@ enum amdgpu_bo_type {
 /* Base class of the buffer object that other structures inherit. */
 struct amdgpu_winsys_bo {
    struct pb_buffer_lean base;
-   enum amdgpu_bo_type type;
+   enum amdgpu_bo_type type:8;
+   struct amdgpu_seq_no_fences fences;
 
    /* This is set when a buffer is returned by buffer_create(), not when the memory is allocated
     * as part of slab BO.
@@ -59,11 +60,6 @@ struct amdgpu_winsys_bo {
    /* how many command streams, which are being emitted in a separate
     * thread, is this bo referenced in? */
    volatile int num_active_ioctls;
-
-   /* Fences for buffer synchronization. */
-   uint16_t num_fences;
-   uint16_t max_fences;
-   struct pipe_fence_handle **fences;
 };
 
 /* Real GPU memory allocation managed by the amdgpu kernel driver.
@@ -175,6 +171,66 @@ static struct amdgpu_bo_real *get_slab_entry_real_bo(struct amdgpu_winsys_bo *bo
 {
    assert(bo->type == AMDGPU_BO_SLAB_ENTRY);
    return &get_bo_from_slab(((struct amdgpu_bo_slab_entry*)bo)->entry.slab)->b.b;
+}
+
+/* Given a sequence number "fences->seq_no[queue_index]", return a pointer to a non-NULL fence
+ * pointer in the queue ring corresponding to that sequence number if the fence is non-NULL.
+ * If the fence is not present in the ring (= is idle), return NULL. If it returns a non-NULL
+ * pointer and the caller finds the fence to be idle, it's recommended to use the returned pointer
+ * to set the fence to NULL in the ring, which is why we return a pointer to a pointer.
+ */
+static inline struct pipe_fence_handle **
+get_fence_from_ring(struct amdgpu_winsys *ws, struct amdgpu_seq_no_fences *fences,
+                    unsigned queue_index)
+{
+   /* The caller should check if the BO has a fence. */
+   assert(queue_index < AMDGPU_MAX_QUEUES);
+   assert(fences->valid_fence_mask & BITFIELD_BIT(queue_index));
+
+   uint_seq_no buffer_seq_no = fences->seq_no[queue_index];
+   uint_seq_no latest_seq_no = ws->queues[queue_index].latest_seq_no;
+   bool fence_present = latest_seq_no - buffer_seq_no < AMDGPU_FENCE_RING_SIZE;
+
+   if (fence_present) {
+      struct pipe_fence_handle **fence =
+         &ws->queues[queue_index].fences[buffer_seq_no % AMDGPU_FENCE_RING_SIZE];
+
+      if (*fence)
+         return fence;
+   }
+
+   /* If the sequence number references a fence that is not present, it's guaranteed to be idle
+    * because the winsys always waits for the oldest fence when it removes it from the ring.
+    */
+   fences->valid_fence_mask &= ~BITFIELD_BIT(queue_index);
+   return NULL;
+}
+
+static inline uint_seq_no pick_latest_seq_no(struct amdgpu_winsys *ws, unsigned queue_index,
+                                             uint_seq_no n1, uint_seq_no n2)
+{
+   uint_seq_no latest = ws->queues[queue_index].latest_seq_no;
+
+   /* Since sequence numbers can wrap around, we need to pick the later number that's logically
+    * before "latest". The trick is to subtract "latest + 1" to underflow integer such
+    * that "latest" becomes UINT*_MAX, and then just return the maximum.
+    */
+   uint_seq_no s1 = n1 - latest - 1;
+   uint_seq_no s2 = n2 - latest - 1;
+
+   return s1 >= s2 ? n1 : n2;
+}
+
+static inline void add_seq_no_to_list(struct amdgpu_winsys *ws, struct amdgpu_seq_no_fences *fences,
+                                      unsigned queue_index, uint_seq_no seq_no)
+{
+   if (fences->valid_fence_mask & BITFIELD_BIT(queue_index)) {
+      fences->seq_no[queue_index] = pick_latest_seq_no(ws, queue_index, seq_no,
+                                                       fences->seq_no[queue_index]);
+   } else {
+      fences->seq_no[queue_index] = seq_no;
+      fences->valid_fence_mask |= BITFIELD_BIT(queue_index);
+   }
 }
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer_lean *_buf);

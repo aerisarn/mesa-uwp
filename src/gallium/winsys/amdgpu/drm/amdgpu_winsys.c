@@ -72,6 +72,11 @@ static void do_winsys_deinit(struct amdgpu_winsys *ws)
    if (ws->reserve_vmid)
       amdgpu_vm_unreserve_vmid(ws->dev, 0);
 
+   for (unsigned i = 0; i < ARRAY_SIZE(ws->queues); i++) {
+      for (unsigned j = 0; j < ARRAY_SIZE(ws->queues[i].fences); j++)
+         amdgpu_fence_reference(&ws->queues[i].fences[j], NULL);
+   }
+
    if (util_queue_is_initialized(&ws->cs_queue))
       util_queue_destroy(&ws->cs_queue);
 

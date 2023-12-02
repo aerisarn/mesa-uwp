@@ -65,63 +65,48 @@ static bool amdgpu_bo_wait(struct radeon_winsys *rws,
       return !buffer_busy;
    }
 
-   if (timeout == 0) {
-      unsigned idle_fences;
-      bool buffer_idle;
+   simple_mtx_lock(&ws->bo_fence_lock);
 
-      simple_mtx_lock(&ws->bo_fence_lock);
+   u_foreach_bit(i, bo->fences.valid_fence_mask) {
+      struct pipe_fence_handle **fence = get_fence_from_ring(ws, &bo->fences, i);
 
-      for (idle_fences = 0; idle_fences < bo->num_fences; ++idle_fences) {
-         if (!amdgpu_fence_wait(bo->fences[idle_fences], 0, false))
-            break;
-      }
+      if (fence) {
+         if (timeout == 0) {
+            bool idle = amdgpu_fence_wait(*fence, 0, false);
 
-      /* Release the idle fences to avoid checking them again later. */
-      for (unsigned i = 0; i < idle_fences; ++i)
-         amdgpu_fence_reference(&bo->fences[i], NULL);
+            if (!idle) {
+               simple_mtx_unlock(&ws->bo_fence_lock);
+               return false; /* busy */
+            }
 
-      memmove(&bo->fences[0], &bo->fences[idle_fences],
-              (bo->num_fences - idle_fences) * sizeof(*bo->fences));
-      bo->num_fences -= idle_fences;
+            /* It's idle. Remove it from the ring to skip checking it again later. */
+            amdgpu_fence_reference(fence, NULL);
+         } else {
+            struct pipe_fence_handle *tmp_fence = NULL;
+            amdgpu_fence_reference(&tmp_fence, *fence);
 
-      buffer_idle = !bo->num_fences;
-      simple_mtx_unlock(&ws->bo_fence_lock);
+            /* While waiting, unlock the mutex. */
+            simple_mtx_unlock(&ws->bo_fence_lock);
 
-      return buffer_idle;
-   } else {
-      bool buffer_idle = true;
+            bool idle = amdgpu_fence_wait(tmp_fence, abs_timeout, true);
+            if (!idle) {
+               amdgpu_fence_reference(&tmp_fence, NULL);
+               return false; /* busy */
+            }
 
-      simple_mtx_lock(&ws->bo_fence_lock);
-      while (bo->num_fences && buffer_idle) {
-         struct pipe_fence_handle *fence = NULL;
-         bool fence_idle = false;
-
-         amdgpu_fence_reference(&fence, bo->fences[0]);
-
-         /* Wait for the fence. */
-         simple_mtx_unlock(&ws->bo_fence_lock);
-         if (amdgpu_fence_wait(fence, abs_timeout, true))
-            fence_idle = true;
-         else
-            buffer_idle = false;
-         simple_mtx_lock(&ws->bo_fence_lock);
-
-         /* Release an idle fence to avoid checking it again later, keeping in
-          * mind that the fence array may have been modified by other threads.
-          */
-         if (fence_idle && bo->num_fences && bo->fences[0] == fence) {
-            amdgpu_fence_reference(&bo->fences[0], NULL);
-            memmove(&bo->fences[0], &bo->fences[1],
-                    (bo->num_fences - 1) * sizeof(*bo->fences));
-            bo->num_fences--;
+            simple_mtx_lock(&ws->bo_fence_lock);
+            /* It's idle. Remove it from the ring to skip checking it again later. */
+            if (tmp_fence == *fence)
+               amdgpu_fence_reference(fence, NULL);
+            amdgpu_fence_reference(&tmp_fence, NULL);
          }
-
-         amdgpu_fence_reference(&fence, NULL);
       }
-      simple_mtx_unlock(&ws->bo_fence_lock);
 
-      return buffer_idle;
+      bo->fences.valid_fence_mask &= ~BITFIELD_BIT(i); /* remove the fence from the BO */
    }
+
+   simple_mtx_unlock(&ws->bo_fence_lock);
+   return true; /* idle */
 }
 
 static inline unsigned get_slab_entry_offset(struct amdgpu_winsys_bo *bo)
@@ -148,12 +133,7 @@ static enum radeon_bo_flag amdgpu_bo_get_flags(
 
 static void amdgpu_bo_remove_fences(struct amdgpu_winsys_bo *bo)
 {
-   for (unsigned i = 0; i < bo->num_fences; ++i)
-      amdgpu_fence_reference(&bo->fences[i], NULL);
-
-   FREE(bo->fences);
-   bo->num_fences = 0;
-   bo->max_fences = 0;
+   bo->fences.valid_fence_mask = 0;
 }
 
 void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer_lean *_buf)
@@ -937,8 +917,11 @@ sparse_free_backing_buffer(struct amdgpu_winsys *ws, struct amdgpu_bo_sparse *bo
 {
    bo->num_backing_pages -= backing->bo->b.base.size / RADEON_SPARSE_PAGE_SIZE;
 
+   /* Add fences from bo to backing->bo. */
    simple_mtx_lock(&ws->bo_fence_lock);
-   amdgpu_add_fences(&backing->bo->b, bo->b.num_fences, bo->b.fences);
+   u_foreach_bit(i, bo->b.fences.valid_fence_mask) {
+      add_seq_no_to_list(ws, &backing->bo->b.fences, i, bo->b.fences.seq_no[i]);
+   }
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    list_del(&backing->list);

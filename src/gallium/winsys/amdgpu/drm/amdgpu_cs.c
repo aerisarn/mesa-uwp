@@ -51,6 +51,7 @@ amdgpu_fence_import_syncobj(struct radeon_winsys *rws, int fd)
    }
 
    util_queue_fence_init(&fence->submitted);
+   fence->imported = true;
 
    assert(amdgpu_fence_is_syncobj(fence));
    return (struct pipe_fence_handle*)fence;
@@ -84,6 +85,7 @@ amdgpu_fence_import_sync_file(struct radeon_winsys *rws, int fd)
    }
 
    util_queue_fence_init(&fence->submitted);
+   fence->imported = true;
 
    return (struct pipe_fence_handle*)fence;
 }
@@ -975,6 +977,23 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    cs->has_chaining = ctx->ws->info.gfx_level >= GFX7 &&
                       (ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE);
 
+   /* Compute the queue index by counting the IPs that have queues. */
+   assert(ip_type < ARRAY_SIZE(ctx->ws->info.ip));
+   assert(ctx->ws->info.ip[ip_type].num_queues);
+   cs->queue_index = 0;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->ws->info.ip); i++) {
+      if (!ctx->ws->info.ip[i].num_queues)
+         continue;
+
+      if (i == ip_type)
+         break;
+
+      cs->queue_index++;
+   }
+
+   assert(cs->queue_index < AMDGPU_MAX_QUEUES);
+
    struct amdgpu_cs_fence_info fence_info;
    fence_info.handle = cs->ctx->user_fence_bo;
    fence_info.offset = cs->ip_type * 4;
@@ -1190,27 +1209,6 @@ static void add_fence_to_list(struct amdgpu_fence_list *fences,
    amdgpu_fence_reference(&fences->list[idx], (struct pipe_fence_handle*)fence);
 }
 
-static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
-                                     struct amdgpu_fence *fence)
-{
-   struct amdgpu_cs_context *cs = acs->csc;
-
-   /* Detect no-op dependencies only when there is only 1 ring,
-    * because IBs on one ring are always executed one at a time.
-    *
-    * We always want no dependency between back-to-back gfx IBs, because
-    * we need the parallelism between IBs for good performance.
-    */
-   if ((acs->ip_type == AMD_IP_GFX ||
-        acs->ws->info.ip[acs->ip_type].num_queues == 1) &&
-       !amdgpu_fence_is_syncobj(fence) &&
-       fence->ctx == acs->ctx &&
-       fence->fence.ip_type == cs->chunk_ib[IB_MAIN].ip_type)
-      return true;
-
-   return amdgpu_fence_wait((void *)fence, 0, false);
-}
-
 static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
                                            struct pipe_fence_handle *pfence,
                                            unsigned dependency_flags)
@@ -1221,7 +1219,8 @@ static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
 
    util_queue_fence_wait(&fence->submitted);
 
-   if (is_noop_fence_dependency(acs, fence))
+   /* Ignore non-imported idle fences. This will only check the user fence in memory. */
+   if (!fence->imported && amdgpu_fence_wait((void *)fence, 0, false))
       return;
 
    if (amdgpu_fence_is_syncobj(fence))
@@ -1230,94 +1229,30 @@ static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
       add_fence_to_list(&cs->fence_dependencies, fence);
 }
 
-static void amdgpu_add_bo_fence_dependencies(struct amdgpu_cs *acs,
-                                             struct amdgpu_cs_context *cs,
-                                             struct amdgpu_cs_buffer *buffer)
-{
-   struct amdgpu_winsys_bo *bo = buffer->bo;
-   unsigned new_num_fences = 0;
-   const unsigned num_fences = bo->num_fences;
-
-   for (unsigned j = 0; j < num_fences; ++j) {
-      struct amdgpu_fence *bo_fence = (void *)bo->fences[j];
-
-      if (is_noop_fence_dependency(acs, bo_fence))
-         continue;
-
-      amdgpu_fence_reference(&bo->fences[new_num_fences], bo->fences[j]);
-      new_num_fences++;
-
-      if (!(buffer->usage & RADEON_USAGE_SYNCHRONIZED))
-         continue;
-
-      add_fence_to_list(&cs->fence_dependencies, bo_fence);
-   }
-
-   for (unsigned j = new_num_fences; j < num_fences; ++j)
-      amdgpu_fence_reference(&bo->fences[j], NULL);
-
-   bo->num_fences = new_num_fences;
-}
-
-/* Add the given list of fences to the buffer's fence list.
- *
- * Must be called with the winsys bo_fence_lock held.
- */
-void amdgpu_add_fences(struct amdgpu_winsys_bo *bo,
-                       unsigned num_fences,
-                       struct pipe_fence_handle **fences)
-{
-   if (bo->num_fences + num_fences > bo->max_fences) {
-      unsigned new_max_fences = MAX2(bo->num_fences + num_fences, bo->max_fences * 2);
-      struct pipe_fence_handle **new_fences =
-         REALLOC(bo->fences,
-                 bo->num_fences * sizeof(*new_fences),
-                 new_max_fences * sizeof(*new_fences));
-      if (likely(new_fences && new_max_fences < UINT16_MAX)) {
-         bo->fences = new_fences;
-         bo->max_fences = new_max_fences;
-      } else {
-         unsigned drop;
-
-         fprintf(stderr, new_fences ? "amdgpu_add_fences: too many fences, dropping some\n"
-                                    : "amdgpu_add_fences: allocation failure, dropping fence(s)\n");
-         free(new_fences);
-
-         if (!bo->num_fences)
-            return;
-
-         bo->num_fences--; /* prefer to keep the most recent fence if possible */
-         amdgpu_fence_reference(&bo->fences[bo->num_fences], NULL);
-
-         drop = bo->num_fences + num_fences - bo->max_fences;
-         num_fences -= drop;
-         fences += drop;
-      }
-   }
-
-   unsigned bo_num_fences = bo->num_fences;
-
-   for (unsigned i = 0; i < num_fences; ++i) {
-      bo->fences[bo_num_fences] = NULL;
-      amdgpu_fence_reference(&bo->fences[bo_num_fences], fences[i]);
-      bo_num_fences++;
-   }
-   bo->num_fences = bo_num_fences;
-}
-
 static void amdgpu_add_bo_fences_to_dependencies(struct amdgpu_cs *acs,
-                                                 struct amdgpu_cs_context *cs,
-                                                 struct pipe_fence_handle *fence,
+                                                 struct amdgpu_seq_no_fences *dependencies,
+                                                 uint_seq_no new_queue_seq_no,
                                                  struct amdgpu_buffer_list *list)
 {
+   struct amdgpu_winsys *ws = acs->ws;
+   unsigned queue_index = acs->queue_index;
    unsigned num_buffers = list->num_buffers;
 
    for (unsigned i = 0; i < num_buffers; i++) {
       struct amdgpu_cs_buffer *buffer = &list->buffers[i];
       struct amdgpu_winsys_bo *bo = buffer->bo;
 
-      amdgpu_add_bo_fence_dependencies(acs, cs, buffer);
-      amdgpu_add_fences(bo, 1, &fence);
+      /* Add BO fences from queues other than 'queue_index' to dependencies. */
+      if (buffer->usage & RADEON_USAGE_SYNCHRONIZED) {
+         u_foreach_bit(other_queue_idx, bo->fences.valid_fence_mask & ~BITFIELD_BIT(queue_index)) {
+            add_seq_no_to_list(ws, dependencies, other_queue_idx,
+                               bo->fences.seq_no[other_queue_idx]);
+         }
+      }
+
+      /* Also set the fence in the BO. */
+      bo->fences.seq_no[queue_index] = new_queue_seq_no;
+      bo->fences.valid_fence_mask |= BITFIELD_BIT(queue_index);
    }
 }
 
@@ -1378,11 +1313,112 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    bool has_user_fence = amdgpu_cs_has_user_fence(cs);
 
    simple_mtx_lock(&ws->bo_fence_lock);
-   /* Since the kernel driver doesn't synchronize execution between different
-    * rings automatically, we have to add fence dependencies manually.
+   struct amdgpu_queue *queue = &ws->queues[acs->queue_index];
+   uint_seq_no prev_seq_no = queue->latest_seq_no;
+
+   /* Generate a per queue sequence number. The logic is similar to the kernel side amdgpu seqno,
+    * but the values aren't related.
     */
-   for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++)
-      amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence, &cs->buffer_lists[i]);
+   uint_seq_no next_seq_no = prev_seq_no + 1;
+
+   /* Wait for the oldest fence to signal. This should always check the user fence, then wait
+    * via the ioctl. We have to do this because we are going to release the oldest fence and
+    * replace it with the latest fence in the ring.
+    */
+   struct pipe_fence_handle **oldest_fence =
+      &queue->fences[next_seq_no % AMDGPU_FENCE_RING_SIZE];
+
+   if (*oldest_fence) {
+      if (!amdgpu_fence_wait(*oldest_fence, 0, false)) {
+         /* Take the reference because the fence can be released by other threads after we
+          * unlock the mutex.
+          */
+         struct pipe_fence_handle *tmp_fence = NULL;
+         amdgpu_fence_reference(&tmp_fence, *oldest_fence);
+
+         /* Unlock the mutex before waiting. */
+         simple_mtx_unlock(&ws->bo_fence_lock);
+         amdgpu_fence_wait(tmp_fence, OS_TIMEOUT_INFINITE, false);
+         amdgpu_fence_reference(&tmp_fence, NULL);
+         simple_mtx_lock(&ws->bo_fence_lock);
+      }
+
+      /* Remove the idle fence from the ring. */
+      amdgpu_fence_reference(oldest_fence, NULL);
+   }
+
+   /* We'll accumulate sequence numbers in this structure. It automatically keeps only the latest
+    * sequence number per queue and removes all older ones.
+    */
+   struct amdgpu_seq_no_fences seq_no_dependencies;
+   seq_no_dependencies.valid_fence_mask = 0;
+
+   /* Add a fence dependency on the previous IB if the IP has multiple physical queues to
+    * make it appear as if it had only 1 queue, or if the previous IB comes from a different
+    * context. The reasons are:
+    * - Our BO fence tracking only supports 1 queue per IP.
+    * - IBs from different contexts must wait for each other and can't execute in a random order.
+    */
+   struct amdgpu_fence *prev_fence =
+      (struct amdgpu_fence*)queue->fences[prev_seq_no % AMDGPU_FENCE_RING_SIZE];
+
+   if (prev_fence && (ws->info.ip[acs->ip_type].num_queues > 1 || prev_fence->ctx != acs->ctx))
+      add_seq_no_to_list(ws, &seq_no_dependencies, acs->queue_index, prev_seq_no);
+
+   /* Since the kernel driver doesn't synchronize execution between different
+    * rings automatically, we have to add fence dependencies manually. This gathers sequence
+    * numbers from BOs and sets the next sequence number in the BOs.
+    */
+   for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++) {
+      amdgpu_add_bo_fences_to_dependencies(acs, &seq_no_dependencies, next_seq_no,
+                                           &cs->buffer_lists[i]);
+   }
+
+#if 0 /* Debug code. */
+   printf("submit queue=%u, seq_no=%u\n", acs->queue_index, next_seq_no);
+
+   /* Wait for all previous fences. This can be used when BO fence tracking doesn't work. */
+   for (unsigned i = 0; i < AMDGPU_MAX_QUEUES; i++) {
+      if (i == acs->queue_index)
+         continue;
+
+      struct pipe_fence_handle *fence = queue->fences[ws->queues[i].latest_seq_no % AMDGPU_FENCE_RING_SIZE];
+      if (!fence) {
+         if (i <= 1)
+            printf("      queue %u doesn't have any fence at seq_no %u\n", i, ws->queues[i].latest_seq_no);
+         continue;
+      }
+
+      bool valid = seq_no_dependencies.valid_fence_mask & BITFIELD_BIT(i);
+      uint_seq_no old = seq_no_dependencies.seq_no[i];
+      add_seq_no_to_list(ws, &seq_no_dependencies, i, ws->queues[i].latest_seq_no);
+      uint_seq_no new = seq_no_dependencies.seq_no[i];
+
+      if (!valid)
+         printf("   missing dependency on queue=%u, seq_no=%u\n", i, new);
+      else if (old != new)
+         printf("   too old dependency on queue=%u, old=%u, new=%u\n", i, old, new);
+      else
+         printf("   has dependency on queue=%u, seq_no=%u\n", i, old);
+   }
+#endif
+
+   /* Convert the sequence numbers we gathered to fence dependencies. */
+   u_foreach_bit(i, seq_no_dependencies.valid_fence_mask) {
+      struct pipe_fence_handle **fence = get_fence_from_ring(ws, &seq_no_dependencies, i);
+
+      if (fence) {
+         /* If it's idle, don't add it to the list of dependencies. */
+         if (amdgpu_fence_wait(*fence, 0, false))
+            amdgpu_fence_reference(fence, NULL);
+         else
+            add_fence_to_list(&cs->fence_dependencies, (struct amdgpu_fence*)*fence);
+      }
+   }
+
+   /* Finally, add the IB fence into the winsys queue. */
+   amdgpu_fence_reference(&queue->fences[next_seq_no % AMDGPU_FENCE_RING_SIZE], cs->fence);
+   queue->latest_seq_no = next_seq_no;
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    struct drm_amdgpu_bo_list_entry *bo_list = NULL;

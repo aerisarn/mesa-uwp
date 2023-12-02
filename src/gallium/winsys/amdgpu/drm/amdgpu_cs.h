@@ -119,6 +119,7 @@ struct amdgpu_cs {
     */
    struct drm_amdgpu_cs_chunk_fence fence_chunk;
    enum amd_ip_type ip_type;
+   unsigned queue_index;
 
    /* We flip between these two CS. While one is being consumed
     * by the kernel in another thread, the other one is being filled
@@ -166,6 +167,7 @@ struct amdgpu_fence {
    struct util_queue_fence submitted;
 
    volatile int signalled;              /* bool (int for atomicity) */
+   bool imported;
 };
 
 static inline bool amdgpu_fence_is_syncobj(struct amdgpu_fence *fence)
@@ -242,9 +244,6 @@ amdgpu_bo_is_referenced_by_cs_with_usage(struct amdgpu_cs *cs,
 
 bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
                        bool absolute);
-void amdgpu_add_fences(struct amdgpu_winsys_bo *bo,
-                       unsigned num_fences,
-                       struct pipe_fence_handle **fences);
 void amdgpu_cs_sync_flush(struct radeon_cmdbuf *rcs);
 void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws);
 
