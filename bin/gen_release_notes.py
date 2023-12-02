@@ -307,6 +307,7 @@ def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
             for line in f:
                 yield line.rstrip()
         p.unlink()
+        subprocess.run(['git', 'add', p])
     else:
         yield "None"
 
