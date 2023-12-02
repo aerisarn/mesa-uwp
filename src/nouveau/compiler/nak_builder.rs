@@ -426,6 +426,7 @@ impl<'a> SSAInstrBuilder<'a> {
         self.b.as_vec()
     }
 
+    #[allow(dead_code)]
     pub fn as_mapped_instrs(self) -> MappedInstrs {
         self.b.as_mapped_instrs()
     }

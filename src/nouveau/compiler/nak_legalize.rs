@@ -4,6 +4,7 @@
  */
 
 use crate::nak_ir::*;
+use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
 
 use std::collections::{HashMap, HashSet};
 
@@ -68,7 +69,12 @@ fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) {
     }
 }
 
-fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
+fn legalize_instr(
+    b: &mut impl SSABuilder,
+    bl: &impl BlockLiveness,
+    ip: usize,
+    instr: &mut Instr,
+) {
     match &mut instr.op {
         Op::FAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -255,11 +261,27 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
             copy_src_if_cbuf(b, &mut op.stream, RegFile::GPR);
         }
+        Op::Break(op) => {
+            let bar_in = op.bar_in.src_ref.as_ssa().unwrap();
+            if !op.bar_out.is_none() && bl.is_live_after_ip(&bar_in[0], ip) {
+                let gpr = b.bmov_to_gpr(op.bar_in);
+                let tmp = b.bmov_to_bar(gpr.into());
+                op.bar_in = tmp.into();
+            }
+        }
+        Op::BSSy(op) => {
+            let bar_in = op.bar_in.src_ref.as_ssa().unwrap();
+            if !op.bar_out.is_none() && bl.is_live_after_ip(&bar_in[0], ip) {
+                let gpr = b.bmov_to_gpr(op.bar_in);
+                let tmp = b.bmov_to_bar(gpr.into());
+                op.bar_in = tmp.into();
+            }
+        }
         Op::OutFinal(op) => {
             copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
         }
         Op::Ldc(_) => (), // Nothing to do
-        Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => (),
+        Op::BSync(_) => (),
         Op::Vote(_) => (), // Nothing to do
         Op::Copy(_) => (), // Nothing to do
         _ => {
@@ -331,11 +353,21 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
 
 impl Shader {
     pub fn legalize(&mut self) {
-        self.map_instrs(|mut instr, ssa_alloc| -> MappedInstrs {
-            let mut b = SSAInstrBuilder::new(ssa_alloc);
-            legalize_instr(&mut b, &mut instr);
-            b.push_instr(instr);
-            b.as_mapped_instrs()
-        });
+        for f in &mut self.functions {
+            let live = SimpleLiveness::for_function(f);
+
+            for (bi, b) in f.blocks.iter_mut().enumerate() {
+                let bl = live.block_live(bi);
+
+                let mut instrs = Vec::new();
+                for (ip, mut instr) in b.instrs.drain(..).enumerate() {
+                    let mut b = SSAInstrBuilder::new(&mut f.ssa_alloc);
+                    legalize_instr(&mut b, bl, ip, &mut instr);
+                    b.push_instr(instr);
+                    instrs.append(&mut b.as_vec());
+                }
+                b.instrs = instrs;
+            }
+        }
     }
 }

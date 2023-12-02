@@ -801,6 +801,12 @@ fn instr_assign_regs_file(
 }
 
 impl PerRegFile<RegAllocator> {
+    pub fn assign_reg(&mut self, ssa: SSAValue, reg: RegRef) {
+        assert!(reg.file() == ssa.file());
+        assert!(reg.comps() == 1);
+        self[ssa.file()].assign_reg(ssa, reg.base_idx());
+    }
+
     pub fn free_killed(&mut self, killed: &KillSet) {
         for ssa in killed.iter() {
             self[ssa.file()].free_ssa(*ssa);
@@ -926,6 +932,48 @@ impl AssignRegsBlock {
                 self.ra.free_killed(dsts_killed);
 
                 None
+            }
+            Op::Break(op) => {
+                for src in op.srcs_as_mut_slice() {
+                    if let SrcRef::SSA(ssa) = src.src_ref {
+                        assert!(ssa.comps() == 1);
+                        let reg = self.get_scalar(ssa[0]);
+                        src.src_ref = reg.into();
+                    }
+                }
+
+                self.ra.free_killed(srcs_killed);
+
+                if let Dst::SSA(ssa) = &op.bar_out {
+                    let reg = *op.bar_in.src_ref.as_reg().unwrap();
+                    self.ra.assign_reg(ssa[0], reg);
+                    op.bar_out = reg.into();
+                }
+
+                self.ra.free_killed(dsts_killed);
+
+                Some(instr)
+            }
+            Op::BSSy(op) => {
+                for src in op.srcs_as_mut_slice() {
+                    if let SrcRef::SSA(ssa) = src.src_ref {
+                        assert!(ssa.comps() == 1);
+                        let reg = self.get_scalar(ssa[0]);
+                        src.src_ref = reg.into();
+                    }
+                }
+
+                self.ra.free_killed(srcs_killed);
+
+                if let Dst::SSA(ssa) = &op.bar_out {
+                    let reg = *op.bar_in.src_ref.as_reg().unwrap();
+                    self.ra.assign_reg(ssa[0], reg);
+                    op.bar_out = reg.into();
+                }
+
+                self.ra.free_killed(dsts_killed);
+
+                Some(instr)
             }
             Op::Copy(copy) => {
                 if let SrcRef::SSA(src_vec) = &copy.src.src_ref {
