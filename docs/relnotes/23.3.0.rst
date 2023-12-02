@@ -21,7 +21,7 @@ SHA256 checksum
 
 ::
 
-    TBD.
+    50f729dd60ed6335b989095baad81ef5edf7cfdd4b4b48b9b955917cb07d69c5  mesa-23.3.0.tar.xz
 
 
 New drivers
