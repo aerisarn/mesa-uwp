@@ -686,6 +686,10 @@
    DRI_CONF_OPT_B(radv_rt_wave64, def, \
                   "Force wave64 in RT shaders")
 
+#define DRI_CONF_RADV_LEGACY_SPARSE_BINDING(def) \
+   DRI_CONF_OPT_B(radv_legacy_sparse_binding, def, \
+                  "Enable legacy sparse binding (with implicit synchronization) on the graphics and compute queue")
+
 /**
  * Overrides for forcing re-compilation of pipelines when RADV_BUILD_ID_OVERRIDE is enabled.
  * These need to be bumped every time a compiler bugfix is backported (up to 8 shader

@@ -1728,6 +1728,14 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
    struct radv_queue *queue = (struct radv_queue *)vqueue;
    VkResult result;
 
+   if (queue->device->instance->legacy_sparse_binding) {
+      result = radv_queue_submit_bind_sparse_memory(queue->device, submission);
+      if (result != VK_SUCCESS)
+         goto fail;
+   } else {
+      assert(!submission->buffer_bind_count && !submission->image_bind_count && !submission->image_opaque_bind_count);
+   }
+
    if (!submission->command_buffer_count && !submission->wait_count && !submission->signal_count)
       return VK_SUCCESS;
 
@@ -1737,6 +1745,7 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       result = radv_queue_submit_normal(queue, submission);
    }
 
+fail:
    if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
       /* When something bad happened during the submission, such as
        * an out of memory issue, it might be hard to recover from
