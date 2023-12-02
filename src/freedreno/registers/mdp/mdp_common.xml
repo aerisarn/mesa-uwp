@@ -62,6 +62,12 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="BPC8A" value="3"/> <!-- 8 bits -->
 </enum>
 
+<enum name="mdp_fetch_mode">
+	<value name="MDP_FETCH_LINEAR" value="0"/>
+	<value name="MDP_FETCH_TILE" value="1"/>
+	<value name="MDP_FETCH_UBWC" value="2"/>
+</enum>
+
 <bitset name="reg_wh" inline="yes">
     <bitfield name="HEIGHT" low="16" high="31" type="uint"/>
     <bitfield name="WIDTH" low="0" high="15" type="uint"/>
