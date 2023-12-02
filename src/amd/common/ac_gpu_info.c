@@ -1701,7 +1701,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "    pcie_bandwidth = %1.1f GB/s\n", info->pcie_bandwidth_mbps / 1024.0);
    fprintf(f, "    clock_crystal_freq = %i KHz\n", info->clock_crystal_freq);
 
-   const char *ip_string[] = {
+   const char *ip_string[AMD_NUM_IP_TYPES] = {
       [AMD_IP_GFX] = "GFX",
       [AMD_IP_COMPUTE] = "COMP",
       [AMD_IP_SDMA] = "SDMA",
@@ -1711,6 +1711,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
       [AMD_IP_VCN_DEC] = "VCN_DEC",
       [AMD_IP_VCN_ENC] = (info->vcn_ip_version >= VCN_4_0_0) ? "VCN" : "VCN_ENC",
       [AMD_IP_VCN_JPEG] = "VCN_JPG",
+      [AMD_IP_VPE] = "VPE",
    };
 
    for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
