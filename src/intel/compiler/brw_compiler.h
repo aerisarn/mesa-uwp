@@ -1085,25 +1085,27 @@ struct brw_wm_prog_data {
  * kernel start pointer (KSP) indices that is based on what dispatch widths
  * are enabled.  This function provides, effectively, the reverse mapping.
  *
- * If the given KSP is valid with respect to the SIMD8/16/32 enables, a SIMD
- * width of 8, 16, or 32 is returned.  If the KSP is invalid, 0 is returned.
+ * If the given KSP is enabled, a SIMD width of 8, 16, or 32 is
+ * returned.  Note that for a multipolygon dispatch kernel 8 is always
+ * returned, since multipolygon kernels use the "_8" fields from
+ * brw_wm_prog_data regardless of their SIMD width.  If the KSP is
+ * invalid, 0 is returned.
  */
 static inline unsigned
 brw_fs_simd_width_for_ksp(unsigned ksp_idx, bool enabled, unsigned width_sel)
 {
-   if (ksp_idx < 2) {
-      return enabled ? (width_sel == 0 ? 16 : 32) : 0;
-   } else {
-      unreachable("Invalid KSP index");
-   }
+   assert(ksp_idx < 2);
+   return !enabled ? 0 :
+          width_sel ? 32 :
+          16;
 }
 
 #define brw_wm_state_simd_width_for_ksp(wm_state, ksp_idx)              \
-   (ksp_idx == 0 ?                                                      \
-      brw_fs_simd_width_for_ksp(ksp_idx, (wm_state).Kernel0Enable,      \
-                                (wm_state).Kernel0SIMDWidth) :          \
-      brw_fs_simd_width_for_ksp(ksp_idx, (wm_state).Kernel1Enable,      \
-                                (wm_state).Kernel1SIMDWidth))
+        (ksp_idx == 0 && (wm_state).Kernel0MaximumPolysperThread ? 8 :  \
+         ksp_idx == 0 ? brw_fs_simd_width_for_ksp(ksp_idx, (wm_state).Kernel0Enable, \
+                                                  (wm_state).Kernel0SIMDWidth): \
+         brw_fs_simd_width_for_ksp(ksp_idx, (wm_state).Kernel1Enable,   \
+                                   (wm_state).Kernel1SIMDWidth))
 
 #else
 
