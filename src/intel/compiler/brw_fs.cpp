@@ -7643,7 +7643,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
                                "using SIMD8 when dual src blending.\n");
    }
 
-   if (key->coarse_pixel) {
+   if (key->coarse_pixel && devinfo->ver < 20) {
       if (prog_data->dual_src_blend) {
          v8->limit_dispatch_width(8, "SIMD16 coarse pixel shading cannot"
                                   " use SIMD8 messages.\n");
