@@ -4237,9 +4237,14 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
                     retype(s.per_primitive_reg(bld, base, comp + i), dest.type));
          }
       } else {
+         /* Gfx20+ packs the plane parameters of a single logical
+          * input in a vec3 format instead of the previously used vec4
+          * format.
+          */
+         const unsigned k = devinfo->ver >= 20 ? 0 : 3;
          for (unsigned int i = 0; i < num_components; i++) {
             bld.MOV(offset(dest, bld, i),
-                    retype(s.interp_reg(bld, base, comp + i, 3), dest.type));
+                    retype(s.interp_reg(bld, base, comp + i, k), dest.type));
          }
       }
       break;
@@ -4251,9 +4256,21 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
       const unsigned base = nir_intrinsic_base(instr);
       const unsigned comp = nir_intrinsic_component(instr);
       dest.type = BRW_REGISTER_TYPE_F;
-      bld.MOV(offset(dest, bld, 0), s.interp_reg(bld, base, comp, 3));
-      bld.MOV(offset(dest, bld, 1), s.interp_reg(bld, base, comp, 1));
-      bld.MOV(offset(dest, bld, 2), s.interp_reg(bld, base, comp, 0));
+
+      /* Gfx20+ packs the plane parameters of a single logical
+       * input in a vec3 format instead of the previously used vec4
+       * format.
+       */
+      if (devinfo->ver >= 20) {
+         bld.MOV(offset(dest, bld, 0), s.interp_reg(bld, base, comp, 0));
+         bld.MOV(offset(dest, bld, 1), s.interp_reg(bld, base, comp, 2));
+         bld.MOV(offset(dest, bld, 2), s.interp_reg(bld, base, comp, 1));
+      } else {
+         bld.MOV(offset(dest, bld, 0), s.interp_reg(bld, base, comp, 3));
+         bld.MOV(offset(dest, bld, 1), s.interp_reg(bld, base, comp, 1));
+         bld.MOV(offset(dest, bld, 2), s.interp_reg(bld, base, comp, 0));
+      }
+
       break;
    }
 

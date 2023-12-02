@@ -1742,10 +1742,10 @@ fs_visitor::assign_urb_setup()
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file == ATTR) {
             /* ATTR fs_reg::nr in the FS is in units of logical scalar
-             * inputs each of which consumes half of a GRF register on
-             * current platforms.  In single polygon mode this leads
-             * to the following layout of the vertex setup plane
-             * parameters in the ATTR register file:
+             * inputs each of which consumes 16B on Gfx4-Gfx12.  In
+             * single polygon mode this leads to the following layout
+             * of the vertex setup plane parameters in the ATTR
+             * register file:
              *
              *  fs_reg::nr   Input   Comp0  Comp1  Comp2  Comp3
              *      0       Attr0.x  a1-a0  a2-a0   N/A    a0
@@ -1782,27 +1782,49 @@ fs_visitor::assign_urb_setup()
              * The latter layout corresponds to a param_width equal to
              * dispatch_width, while the former (scalar parameter)
              * layout has a param_width of 1.
+             *
+             * Gfx20+ represent plane parameters in a format similar
+             * to the above, except the parameters are packed in 12B
+             * and ordered like "a0, a1-a0, a2-a0" instead of the
+             * above vec4 representation with a missing component.
              */
             const unsigned param_width = (max_polygons > 1 ? dispatch_width : 1);
-            assert(inst->src[i].offset / param_width < REG_SIZE / 2);
-            assert(max_polygons > 0);
 
             /* Size of a single scalar component of a plane parameter
              * in bytes.
              */
             const unsigned chan_sz = 4;
+            struct brw_reg reg;
+            assert(max_polygons > 0);
 
             /* Translate the offset within the param_width-wide
-             * representation described above into an offset into grf,
-             * which contains plane parameters for the first polygon
-             * handled by the thread.
+             * representation described above into an offset and a
+             * grf, which contains the plane parameters for the first
+             * polygon processed by the thread.
              */
-            const unsigned grf = urb_start + inst->src[i].nr / 2 * max_polygons;
-            const unsigned delta = (inst->src[i].nr % 2) * (REG_SIZE / 2) +
-               inst->src[i].offset / (param_width * chan_sz) * chan_sz +
-               inst->src[i].offset % chan_sz;
-            struct brw_reg reg =
-               byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type), delta);
+            if (devinfo->ver >= 20) {
+               /* Gfx20+ is able to pack 5 logical input components
+                * per 64B register.
+                */
+               const unsigned grf = urb_start + inst->src[i].nr / 5 * 2;
+               assert(inst->src[i].offset / param_width < 12);
+               const unsigned delta = inst->src[i].nr % 5 * 12 +
+                  inst->src[i].offset / (param_width * chan_sz) * chan_sz +
+                  inst->src[i].offset % chan_sz;
+               reg = byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type),
+                                 delta);
+            } else {
+               /* Earlier platforms pack 2 logical input components
+                * per 32B register.
+                */
+               const unsigned grf = urb_start + inst->src[i].nr / 2 * max_polygons;
+               assert(inst->src[i].offset / param_width < REG_SIZE / 2);
+               const unsigned delta = (inst->src[i].nr % 2) * (REG_SIZE / 2) +
+                  inst->src[i].offset / (param_width * chan_sz) * chan_sz +
+                  inst->src[i].offset % chan_sz;
+               reg = byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type),
+                                 delta);
+            }
 
             if (max_polygons > 1) {
                assert(devinfo->ver == 12);
