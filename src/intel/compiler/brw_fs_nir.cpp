@@ -545,7 +545,29 @@ optimize_frontfacing_ternary(nir_to_brw_state &ntb,
 
    fs_reg tmp = s.vgrf(glsl_int_type());
 
-   if (devinfo->ver >= 12 && s.max_polygons == 2) {
+   if (devinfo->ver >= 20) {
+      /* Gfx20+ has separate back-facing bits for each pair of
+       * subspans in order to support multiple polygons, so we need to
+       * use a <1;8,0> region in order to select the correct word for
+       * each channel.  Unfortunately they're no longer aligned to the
+       * sign bit of a 16-bit word, so a left shift is necessary.
+       */
+      fs_reg ff = ntb.bld.vgrf(BRW_REGISTER_TYPE_UW);
+
+      for (unsigned i = 0; i < DIV_ROUND_UP(s.dispatch_width, 16); i++) {
+         const fs_builder hbld = ntb.bld.group(16, i);
+         const struct brw_reg gi_uw = retype(xe2_vec1_grf(i, 9),
+                                             BRW_REGISTER_TYPE_UW);
+         hbld.SHL(offset(ff, hbld, i), stride(gi_uw, 1, 8, 0), brw_imm_ud(4));
+      }
+
+      if (value1 == -1.0f)
+         ff.negate = true;
+
+      ntb.bld.OR(subscript(tmp, BRW_REGISTER_TYPE_UW, 1), ff,
+                  brw_imm_uw(0x3f80));
+
+   } else if (devinfo->ver >= 12 && s.max_polygons == 2) {
       /* According to the BSpec "PS Thread Payload for Normal
        * Dispatch", the front/back facing interpolation bit is stored
        * as bit 15 of either the R1.1 or R1.6 poly info field, for the
@@ -3311,7 +3333,24 @@ fetch_render_target_array_index(const fs_builder &bld)
 {
    const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
 
-   if (bld.shader->devinfo->ver >= 12 && v->max_polygons == 2) {
+   if (bld.shader->devinfo->ver >= 20) {
+      /* Gfx20+ has separate Render Target Array indices for each pair
+       * of subspans in order to support multiple polygons, so we need
+       * to use a <1;8,0> region in order to select the correct word
+       * for each channel.
+       */
+      const fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+      for (unsigned i = 0; i < DIV_ROUND_UP(bld.dispatch_width(), 16); i++) {
+         const fs_builder hbld = bld.group(16, i);
+         const struct brw_reg reg = retype(brw_vec1_grf(2 * i + 1, 1),
+                                           BRW_REGISTER_TYPE_UW);
+         hbld.AND(offset(idx, hbld, i), stride(reg, 1, 8, 0),
+                  brw_imm_uw(0x7ff));
+      }
+
+      return idx;
+   } else if (bld.shader->devinfo->ver >= 12 && v->max_polygons == 2) {
       /* According to the BSpec "PS Thread Payload for Normal
        * Dispatch", the render target array index is stored as bits
        * 26:16 of either the R1.1 or R1.6 poly info dwords, for the
@@ -3596,7 +3635,24 @@ emit_frontfacing_interpolation(nir_to_brw_state &ntb)
 
    fs_reg ff = bld.vgrf(BRW_REGISTER_TYPE_D);
 
-   if (devinfo->ver >= 12 && s.max_polygons == 2) {
+   if (devinfo->ver >= 20) {
+      /* Gfx20+ has separate back-facing bits for each pair of
+       * subspans in order to support multiple polygons, so we need to
+       * use a <1;8,0> region in order to select the correct word for
+       * each channel.
+       */
+      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UW);
+
+      for (unsigned i = 0; i < DIV_ROUND_UP(s.dispatch_width, 16); i++) {
+         const fs_builder hbld = bld.group(16, i);
+         const struct brw_reg gi_uw = retype(xe2_vec1_grf(i, 9),
+                                             BRW_REGISTER_TYPE_UW);
+         hbld.AND(offset(tmp, hbld, i), gi_uw, brw_imm_uw(0x800));
+      }
+
+      bld.CMP(ff, tmp, brw_imm_uw(0), BRW_CONDITIONAL_Z);
+
+   } else if (devinfo->ver >= 12 && s.max_polygons == 2) {
       /* According to the BSpec "PS Thread Payload for Normal
        * Dispatch", the front/back facing interpolation bit is stored
        * as bit 15 of either the R1.1 or R1.6 poly info field, for the
