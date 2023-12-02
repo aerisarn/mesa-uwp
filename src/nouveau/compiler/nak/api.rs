@@ -401,7 +401,16 @@ pub extern "C" fn nak_compile_shader(
             let c_name = _mesa_shader_stage_to_string(info.stage as u32);
             CStr::from_ptr(c_name).to_str().expect("Invalid UTF-8")
         };
+        let instruction_count = if nak.sm >= 70 {
+            code.len() / 4
+        } else if nak.sm >= 50 {
+            (code.len() / 8) * 3
+        } else {
+            unreachable!()
+        };
+
         eprintln!("Stage: {}", stage_name);
+        eprintln!("Instruction count: {}", instruction_count);
         eprintln!("Num GPRs: {}", info.num_gprs);
         eprintln!("SLM size: {}", info.slm_size);
 
