@@ -1428,11 +1428,11 @@ static void amdgpu_inc_bo_num_active_ioctls(unsigned num_buffers,
       p_atomic_inc(&buffers[i].bo->num_active_ioctls);
 }
 
-static void amdgpu_add_fence_dependencies_bo_list(struct amdgpu_cs *acs,
-                                                  struct amdgpu_cs_context *cs,
-                                                  struct pipe_fence_handle *fence,
-                                                  unsigned num_buffers,
-                                                  struct amdgpu_cs_buffer *buffers)
+static void amdgpu_add_bo_fences_to_dependencies(struct amdgpu_cs *acs,
+                                                 struct amdgpu_cs_context *cs,
+                                                 struct pipe_fence_handle *fence,
+                                                 unsigned num_buffers,
+                                                 struct amdgpu_cs_buffer *buffers)
 {
    for (unsigned i = 0; i < num_buffers; i++) {
       struct amdgpu_cs_buffer *buffer = &buffers[i];
@@ -1441,17 +1441,6 @@ static void amdgpu_add_fence_dependencies_bo_list(struct amdgpu_cs *acs,
       amdgpu_add_bo_fence_dependencies(acs, cs, buffer);
       amdgpu_add_fences(bo, 1, &fence);
    }
-}
-
-/* Since the kernel driver doesn't synchronize execution between different
- * rings automatically, we have to add fence dependencies manually.
- */
-static void amdgpu_add_fence_dependencies_bo_lists(struct amdgpu_cs *acs,
-                                                   struct amdgpu_cs_context *cs)
-{
-   amdgpu_add_fence_dependencies_bo_list(acs, cs, cs->fence, cs->num_real_buffers, cs->real_buffers);
-   amdgpu_add_fence_dependencies_bo_list(acs, cs, cs->fence, cs->num_slab_buffers, cs->slab_buffers);
-   amdgpu_add_fence_dependencies_bo_list(acs, cs, cs->fence, cs->num_sparse_buffers, cs->sparse_buffers);
 }
 
 static void amdgpu_cs_add_syncobj_signal(struct radeon_cmdbuf *rws,
@@ -1509,7 +1498,12 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    unsigned initial_num_real_buffers = cs->num_real_buffers;
 
    simple_mtx_lock(&ws->bo_fence_lock);
-   amdgpu_add_fence_dependencies_bo_lists(acs, cs);
+   /* Since the kernel driver doesn't synchronize execution between different
+    * rings automatically, we have to add fence dependencies manually.
+    */
+   amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence, cs->num_real_buffers, cs->real_buffers);
+   amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence, cs->num_slab_buffers, cs->slab_buffers);
+   amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence, cs->num_sparse_buffers, cs->sparse_buffers);
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    struct drm_amdgpu_bo_list_entry *bo_list = NULL;
