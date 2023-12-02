@@ -1806,7 +1806,7 @@ fs_visitor::assign_urb_setup()
                /* Gfx20+ is able to pack 5 logical input components
                 * per 64B register.
                 */
-               const unsigned grf = urb_start + inst->src[i].nr / 5 * 2;
+               const unsigned grf = urb_start + inst->src[i].nr / 5 * 2 * max_polygons;
                assert(inst->src[i].offset / param_width < 12);
                const unsigned delta = inst->src[i].nr % 5 * 12 +
                   inst->src[i].offset / (param_width * chan_sz) * chan_sz +
@@ -1827,14 +1827,17 @@ fs_visitor::assign_urb_setup()
             }
 
             if (max_polygons > 1) {
-               assert(devinfo->ver == 12);
-               assert(max_polygons == 2);
-               assert(dispatch_width == 16);
+               assert(devinfo->ver >= 12);
                /* Misaligned channel strides that would lead to
                 * cross-channel access in the representation above are
                 * disallowed.
                 */
                assert(inst->src[i].stride * type_sz(inst->src[i].type) == chan_sz);
+
+               /* Number of channels processing the same polygon. */
+               const unsigned poly_width = dispatch_width / max_polygons;
+               assert(dispatch_width % max_polygons == 0);
+
                /* Accessing a subset of channels of a parameter vector
                 * starting from "chan" is necessary to handle
                 * SIMD-lowered instructions though.
@@ -1842,24 +1845,26 @@ fs_visitor::assign_urb_setup()
                const unsigned chan = inst->src[i].offset %
                   (param_width * chan_sz) / chan_sz;
                assert(chan < dispatch_width);
+               assert(chan % poly_width == 0);
+               const unsigned reg_size = reg_unit(devinfo) * REG_SIZE;
+               reg = byte_offset(reg, chan / poly_width * reg_size);
 
-               if (inst->exec_size > 8) {
+               if (inst->exec_size > poly_width) {
                   /* Accessing the parameters for multiple polygons.
                    * Corresponding parameters for different polygons
-                   * are stored 32B apart on the thread payload, so
+                   * are stored a GRF apart on the thread payload, so
                    * use that as vertical stride.
                    */
-                  const unsigned vstride = REG_SIZE / type_sz(inst->src[i].type);
+                  const unsigned vstride = reg_size / type_sz(inst->src[i].type);
                   assert(vstride <= 32);
-                  assert(chan == 0);
-                  assert(inst->exec_size == dispatch_width);
-                  reg = stride(reg, vstride, 8, 0);
+                  assert(chan % poly_width == 0);
+                  reg = stride(reg, vstride, poly_width, 0);
                } else {
                   /* Accessing one parameter for a single polygon --
                    * Translate to a scalar region.
                    */
-                  assert(chan % 8 + inst->exec_size <= 8);
-                  reg = stride(offset(reg, chan / 8), 0, 1, 0);
+                  assert(chan % poly_width + inst->exec_size <= poly_width);
+                  reg = stride(reg, 0, 1, 0);
                }
 
             } else {
