@@ -619,28 +619,61 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          P_MTHD(p, NV9097, SET_COLOR_TARGET_A(i));
          P_NV9097_SET_COLOR_TARGET_A(p, i, addr >> 32);
          P_NV9097_SET_COLOR_TARGET_B(p, i, addr);
-         assert(level->tiling.is_tiled);
-         P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, level_extent_sa.w);
-         P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, level_extent_sa.h);
-         const enum pipe_format p_format =
-            vk_format_to_pipe_format(iview->vk.format);
-         const uint8_t ct_format = nil_format_to_color_target(p_format);
-         P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, ct_format);
-         P_NV9097_SET_COLOR_TARGET_MEMORY(p, i, {
-            .block_width   = BLOCK_WIDTH_ONE_GOB,
-            .block_height  = level->tiling.y_log2,
-            .block_depth   = level->tiling.z_log2,
-            .layout        = LAYOUT_BLOCKLINEAR,
-            .third_dimension_control =
-               (image->planes[ip].nil.dim == NIL_IMAGE_DIM_3D) ?
-               THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_DEPTH_SIZE :
-               THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
+         
+         if (level->tiling.is_tiled) {
+            P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, level_extent_sa.w);
+            P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, level_extent_sa.h);
+            const enum pipe_format p_format =
+               vk_format_to_pipe_format(iview->vk.format);
+            const uint8_t ct_format = nil_format_to_color_target(p_format);
+            P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, ct_format);
+
+            P_NV9097_SET_COLOR_TARGET_MEMORY(p, i, {
+               .block_width   = BLOCK_WIDTH_ONE_GOB,
+               .block_height  = level->tiling.y_log2,
+               .block_depth   = level->tiling.z_log2,
+               .layout        = LAYOUT_BLOCKLINEAR,
+               .third_dimension_control =
+                  (image->planes[ip].nil.dim == NIL_IMAGE_DIM_3D) ?
+                  THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_DEPTH_SIZE :
+                  THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
          });
-         P_NV9097_SET_COLOR_TARGET_THIRD_DIMENSION(p, i,
-            iview->vk.base_array_layer + layer_count);
-         P_NV9097_SET_COLOR_TARGET_ARRAY_PITCH(p, i,
-            image->planes[ip].nil.array_stride_B >> 2);
-         P_NV9097_SET_COLOR_TARGET_LAYER(p, i, iview->vk.base_array_layer);
+
+            P_NV9097_SET_COLOR_TARGET_THIRD_DIMENSION(p, i,
+               iview->vk.base_array_layer + layer_count);
+            P_NV9097_SET_COLOR_TARGET_ARRAY_PITCH(p, i,
+               image->planes[ip].nil.array_stride_B >> 2);
+            P_NV9097_SET_COLOR_TARGET_LAYER(p, i, iview->vk.base_array_layer);
+         } else {
+            /* NVIDIA can only render to 2D linear images */
+            assert(image->planes[ip].nil.dim == NIL_IMAGE_DIM_2D);
+            /* NVIDIA can only render to non-multisampled images */
+            assert(sample_layout == NIL_SAMPLE_LAYOUT_1X1);
+            /* NVIDIA doesn't support linear array images */
+            assert(iview->vk.base_array_layer == 0 && layer_count == 1);
+
+            uint32_t pitch = level->row_stride_B;
+            const enum pipe_format p_format =
+               vk_format_to_pipe_format(iview->vk.format);
+            /* When memory layout is set to LAYOUT_PITCH, the WIDTH field 
+             * takes row pitch 
+             */
+            P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, pitch);
+            P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, level_extent_sa.h);
+            
+            const uint8_t ct_format = nil_format_to_color_target(p_format);
+            P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, ct_format);
+
+            P_NV9097_SET_COLOR_TARGET_MEMORY(p, i, {
+               .layout = LAYOUT_PITCH,
+               .third_dimension_control =
+                  THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
+            });
+
+            P_NV9097_SET_COLOR_TARGET_THIRD_DIMENSION(p, i, 1);
+            P_NV9097_SET_COLOR_TARGET_ARRAY_PITCH(p, i, 0);
+            P_NV9097_SET_COLOR_TARGET_LAYER(p, i, 0);
+         }
       } else {
          P_MTHD(p, NV9097, SET_COLOR_TARGET_A(i));
          P_NV9097_SET_COLOR_TARGET_A(p, i, 0);
