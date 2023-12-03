@@ -77,10 +77,10 @@ vk_common_CmdWriteTimestamp(
    VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
    struct vk_device *device = cmd_buffer->base.device;
 
-   device->dispatch_table.CmdWriteTimestamp2KHR(commandBuffer,
-                                                (VkPipelineStageFlags2) pipelineStage,
-                                                queryPool,
-                                                query);
+   device->dispatch_table.CmdWriteTimestamp2(commandBuffer,
+                                             (VkPipelineStageFlags2) pipelineStage,
+                                             queryPool,
+                                             query);
 }
 
 static VkMemoryBarrier2
@@ -188,7 +188,7 @@ vk_common_CmdPipelineBarrier(
       .pImageMemoryBarriers = image_barriers,
    };
 
-   device->dispatch_table.CmdPipelineBarrier2KHR(commandBuffer, &dep_info);
+   device->dispatch_table.CmdPipelineBarrier2(commandBuffer, &dep_info);
 
    STACK_ARRAY_FINISH(memory_barriers);
    STACK_ARRAY_FINISH(buffer_barriers);
@@ -215,7 +215,7 @@ vk_common_CmdSetEvent(
       .pMemoryBarriers = &mem_barrier,
    };
 
-   device->dispatch_table.CmdSetEvent2KHR(commandBuffer, event, &dep_info);
+   device->dispatch_table.CmdSetEvent2(commandBuffer, event, &dep_info);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -227,9 +227,9 @@ vk_common_CmdResetEvent(
    VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
    struct vk_device *device = cmd_buffer->base.device;
 
-   device->dispatch_table.CmdResetEvent2KHR(commandBuffer,
-                                            event,
-                                            (VkPipelineStageFlags2) stageMask);
+   device->dispatch_table.CmdResetEvent2(commandBuffer,
+                                         event,
+                                         (VkPipelineStageFlags2) stageMask);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -269,7 +269,7 @@ vk_common_CmdWaitEvents(
          .pMemoryBarriers = &stage_barrier,
       };
    }
-   device->dispatch_table.CmdWaitEvents2KHR(commandBuffer, eventCount, pEvents, deps);
+   device->dispatch_table.CmdWaitEvents2(commandBuffer, eventCount, pEvents, deps);
 
    STACK_ARRAY_FINISH(deps);
 
@@ -454,10 +454,10 @@ vk_common_QueueSubmit(
       n_signal_semaphores += pSubmits[s].signalSemaphoreCount;
    }
 
-   VkResult result = device->dispatch_table.QueueSubmit2KHR(_queue,
-                                                            submitCount,
-                                                            submit_info_2,
-                                                            fence);
+   VkResult result = device->dispatch_table.QueueSubmit2(_queue,
+                                                         submitCount,
+                                                         submit_info_2,
+                                                         fence);
 
    STACK_ARRAY_FINISH(wait_semaphores);
    STACK_ARRAY_FINISH(command_buffers);

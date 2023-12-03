@@ -1408,10 +1408,10 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
        *
        *    "If the pipeline is being created with pre-rasterization shader
        *    state the stage member of one element of pStages must be either
-       *    VK_SHADER_STAGE_VERTEX_BIT or VK_SHADER_STAGE_MESH_BIT_NV"
+       *    VK_SHADER_STAGE_VERTEX_BIT or VK_SHADER_STAGE_MESH_BIT_EXT"
        */
       assert(state->shader_stages & (VK_SHADER_STAGE_VERTEX_BIT |
-                                     VK_SHADER_STAGE_MESH_BIT_NV));
+                                     VK_SHADER_STAGE_MESH_BIT_EXT));
 
       if (state->shader_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                   VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
@@ -2306,8 +2306,8 @@ vk_common_CmdSetDiscardRectangleEXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-vk_common_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
-                                           VkBool32 rasterizerDiscardEnable)
+vk_common_CmdSetRasterizerDiscardEnable(VkCommandBuffer commandBuffer,
+                                        VkBool32 rasterizerDiscardEnable)
 {
    VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
    struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
