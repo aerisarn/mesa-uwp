@@ -672,7 +672,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
    if (idx >= 0)
       return idx;
 
-   real_idx = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo->u.slab.real);
+   real_idx = amdgpu_lookup_or_add_real_buffer(rcs, cs, &get_slab_bo(bo)->real->b);
    if (real_idx < 0)
       return -1;
 

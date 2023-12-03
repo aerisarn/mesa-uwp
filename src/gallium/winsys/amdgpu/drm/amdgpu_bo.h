@@ -46,15 +46,7 @@ struct amdgpu_winsys_bo {
    struct pb_buffer base;
    enum amdgpu_bo_type type;
 
-   union {
-      struct {
-         struct pb_slab_entry entry;
-         struct amdgpu_winsys_bo *real;
-      } slab;
-   } u;
-
    uint64_t va;
-
    uint32_t unique_id;
    simple_mtx_t lock;
 
@@ -106,11 +98,17 @@ struct amdgpu_bo_sparse {
    struct amdgpu_sparse_commitment *commitments;
 };
 
+struct amdgpu_bo_slab {
+   struct amdgpu_winsys_bo b;
+   struct amdgpu_bo_real *real;
+   struct pb_slab_entry entry;
+};
+
 struct amdgpu_slab {
    struct pb_slab base;
    unsigned entry_size;
    struct amdgpu_winsys_bo *buffer;
-   struct amdgpu_winsys_bo *entries;
+   struct amdgpu_bo_slab *entries;
 };
 
 static inline bool is_real_bo(struct amdgpu_winsys_bo *bo)
@@ -134,6 +132,12 @@ static struct amdgpu_bo_sparse *get_sparse_bo(struct amdgpu_winsys_bo *bo)
 {
    assert(bo->type == AMDGPU_BO_SPARSE && bo->base.usage & RADEON_FLAG_SPARSE);
    return (struct amdgpu_bo_sparse*)bo;
+}
+
+static struct amdgpu_bo_slab *get_slab_bo(struct amdgpu_winsys_bo *bo)
+{
+   assert(bo->type == AMDGPU_BO_SLAB);
+   return (struct amdgpu_bo_slab*)bo;
 }
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);

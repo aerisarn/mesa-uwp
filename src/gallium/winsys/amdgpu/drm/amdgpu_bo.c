@@ -361,7 +361,7 @@ void *amdgpu_bo_map(struct radeon_winsys *rws,
    if (is_real_bo(bo)) {
       real = get_real_bo(bo);
    } else {
-      real = get_real_bo(bo->u.slab.real);
+      real = get_slab_bo(bo)->real;
       offset = bo->va - real->b.va;
    }
 
@@ -401,7 +401,7 @@ void amdgpu_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *buf)
 
    assert(bo->type != AMDGPU_BO_SPARSE);
 
-   real = is_real_bo(bo) ? get_real_bo(bo) : get_real_bo(bo->u.slab.real);
+   real = is_real_bo(bo) ? get_real_bo(bo) : get_slab_bo(bo)->real;
 
    if (real->is_user_ptr)
       return;
@@ -617,9 +617,9 @@ bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf)
 
 bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
 {
-   struct amdgpu_winsys_bo *bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
+   struct amdgpu_bo_slab *bo = container_of(entry, struct amdgpu_bo_slab, entry);
 
-   return amdgpu_bo_can_reclaim(priv, &bo->base);
+   return amdgpu_bo_can_reclaim(priv, &bo->b.base);
 }
 
 static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size)
@@ -636,31 +636,29 @@ static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size)
    return NULL;
 }
 
-static unsigned get_slab_wasted_size(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo)
+static unsigned get_slab_wasted_size(struct amdgpu_winsys *ws, struct amdgpu_bo_slab *bo)
 {
-   assert(bo->base.size <= bo->u.slab.entry.entry_size);
-   assert(bo->base.size < (1 << bo->base.alignment_log2) ||
-          bo->base.size < 1 << ws->bo_slabs[0].min_order ||
-          bo->base.size > bo->u.slab.entry.entry_size / 2);
-   return bo->u.slab.entry.entry_size - bo->base.size;
+   assert(bo->b.base.size <= bo->entry.entry_size);
+   assert(bo->b.base.size < (1 << bo->b.base.alignment_log2) ||
+          bo->b.base.size < 1 << ws->bo_slabs[0].min_order ||
+          bo->b.base.size > bo->entry.entry_size / 2);
+   return bo->entry.entry_size - bo->b.base.size;
 }
 
 static void amdgpu_bo_slab_destroy(struct radeon_winsys *rws, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys *ws = amdgpu_winsys(rws);
-   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
+   struct amdgpu_bo_slab *bo = get_slab_bo(amdgpu_winsys_bo(_buf));
    struct pb_slabs *slabs;
 
-   assert(bo->type == AMDGPU_BO_SLAB);
+   slabs = get_slabs(ws, bo->b.base.size);
 
-   slabs = get_slabs(ws, bo->base.size);
-
-   if (bo->base.placement & RADEON_DOMAIN_VRAM)
+   if (bo->b.base.placement & RADEON_DOMAIN_VRAM)
       ws->slab_wasted_vram -= get_slab_wasted_size(ws, bo);
    else
       ws->slab_wasted_gtt -= get_slab_wasted_size(ws, bo);
 
-   pb_slab_free(slabs, &bo->u.slab.entry);
+   pb_slab_free(slabs, &bo->entry);
 }
 
 static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
@@ -756,30 +754,29 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    base_id = __sync_fetch_and_add(&ws->next_bo_unique_id, slab->base.num_entries);
 
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
-      struct amdgpu_winsys_bo *bo = &slab->entries[i];
+      struct amdgpu_bo_slab *bo = &slab->entries[i];
 
-      simple_mtx_init(&bo->lock, mtx_plain);
-      bo->base.alignment_log2 = util_logbase2(get_slab_entry_alignment(ws, entry_size));
-      bo->base.size = entry_size;
-      bo->base.vtbl = &amdgpu_winsys_bo_slab_vtbl;
-      bo->type = AMDGPU_BO_SLAB;
-      bo->va = slab->buffer->va + i * entry_size;
-      bo->base.placement = domains;
-      bo->unique_id = base_id + i;
-      bo->u.slab.entry.slab = &slab->base;
-      bo->u.slab.entry.group_index = group_index;
-      bo->u.slab.entry.entry_size = entry_size;
+      bo->b.base.placement = domains;
+      bo->b.base.alignment_log2 = util_logbase2(get_slab_entry_alignment(ws, entry_size));
+      bo->b.base.size = entry_size;
+      bo->b.base.vtbl = &amdgpu_winsys_bo_slab_vtbl;
+      bo->b.type = AMDGPU_BO_SLAB;
+      bo->b.va = slab->buffer->va + i * entry_size;
+      bo->b.unique_id = base_id + i;
+      simple_mtx_init(&bo->b.lock, mtx_plain);
 
       if (is_real_bo(slab->buffer)) {
          /* The slab is not suballocated. */
-         bo->u.slab.real = slab->buffer;
+         bo->real = get_real_bo(slab->buffer);
       } else {
          /* The slab is allocated out of a bigger slab. */
-         bo->u.slab.real = slab->buffer->u.slab.real;
-         assert(is_real_bo(bo->u.slab.real));
+         bo->real = get_slab_bo(slab->buffer)->real;
       }
 
-      list_addtail(&bo->u.slab.entry.head, &slab->base.free);
+      bo->entry.slab = &slab->base;
+      bo->entry.group_index = group_index;
+      bo->entry.entry_size = entry_size;
+      list_addtail(&bo->entry.head, &slab->base.free);
    }
 
    /* Wasted alignment due to slabs with 3/4 allocations being aligned to a power of two. */
@@ -810,8 +807,8 @@ void amdgpu_bo_slab_free(struct amdgpu_winsys *ws, struct pb_slab *pslab)
       ws->slab_wasted_gtt -= slab_size - slab->base.num_entries * slab->entry_size;
 
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
-      amdgpu_bo_remove_fences(&slab->entries[i]);
-      simple_mtx_destroy(&slab->entries[i].lock);
+      amdgpu_bo_remove_fences(&slab->entries[i].b);
+      simple_mtx_destroy(&slab->entries[i].b.lock);
    }
 
    FREE(slab->entries);
@@ -1426,17 +1423,17 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       if (!entry)
          return NULL;
 
-      bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
-      pipe_reference_init(&bo->base.reference, 1);
-      bo->base.size = size;
-      assert(alignment <= 1 << bo->base.alignment_log2);
+      struct amdgpu_bo_slab *slab_bo = container_of(entry, struct amdgpu_bo_slab, entry);
+      pipe_reference_init(&slab_bo->b.base.reference, 1);
+      slab_bo->b.base.size = size;
+      assert(alignment <= 1 << slab_bo->b.base.alignment_log2);
 
       if (domain & RADEON_DOMAIN_VRAM)
-         ws->slab_wasted_vram += get_slab_wasted_size(ws, bo);
+         ws->slab_wasted_vram += get_slab_wasted_size(ws, slab_bo);
       else
-         ws->slab_wasted_gtt += get_slab_wasted_size(ws, bo);
+         ws->slab_wasted_gtt += get_slab_wasted_size(ws, slab_bo);
 
-      return &bo->base;
+      return &slab_bo->b.base;
    }
 no_slab:
 
