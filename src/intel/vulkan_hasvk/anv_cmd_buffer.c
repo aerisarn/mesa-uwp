@@ -339,7 +339,7 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
     *
     *    "Each element of pDescriptorSets must not have been allocated from a
     *     VkDescriptorPool with the
-    *     VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE flag set"
+    *     VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT flag set"
     */
    assert(!set->pool || !set->pool->host_only);
 
