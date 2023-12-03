@@ -2278,7 +2278,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySampler(
    vk_sampler_destroy(&device->vk, pAllocator, &sampler->vk);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePrivateDataSlotEXT(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePrivateDataSlot(
    VkDevice                                    _device,
    const VkPrivateDataSlotCreateInfo*          pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -2289,7 +2289,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePrivateDataSlotEXT(
                                       pPrivateDataSlot);
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_DestroyPrivateDataSlotEXT(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyPrivateDataSlot(
    VkDevice                                    _device,
    VkPrivateDataSlot                           privateDataSlot,
    const VkAllocationCallbacks*                pAllocator)
@@ -2298,7 +2298,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyPrivateDataSlotEXT(
    vk_private_data_slot_destroy(&device->vk, privateDataSlot, pAllocator);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL lvp_SetPrivateDataEXT(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_SetPrivateData(
    VkDevice                                    _device,
    VkObjectType                                objectType,
    uint64_t                                    objectHandle,
@@ -2311,7 +2311,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_SetPrivateDataEXT(
                                           data);
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_GetPrivateDataEXT(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPrivateData(
    VkDevice                                    _device,
    VkObjectType                                objectType,
    uint64_t                                    objectHandle,
@@ -2502,7 +2502,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetCalibratedTimestampsEXT(
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceGroupPeerMemoryFeaturesKHR(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceGroupPeerMemoryFeatures(
     VkDevice device,
     uint32_t heapIndex,
     uint32_t localDeviceIndex,
