@@ -35,8 +35,17 @@ struct amdgpu_sparse_commitment {
    uint32_t page;
 };
 
+enum amdgpu_bo_type {
+   AMDGPU_BO_REAL,
+   AMDGPU_BO_REAL_REUSABLE,
+   AMDGPU_BO_SLAB,
+   AMDGPU_BO_SPARSE,
+};
+
 struct amdgpu_winsys_bo {
    struct pb_buffer base;
+   enum amdgpu_bo_type type;
+
    union {
       struct {
          amdgpu_va_handle va_handle;
@@ -48,7 +57,6 @@ struct amdgpu_winsys_bo {
          int map_count;
 
          bool is_user_ptr;
-         bool use_reusable_pool;
 
          /* Whether buffer_get_handle or buffer_from_handle has been called,
           * it can only transition from false to true. Protected by lock.
@@ -86,8 +94,11 @@ struct amdgpu_winsys_bo {
    uint16_t num_fences;
    uint16_t max_fences;
    struct pipe_fence_handle **fences;
+};
 
-   struct pb_cache_entry cache_entry[];
+struct amdgpu_bo_real_reusable {
+   struct amdgpu_winsys_bo b;
+   struct pb_cache_entry cache_entry;
 };
 
 struct amdgpu_slab {
