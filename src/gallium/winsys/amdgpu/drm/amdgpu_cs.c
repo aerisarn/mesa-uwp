@@ -638,8 +638,7 @@ amdgpu_do_add_real_buffer(struct amdgpu_cs_context *cs,
 }
 
 static int
-amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs_context *cs,
-                                 struct amdgpu_winsys_bo *bo)
+amdgpu_lookup_or_add_real_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
 {
    unsigned hash;
    int idx = amdgpu_lookup_buffer(cs, bo, cs->real_buffers, cs->num_real_buffers);
@@ -651,17 +650,10 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs_con
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
    cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
-
-   if (bo->base.placement & RADEON_DOMAIN_VRAM)
-      rcs->used_vram_kb += bo->base.size / 1024;
-   else if (bo->base.placement & RADEON_DOMAIN_GTT)
-      rcs->used_gart_kb += bo->base.size / 1024;
-
    return idx;
 }
 
-static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
-                                            struct amdgpu_cs_context *cs,
+static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_cs_context *cs,
                                             struct amdgpu_winsys_bo *bo)
 {
    struct amdgpu_cs_buffer *buffer;
@@ -672,7 +664,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
    if (idx >= 0)
       return idx;
 
-   real_idx = amdgpu_lookup_or_add_real_buffer(rcs, cs, &get_slab_bo(bo)->real->b);
+   real_idx = amdgpu_lookup_or_add_real_buffer(cs, &get_slab_bo(bo)->real->b);
    if (real_idx < 0)
       return -1;
 
@@ -708,8 +700,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
    return idx;
 }
 
-static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
-                                              struct amdgpu_cs_context *cs,
+static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_cs_context *cs,
                                               struct amdgpu_winsys_bo *bo)
 {
    struct amdgpu_cs_buffer *buffer;
@@ -746,21 +737,6 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
    cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
-
-   /* We delay adding the backing buffers until we really have to. However,
-    * we cannot delay accounting for memory use.
-    */
-   simple_mtx_lock(&get_sparse_bo(bo)->lock);
-
-   list_for_each_entry(struct amdgpu_sparse_backing, backing, &get_sparse_bo(bo)->backing, list) {
-      if (bo->base.placement & RADEON_DOMAIN_VRAM)
-         rcs->used_vram_kb += backing->bo->b.base.size / 1024;
-      else if (bo->base.placement & RADEON_DOMAIN_GTT)
-         rcs->used_gart_kb += backing->bo->b.base.size / 1024;
-   }
-
-   simple_mtx_unlock(&get_sparse_bo(bo)->lock);
-
    return idx;
 }
 
@@ -785,20 +761,20 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
       return 0;
 
    if (bo->type == AMDGPU_BO_SLAB) {
-      int index = amdgpu_lookup_or_add_slab_buffer(rcs, cs, bo);
+      int index = amdgpu_lookup_or_add_slab_buffer(cs, bo);
       if (index < 0)
          return 0;
 
       buffer = &cs->slab_buffers[index];
       cs->real_buffers[buffer->slab_real_idx].usage |= usage & ~RADEON_USAGE_SYNCHRONIZED;
    } else if (is_real_bo(bo)) {
-      int index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
+      int index = amdgpu_lookup_or_add_real_buffer(cs, bo);
       if (index < 0)
          return 0;
 
       buffer = &cs->real_buffers[index];
    } else {
-      int index = amdgpu_lookup_or_add_sparse_buffer(rcs, cs, bo);
+      int index = amdgpu_lookup_or_add_sparse_buffer(cs, bo);
       if (index < 0)
          return 0;
 
@@ -1865,9 +1841,6 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       amdgpu_cs_add_buffer(rcs, cs->preamble_ib_bo,
                            RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
    }
-
-   rcs->used_gart_kb = 0;
-   rcs->used_vram_kb = 0;
 
    if (cs->ip_type == AMD_IP_GFX)
       ws->num_gfx_IBs++;
