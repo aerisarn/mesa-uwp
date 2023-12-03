@@ -741,7 +741,7 @@ radv_sqtt_wsi_submit(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo2 *
 
       radv_describe_queue_present(queue, cpu_timestamp, gpu_timestamp_ptr);
 
-      result = queue->device->layer_dispatch.rgp.QueueSubmit2KHR(_queue, 1, &sqtt_submit, _fence);
+      result = queue->device->layer_dispatch.rgp.QueueSubmit2(_queue, 1, &sqtt_submit, _fence);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -756,7 +756,7 @@ fail:
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-sqtt_QueueSubmit2KHR(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo2 *pSubmits, VkFence _fence)
+sqtt_QueueSubmit2(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo2 *pSubmits, VkFence _fence)
 {
    RADV_FROM_HANDLE(radv_queue, queue, _queue);
    const bool is_gfx_or_ace = queue->state.qf == RADV_QUEUE_GENERAL || queue->state.qf == RADV_QUEUE_COMPUTE;
@@ -766,7 +766,7 @@ sqtt_QueueSubmit2KHR(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo2 *
 
    /* Only consider queue events on graphics/compute when enabled. */
    if (!device->sqtt_enabled || !radv_sqtt_queue_events_enabled() || !is_gfx_or_ace)
-      return queue->device->layer_dispatch.rgp.QueueSubmit2KHR(_queue, submitCount, pSubmits, _fence);
+      return queue->device->layer_dispatch.rgp.QueueSubmit2(_queue, submitCount, pSubmits, _fence);
 
    for (uint32_t i = 0; i < submitCount; i++) {
       const VkSubmitInfo2 *pSubmit = &pSubmits[i];
@@ -844,7 +844,7 @@ sqtt_QueueSubmit2KHR(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo2 *
       sqtt_submit.commandBufferInfoCount = new_cmdbuf_count;
       sqtt_submit.pCommandBufferInfos = new_cmdbufs;
 
-      result = queue->device->layer_dispatch.rgp.QueueSubmit2KHR(_queue, 1, &sqtt_submit, _fence);
+      result = queue->device->layer_dispatch.rgp.QueueSubmit2(_queue, 1, &sqtt_submit, _fence);
       if (result != VK_SUCCESS)
          goto fail;
 

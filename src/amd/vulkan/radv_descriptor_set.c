@@ -90,7 +90,7 @@ radv_descriptor_alignment(VkDescriptorType type)
 }
 
 static bool
-radv_mutable_descriptor_type_size_alignment(const VkMutableDescriptorTypeListVALVE *list, uint64_t *out_size,
+radv_mutable_descriptor_type_size_alignment(const VkMutableDescriptorTypeListEXT *list, uint64_t *out_size,
                                             uint64_t *out_align)
 {
    uint32_t max_size = 0;
@@ -910,7 +910,7 @@ radv_create_descriptor_pool(struct radv_device *device, const VkDescriptorPoolCr
    }
 
    if (bo_size) {
-      if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE)) {
+      if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT)) {
          enum radeon_bo_flag flags = RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY | RADEON_FLAG_32BIT;
 
          if (device->instance->zero_vram)
