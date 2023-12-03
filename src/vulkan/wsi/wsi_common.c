@@ -171,7 +171,7 @@ wsi_device_init(struct wsi_device *wsi,
    if (!wsi->sw)
       WSI_GET_CB(GetMemoryFdKHR);
    WSI_GET_CB(GetPhysicalDeviceFormatProperties);
-   WSI_GET_CB(GetPhysicalDeviceFormatProperties2KHR);
+   WSI_GET_CB(GetPhysicalDeviceFormatProperties2);
    WSI_GET_CB(GetPhysicalDeviceImageFormatProperties2);
    WSI_GET_CB(GetSemaphoreFdKHR);
    WSI_GET_CB(ResetFences);
@@ -180,7 +180,7 @@ wsi_device_init(struct wsi_device *wsi,
    WSI_GET_CB(MapMemory);
    WSI_GET_CB(UnmapMemory);
    if (wsi->khr_present_wait)
-      WSI_GET_CB(WaitSemaphoresKHR);
+      WSI_GET_CB(WaitSemaphores);
 #undef WSI_GET_CB
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
@@ -1612,7 +1612,7 @@ wsi_swapchain_wait_for_present_semaphore(const struct wsi_swapchain *chain,
       .pValues = &present_id,
    };
 
-   return chain->wsi->WaitSemaphoresKHR(chain->device, &wait_info, timeout);
+   return chain->wsi->WaitSemaphores(chain->device, &wait_info, timeout);
 }
 
 uint32_t
