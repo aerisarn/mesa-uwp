@@ -118,7 +118,7 @@ nvk_GetMemoryFdPropertiesKHR(VkDevice device,
    struct nouveau_ws_bo *bo;
 
    switch (handleType) {
-   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       bo = nouveau_ws_bo_from_dma_buf(dev->ws_dev, fd);
       if (bo == NULL)
@@ -368,7 +368,7 @@ nvk_GetMemoryFdKHR(VkDevice device,
    VK_FROM_HANDLE(nvk_device_memory, memory, pGetFdInfo->memory);
 
    switch (pGetFdInfo->handleType) {
-   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       if (nouveau_ws_bo_dma_buf(memory->bo, pFD))
          return vk_error(dev, VK_ERROR_TOO_MANY_OBJECTS);

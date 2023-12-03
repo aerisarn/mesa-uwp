@@ -140,16 +140,16 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
    return features;
 }
 
-static VkFormatFeatureFlags2KHR
+static VkFormatFeatureFlags2
 vk_image_usage_to_format_features(VkImageUsageFlagBits usage_flag)
 {
    assert(util_bitcount(usage_flag) == 1);
    switch (usage_flag) {
    case VK_IMAGE_USAGE_TRANSFER_SRC_BIT:
-      return VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT_KHR |
+      return VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
              VK_FORMAT_FEATURE_BLIT_SRC_BIT;
    case VK_IMAGE_USAGE_TRANSFER_DST_BIT:
-      return VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT_KHR |
+      return VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
              VK_FORMAT_FEATURE_BLIT_DST_BIT;
    case VK_IMAGE_USAGE_SAMPLED_BIT:
       return VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
@@ -282,7 +282,7 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
       view_usage = 0;
 
    u_foreach_bit(b, view_usage) {
-      VkFormatFeatureFlags2KHR usage_features =
+      VkFormatFeatureFlags2 usage_features =
          vk_image_usage_to_format_features(1 << b);
       if (usage_features && !(features & usage_features))
          return VK_ERROR_FORMAT_NOT_SUPPORTED;
@@ -724,7 +724,7 @@ nvk_GetImageMemoryRequirements2(VkDevice device,
 
 VKAPI_ATTR void VKAPI_CALL 
 nvk_GetDeviceImageMemoryRequirements(VkDevice device,
-                                     const VkDeviceImageMemoryRequirementsKHR *pInfo,
+                                     const VkDeviceImageMemoryRequirements *pInfo,
                                      VkMemoryRequirements2 *pMemoryRequirements)
 {
    VK_FROM_HANDLE(nvk_device, dev, device);
@@ -755,7 +755,7 @@ nvk_GetImageSparseMemoryRequirements2(VkDevice device,
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetDeviceImageSparseMemoryRequirements(VkDevice device,
-                                           const VkDeviceImageMemoryRequirementsKHR* pInfo,
+                                           const VkDeviceImageMemoryRequirements* pInfo,
                                            uint32_t *pSparseMemoryRequirementCount,
                                            VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
 {

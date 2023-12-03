@@ -477,7 +477,7 @@ nvk_descriptor_set_create(struct nvk_device *dev,
 
    if (layout->binding_count > 0 &&
        (layout->binding[layout->binding_count - 1].flags &
-        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
+        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
       uint32_t stride = layout->binding[layout->binding_count-1].stride;
       set->size += stride * variable_count;
    }
@@ -509,7 +509,7 @@ nvk_descriptor_set_create(struct nvk_device *dev,
 
       uint32_t array_size = layout->binding[b].array_size;
       if (layout->binding[b].flags &
-          VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)
+          VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)
          array_size = variable_count;
 
       for (uint32_t j = 0; j < array_size; j++)

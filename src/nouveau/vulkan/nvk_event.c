@@ -102,7 +102,7 @@ clear_bits64(uint64_t *bitfield, uint64_t bits)
 uint32_t
 vk_stage_flags_to_nv9097_pipeline_location(VkPipelineStageFlags2 flags)
 {
-   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR |
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
                             VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
                             VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
                             VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT |

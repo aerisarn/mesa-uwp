@@ -87,7 +87,7 @@ nvk_descriptor_get_type_list(VkDescriptorType type,
                              const VkMutableDescriptorTypeCreateInfoEXT *info,
                              const uint32_t info_idx)
 {
-   const VkMutableDescriptorTypeListVALVE *type_list = NULL;
+   const VkMutableDescriptorTypeListEXT *type_list = NULL;
    if (type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
       assert(info != NULL);
       assert(info_idx < info->mutableDescriptorTypeListCount);
