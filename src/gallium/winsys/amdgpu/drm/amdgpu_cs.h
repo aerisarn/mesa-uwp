@@ -73,6 +73,12 @@ struct amdgpu_fence_list {
    unsigned                    max;
 };
 
+struct amdgpu_buffer_list {
+   unsigned                    max_buffers;
+   unsigned                    num_buffers;
+   struct amdgpu_cs_buffer     *buffers;
+};
+
 struct amdgpu_cs_context {
    struct drm_amdgpu_cs_chunk_ib chunk_ib[IB_NUM];
    uint32_t                    *ib_main_addr; /* the beginning of IB before chaining */
@@ -80,18 +86,7 @@ struct amdgpu_cs_context {
    struct amdgpu_winsys *ws;
 
    /* Buffers. */
-   unsigned                    max_real_buffers;
-   unsigned                    num_real_buffers;
-   struct amdgpu_cs_buffer     *real_buffers;
-
-   unsigned                    num_slab_buffers;
-   unsigned                    max_slab_buffers;
-   struct amdgpu_cs_buffer     *slab_buffers;
-
-   unsigned                    num_sparse_buffers;
-   unsigned                    max_sparse_buffers;
-   struct amdgpu_cs_buffer     *sparse_buffers;
-
+   struct amdgpu_buffer_list   buffer_lists[NUM_BO_LIST_TYPES];
    int16_t                     *buffer_indices_hashlist;
 
    struct amdgpu_winsys_bo     *last_added_bo;
@@ -238,9 +233,9 @@ amdgpu_bo_is_referenced_by_cs_with_usage(struct amdgpu_cs *cs,
    if (index == -1)
       return false;
 
-   buffer = is_real_bo(bo) ? &cs->csc->real_buffers[index] :
-            bo->base.usage & RADEON_FLAG_SPARSE ? &cs->csc->sparse_buffers[index] :
-            &cs->csc->slab_buffers[index];
+   buffer = is_real_bo(bo) ? &cs->csc->buffer_lists[AMDGPU_BO_REAL].buffers[index] :
+            bo->base.usage & RADEON_FLAG_SPARSE ? &cs->csc->buffer_lists[AMDGPU_BO_SPARSE].buffers[index] :
+            &cs->csc->buffer_lists[AMDGPU_BO_SLAB].buffers[index];
 
    return (buffer->usage & usage) != 0;
 }

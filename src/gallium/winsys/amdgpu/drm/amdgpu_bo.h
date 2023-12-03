@@ -36,11 +36,14 @@ struct amdgpu_sparse_commitment {
 };
 
 enum amdgpu_bo_type {
-   AMDGPU_BO_REAL,
-   AMDGPU_BO_REAL_REUSABLE,
    AMDGPU_BO_SLAB,
    AMDGPU_BO_SPARSE,
+   AMDGPU_BO_REAL, /* only REAL enums can be present after this */
+   AMDGPU_BO_REAL_REUSABLE,
 };
+
+/* Anything above REAL will use the BO list for REAL. */
+#define NUM_BO_LIST_TYPES (AMDGPU_BO_REAL + 1)
 
 struct amdgpu_winsys_bo {
    struct pb_buffer base;
@@ -114,7 +117,7 @@ struct amdgpu_slab {
 
 static inline bool is_real_bo(struct amdgpu_winsys_bo *bo)
 {
-   return bo->type <= AMDGPU_BO_REAL_REUSABLE;
+   return bo->type >= AMDGPU_BO_REAL;
 }
 
 static struct amdgpu_bo_real *get_real_bo(struct amdgpu_winsys_bo *bo)
