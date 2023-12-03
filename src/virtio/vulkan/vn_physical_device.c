@@ -219,7 +219,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_ADD_PNEXT(feats2, VULKAN_1_3_FEATURES, local_feats.vulkan_1_3);
    } else {
       VN_ADD_PNEXT_EXT(feats2, DYNAMIC_RENDERING_FEATURES, local_feats.dynamic_rendering, exts->KHR_dynamic_rendering);
-      VN_ADD_PNEXT_EXT(feats2, IMAGE_ROBUSTNESS_FEATURES_EXT, local_feats.image_robustness, exts->EXT_image_robustness);
+      VN_ADD_PNEXT_EXT(feats2, IMAGE_ROBUSTNESS_FEATURES, local_feats.image_robustness, exts->EXT_image_robustness);
       VN_ADD_PNEXT_EXT(feats2, INLINE_UNIFORM_BLOCK_FEATURES, local_feats.inline_uniform_block, exts->EXT_inline_uniform_block);
       VN_ADD_PNEXT_EXT(feats2, MAINTENANCE_4_FEATURES, local_feats.maintenance4, exts->KHR_maintenance4);
       VN_ADD_PNEXT_EXT(feats2, PIPELINE_CREATION_CACHE_CONTROL_FEATURES, local_feats.pipeline_creation_cache_control, exts->EXT_pipeline_creation_cache_control);
@@ -1150,15 +1150,15 @@ vn_physical_device_get_passthrough_extensions(
        *
        * We support this extension with a hybrid native/passthrough model
        * until we teach venus how to do deep surgery on pNext
-       * chains to (a) remove VkDevicePrivateDataCreateInfoEXT, (b) remove Vk
-       * VkPhysicalDevicePrivateDataFeaturesEXT, and (c) modify its bits in
+       * chains to (a) remove VkDevicePrivateDataCreateInfo, (b) remove Vk
+       * VkPhysicalDevicePrivateDataFeatures, and (c) modify its bits in
        * VkPhysicalDeviceVulkan13Features.
        *
        * For now, we implement the extension functions natively by using
        * Mesa's commong implementation. We passthrough
-       * VkDevicePrivateDataCreateInfoEXT to the renderer, which is harmless.
+       * VkDevicePrivateDataCreateInfo to the renderer, which is harmless.
        * We passthrough the extension enablement and feature bits to the
-       * renderer because otherwise VkDevicePrivateDataCreateInfoEXT would
+       * renderer because otherwise VkDevicePrivateDataCreateInfo would
        * cause invalid usage in the renderer. Therefore, even though we
        * implement the extension natively, we expose the extension only if the
        * renderer supports it too.
