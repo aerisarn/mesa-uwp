@@ -584,10 +584,10 @@ int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_wi
    struct amdgpu_cs_buffer *buffers;
    int num_buffers;
 
-   if (bo->bo) {
+   if (is_real_bo(bo)) {
       buffers = cs->real_buffers;
       num_buffers = cs->num_real_buffers;
-   } else if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
+   } else if (bo->type == AMDGPU_BO_SLAB) {
       buffers = cs->slab_buffers;
       num_buffers = cs->num_slab_buffers;
    } else {
@@ -754,9 +754,9 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
 
    list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
       if (bo->base.placement & RADEON_DOMAIN_VRAM)
-         rcs->used_vram_kb += backing->bo->base.size / 1024;
+         rcs->used_vram_kb += backing->bo->b.base.size / 1024;
       else if (bo->base.placement & RADEON_DOMAIN_GTT)
-         rcs->used_gart_kb += backing->bo->base.size / 1024;
+         rcs->used_gart_kb += backing->bo->b.base.size / 1024;
    }
 
    simple_mtx_unlock(&bo->lock);
@@ -784,21 +784,19 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
        (usage & cs->last_added_bo_usage) == usage)
       return 0;
 
-   if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
-      if (!bo->bo) {
-         int index = amdgpu_lookup_or_add_slab_buffer(rcs, cs, bo);
-         if (index < 0)
-            return 0;
+   if (bo->type == AMDGPU_BO_SLAB) {
+      int index = amdgpu_lookup_or_add_slab_buffer(rcs, cs, bo);
+      if (index < 0)
+         return 0;
 
-         buffer = &cs->slab_buffers[index];
-         cs->real_buffers[buffer->slab_real_idx].usage |= usage & ~RADEON_USAGE_SYNCHRONIZED;
-      } else {
-         int index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
-         if (index < 0)
-            return 0;
+      buffer = &cs->slab_buffers[index];
+      cs->real_buffers[buffer->slab_real_idx].usage |= usage & ~RADEON_USAGE_SYNCHRONIZED;
+   } else if (is_real_bo(bo)) {
+      int index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
+      if (index < 0)
+         return 0;
 
-         buffer = &cs->real_buffers[index];
-      }
+      buffer = &cs->real_buffers[index];
    } else {
       int index = amdgpu_lookup_or_add_sparse_buffer(rcs, cs, bo);
       if (index < 0)
@@ -1471,7 +1469,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
          /* We can directly add the buffer here, because we know that each
           * backing buffer occurs only once.
           */
-         int idx = amdgpu_do_add_real_buffer(cs, backing->bo);
+         int idx = amdgpu_do_add_real_buffer(cs, &backing->bo->b);
          if (idx < 0) {
             fprintf(stderr, "%s: failed to add buffer\n", __func__);
             simple_mtx_unlock(&bo->lock);
@@ -1516,11 +1514,11 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
        * ensures that no buffer is missing in the BO list.
        */
       bo_list = alloca(ws->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
-      struct amdgpu_winsys_bo *bo;
+      struct amdgpu_bo_real *bo;
 
       simple_mtx_lock(&ws->global_bo_list_lock);
-      LIST_FOR_EACH_ENTRY(bo, &ws->global_bo_list, u.real.global_list_item) {
-         bo_list[num_bo_handles].bo_handle = bo->u.real.kms_handle;
+      LIST_FOR_EACH_ENTRY(bo, &ws->global_bo_list, global_list_item) {
+         bo_list[num_bo_handles].bo_handle = bo->kms_handle;
          bo_list[num_bo_handles].bo_priority = 0;
          ++num_bo_handles;
       }
@@ -1539,7 +1537,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
       for (i = 0; i < cs->num_real_buffers; ++i) {
          struct amdgpu_cs_buffer *buffer = &cs->real_buffers[i];
 
-         bo_list[num_bo_handles].bo_handle = buffer->bo->u.real.kms_handle;
+         bo_list[num_bo_handles].bo_handle = get_real_bo(buffer->bo)->kms_handle;
          bo_list[num_bo_handles].bo_priority =
             (util_last_bit(buffer->usage & RADEON_ALL_PRIORITIES) - 1) / 2;
          ++num_bo_handles;

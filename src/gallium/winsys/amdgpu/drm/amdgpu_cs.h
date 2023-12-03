@@ -238,7 +238,7 @@ amdgpu_bo_is_referenced_by_cs_with_usage(struct amdgpu_cs *cs,
    if (index == -1)
       return false;
 
-   buffer = bo->bo ? &cs->csc->real_buffers[index] :
+   buffer = is_real_bo(bo) ? &cs->csc->real_buffers[index] :
             bo->base.usage & RADEON_FLAG_SPARSE ? &cs->csc->sparse_buffers[index] :
             &cs->csc->slab_buffers[index];
 

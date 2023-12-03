@@ -276,9 +276,9 @@ static void amdgpu_pin_threads_to_L3_cache(struct radeon_winsys *rws,
 
 static uint32_t kms_handle_hash(const void *key)
 {
-   const struct amdgpu_winsys_bo *bo = key;
+   const struct amdgpu_bo_real *bo = key;
 
-   return bo->u.real.kms_handle;
+   return bo->kms_handle;
 }
 
 static bool kms_handle_equals(const void *a, const void *b)

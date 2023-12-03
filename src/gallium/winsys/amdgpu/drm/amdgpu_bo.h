@@ -22,7 +22,7 @@ struct amdgpu_sparse_backing_chunk;
 struct amdgpu_sparse_backing {
    struct list_head list;
 
-   struct amdgpu_winsys_bo *bo;
+   struct amdgpu_bo_real *bo;
 
    /* Sorted list of free chunks. */
    struct amdgpu_sparse_backing_chunk *chunks;
@@ -48,22 +48,6 @@ struct amdgpu_winsys_bo {
 
    union {
       struct {
-         amdgpu_va_handle va_handle;
-#if DEBUG
-         struct list_head global_list_item;
-#endif
-         void *cpu_ptr; /* for user_ptr and permanent maps */
-         uint32_t kms_handle;
-         int map_count;
-
-         bool is_user_ptr;
-
-         /* Whether buffer_get_handle or buffer_from_handle has been called,
-          * it can only transition from false to true. Protected by lock.
-          */
-         bool is_shared;
-      } real;
-      struct {
          struct pb_slab_entry entry;
          struct amdgpu_winsys_bo *real;
       } slab;
@@ -80,7 +64,6 @@ struct amdgpu_winsys_bo {
       } sparse;
    } u;
 
-   amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
    uint64_t va;
 
    uint32_t unique_id;
@@ -96,8 +79,28 @@ struct amdgpu_winsys_bo {
    struct pipe_fence_handle **fences;
 };
 
-struct amdgpu_bo_real_reusable {
+struct amdgpu_bo_real {
    struct amdgpu_winsys_bo b;
+
+   amdgpu_bo_handle bo;
+   amdgpu_va_handle va_handle;
+   void *cpu_ptr; /* for user_ptr and permanent maps */
+   int map_count;
+   uint32_t kms_handle;
+#if DEBUG
+   struct list_head global_list_item;
+#endif
+
+   bool is_user_ptr;
+
+   /* Whether buffer_get_handle or buffer_from_handle has been called,
+    * it can only transition from false to true. Protected by lock.
+    */
+   bool is_shared;
+};
+
+struct amdgpu_bo_real_reusable {
+   struct amdgpu_bo_real b;
    struct pb_cache_entry cache_entry;
 };
 
@@ -107,6 +110,23 @@ struct amdgpu_slab {
    struct amdgpu_winsys_bo *buffer;
    struct amdgpu_winsys_bo *entries;
 };
+
+static inline bool is_real_bo(struct amdgpu_winsys_bo *bo)
+{
+   return bo->type <= AMDGPU_BO_REAL_REUSABLE;
+}
+
+static struct amdgpu_bo_real *get_real_bo(struct amdgpu_winsys_bo *bo)
+{
+   assert(is_real_bo(bo));
+   return (struct amdgpu_bo_real*)bo;
+}
+
+static struct amdgpu_bo_real_reusable *get_real_bo_reusable(struct amdgpu_winsys_bo *bo)
+{
+   assert(bo->type == AMDGPU_BO_REAL_REUSABLE);
+   return (struct amdgpu_bo_real_reusable*)bo;
+}
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);
 struct pb_buffer *amdgpu_bo_create(struct amdgpu_winsys *ws,
