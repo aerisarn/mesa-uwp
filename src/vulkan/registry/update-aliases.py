@@ -120,7 +120,7 @@ def main(paths: list[str]):
         sys.exit(0)
 
     print(f'{len(files_with_aliases)} files contain aliases:')
-    print('\n'.join(f'- {file}' for file in files_with_aliases))
+    print('\n'.join(f'- {file}' for file in sorted(files_with_aliases)))
 
     command = [
         'sed',
