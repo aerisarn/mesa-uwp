@@ -3293,7 +3293,7 @@ reapply_color_write(struct zink_context *ctx)
    VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->reordered_cmdbuf, max_att, enables);
    assert(screen->info.have_EXT_extended_dynamic_state);
    if (ctx->dsa_state)
-      VKCTX(CmdSetDepthWriteEnableEXT)(ctx->batch.state->cmdbuf, ctx->disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
+      VKCTX(CmdSetDepthWriteEnable)(ctx->batch.state->cmdbuf, ctx->disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
 }
 
 static void

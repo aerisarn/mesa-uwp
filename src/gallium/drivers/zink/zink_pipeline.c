@@ -682,7 +682,7 @@ zink_create_gfx_pipeline_input(struct zink_screen *screen,
    if (screen->info.have_EXT_vertex_input_dynamic_state)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_EXT;
    else if (state->uses_dynamic_stride && state->element_state->num_attribs)
-      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
    dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY;
    dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE;
    assert(state_count < ARRAY_SIZE(dynamicStateEnables));
@@ -904,7 +904,7 @@ zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_pr
    VRAM_ALLOC_LOOP(result,
       VKSCR(CreateGraphicsPipelines)(screen->dev, prog->base.pipeline_cache, 1, &pci, NULL, &pipeline),
       u_rwlock_wrunlock(&prog->base.pipeline_cache_lock);
-      if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+      if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED) {
          mesa_loge("ZINK: vkCreateGraphicsPipelines failed");
          return VK_NULL_HANDLE;
       }
