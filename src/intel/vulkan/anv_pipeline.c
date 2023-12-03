@@ -1811,7 +1811,7 @@ anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_base_pipeline *pip
                                           struct vk_pipeline_cache *cache,
                                           struct anv_pipeline_stage *stages,
                                           bool link_optimize,
-                                          VkPipelineCreationFeedbackEXT *pipeline_feedback)
+                                          VkPipelineCreationFeedback *pipeline_feedback)
 {
    struct anv_device *device = pipeline->base.device;
    unsigned cache_hits = 0, found = 0, imported = 0;
@@ -2041,7 +2041,7 @@ anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline,
 
 static void
 anv_fill_pipeline_creation_feedback(const struct anv_graphics_base_pipeline *pipeline,
-                                    VkPipelineCreationFeedbackEXT *pipeline_feedback,
+                                    VkPipelineCreationFeedback *pipeline_feedback,
                                     const VkGraphicsPipelineCreateInfo *info,
                                     struct anv_pipeline_stage *stages)
 {
@@ -2094,7 +2094,7 @@ static VkResult
 anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
                               struct anv_pipeline_stage *stages,
                               struct vk_pipeline_cache *cache,
-                              VkPipelineCreationFeedbackEXT *pipeline_feedback,
+                              VkPipelineCreationFeedback *pipeline_feedback,
                               const VkGraphicsPipelineCreateInfo *info,
                               const struct vk_graphics_pipeline_state *state)
 {
@@ -2999,8 +2999,8 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
                                  VkPipeline *pPipeline)
 {
    struct anv_pipeline_stage stages[ANV_GRAPHICS_SHADER_STAGE_COUNT] = {};
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   VkPipelineCreationFeedback pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 
@@ -3025,7 +3025,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
                               pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (result == VK_PIPELINE_COMPILE_REQUIRED)
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
@@ -3109,8 +3109,8 @@ anv_graphics_pipeline_create(struct anv_device *device,
                              VkPipeline *pPipeline)
 {
    struct anv_pipeline_stage stages[ANV_GRAPHICS_SHADER_STAGE_COUNT] = {};
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   VkPipelineCreationFeedback pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 

@@ -1026,7 +1026,7 @@ void anv_GetPhysicalDeviceFormatProperties2(
 
 static bool
 anv_format_supports_usage(
-   VkFormatFeatureFlags2KHR format_feature_flags,
+   VkFormatFeatureFlags2 format_feature_flags,
    VkImageUsageFlags usage_flags)
 {
    if (usage_flags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
@@ -1161,7 +1161,7 @@ anv_formats_gather_format_features(
    bool allow_texel_compatible)
 {
    const struct intel_device_info *devinfo = &physical_device->info;
-   VkFormatFeatureFlags2KHR all_formats_feature_flags = 0;
+   VkFormatFeatureFlags2 all_formats_feature_flags = 0;
 
    /* We need to check that each of the usage bits are allowed for at least
     * one of the potential formats.
@@ -1183,7 +1183,7 @@ anv_formats_gather_format_features(
             if (anv_formats_are_compatible(format, possible_anv_format,
                                            devinfo, tiling,
                                            allow_texel_compatible)) {
-               VkFormatFeatureFlags2KHR view_format_features =
+               VkFormatFeatureFlags2 view_format_features =
                   anv_get_image_format_features2(physical_device,
                                                  possible_anv_format->vk_format,
                                                  possible_anv_format, tiling,
@@ -1202,7 +1202,7 @@ anv_formats_gather_format_features(
 
          const struct anv_format *anv_view_format =
             anv_get_format(vk_view_format);
-         VkFormatFeatureFlags2KHR view_format_features =
+         VkFormatFeatureFlags2 view_format_features =
             anv_get_image_format_features2(physical_device,
                                            vk_view_format, anv_view_format,
                                            tiling, isl_mod_info);

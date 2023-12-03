@@ -2009,7 +2009,7 @@ void anv_GetImageMemoryRequirements2(
                                      pMemoryRequirements);
 }
 
-void anv_GetDeviceImageMemoryRequirementsKHR(
+void anv_GetDeviceImageMemoryRequirements(
     VkDevice                                    _device,
     const VkDeviceImageMemoryRequirements*   pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements)
@@ -2156,7 +2156,7 @@ void anv_GetDeviceImageSparseMemoryRequirements(
       return;
    }
 
-   /* This function is similar to anv_GetDeviceImageMemoryRequirementsKHR, in
+   /* This function is similar to anv_GetDeviceImageMemoryRequirements, in
     * which it actually creates an image, gets the properties and then
     * destroys the image.
     *

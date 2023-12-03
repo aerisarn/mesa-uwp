@@ -3823,7 +3823,7 @@ static inline bool
 stage_is_transfer(const VkPipelineStageFlags2 stage)
 {
    return (stage & (VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT));
+                    VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT));
 }
 
 static inline bool
@@ -8733,7 +8733,7 @@ genX(write_trtt_entries)(struct anv_trtt_submission *submit)
 
 void
 genX(CmdWriteBufferMarker2AMD)(VkCommandBuffer commandBuffer,
-                               VkPipelineStageFlags2KHR stage,
+                               VkPipelineStageFlags2 stage,
                                VkBuffer dstBuffer,
                                VkDeviceSize dstOffset,
                                uint32_t marker)
