@@ -551,8 +551,10 @@ static inline unsigned amdgpu_cs_epilog_dws(struct amdgpu_cs *cs)
 }
 
 static int amdgpu_lookup_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo,
-                                struct amdgpu_cs_buffer *buffers, unsigned num_buffers)
+                                struct amdgpu_buffer_list *list)
 {
+   unsigned num_buffers = list->num_buffers;
+   struct amdgpu_cs_buffer *buffers = list->buffers;
    unsigned hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
    int i = cs->buffer_indices_hashlist[hash];
 
@@ -581,21 +583,7 @@ static int amdgpu_lookup_buffer(struct amdgpu_cs_context *cs, struct amdgpu_wins
 
 int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
 {
-   struct amdgpu_cs_buffer *buffers;
-   int num_buffers;
-
-   if (is_real_bo(bo)) {
-      buffers = cs->buffer_lists[AMDGPU_BO_REAL].buffers;
-      num_buffers = cs->buffer_lists[AMDGPU_BO_REAL].num_buffers;
-   } else if (bo->type == AMDGPU_BO_SLAB) {
-      buffers = cs->buffer_lists[AMDGPU_BO_SLAB].buffers;
-      num_buffers = cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers;
-   } else {
-      buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].buffers;
-      num_buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
-   }
-
-   return amdgpu_lookup_buffer(cs, bo, buffers, num_buffers);
+   return amdgpu_lookup_buffer(cs, bo, &cs->buffer_lists[get_buf_list_idx(bo)]);
 }
 
 static int
@@ -644,8 +632,8 @@ static int
 amdgpu_lookup_or_add_real_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
 {
    unsigned hash;
-   int idx = amdgpu_lookup_buffer(cs, bo, cs->buffer_lists[AMDGPU_BO_REAL].buffers,
-                                  cs->buffer_lists[AMDGPU_BO_REAL].num_buffers);
+   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_REAL];
+   int idx = amdgpu_lookup_buffer(cs, bo, list);
 
    if (idx >= 0)
       return idx;
@@ -662,14 +650,13 @@ static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_cs_context *cs,
 {
    struct amdgpu_cs_buffer *buffer;
    unsigned hash;
-   int idx = amdgpu_lookup_buffer(cs, bo, cs->buffer_lists[AMDGPU_BO_SLAB].buffers,
-                                  cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers);
-   int real_idx;
+   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_SLAB];
+   int idx = amdgpu_lookup_buffer(cs, bo, list);
 
    if (idx >= 0)
       return idx;
 
-   real_idx = amdgpu_lookup_or_add_real_buffer(cs, &get_slab_bo(bo)->real->b);
+   int real_idx = amdgpu_lookup_or_add_real_buffer(cs, &get_slab_bo(bo)->real->b);
    if (real_idx < 0)
       return -1;
 
@@ -712,8 +699,8 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_cs_context *cs,
 {
    struct amdgpu_cs_buffer *buffer;
    unsigned hash;
-   int idx = amdgpu_lookup_buffer(cs, bo, cs->buffer_lists[AMDGPU_BO_SPARSE].buffers,
-                                  cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers);
+   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_SPARSE];
+   int idx = amdgpu_lookup_buffer(cs, bo, list);
 
    if (idx >= 0)
       return idx;
