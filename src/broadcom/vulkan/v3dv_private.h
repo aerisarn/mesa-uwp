@@ -1235,7 +1235,7 @@ struct v3dv_job {
 
    /* VK_KHR_buffer_device_address allows shaders to use pointers that can
     * dereference memory in any buffer that has been flagged with
-    * VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR. These buffers may not
+    * VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT. These buffers may not
     * be bound via descriptor sets, so we need to make sure that a job that
     * uses this functionality includes all these buffers in its kernel
     * submission.
@@ -1846,7 +1846,7 @@ bool v3dv_cmd_buffer_check_needs_store(const struct v3dv_cmd_buffer_state *state
                                        VkAttachmentStoreOp store_op);
 
 void v3dv_cmd_buffer_emit_pipeline_barrier(struct v3dv_cmd_buffer *cmd_buffer,
-                                           const VkDependencyInfoKHR *info);
+                                           const VkDependencyInfo *info);
 
 bool v3dv_cmd_buffer_copy_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
                                     struct v3dv_image *dst,

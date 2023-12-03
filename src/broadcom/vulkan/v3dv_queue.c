@@ -704,7 +704,7 @@ handle_cl_job(struct v3dv_queue *queue,
       submit.flags |= DRM_V3D_SUBMIT_CL_FLUSH_CACHE;
 
    /* If the job uses VK_KHR_buffer_device_address we need to ensure all
-    * buffers flagged with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR
+    * buffers flagged with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     * are included.
     */
    if (job->uses_buffer_device_address) {
@@ -870,7 +870,7 @@ handle_csd_job(struct v3dv_queue *queue,
    struct drm_v3d_submit_csd *submit = &job->csd.submit;
 
    /* If the job uses VK_KHR_buffer_device_address we need to ensure all
-    * buffers flagged with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR
+    * buffers flagged with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     * are included.
     */
    if (job->uses_buffer_device_address) {
