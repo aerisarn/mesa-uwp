@@ -3222,7 +3222,6 @@ handle_barrier(VkPipelineStageFlags2 srcStageMask, VkAccessFlags2 srcAccessMask,
       src_mask |= V3DV_BARRIER_COMPUTE_BIT;
 
    const VkPipelineStageFlags2 transfer_mask =
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT |
       VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
       VK_PIPELINE_STAGE_2_COPY_BIT |
       VK_PIPELINE_STAGE_2_BLIT_BIT |
