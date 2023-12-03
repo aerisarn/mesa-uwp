@@ -97,7 +97,7 @@ tu6_load_state_size(struct tu_pipeline *pipeline,
             count = stage_count * binding->array_size * 2;
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-         case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+         case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
          case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
             break;
          default:
@@ -187,7 +187,7 @@ tu6_emit_load_state(struct tu_device *device,
             break;
          }
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-         case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+         case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
          case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
             /* nothing - input attachments and inline uniforms don't use bindless */
             break;
@@ -3453,8 +3453,8 @@ tu_pipeline_builder_parse_depth_stencil(
         VK_IMAGE_ASPECT_DEPTH_BIT)) {
       pipeline->ds.raster_order_attachment_access =
          ds_info && (ds_info->flags &
-         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM |
-          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM));
+         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT |
+          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT));
    }
 }
 
@@ -3492,7 +3492,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    if (builder->graphics_state.rp->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       pipeline->output.raster_order_attachment_access =
          blend_info && (blend_info->flags &
-            VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM);
+            VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT);
    }
 }
 

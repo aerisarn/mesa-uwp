@@ -2281,13 +2281,13 @@ tu_cmd_end_dynamic_state(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
-                            uint32_t firstBinding,
-                            uint32_t bindingCount,
-                            const VkBuffer* pBuffers,
-                            const VkDeviceSize* pOffsets,
-                            const VkDeviceSize* pSizes,
-                            const VkDeviceSize* pStrides)
+tu_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
+                         uint32_t firstBinding,
+                         uint32_t bindingCount,
+                         const VkBuffer *pBuffers,
+                         const VkDeviceSize *pOffsets,
+                         const VkDeviceSize *pSizes,
+                         const VkDeviceSize *pStrides)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs cs;
