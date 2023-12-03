@@ -61,6 +61,7 @@ def main(paths: list[str]):
     Entrypoint; perform the search for all the aliases and replace them.
     """
     def prepare_identifier(identifier: str) -> str:
+        prefixes_seen = []
         for prefix in [
             # Various macros prepend these, so they will not appear in the code using them.
             # List generated using this command:
@@ -86,12 +87,12 @@ def main(paths: list[str]):
             'VK_PERFORMANCE_COUNTER_UNIT_',
             'VK_PIPELINE_BIND_POINT_',
             'VK_SAMPLER_ADDRESS_MODE_',
-            'VK_SHADER_STAGE_',
             'VK_SHADER_STAGE_TESSELLATION_',
+            'VK_SHADER_STAGE_',
             'VK_STENCIL_OP_',
-            'VK_STRUCTURE_TYPE_',
-            'VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_',
             'VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_',
+            'VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_',
+            'VK_STRUCTURE_TYPE_',
             'VK_USE_PLATFORM_',
             'VK_VERSION_',
 
@@ -101,7 +102,14 @@ def main(paths: list[str]):
             'Vk',
             'vk',
         ]:
+            # The order matters!  A shorter substring will match before a longer
+            # one, hiding its matches.
+            for prefix_seen in prefixes_seen:
+                assert not prefix.startswith(prefix_seen), f'{prefix_seen} must come before {prefix}'
+            prefixes_seen.append(prefix)
+
             identifier = remove_prefix(identifier, prefix)
+
         return identifier
 
     aliases = {}
