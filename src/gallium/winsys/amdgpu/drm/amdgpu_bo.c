@@ -271,7 +271,7 @@ void *amdgpu_bo_map(struct radeon_winsys *rws,
    struct amdgpu_bo_real *real;
    struct amdgpu_cs *cs = rcs ? amdgpu_cs(rcs) : NULL;
 
-   assert(!(bo->base.usage & RADEON_FLAG_SPARSE));
+   assert(bo->type != AMDGPU_BO_SPARSE);
 
    /* If it's not unsynchronized bo_map, flush CS if needed and then wait. */
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
@@ -399,7 +399,7 @@ void amdgpu_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *buf)
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_bo_real *real;
 
-   assert(!(bo->base.usage & RADEON_FLAG_SPARSE));
+   assert(bo->type != AMDGPU_BO_SPARSE);
 
    real = is_real_bo(bo) ? get_real_bo(bo) : get_real_bo(bo->u.slab.real);
 
@@ -821,11 +821,11 @@ void amdgpu_bo_slab_free(struct amdgpu_winsys *ws, struct pb_slab *pslab)
 
 #if DEBUG_SPARSE_COMMITS
 static void
-sparse_dump(struct amdgpu_winsys_bo *bo, const char *func)
+sparse_dump(struct amdgpu_bo_sparse *bo, const char *func)
 {
    fprintf(stderr, "%s: %p (size=%"PRIu64", num_va_pages=%u) @ %s\n"
                    "Commitments:\n",
-           __func__, bo, bo->base.size, bo->u.sparse.num_va_pages, func);
+           __func__, bo, bo->b.base.size, bo->num_va_pages, func);
 
    struct amdgpu_sparse_backing *span_backing = NULL;
    uint32_t span_first_backing_page = 0;
@@ -836,9 +836,9 @@ sparse_dump(struct amdgpu_winsys_bo *bo, const char *func)
       struct amdgpu_sparse_backing *backing = 0;
       uint32_t backing_page = 0;
 
-      if (va_page < bo->u.sparse.num_va_pages) {
-         backing = bo->u.sparse.commitments[va_page].backing;
-         backing_page = bo->u.sparse.commitments[va_page].page;
+      if (va_page < bo->num_va_pages) {
+         backing = bo->commitments[va_page].backing;
+         backing_page = bo->commitments[va_page].page;
       }
 
       if (span_backing &&
@@ -852,7 +852,7 @@ sparse_dump(struct amdgpu_winsys_bo *bo, const char *func)
          span_backing = NULL;
       }
 
-      if (va_page >= bo->u.sparse.num_va_pages)
+      if (va_page >= bo->num_va_pages)
          break;
 
       if (backing && !span_backing) {
@@ -866,8 +866,8 @@ sparse_dump(struct amdgpu_winsys_bo *bo, const char *func)
 
    fprintf(stderr, "Backing:\n");
 
-   list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
-      fprintf(stderr, " %p (size=%"PRIu64")\n", backing, backing->bo->base.size);
+   list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->backing, list) {
+      fprintf(stderr, " %p (size=%"PRIu64")\n", backing, backing->bo->b.base.size);
       for (unsigned i = 0; i < backing->num_chunks; ++i)
          fprintf(stderr, "   %u..%u\n", backing->chunks[i].begin, backing->chunks[i].end);
    }
@@ -880,7 +880,7 @@ sparse_dump(struct amdgpu_winsys_bo *bo, const char *func)
  * which will be reflected by a change to *pnum_pages.
  */
 static struct amdgpu_sparse_backing *
-sparse_backing_alloc(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
+sparse_backing_alloc(struct amdgpu_winsys *ws, struct amdgpu_bo_sparse *bo,
                      uint32_t *pstart_page, uint32_t *pnum_pages)
 {
    struct amdgpu_sparse_backing *best_backing;
@@ -892,7 +892,7 @@ sparse_backing_alloc(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
    best_num_pages = 0;
 
    /* This is a very simple and inefficient best-fit algorithm. */
-   list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
+   list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->backing, list) {
       for (unsigned idx = 0; idx < backing->num_chunks; ++idx) {
          uint32_t cur_num_pages = backing->chunks[idx].end - backing->chunks[idx].begin;
          if ((best_num_pages < *pnum_pages && cur_num_pages > best_num_pages) ||
@@ -922,16 +922,16 @@ sparse_backing_alloc(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
          return NULL;
       }
 
-      assert(bo->u.sparse.num_backing_pages < DIV_ROUND_UP(bo->base.size, RADEON_SPARSE_PAGE_SIZE));
+      assert(bo->num_backing_pages < DIV_ROUND_UP(bo->b.base.size, RADEON_SPARSE_PAGE_SIZE));
 
-      size = MIN3(bo->base.size / 16,
+      size = MIN3(bo->b.base.size / 16,
                   8 * 1024 * 1024,
-                  bo->base.size - (uint64_t)bo->u.sparse.num_backing_pages * RADEON_SPARSE_PAGE_SIZE);
+                  bo->b.base.size - (uint64_t)bo->num_backing_pages * RADEON_SPARSE_PAGE_SIZE);
       size = MAX2(size, RADEON_SPARSE_PAGE_SIZE);
 
       buf = amdgpu_bo_create(ws, size, RADEON_SPARSE_PAGE_SIZE,
-                             bo->base.placement,
-                             (bo->base.usage & ~RADEON_FLAG_SPARSE &
+                             bo->b.base.placement,
+                             (bo->b.base.usage & ~RADEON_FLAG_SPARSE &
                               /* Set the interprocess sharing flag to disable pb_cache because
                                * amdgpu_bo_wait doesn't wait for active CS jobs.
                                */
@@ -950,8 +950,8 @@ sparse_backing_alloc(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
       best_backing->chunks[0].begin = 0;
       best_backing->chunks[0].end = pages;
 
-      list_add(&best_backing->list, &bo->u.sparse.backing);
-      bo->u.sparse.num_backing_pages += pages;
+      list_add(&best_backing->list, &bo->backing);
+      bo->num_backing_pages += pages;
 
       best_idx = 0;
       best_num_pages = pages;
@@ -971,13 +971,13 @@ sparse_backing_alloc(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
 }
 
 static void
-sparse_free_backing_buffer(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
+sparse_free_backing_buffer(struct amdgpu_winsys *ws, struct amdgpu_bo_sparse *bo,
                            struct amdgpu_sparse_backing *backing)
 {
-   bo->u.sparse.num_backing_pages -= backing->bo->b.base.size / RADEON_SPARSE_PAGE_SIZE;
+   bo->num_backing_pages -= backing->bo->b.base.size / RADEON_SPARSE_PAGE_SIZE;
 
    simple_mtx_lock(&ws->bo_fence_lock);
-   amdgpu_add_fences(&backing->bo->b, bo->num_fences, bo->fences);
+   amdgpu_add_fences(&backing->bo->b, bo->b.num_fences, bo->b.fences);
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    list_del(&backing->list);
@@ -991,7 +991,7 @@ sparse_free_backing_buffer(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo
  * free structure.
  */
 static bool
-sparse_backing_free(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
+sparse_backing_free(struct amdgpu_winsys *ws, struct amdgpu_bo_sparse *bo,
                     struct amdgpu_sparse_backing *backing,
                     uint32_t start_page, uint32_t num_pages)
 {
@@ -1054,27 +1054,25 @@ sparse_backing_free(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo,
 static void amdgpu_bo_sparse_destroy(struct radeon_winsys *rws, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys *ws = amdgpu_winsys(rws);
-   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
+   struct amdgpu_bo_sparse *bo = get_sparse_bo(amdgpu_winsys_bo(_buf));
    int r;
 
-   assert(bo->type == AMDGPU_BO_SPARSE && bo->base.usage & RADEON_FLAG_SPARSE);
-
    r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0,
-                           (uint64_t)bo->u.sparse.num_va_pages * RADEON_SPARSE_PAGE_SIZE,
-                           bo->va, 0, AMDGPU_VA_OP_CLEAR);
+                           (uint64_t)bo->num_va_pages * RADEON_SPARSE_PAGE_SIZE,
+                           bo->b.va, 0, AMDGPU_VA_OP_CLEAR);
    if (r) {
       fprintf(stderr, "amdgpu: clearing PRT VA region on destroy failed (%d)\n", r);
    }
 
-   while (!list_is_empty(&bo->u.sparse.backing)) {
+   while (!list_is_empty(&bo->backing)) {
       sparse_free_backing_buffer(ws, bo,
-                                 container_of(bo->u.sparse.backing.next,
+                                 container_of(bo->backing.next,
                                               struct amdgpu_sparse_backing, list));
    }
 
-   amdgpu_va_range_free(bo->u.sparse.va_handle);
-   FREE(bo->u.sparse.commitments);
-   simple_mtx_destroy(&bo->lock);
+   amdgpu_va_range_free(bo->va_handle);
+   FREE(bo->commitments);
+   simple_mtx_destroy(&bo->b.lock);
    FREE(bo);
 }
 
@@ -1089,7 +1087,7 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
                         enum radeon_bo_domain domain,
                         enum radeon_bo_flag flags)
 {
-   struct amdgpu_winsys_bo *bo;
+   struct amdgpu_bo_sparse *bo;
    uint64_t map_size;
    uint64_t va_gap_size;
    int r;
@@ -1101,52 +1099,50 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    if (size > (uint64_t)INT32_MAX * RADEON_SPARSE_PAGE_SIZE)
       return NULL;
 
-   bo = CALLOC_STRUCT(amdgpu_winsys_bo);
+   bo = CALLOC_STRUCT(amdgpu_bo_sparse);
    if (!bo)
       return NULL;
 
-   simple_mtx_init(&bo->lock, mtx_plain);
-   pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment_log2 = util_logbase2(RADEON_SPARSE_PAGE_SIZE);
-   bo->base.size = size;
-   bo->base.vtbl = &amdgpu_winsys_bo_sparse_vtbl;
-   bo->base.placement = domain;
-   bo->type = AMDGPU_BO_SPARSE;
-   bo->unique_id =  __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
-   bo->base.usage = flags;
-   bo->type = AMDGPU_BO_SPARSE;
+   simple_mtx_init(&bo->b.lock, mtx_plain);
+   pipe_reference_init(&bo->b.base.reference, 1);
+   bo->b.base.placement = domain;
+   bo->b.base.alignment_log2 = util_logbase2(RADEON_SPARSE_PAGE_SIZE);
+   bo->b.base.usage = flags;
+   bo->b.base.size = size;
+   bo->b.base.vtbl = &amdgpu_winsys_bo_sparse_vtbl;
+   bo->b.unique_id =  __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
+   bo->b.type = AMDGPU_BO_SPARSE;
 
-   bo->u.sparse.num_va_pages = DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
-   bo->u.sparse.commitments = CALLOC(bo->u.sparse.num_va_pages,
-                                     sizeof(*bo->u.sparse.commitments));
-   if (!bo->u.sparse.commitments)
+   bo->num_va_pages = DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
+   bo->commitments = CALLOC(bo->num_va_pages, sizeof(*bo->commitments));
+   if (!bo->commitments)
       goto error_alloc_commitments;
 
-   list_inithead(&bo->u.sparse.backing);
+   list_inithead(&bo->backing);
 
    /* For simplicity, we always map a multiple of the page size. */
    map_size = align64(size, RADEON_SPARSE_PAGE_SIZE);
    va_gap_size = ws->check_vm ? 4 * RADEON_SPARSE_PAGE_SIZE : 0;
    r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
                              map_size + va_gap_size, RADEON_SPARSE_PAGE_SIZE,
-                             0, &bo->va, &bo->u.sparse.va_handle,
+                             0, &bo->b.va, &bo->va_handle,
 			     AMDGPU_VA_RANGE_HIGH);
    if (r)
       goto error_va_alloc;
 
-   r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0, map_size, bo->va,
+   r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0, map_size, bo->b.va,
                            AMDGPU_VM_PAGE_PRT, AMDGPU_VA_OP_MAP);
    if (r)
       goto error_va_map;
 
-   return &bo->base;
+   return &bo->b.base;
 
 error_va_map:
-   amdgpu_va_range_free(bo->u.sparse.va_handle);
+   amdgpu_va_range_free(bo->va_handle);
 error_va_alloc:
-   FREE(bo->u.sparse.commitments);
+   FREE(bo->commitments);
 error_alloc_commitments:
-   simple_mtx_destroy(&bo->lock);
+   simple_mtx_destroy(&bo->b.lock);
    FREE(bo);
    return NULL;
 }
@@ -1156,23 +1152,22 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer *buf,
                         uint64_t offset, uint64_t size, bool commit)
 {
    struct amdgpu_winsys *ws = amdgpu_winsys(rws);
-   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buf);
+   struct amdgpu_bo_sparse *bo = get_sparse_bo(amdgpu_winsys_bo(buf));
    struct amdgpu_sparse_commitment *comm;
    uint32_t va_page, end_va_page;
    bool ok = true;
    int r;
 
-   assert(bo->base.usage & RADEON_FLAG_SPARSE);
    assert(offset % RADEON_SPARSE_PAGE_SIZE == 0);
-   assert(offset <= bo->base.size);
-   assert(size <= bo->base.size - offset);
-   assert(size % RADEON_SPARSE_PAGE_SIZE == 0 || offset + size == bo->base.size);
+   assert(offset <= bo->b.base.size);
+   assert(size <= bo->b.base.size - offset);
+   assert(size % RADEON_SPARSE_PAGE_SIZE == 0 || offset + size == bo->b.base.size);
 
-   comm = bo->u.sparse.commitments;
+   comm = bo->commitments;
    va_page = offset / RADEON_SPARSE_PAGE_SIZE;
    end_va_page = va_page + DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
 
-   simple_mtx_lock(&bo->lock);
+   simple_mtx_lock(&bo->b.lock);
 
 #if DEBUG_SPARSE_COMMITS
    sparse_dump(bo, __func__);
@@ -1208,7 +1203,7 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer *buf,
             r = amdgpu_bo_va_op_raw(ws->dev, backing->bo->bo,
                                     (uint64_t)backing_start * RADEON_SPARSE_PAGE_SIZE,
                                     (uint64_t)backing_size * RADEON_SPARSE_PAGE_SIZE,
-                                    bo->va + (uint64_t)span_va_page * RADEON_SPARSE_PAGE_SIZE,
+                                    bo->b.va + (uint64_t)span_va_page * RADEON_SPARSE_PAGE_SIZE,
                                     AMDGPU_VM_PAGE_READABLE |
                                     AMDGPU_VM_PAGE_WRITEABLE |
                                     AMDGPU_VM_PAGE_EXECUTABLE,
@@ -1233,7 +1228,7 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer *buf,
    } else {
       r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0,
                               (uint64_t)(end_va_page - va_page) * RADEON_SPARSE_PAGE_SIZE,
-                              bo->va + (uint64_t)va_page * RADEON_SPARSE_PAGE_SIZE,
+                              bo->b.va + (uint64_t)va_page * RADEON_SPARSE_PAGE_SIZE,
                               AMDGPU_VM_PAGE_PRT, AMDGPU_VA_OP_REPLACE);
       if (r) {
          ok = false;
@@ -1276,16 +1271,16 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer *buf,
    }
 out:
 
-   simple_mtx_unlock(&bo->lock);
+   simple_mtx_unlock(&bo->b.lock);
 
    return ok;
 }
 
 static unsigned
 amdgpu_bo_find_next_committed_memory(struct pb_buffer *buf,
-                        uint64_t range_offset, unsigned *range_size)
+                                     uint64_t range_offset, unsigned *range_size)
 {
-   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buf);
+   struct amdgpu_bo_sparse *bo = get_sparse_bo(amdgpu_winsys_bo(buf));
    struct amdgpu_sparse_commitment *comm;
    uint32_t va_page, end_va_page;
    uint32_t span_va_page, start_va_page;
@@ -1294,14 +1289,14 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer *buf,
    if (*range_size == 0)
       return 0;
 
-   assert(*range_size + range_offset <= bo->base.size);
+   assert(*range_size + range_offset <= bo->b.base.size);
 
    uncommitted_range_prev = uncommitted_range_next = 0;
-   comm = bo->u.sparse.commitments;
+   comm = bo->commitments;
    start_va_page = va_page = range_offset / RADEON_SPARSE_PAGE_SIZE;
    end_va_page = (*range_size + range_offset) / RADEON_SPARSE_PAGE_SIZE;
 
-   simple_mtx_lock(&bo->lock);
+   simple_mtx_lock(&bo->b.lock);
    /* Lookup the first committed page with backing physical storage */
    while (va_page < end_va_page && !comm[va_page].backing)
       va_page++;
@@ -1310,7 +1305,7 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer *buf,
    if (va_page == end_va_page && !comm[va_page].backing) {
       uncommitted_range_prev = *range_size;
       *range_size = 0;
-      simple_mtx_unlock(&bo->lock);
+      simple_mtx_unlock(&bo->b.lock);
       return uncommitted_range_prev;
    }
 
@@ -1318,7 +1313,7 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer *buf,
    span_va_page = va_page;
    while (va_page < end_va_page && comm[va_page].backing)
       va_page++;
-   simple_mtx_unlock(&bo->lock);
+   simple_mtx_unlock(&bo->b.lock);
 
    /* Calc byte count that need to skip before committed range */
    if (span_va_page != start_va_page)
@@ -1787,7 +1782,7 @@ static bool amdgpu_bo_is_suballocated(struct pb_buffer *buf)
 {
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
 
-   return bo->type == AMDGPU_BO_SLAB && !(bo->base.usage & RADEON_FLAG_SPARSE);
+   return bo->type == AMDGPU_BO_SLAB;
 }
 
 static uint64_t amdgpu_bo_get_va(struct pb_buffer *buf)

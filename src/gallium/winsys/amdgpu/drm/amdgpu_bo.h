@@ -51,17 +51,6 @@ struct amdgpu_winsys_bo {
          struct pb_slab_entry entry;
          struct amdgpu_winsys_bo *real;
       } slab;
-      struct {
-         amdgpu_va_handle va_handle;
-
-         uint32_t num_va_pages;
-         uint32_t num_backing_pages;
-
-         struct list_head backing;
-
-         /* Commitment information for each page of the virtual memory area. */
-         struct amdgpu_sparse_commitment *commitments;
-      } sparse;
    } u;
 
    uint64_t va;
@@ -104,6 +93,19 @@ struct amdgpu_bo_real_reusable {
    struct pb_cache_entry cache_entry;
 };
 
+struct amdgpu_bo_sparse {
+   struct amdgpu_winsys_bo b;
+   amdgpu_va_handle va_handle;
+
+   uint32_t num_va_pages;
+   uint32_t num_backing_pages;
+
+   struct list_head backing;
+
+   /* Commitment information for each page of the virtual memory area. */
+   struct amdgpu_sparse_commitment *commitments;
+};
+
 struct amdgpu_slab {
    struct pb_slab base;
    unsigned entry_size;
@@ -126,6 +128,12 @@ static struct amdgpu_bo_real_reusable *get_real_bo_reusable(struct amdgpu_winsys
 {
    assert(bo->type == AMDGPU_BO_REAL_REUSABLE);
    return (struct amdgpu_bo_real_reusable*)bo;
+}
+
+static struct amdgpu_bo_sparse *get_sparse_bo(struct amdgpu_winsys_bo *bo)
+{
+   assert(bo->type == AMDGPU_BO_SPARSE && bo->base.usage & RADEON_FLAG_SPARSE);
+   return (struct amdgpu_bo_sparse*)bo;
 }
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);
