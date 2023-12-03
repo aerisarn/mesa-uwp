@@ -122,7 +122,7 @@ build_config(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfo
    if (leaf_count <= 4)
       config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
    else if (build_info->type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR)
-      config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
+      config.internal_type = INTERNAL_BUILD_TYPE_PLOC;
    else if (!(build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) &&
             !(build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
       config.internal_type = INTERNAL_BUILD_TYPE_PLOC;
