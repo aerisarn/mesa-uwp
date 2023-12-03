@@ -46,9 +46,8 @@ struct amdgpu_winsys_bo {
    struct pb_buffer base;
    enum amdgpu_bo_type type;
 
-   uint64_t va;
    uint32_t unique_id;
-   simple_mtx_t lock;
+   uint64_t va;
 
    /* how many command streams, which are being emitted in a separate
     * thread, is this bo referenced in? */
@@ -71,6 +70,7 @@ struct amdgpu_bo_real {
 #if DEBUG
    struct list_head global_list_item;
 #endif
+   simple_mtx_t lock;
 
    bool is_user_ptr;
 
@@ -91,6 +91,7 @@ struct amdgpu_bo_sparse {
 
    uint32_t num_va_pages;
    uint32_t num_backing_pages;
+   simple_mtx_t lock;
 
    struct list_head backing;
 

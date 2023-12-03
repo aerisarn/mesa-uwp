@@ -750,7 +750,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
    /* We delay adding the backing buffers until we really have to. However,
     * we cannot delay accounting for memory use.
     */
-   simple_mtx_lock(&bo->lock);
+   simple_mtx_lock(&get_sparse_bo(bo)->lock);
 
    list_for_each_entry(struct amdgpu_sparse_backing, backing, &get_sparse_bo(bo)->backing, list) {
       if (bo->base.placement & RADEON_DOMAIN_VRAM)
@@ -759,7 +759,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
          rcs->used_gart_kb += backing->bo->b.base.size / 1024;
    }
 
-   simple_mtx_unlock(&bo->lock);
+   simple_mtx_unlock(&get_sparse_bo(bo)->lock);
 
    return idx;
 }
@@ -1461,11 +1461,11 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
 {
    for (unsigned i = 0; i < cs->num_sparse_buffers; ++i) {
       struct amdgpu_cs_buffer *buffer = &cs->sparse_buffers[i];
-      struct amdgpu_winsys_bo *bo = buffer->bo;
+      struct amdgpu_bo_sparse *bo = get_sparse_bo(buffer->bo);
 
       simple_mtx_lock(&bo->lock);
 
-      list_for_each_entry(struct amdgpu_sparse_backing, backing, &get_sparse_bo(bo)->backing, list) {
+      list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->backing, list) {
          /* We can directly add the buffer here, because we know that each
           * backing buffer occurs only once.
           */
