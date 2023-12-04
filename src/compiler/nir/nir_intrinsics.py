@@ -2036,8 +2036,9 @@ intrinsic("end_primitive_nv", dest_comp=1, src_comp=[1], indices=[STREAM_ID])
 intrinsic("final_primitive_nv", src_comp=[1])
 
 intrinsic("bar_set_nv", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
-intrinsic("bar_break_nv", src_comp=[1])
-intrinsic("bar_sync_nv", src_comp=[1])
+intrinsic("bar_break_nv", dest_comp=1, bit_sizes=[32], src_comp=[1])
+# src[] = { bar, bar_set }
+intrinsic("bar_sync_nv", src_comp=[1, 1])
 
 # In order to deal with flipped render targets, gl_PointCoord may be flipped
 # in the shader requiring a shader key or extra instructions or it may be

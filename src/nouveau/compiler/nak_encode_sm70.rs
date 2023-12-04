@@ -1692,7 +1692,7 @@ impl SM70Instr {
         self.set_opcode(0x355);
 
         self.set_dst(Dst::None);
-        self.set_field(24..28, op.dst.idx());
+        self.set_bar_dst(24..28, op.dst);
 
         self.set_bit(84, true); // .CLEAR
     }
@@ -1717,7 +1717,8 @@ impl SM70Instr {
 
     fn encode_break(&mut self, op: &OpBreak) {
         self.set_opcode(0x942);
-        self.set_field(16..20, op.bar.idx());
+        assert!(op.bar_in.src_ref.as_reg() == op.bar_out.as_reg());
+        self.set_bar_dst(16..20, op.bar_out);
         self.set_pred_src(87..90, 90, op.cond);
     }
 
@@ -1728,14 +1729,15 @@ impl SM70Instr {
         labels: &HashMap<Label, usize>,
     ) {
         self.set_opcode(0x945);
-        self.set_field(16..20, op.bar.idx());
+        assert!(op.bar_in.src_ref.as_reg() == op.bar_out.as_reg());
+        self.set_bar_dst(16..20, op.bar_out);
         self.set_rel_offset(34..64, &op.target, ip, labels);
         self.set_pred_src(87..90, 90, op.cond);
     }
 
     fn encode_bsync(&mut self, op: &OpBSync) {
         self.set_opcode(0x941);
-        self.set_field(16..20, op.bar.idx());
+        self.set_bar_src(16..20, op.bar);
         self.set_pred_src(87..90, 90, op.cond);
     }
 

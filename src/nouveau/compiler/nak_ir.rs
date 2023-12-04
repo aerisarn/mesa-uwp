@@ -642,28 +642,6 @@ impl fmt::Display for RegRef {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-pub struct BarRef {
-    idx: u8,
-}
-
-impl BarRef {
-    pub fn new(idx: u8) -> BarRef {
-        assert!(idx < 16);
-        BarRef { idx: idx }
-    }
-
-    pub fn idx(&self) -> u8 {
-        self.idx
-    }
-}
-
-impl fmt::Display for BarRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "B{}", self.idx())
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum Dst {
     None,
@@ -3633,7 +3611,7 @@ impl_display_for_op!(OpMemBar);
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBClear {
-    pub dst: BarRef,
+    pub dst: Dst,
 }
 
 impl DisplayOp for OpBClear {
@@ -3665,7 +3643,10 @@ impl_display_for_op!(OpBMov);
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBreak {
-    pub bar: BarRef,
+    pub bar_out: Dst,
+
+    #[src_type(Bar)]
+    pub bar_in: Src,
 
     #[src_type(Pred)]
     pub cond: Src,
@@ -3673,7 +3654,7 @@ pub struct OpBreak {
 
 impl DisplayOp for OpBreak {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "break {} {}", self.cond, self.bar)
+        write!(f, "break {} {}", self.bar_in, self.cond)
     }
 }
 impl_display_for_op!(OpBreak);
@@ -3681,7 +3662,10 @@ impl_display_for_op!(OpBreak);
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBSSy {
-    pub bar: BarRef,
+    pub bar_out: Dst,
+
+    #[src_type(Pred)]
+    pub bar_in: Src,
 
     #[src_type(Pred)]
     pub cond: Src,
@@ -3691,7 +3675,7 @@ pub struct OpBSSy {
 
 impl DisplayOp for OpBSSy {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "bssy {} {} {}", self.cond, self.bar, self.target)
+        write!(f, "bssy {} {} {}", self.bar_in, self.cond, self.target)
     }
 }
 impl_display_for_op!(OpBSSy);
@@ -3699,7 +3683,8 @@ impl_display_for_op!(OpBSSy);
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBSync {
-    pub bar: BarRef,
+    #[src_type(Bar)]
+    pub bar: Src,
 
     #[src_type(Pred)]
     pub cond: Src,
@@ -3707,7 +3692,7 @@ pub struct OpBSync {
 
 impl DisplayOp for OpBSync {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "bsync {} {}", self.cond, self.bar)
+        write!(f, "bsync {} {}", self.bar, self.cond)
     }
 }
 impl_display_for_op!(OpBSync);
@@ -4704,9 +4689,6 @@ impl Instr {
             | Op::MemBar(_)
             | Op::Kill(_)
             | Op::Nop(_)
-            | Op::BClear(_)
-            | Op::Break(_)
-            | Op::BSSy(_)
             | Op::BSync(_)
             | Op::Bra(_)
             | Op::Exit(_)
