@@ -534,12 +534,9 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
 
 static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
 {
-   return cs->chunk_ib[IB_MAIN].ip_type != AMDGPU_HW_IP_UVD &&
-          cs->chunk_ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCE &&
-          cs->chunk_ib[IB_MAIN].ip_type != AMDGPU_HW_IP_UVD_ENC &&
-          cs->chunk_ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_DEC &&
-          cs->chunk_ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_ENC &&
-          cs->chunk_ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_JPEG;
+   return cs->chunk_ib[IB_MAIN].ip_type == AMD_IP_GFX ||
+          cs->chunk_ib[IB_MAIN].ip_type == AMD_IP_COMPUTE ||
+          cs->chunk_ib[IB_MAIN].ip_type == AMD_IP_SDMA;
 }
 
 static inline unsigned amdgpu_cs_epilog_dws(struct amdgpu_cs *cs)
