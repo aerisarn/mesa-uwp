@@ -1199,6 +1199,13 @@ impl Shader {
 
         self.info.num_gprs = total_gprs.try_into().unwrap();
 
+        // We do a maximum here because nak_from_nir may set num_barriers to 1
+        // in the case where there is an OpBar.
+        self.info.num_barriers = max(
+            self.info.num_barriers,
+            max_live[RegFile::Bar].try_into().unwrap(),
+        );
+
         let limit = PerRegFile::new_with(|file| {
             if file == RegFile::GPR {
                 gpr_limit
