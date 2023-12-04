@@ -13,8 +13,7 @@
 
 #include "nouveau_context.h"
 
-#include "classes/cla0b5.h"
-
+#include "cla0b5.h"
 #include "cla1c0.h"
 #include "clc0c0.h"
 #include "clc5c0.h"

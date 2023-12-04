@@ -30,7 +30,7 @@ cl_generated = []
 foreach cl : nvk_classes
   cl_generated += custom_target(
     cl + '.h',
-    input : ['class_parser.py', 'classes/'+cl+'.h'],
+    input : ['class_parser.py', 'nvidia/classes/'+cl+'.h'],
     output : ['nvk_'+cl+'.h', 'nvk_'+cl+'.c'],
     command : [prog_python, '@INPUT0@', '--in_h', '@INPUT1@',
                '--out_h', '@OUTPUT0@', '--out_c', '@OUTPUT1@'],
@@ -41,13 +41,13 @@ endforeach
 _libnvidia_headers = static_library(
   'nvidia_headers',
   ['nv_push.c', cl_generated],
-  include_directories : ['.', 'classes', inc_include, inc_src],
+  include_directories : ['.', 'nvidia/classes', inc_include, inc_src],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
 )
 
 idep_nvidia_headers = declare_dependency(
-  include_directories : include_directories('.', 'classes'),
+  include_directories : include_directories('.', 'nvidia/classes'),
   sources : cl_generated,
   link_with : _libnvidia_headers,
 )

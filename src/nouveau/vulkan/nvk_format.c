@@ -13,9 +13,9 @@
 #include "vk_format.h"
 
 #include "nvtypes.h"
-#include "classes/cl902d.h"
-#include "classes/cl9097.h"
-#include "classes/cl90c0.h"
+#include "cl902d.h"
+#include "cl9097.h"
+#include "cl90c0.h"
 
 #define VA_FMT(vk_fmt, widths, swap_rb, type) \
    [VK_FORMAT_##vk_fmt] = \
