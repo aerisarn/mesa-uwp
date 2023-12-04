@@ -587,153 +587,64 @@ int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_wi
 }
 
 static int
-amdgpu_do_add_real_buffer(struct amdgpu_cs_context *cs,
-                          struct amdgpu_winsys_bo *bo)
+amdgpu_do_add_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo,
+                     struct amdgpu_buffer_list *list)
 {
-   struct amdgpu_cs_buffer *buffer;
-   int idx;
-
    /* New buffer, check if the backing array is large enough. */
-   if (cs->buffer_lists[AMDGPU_BO_REAL].num_buffers >=
-       cs->buffer_lists[AMDGPU_BO_REAL].max_buffers) {
+   if (list->num_buffers >= list->max_buffers) {
       unsigned new_max =
-         MAX2(cs->buffer_lists[AMDGPU_BO_REAL].max_buffers + 16,
-              (unsigned)(cs->buffer_lists[AMDGPU_BO_REAL].max_buffers * 1.3));
+         MAX2(list->max_buffers + 16, (unsigned)(list->max_buffers * 1.3));
       struct amdgpu_cs_buffer *new_buffers;
 
-      new_buffers = MALLOC(new_max * sizeof(*new_buffers));
-
+      new_buffers = REALLOC(list->buffers, list->max_buffers * sizeof(*new_buffers),
+                            new_max * sizeof(*new_buffers));
       if (!new_buffers) {
          fprintf(stderr, "amdgpu_do_add_buffer: allocation failed\n");
-         FREE(new_buffers);
-         return -1;
+         return 0;
       }
 
-      memcpy(new_buffers, cs->buffer_lists[AMDGPU_BO_REAL].buffers,
-             cs->buffer_lists[AMDGPU_BO_REAL].num_buffers * sizeof(*new_buffers));
-
-      FREE(cs->buffer_lists[AMDGPU_BO_REAL].buffers);
-
-      cs->buffer_lists[AMDGPU_BO_REAL].max_buffers = new_max;
-      cs->buffer_lists[AMDGPU_BO_REAL].buffers = new_buffers;
+      list->max_buffers = new_max;
+      list->buffers = new_buffers;
    }
 
-   idx = cs->buffer_lists[AMDGPU_BO_REAL].num_buffers;
-   buffer = &cs->buffer_lists[AMDGPU_BO_REAL].buffers[idx];
+   int idx = list->num_buffers;
+   struct amdgpu_cs_buffer *buffer = &list->buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
    amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
-   cs->buffer_lists[AMDGPU_BO_REAL].num_buffers++;
+   list->num_buffers++;
 
-   return idx;
-}
-
-static int
-amdgpu_lookup_or_add_real_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
-{
-   unsigned hash;
-   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_REAL];
-   int idx = amdgpu_lookup_buffer(cs, bo, list);
-
-   if (idx >= 0)
-      return idx;
-
-   idx = amdgpu_do_add_real_buffer(cs, bo);
-
-   hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
+   unsigned hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
    cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
    return idx;
 }
 
-static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_cs_context *cs,
-                                            struct amdgpu_winsys_bo *bo)
+static int
+amdgpu_lookup_or_add_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo,
+                            enum amdgpu_bo_type type)
 {
-   struct amdgpu_cs_buffer *buffer;
-   unsigned hash;
+   struct amdgpu_buffer_list *list = &cs->buffer_lists[type];
+   int idx = amdgpu_lookup_buffer(cs, bo, list);
+
+   return idx >= 0 ? idx : amdgpu_do_add_buffer(cs, bo, list);
+}
+
+static int
+amdgpu_lookup_or_add_slab_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
+{
    struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_SLAB];
    int idx = amdgpu_lookup_buffer(cs, bo, list);
 
    if (idx >= 0)
       return idx;
 
-   int real_idx = amdgpu_lookup_or_add_real_buffer(cs, &get_slab_bo(bo)->real->b);
+   int real_idx = amdgpu_lookup_or_add_buffer(cs, &get_slab_bo(bo)->real->b, AMDGPU_BO_REAL);
    if (real_idx < 0)
       return -1;
 
-   /* New buffer, check if the backing array is large enough. */
-   if (cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers >=
-       cs->buffer_lists[AMDGPU_BO_SLAB].max_buffers) {
-      unsigned new_max =
-         MAX2(cs->buffer_lists[AMDGPU_BO_SLAB].max_buffers + 16,
-              (unsigned)(cs->buffer_lists[AMDGPU_BO_SLAB].max_buffers * 1.3));
-      struct amdgpu_cs_buffer *new_buffers;
-
-      new_buffers = REALLOC(cs->buffer_lists[AMDGPU_BO_SLAB].buffers,
-                            cs->buffer_lists[AMDGPU_BO_SLAB].max_buffers * sizeof(*new_buffers),
-                            new_max * sizeof(*new_buffers));
-      if (!new_buffers) {
-         fprintf(stderr, "amdgpu_lookup_or_add_slab_buffer: allocation failed\n");
-         return -1;
-      }
-
-      cs->buffer_lists[AMDGPU_BO_SLAB].max_buffers = new_max;
-      cs->buffer_lists[AMDGPU_BO_SLAB].buffers = new_buffers;
-   }
-
-   idx = cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers;
-   buffer = &cs->buffer_lists[AMDGPU_BO_SLAB].buffers[idx];
-
-   memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
-   buffer->slab_real_idx = real_idx;
-   cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers++;
-
-   hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
-   cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
-
-   return idx;
-}
-
-static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_cs_context *cs,
-                                              struct amdgpu_winsys_bo *bo)
-{
-   struct amdgpu_cs_buffer *buffer;
-   unsigned hash;
-   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_SPARSE];
-   int idx = amdgpu_lookup_buffer(cs, bo, list);
-
+   idx = amdgpu_do_add_buffer(cs, bo, list);
    if (idx >= 0)
-      return idx;
-
-   /* New buffer, check if the backing array is large enough. */
-   if (cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers >=
-       cs->buffer_lists[AMDGPU_BO_SPARSE].max_buffers) {
-      unsigned new_max =
-         MAX2(cs->buffer_lists[AMDGPU_BO_SPARSE].max_buffers + 16,
-              (unsigned)(cs->buffer_lists[AMDGPU_BO_SPARSE].max_buffers * 1.3));
-      struct amdgpu_cs_buffer *new_buffers;
-
-      new_buffers = REALLOC(cs->buffer_lists[AMDGPU_BO_SPARSE].buffers,
-                            cs->buffer_lists[AMDGPU_BO_SPARSE].max_buffers * sizeof(*new_buffers),
-                            new_max * sizeof(*new_buffers));
-      if (!new_buffers) {
-         fprintf(stderr, "amdgpu_lookup_or_add_sparse_buffer: allocation failed\n");
-         return -1;
-      }
-
-      cs->buffer_lists[AMDGPU_BO_SPARSE].max_buffers = new_max;
-      cs->buffer_lists[AMDGPU_BO_SPARSE].buffers = new_buffers;
-   }
-
-   idx = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
-   buffer = &cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[idx];
-
-   memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
-   cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers++;
-
-   hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
-   cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
+      cs->buffer_lists[AMDGPU_BO_SLAB].buffers[idx].slab_real_idx = real_idx;
    return idx;
 }
 
@@ -766,13 +677,13 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
       cs->buffer_lists[AMDGPU_BO_REAL].buffers[buffer->slab_real_idx].usage |=
          usage & ~RADEON_USAGE_SYNCHRONIZED;
    } else if (is_real_bo(bo)) {
-      int index = amdgpu_lookup_or_add_real_buffer(cs, bo);
+      int index = amdgpu_lookup_or_add_buffer(cs, bo, AMDGPU_BO_REAL);
       if (index < 0)
          return 0;
 
       buffer = &cs->buffer_lists[AMDGPU_BO_REAL].buffers[index];
    } else {
-      int index = amdgpu_lookup_or_add_sparse_buffer(cs, bo);
+      int index = amdgpu_lookup_or_add_buffer(cs, bo, AMDGPU_BO_SPARSE);
       if (index < 0)
          return 0;
 
