@@ -1699,7 +1699,7 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    }
 
    if (ycbcr_props) {
-      ycbcr_props->combinedImageSamplerDescriptorCount = vk_format_get_plane_count(format);
+      ycbcr_props->combinedImageSamplerDescriptorCount = 1;
    }
 
    if (texture_lod_props) {
