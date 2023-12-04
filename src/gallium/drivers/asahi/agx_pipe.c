@@ -1665,9 +1665,12 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return 16384;
-   case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
-      return 13;
+      /* Max 16384x16384 */
+      return 15;
+   case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
+      /* Max 2048x2048x2048 */
+      return 12;
 
    case PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT:
    case PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
