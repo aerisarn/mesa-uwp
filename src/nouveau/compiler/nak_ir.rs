@@ -3601,69 +3601,18 @@ impl DisplayOp for OpMemBar {
 }
 impl_display_for_op!(OpMemBar);
 
-#[allow(dead_code)]
-pub enum BMovSrc {
-    Barrier(BarRef),
-    TreadStateEnum0,
-    TreadStateEnum1,
-    TreadStateEnum2,
-    TreadStateEnum3,
-    TreadStateEnum4,
-    TrapReturnPCLo,
-    TrapReturnPCHi,
-    TrapReturnMask,
-    MExited,
-    MKill,
-    MActive,
-    MAtExit,
-    OptStack,
-    APICallDepth,
-    AtExitPCLo,
-    AtExitPCHi,
-}
-
-impl fmt::Display for BMovSrc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            BMovSrc::Barrier(bar) => bar.fmt(f),
-            BMovSrc::TreadStateEnum0 => write!(f, "THREAD_STATE_ENUM.0"),
-            BMovSrc::TreadStateEnum1 => write!(f, "THREAD_STATE_ENUM.1"),
-            BMovSrc::TreadStateEnum2 => write!(f, "THREAD_STATE_ENUM.2"),
-            BMovSrc::TreadStateEnum3 => write!(f, "THREAD_STATE_ENUM.3"),
-            BMovSrc::TreadStateEnum4 => write!(f, "THREAD_STATE_ENUM.4"),
-            BMovSrc::TrapReturnPCLo => write!(f, "TRAP_RETURN_PC.LO"),
-            BMovSrc::TrapReturnPCHi => write!(f, "TRAP_RETURN_PC.HI"),
-            BMovSrc::TrapReturnMask => write!(f, "TRAP_RETURN_MASK"),
-            BMovSrc::MExited => write!(f, "MEXITED"),
-            BMovSrc::MKill => write!(f, "MKILL"),
-            BMovSrc::MActive => write!(f, "MACTIVE"),
-            BMovSrc::MAtExit => write!(f, "MATEXIT"),
-            BMovSrc::OptStack => write!(f, "OPT_STACK"),
-            BMovSrc::APICallDepth => write!(f, "API_CALL_DEPTH"),
-            BMovSrc::AtExitPCLo => write!(f, "ATEXIT_PC.LO"),
-            BMovSrc::AtExitPCHi => write!(f, "ATEXIT_PC.HI"),
-        }
-    }
-}
-
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpBMov {
-    pub dst: Dst,
-    pub src: BMovSrc,
-    pub clear: bool,
+pub struct OpBClear {
+    pub dst: BarRef,
 }
 
-impl DisplayOp for OpBMov {
+impl DisplayOp for OpBClear {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "bmov.32")?;
-        if self.clear {
-            write!(f, ".clear")?;
-        }
-        write!(f, " {} {}", self.dst, self.src)
+        write!(f, "bclear")
     }
 }
-impl_display_for_op!(OpBMov);
+impl_display_for_op!(OpBClear);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
@@ -4347,7 +4296,7 @@ pub enum Op {
     LdTram(OpLdTram),
     CCtl(OpCCtl),
     MemBar(OpMemBar),
-    BMov(OpBMov),
+    BClear(OpBClear),
     Break(OpBreak),
     BSSy(OpBSSy),
     BSync(OpBSync),
@@ -4706,6 +4655,7 @@ impl Instr {
             | Op::MemBar(_)
             | Op::Kill(_)
             | Op::Nop(_)
+            | Op::BClear(_)
             | Op::Break(_)
             | Op::BSSy(_)
             | Op::BSync(_)
@@ -4716,7 +4666,6 @@ impl Instr {
             | Op::FSOut(_)
             | Op::Out(_)
             | Op::OutFinal(_) => false,
-            Op::BMov(op) => !op.clear,
             _ => true,
         }
     }
@@ -4786,7 +4735,7 @@ impl Instr {
             | Op::MemBar(_) => false,
 
             // Control-flow ops
-            Op::BMov(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => false,
+            Op::BClear(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => false,
             Op::Bra(_) | Op::Exit(_) => true,
             Op::WarpSync(_) => false,
 

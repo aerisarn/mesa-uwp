@@ -1664,32 +1664,13 @@ impl SM70Instr {
         self.set_field(range, rel_offset);
     }
 
-    fn encode_bmov(&mut self, op: &OpBMov) {
+    fn encode_bclear(&mut self, op: &OpBClear) {
         self.set_opcode(0x355);
-        self.set_dst(op.dst);
 
-        let src = match op.src {
-            BMovSrc::Barrier(bar) => bar.idx(),
-            BMovSrc::TreadStateEnum0 => 0x10,
-            BMovSrc::TreadStateEnum1 => 0x11,
-            BMovSrc::TreadStateEnum2 => 0x12,
-            BMovSrc::TreadStateEnum3 => 0x13,
-            BMovSrc::TreadStateEnum4 => 0x14,
-            BMovSrc::TrapReturnPCLo => 0x15,
-            BMovSrc::TrapReturnPCHi => 0x16,
-            BMovSrc::TrapReturnMask => 0x17,
-            BMovSrc::MExited => 0x18,
-            BMovSrc::MKill => 0x19,
-            BMovSrc::MActive => 0x1a,
-            BMovSrc::MAtExit => 0x1b,
-            BMovSrc::OptStack => 0x1c,
-            BMovSrc::APICallDepth => 0x1d,
-            BMovSrc::AtExitPCLo => 0x1e,
-            BMovSrc::AtExitPCHi => 0x1f,
-        };
-        self.set_field(24..29, src);
+        self.set_dst(Dst::None);
+        self.set_field(24..28, op.dst.idx());
 
-        self.set_bit(84, op.clear);
+        self.set_bit(84, true); // .CLEAR
     }
 
     fn encode_break(&mut self, op: &OpBreak) {
@@ -1927,7 +1908,7 @@ impl SM70Instr {
             Op::LdTram(op) => si.encode_ldtram(&op),
             Op::CCtl(op) => si.encode_cctl(&op),
             Op::MemBar(op) => si.encode_membar(&op),
-            Op::BMov(op) => si.encode_bmov(&op),
+            Op::BClear(op) => si.encode_bclear(&op),
             Op::Break(op) => si.encode_break(&op),
             Op::BSSy(op) => si.encode_bssy(&op, ip, labels),
             Op::BSync(op) => si.encode_bsync(&op),

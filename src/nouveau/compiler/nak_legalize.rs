@@ -259,7 +259,7 @@ fn legalize_instr(b: &mut impl SSABuilder, instr: &mut Instr) {
             copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
         }
         Op::Ldc(_) => (), // Nothing to do
-        Op::BMov(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => (),
+        Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => (),
         Op::Vote(_) => (), // Nothing to do
         Op::Copy(_) => (), // Nothing to do
         _ => {

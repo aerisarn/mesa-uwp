@@ -1627,10 +1627,8 @@ impl<'a> ShaderFromNir<'a> {
                 let label = self.label_alloc.alloc();
                 let bar = self.bar_alloc.alloc();
 
-                let bmov = b.push_op(OpBMov {
-                    dst: Dst::None,
-                    src: BMovSrc::Barrier(bar),
-                    clear: true,
+                let bmov = b.push_op(OpBClear {
+                    dst: bar,
                 });
                 bmov.deps.yld = true;
 
@@ -2542,10 +2540,8 @@ impl<'a> ShaderFromNir<'a> {
             let label = self.label_alloc.alloc();
             let bar = self.bar_alloc.alloc();
 
-            let bmov = b.push_op(OpBMov {
-                dst: Dst::None,
-                src: BMovSrc::Barrier(bar),
-                clear: true,
+            let bmov = b.push_op(OpBClear {
+                dst: bar,
             });
             bmov.deps.yld = true;
 
