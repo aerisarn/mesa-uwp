@@ -537,6 +537,8 @@ struct agx_context {
    struct agx_query *occlusion_query;
    struct agx_query *prims_generated[4];
    struct agx_query *tf_prims_generated[4];
+   struct agx_query *tf_overflow[4];
+   struct agx_query *tf_any_overflow;
    struct agx_query *time_elapsed;
    bool active_queries;
 

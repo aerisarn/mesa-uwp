@@ -108,6 +108,14 @@ agx_begin_query(struct pipe_context *pctx, struct pipe_query *pquery)
       ctx->tf_prims_generated[query->index] = query;
       break;
 
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+      ctx->tf_overflow[query->index] = query;
+      break;
+
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      ctx->tf_any_overflow = query;
+      break;
+
    case PIPE_QUERY_TIME_ELAPSED:
       ctx->time_elapsed = query;
       query->timestamp_begin = UINT64_MAX;
@@ -156,6 +164,12 @@ agx_end_query(struct pipe_context *pctx, struct pipe_query *pquery)
       return true;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
       ctx->tf_prims_generated[query->index] = NULL;
+      return true;
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+      ctx->tf_overflow[query->index] = NULL;
+      return true;
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      ctx->tf_any_overflow = NULL;
       return true;
    case PIPE_QUERY_TIME_ELAPSED:
       ctx->time_elapsed = NULL;
@@ -213,6 +227,11 @@ agx_get_query_result(struct pipe_context *pctx, struct pipe_query *pquery,
       vresult->b = query->value;
       return true;
 
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      vresult->b = query->value > 0;
+      return true;
+
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
@@ -258,6 +277,10 @@ agx_get_query_result_resource(struct pipe_context *pipe, struct pipe_query *q,
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
       result.u32 = result.b;
+      break;
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      result.u32 = (bool)(result.u32 > 0);
       break;
    default:
       break;

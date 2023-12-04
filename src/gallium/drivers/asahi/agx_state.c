@@ -3628,6 +3628,20 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
       }
    }
 
+   if (batch->ctx->active_queries && batch->ctx->streamout.num_targets > 0) {
+      for (unsigned i = 0; i < ARRAY_SIZE(batch->ctx->tf_overflow); ++i) {
+         if (batch->ctx->tf_overflow[i]) {
+            params.xfb_overflow[i] =
+               agx_get_query_address(batch, batch->ctx->tf_overflow[i]);
+         }
+      }
+
+      if (batch->ctx->tf_any_overflow) {
+         params.xfb_any_overflow =
+            agx_get_query_address(batch, batch->ctx->tf_any_overflow);
+      }
+   }
+
    /* Calculate input primitive count for direct draws, and allocate the count
     * buffer. GPU calculates and allocates for indirect draws.
     */

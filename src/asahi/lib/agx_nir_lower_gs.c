@@ -832,9 +832,11 @@ agx_nir_create_pre_gs(struct lower_gs_state *state, const nir_shader *libagx,
    }
 
    /* Determine the number of primitives generated in each stream */
-   nir_def *prims[MAX_VERTEX_STREAMS];
+   nir_def *in_prims[MAX_VERTEX_STREAMS], *prims[MAX_VERTEX_STREAMS];
+
    u_foreach_bit(i, streams) {
-      prims[i] = previous_xfb_primitives(b, state, i, unrolled_in_prims);
+      in_prims[i] = previous_xfb_primitives(b, state, i, unrolled_in_prims);
+      prims[i] = in_prims[i];
 
       add_counter(b, load_geometry_param(b, prims_generated_counter[i]),
                   prims[i]);
@@ -879,12 +881,23 @@ agx_nir_create_pre_gs(struct lower_gs_state *state, const nir_shader *libagx,
          prims[stream] = nir_umin(b, prims[stream], max_prims);
       }
 
+      nir_def *any_overflow = nir_imm_false(b);
+
       u_foreach_bit(i, streams) {
+         nir_def *overflow = nir_ult(b, prims[i], in_prims[i]);
+         any_overflow = nir_ior(b, any_overflow, overflow);
+
          store_geometry_param(b, xfb_prims[i], prims[i]);
+
+         add_counter(b, load_geometry_param(b, xfb_overflow[i]),
+                     nir_b2i32(b, overflow));
 
          add_counter(b, load_geometry_param(b, xfb_prims_generated_counter[i]),
                      prims[i]);
       }
+
+      add_counter(b, load_geometry_param(b, xfb_any_overflow),
+                  nir_b2i32(b, any_overflow));
 
       /* Update XFB counters */
       u_foreach_bit(i, xfb->buffers_written) {
