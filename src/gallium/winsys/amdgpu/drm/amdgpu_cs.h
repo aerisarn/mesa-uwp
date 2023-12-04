@@ -201,7 +201,8 @@ static inline void amdgpu_fence_reference(struct pipe_fence_handle **dst,
    *adst = asrc;
 }
 
-int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo);
+struct amdgpu_cs_buffer *
+amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo);
 
 static inline struct amdgpu_cs *
 amdgpu_cs(struct radeon_cmdbuf *rcs)
@@ -218,7 +219,7 @@ static inline bool
 amdgpu_bo_is_referenced_by_cs(struct amdgpu_cs *cs,
                               struct amdgpu_winsys_bo *bo)
 {
-   return amdgpu_lookup_buffer_any_type(cs->csc, bo) != -1;
+   return amdgpu_lookup_buffer_any_type(cs->csc, bo) != NULL;
 }
 
 static inline unsigned get_buf_list_idx(struct amdgpu_winsys_bo *bo)
@@ -233,18 +234,9 @@ amdgpu_bo_is_referenced_by_cs_with_usage(struct amdgpu_cs *cs,
                                          struct amdgpu_winsys_bo *bo,
                                          unsigned usage)
 {
-   int index;
-   struct amdgpu_cs_buffer *buffer;
+   struct amdgpu_cs_buffer *buffer = amdgpu_lookup_buffer_any_type(cs->csc, bo);
 
-   index = amdgpu_lookup_buffer_any_type(cs->csc, bo);
-   if (index == -1)
-      return false;
-
-   buffer = is_real_bo(bo) ? &cs->csc->buffer_lists[AMDGPU_BO_REAL].buffers[index] :
-            bo->base.usage & RADEON_FLAG_SPARSE ? &cs->csc->buffer_lists[AMDGPU_BO_SPARSE].buffers[index] :
-            &cs->csc->buffer_lists[AMDGPU_BO_SLAB].buffers[index];
-
-   return (buffer->usage & usage) != 0;
+   return buffer && (buffer->usage & usage) != 0;
 }
 
 bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
