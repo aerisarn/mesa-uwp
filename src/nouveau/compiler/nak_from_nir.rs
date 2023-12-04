@@ -234,7 +234,8 @@ impl<'a> ShaderFromNir<'a> {
             for s in &vec {
                 assert!(!s.is_predicate());
             }
-            let bits = def.bit_size * def.num_components;
+            let bits =
+                usize::from(def.bit_size) * usize::from(def.num_components);
             assert!(vec.len() == bits.div_ceil(32).into());
         }
         self.ssa_map
@@ -319,7 +320,8 @@ impl<'a> ShaderFromNir<'a> {
             | nir_op_vec8
             | nir_op_vec16 => {
                 let src_bit_size = alu.get_src(0).src.bit_size();
-                let bits = alu.def.num_components * alu.def.bit_size;
+                let bits = usize::from(alu.def.num_components)
+                    * usize::from(alu.def.bit_size);
 
                 // Collect the sources into a vec with src_bit_size per SSA
                 // value in the vec.  This implicitly makes 64-bit sources look
@@ -359,7 +361,7 @@ impl<'a> ShaderFromNir<'a> {
                             let mut psel = [0_u8; 4];
 
                             for b in 0..4 {
-                                let sc = usize::from(dc * 4 + b);
+                                let sc = dc * 4 + b;
                                 if sc < srcs.len() {
                                     let (ssa, byte) = srcs[sc];
                                     for i in 0..4_u8 {
@@ -369,7 +371,7 @@ impl<'a> ShaderFromNir<'a> {
                                         } else if *psrc_i != Src::from(ssa) {
                                             continue;
                                         }
-                                        psel[usize::from(b)] = i * 4 + byte;
+                                        psel[b] = i * 4 + byte;
                                     }
                                 }
                             }
@@ -382,13 +384,13 @@ impl<'a> ShaderFromNir<'a> {
                             let mut psel = [0_u8; 4];
 
                             for w in 0..2 {
-                                let sc = usize::from(dc * 2 + w);
+                                let sc = dc * 2 + w;
                                 if sc < srcs.len() {
                                     let (ssa, byte) = srcs[sc];
-                                    let w_usize = usize::from(w);
-                                    psrc[w_usize] = ssa.into();
-                                    psel[w_usize * 2 + 0] = (w * 4) + byte;
-                                    psel[w_usize * 2 + 1] = (w * 4) + byte + 1;
+                                    let w_u8 = u8::try_from(w).unwrap();
+                                    psrc[w] = ssa.into();
+                                    psel[w * 2 + 0] = (w_u8 * 4) + byte;
+                                    psel[w * 2 + 1] = (w_u8 * 4) + byte + 1;
                                 }
                             }
                             comps.push(b.prmt(psrc[0], psrc[1], psel)[0]);
