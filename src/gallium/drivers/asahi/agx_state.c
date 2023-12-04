@@ -4418,6 +4418,9 @@ static void
 agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 {
    struct agx_context *ctx = agx_context(pipe);
+   if (unlikely(!agx_render_condition_check(ctx)))
+      return;
+
    struct agx_batch *batch = agx_get_compute_batch(ctx);
    agx_batch_add_timestamp_query(batch, ctx->time_elapsed);
 
