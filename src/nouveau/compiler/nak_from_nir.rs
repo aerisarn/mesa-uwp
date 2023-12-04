@@ -1670,18 +1670,30 @@ impl<'a> ShaderFromNir<'a> {
                 let atom_type = self.get_atomic_type(intrin);
                 let atom_op = self.get_atomic_op(intrin);
 
-                assert!(intrin.def.bit_size() == 32);
+                assert!(
+                    intrin.def.bit_size() == 32 || intrin.def.bit_size() == 64
+                );
                 assert!(intrin.def.num_components() == 1);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                let dst = b.alloc_ssa(RegFile::GPR, intrin.def.bit_size() / 32);
 
                 let data = if intrin.intrinsic
                     == nir_intrinsic_bindless_image_atomic_swap
                 {
-                    SSARef::from([
-                        self.get_ssa(srcs[3].as_def())[0],
-                        self.get_ssa(srcs[4].as_def())[0],
-                    ])
-                    .into()
+                    if intrin.def.bit_size() == 64 {
+                        SSARef::from([
+                            self.get_ssa(srcs[3].as_def())[0],
+                            self.get_ssa(srcs[3].as_def())[1],
+                            self.get_ssa(srcs[4].as_def())[0],
+                            self.get_ssa(srcs[4].as_def())[1],
+                        ])
+                        .into()
+                    } else {
+                        SSARef::from([
+                            self.get_ssa(srcs[3].as_def())[0],
+                            self.get_ssa(srcs[4].as_def())[0],
+                        ])
+                        .into()
+                    }
                 } else {
                     self.get_src(&srcs[3])
                 };
