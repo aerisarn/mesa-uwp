@@ -643,6 +643,10 @@ impl Device {
             // requires CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS
             //add_ext(1, 0, 0, "cl_khr_subgroups");
             add_feat(1, 0, 0, "__opencl_c_subgroups");
+
+            // we have lowering in `nir_lower_subgroups`, drivers can just use that
+            add_ext(1, 0, 0, "cl_khr_subgroup_shuffle");
+            add_ext(1, 0, 0, "cl_khr_subgroup_shuffle_relative");
         }
 
         if self.svm_supported() {
@@ -1021,6 +1025,7 @@ impl Device {
     }
 
     pub fn cl_features(&self) -> clc_optional_features {
+        let subgroups_supported = self.subgroups_supported();
         clc_optional_features {
             fp16: self.fp16_supported(),
             fp64: self.fp64_supported(),
@@ -1029,7 +1034,9 @@ impl Device {
             images_read_write: self.image_read_write_supported(),
             images_write_3d: self.image_3d_write_supported(),
             integer_dot_product: true,
-            subgroups: self.subgroups_supported(),
+            subgroups: subgroups_supported,
+            subgroups_shuffle: subgroups_supported,
+            subgroups_shuffle_relative: subgroups_supported,
             ..Default::default()
         }
     }

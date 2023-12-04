@@ -334,6 +334,7 @@ impl SPIRVBin {
                 float64: true,
                 generic_pointers: true,
                 groups: true,
+                subgroup_shuffle: true,
                 int8: true,
                 int16: true,
                 int64: true,

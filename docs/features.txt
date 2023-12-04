@@ -944,8 +944,8 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_subgroup_non_uniform_arithmetic                not started
   cl_khr_subgroup_non_uniform_vote                      not started
   cl_khr_subgroup_rotate                                not started
-  cl_khr_subgroup_shuffle                               not started
-  cl_khr_subgroup_shuffle_relative                      not started
+  cl_khr_subgroup_shuffle                               DONE (iris, llvmpipe, radeonsi)
+  cl_khr_subgroup_shuffle_relative                      DONE (iris, llvmpipe, radeonsi)
   cl_khr_suggested_local_work_size                      not started
   cl_khr_terminate_context                              not started
   cl_khr_throttle_hints                                 not started
