@@ -467,6 +467,11 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_b2b32 | nir_op_b2i8 | nir_op_b2i16 | nir_op_b2i32 => {
                 b.sel(srcs[0].bnot(), 0.into(), 1.into())
             }
+            nir_op_b2i64 => {
+                let lo = b.sel(srcs[0].bnot(), 0.into(), 1.into());
+                let hi = b.copy(0.into());
+                [lo[0], hi[0]].into()
+            }
             nir_op_b2f32 => {
                 b.sel(srcs[0].bnot(), 0.0_f32.into(), 1.0_f32.into())
             }
