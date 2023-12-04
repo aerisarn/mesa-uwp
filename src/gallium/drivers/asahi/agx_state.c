@@ -3510,6 +3510,7 @@ agx_upload_ia_params(struct agx_batch *batch, const struct pipe_draw_info *info,
       agx_batch_reads(batch, rsrc);
 
       ia.count = rsrc->bo->ptr.gpu + indirect->indirect_draw_count_offset;
+      ia.max_draws = indirect->draw_count;
       ia.draw_stride = indirect->stride;
 
       /* MDI requires prefix sums, but not for our current unroll path */

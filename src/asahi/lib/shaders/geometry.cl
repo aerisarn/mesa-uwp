@@ -351,12 +351,19 @@ process_multidraw(global struct agx_ia_state *s, uint local_id,
    uintptr_t draw_ptr = s->draws;
    uint draw_stride = s->draw_stride;
 
+   /* Determine the number of draws. This is given by the application, but must
+    * be clamped to the minimum provided to the driver, implementing spec text:
+    *
+    *    The actual number of executed draw calls is the minimum of the count
+    *    specified in countBuffer and maxDrawCount.
+    */
+   uint len = min(*(s->count), s->max_draws);
+
    /* Prefix sum the vertex counts (multiplied by instance counts) across draws.
     * The number of draws is expected to be small, so this serialization should
     * be ok in practice. See libagx_prefix_sum for algorithm details.
     */
    uint i, count = 0;
-   uint len = *(s->count);
    uint len_remainder = len % 32;
    uint len_rounded_down = len - len_remainder;
 

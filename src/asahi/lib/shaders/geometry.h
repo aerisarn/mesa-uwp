@@ -73,6 +73,9 @@ struct agx_ia_state {
    /* When unrolling primitive restart, output draw descriptors */
    GLOBAL(uint) out_draws;
 
+   /* Input: maximum draw count, count is clamped to this */
+   uint32_t max_draws;
+
    /* Primitive restart index, if unrolling */
    uint32_t restart_index;
 
