@@ -881,7 +881,31 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst[1].into()
             }
-            nir_op_ineg => b.ineg(srcs[0]),
+            nir_op_ineg => {
+                if alu.def.bit_size == 64 {
+                    let x = srcs[0].as_ssa().unwrap();
+                    let sum = b.alloc_ssa(RegFile::GPR, 2);
+                    let carry = b.alloc_ssa(RegFile::Pred, 1);
+                    b.push_op(OpIAdd3X {
+                        dst: sum[0].into(),
+                        overflow: [carry.into(), Dst::None],
+                        high: false,
+                        srcs: [0.into(), Src::from(x[0]).ineg(), 0.into()],
+                        carry: [SrcRef::False.into(), SrcRef::False.into()],
+                    });
+                    b.push_op(OpIAdd3X {
+                        dst: sum[1].into(),
+                        overflow: [Dst::None, Dst::None],
+                        high: true,
+                        srcs: [0.into(), Src::from(x[1]).bnot(), 0.into()],
+                        carry: [carry.into(), SrcRef::False.into()],
+                    });
+                    sum
+                } else {
+                    assert!(alu.def.bit_size() == 32);
+                    b.ineg(srcs[0])
+                }
+            }
             nir_op_inot => {
                 let lop = LogicOp::new_lut(&|x, _, _| !x);
                 if alu.def.bit_size() == 1 {

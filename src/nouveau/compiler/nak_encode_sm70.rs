@@ -31,17 +31,15 @@ enum ALUSrc {
 
 fn src_mod_has_abs(src_mod: SrcMod) -> bool {
     match src_mod {
-        SrcMod::None | SrcMod::FNeg | SrcMod::INeg => false,
+        SrcMod::None | SrcMod::FNeg | SrcMod::INeg | SrcMod::BNot => false,
         SrcMod::FAbs | SrcMod::FNegAbs => true,
-        _ => panic!("Not an ALU source modifier"),
     }
 }
 
 fn src_mod_has_neg(src_mod: SrcMod) -> bool {
     match src_mod {
         SrcMod::None | SrcMod::FAbs => false,
-        SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg => true,
-        _ => panic!("Not an ALU source modifier"),
+        SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg | SrcMod::BNot => true,
     }
 }
 
