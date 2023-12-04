@@ -74,10 +74,10 @@ build_scan_bool(nir_builder *b, nir_intrinsic_op op, nir_op red_op,
 }
 
 static nir_def *
-build_identity(nir_builder *b, nir_op op)
+build_identity(nir_builder *b, unsigned bit_size, nir_op op)
 {
-   nir_const_value ident_const = nir_alu_binop_identity(op, 32);
-   return nir_build_imm(b, 1, 32, &ident_const);
+   nir_const_value ident_const = nir_alu_binop_identity(op, bit_size);
+   return nir_build_imm(b, 1, bit_size, &ident_const);
 }
 
 /* Implementation of scan/reduce that assumes a full subgroup */
@@ -106,7 +106,8 @@ build_scan_full(nir_builder *b, nir_intrinsic_op op, nir_op red_op,
          nir_def *has_buddy = nir_ige_imm(b, idx, 1);
 
          nir_def *buddy_data = nir_shuffle_up(b, data, nir_imm_int(b, 1));
-         data = nir_bcsel(b, has_buddy, buddy_data, build_identity(b, red_op));
+         nir_def *identity = build_identity(b, data->bit_size, red_op);
+         data = nir_bcsel(b, has_buddy, buddy_data, identity);
       }
 
       return data;
@@ -171,7 +172,8 @@ build_scan_reduce(nir_builder *b, nir_intrinsic_op op, nir_op red_op,
       nir_def *buddy = nir_ufind_msb(b, lower);
 
       nir_def *buddy_data = nir_shuffle(b, data, buddy);
-      return nir_bcsel(b, has_buddy, buddy_data, build_identity(b, red_op));
+      nir_def *identity = build_identity(b, data->bit_size, red_op);
+      return nir_bcsel(b, has_buddy, buddy_data, identity);
    }
 
    case nir_intrinsic_inclusive_scan:
