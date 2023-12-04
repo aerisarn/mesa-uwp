@@ -919,34 +919,102 @@ impl<'a> ShaderFromNir<'a> {
                 b.lop2(LogicOp::new_lut(&|x, y, _| x | y), srcs[0], srcs[1])
             }
             nir_op_ishl => {
-                assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpShf {
-                    dst: dst.into(),
-                    low: srcs[0],
-                    high: 0.into(),
-                    shift: srcs[1],
-                    right: false,
-                    wrap: true,
-                    data_type: IntType::I32,
-                    dst_high: false,
-                });
-                dst
+                let x = *srcs[0].as_ssa().unwrap();
+                let shift = srcs[1];
+                if alu.def.bit_size() == 64 {
+                    // For 64-bit shifts, we have to use clamp mode so we need
+                    // to mask the shift in order satisfy NIR semantics.
+                    let shift = b.lop2(
+                        LogicOp::new_lut(&|x, y, _| x & y),
+                        shift,
+                        0x3f.into(),
+                    );
+                    let dst = b.alloc_ssa(RegFile::GPR, 2);
+                    b.push_op(OpShf {
+                        dst: dst[0].into(),
+                        low: 0.into(),
+                        high: x[0].into(),
+                        shift: shift.into(),
+                        right: false,
+                        wrap: false,
+                        data_type: IntType::U32,
+                        dst_high: true,
+                    });
+                    b.push_op(OpShf {
+                        dst: dst[1].into(),
+                        low: x[0].into(),
+                        high: x[1].into(),
+                        shift: shift.into(),
+                        right: false,
+                        wrap: false,
+                        data_type: IntType::U64,
+                        dst_high: true,
+                    });
+                    dst
+                } else {
+                    assert!(alu.def.bit_size() == 32);
+                    let dst = b.alloc_ssa(RegFile::GPR, 1);
+                    b.push_op(OpShf {
+                        dst: dst.into(),
+                        low: x.into(),
+                        high: 0.into(),
+                        shift: shift,
+                        right: false,
+                        wrap: true,
+                        data_type: IntType::U32,
+                        dst_high: false,
+                    });
+                    dst
+                }
             }
             nir_op_ishr => {
-                assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpShf {
-                    dst: dst.into(),
-                    low: 0.into(),
-                    high: srcs[0],
-                    shift: srcs[1],
-                    right: true,
-                    wrap: true,
-                    data_type: IntType::I32,
-                    dst_high: true,
-                });
-                dst
+                let x = *srcs[0].as_ssa().unwrap();
+                let shift = srcs[1];
+                if alu.def.bit_size() == 64 {
+                    // For 64-bit shifts, we have to use clamp mode so we need
+                    // to mask the shift in order satisfy NIR semantics.
+                    let shift = b.lop2(
+                        LogicOp::new_lut(&|x, y, _| x & y),
+                        shift,
+                        0x3f.into(),
+                    );
+                    let dst = b.alloc_ssa(RegFile::GPR, 2);
+                    b.push_op(OpShf {
+                        dst: dst[0].into(),
+                        low: x[0].into(),
+                        high: x[1].into(),
+                        shift: shift.into(),
+                        right: true,
+                        wrap: false,
+                        data_type: IntType::I64,
+                        dst_high: false,
+                    });
+                    b.push_op(OpShf {
+                        dst: dst[1].into(),
+                        low: x[0].into(),
+                        high: x[1].into(),
+                        shift: shift.into(),
+                        right: true,
+                        wrap: false,
+                        data_type: IntType::I32,
+                        dst_high: true,
+                    });
+                    dst
+                } else {
+                    assert!(alu.def.bit_size() == 32);
+                    let dst = b.alloc_ssa(RegFile::GPR, 1);
+                    b.push_op(OpShf {
+                        dst: dst.into(),
+                        low: 0.into(),
+                        high: x.into(),
+                        shift: shift,
+                        right: true,
+                        wrap: true,
+                        data_type: IntType::I32,
+                        dst_high: true,
+                    });
+                    dst
+                }
             }
             nir_op_isign => {
                 let gt_pred = b.alloc_ssa(RegFile::Pred, 1);
@@ -1104,19 +1172,53 @@ impl<'a> ShaderFromNir<'a> {
                 dst
             }
             nir_op_ushr => {
-                assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpShf {
-                    dst: dst.into(),
-                    low: srcs[0],
-                    high: 0.into(),
-                    shift: srcs[1],
-                    right: true,
-                    wrap: true,
-                    data_type: IntType::U32,
-                    dst_high: false,
-                });
-                dst
+                let x = *srcs[0].as_ssa().unwrap();
+                let shift = srcs[1];
+                if alu.def.bit_size() == 64 {
+                    // For 64-bit shifts, we have to use clamp mode so we need
+                    // to mask the shift in order satisfy NIR semantics.
+                    let shift = b.lop2(
+                        LogicOp::new_lut(&|x, y, _| x & y),
+                        shift,
+                        0x3f.into(),
+                    );
+                    let dst = b.alloc_ssa(RegFile::GPR, 2);
+                    b.push_op(OpShf {
+                        dst: dst[0].into(),
+                        low: x[0].into(),
+                        high: x[1].into(),
+                        shift: shift.into(),
+                        right: true,
+                        wrap: false,
+                        data_type: IntType::U64,
+                        dst_high: false,
+                    });
+                    b.push_op(OpShf {
+                        dst: dst[1].into(),
+                        low: x[0].into(),
+                        high: x[1].into(),
+                        shift: shift.into(),
+                        right: true,
+                        wrap: false,
+                        data_type: IntType::U32,
+                        dst_high: true,
+                    });
+                    dst
+                } else {
+                    assert!(alu.def.bit_size() == 32);
+                    let dst = b.alloc_ssa(RegFile::GPR, 1);
+                    b.push_op(OpShf {
+                        dst: dst.into(),
+                        low: x.into(),
+                        high: 0.into(),
+                        shift: shift,
+                        right: true,
+                        wrap: true,
+                        data_type: IntType::U32,
+                        dst_high: false,
+                    });
+                    dst
+                }
             }
             nir_op_fddx | nir_op_fddx_coarse | nir_op_fddx_fine => {
                 // TODO: Real coarse derivatives
