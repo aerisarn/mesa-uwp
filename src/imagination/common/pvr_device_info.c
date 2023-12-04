@@ -25,8 +25,9 @@
  * auto-generate it in the future based on the hwdefs.
  */
 
-#include "assert.h"
-#include "errno.h"
+#include <assert.h>
+#include <errno.h>
+
 #include "pvr_device_info.h"
 
 const struct pvr_device_ident pvr_device_ident_4_V_2_51 = {
