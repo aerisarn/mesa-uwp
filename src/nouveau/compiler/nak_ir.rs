@@ -2630,11 +2630,10 @@ impl DisplayOp for OpShf {
 impl_display_for_op!(OpShf);
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
+#[derive(DstsAsSlice)]
 pub struct OpF2F {
     pub dst: Dst,
 
-    #[src_type(F32)]
     pub src: Src,
 
     pub src_type: FloatType,
@@ -2643,6 +2642,25 @@ pub struct OpF2F {
     pub ftz: bool,
     /// Place the result into the upper 16 bits of the destination register
     pub high: bool,
+}
+
+impl SrcsAsSlice for OpF2F {
+    fn srcs_as_slice(&self) -> &[Src] {
+        std::slice::from_ref(&self.src)
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        std::slice::from_mut(&mut self.src)
+    }
+
+    fn src_types(&self) -> SrcTypeList {
+        let src_type = match self.src_type {
+            FloatType::F16 => SrcType::ALU,
+            FloatType::F32 => SrcType::F32,
+            FloatType::F64 => SrcType::F64,
+        };
+        SrcTypeList::Uniform(src_type)
+    }
 }
 
 impl DisplayOp for OpF2F {
@@ -2661,16 +2679,34 @@ impl DisplayOp for OpF2F {
 impl_display_for_op!(OpF2F);
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
+#[derive(DstsAsSlice)]
 pub struct OpF2I {
     pub dst: Dst,
 
-    #[src_type(F32)]
     pub src: Src,
 
     pub src_type: FloatType,
     pub dst_type: IntType,
     pub rnd_mode: FRndMode,
+}
+
+impl SrcsAsSlice for OpF2I {
+    fn srcs_as_slice(&self) -> &[Src] {
+        std::slice::from_ref(&self.src)
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        std::slice::from_mut(&mut self.src)
+    }
+
+    fn src_types(&self) -> SrcTypeList {
+        let src_type = match self.src_type {
+            FloatType::F16 => SrcType::ALU,
+            FloatType::F32 => SrcType::F32,
+            FloatType::F64 => SrcType::F64,
+        };
+        SrcTypeList::Uniform(src_type)
+    }
 }
 
 impl DisplayOp for OpF2I {
@@ -2685,16 +2721,33 @@ impl DisplayOp for OpF2I {
 impl_display_for_op!(OpF2I);
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
+#[derive(DstsAsSlice)]
 pub struct OpI2F {
     pub dst: Dst,
 
-    #[src_type(ALU)]
     pub src: Src,
 
     pub dst_type: FloatType,
     pub src_type: IntType,
     pub rnd_mode: FRndMode,
+}
+
+impl SrcsAsSlice for OpI2F {
+    fn srcs_as_slice(&self) -> &[Src] {
+        std::slice::from_ref(&self.src)
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        std::slice::from_mut(&mut self.src)
+    }
+
+    fn src_types(&self) -> SrcTypeList {
+        if self.src_type.bits() <= 32 {
+            SrcTypeList::Uniform(SrcType::ALU)
+        } else {
+            SrcTypeList::Uniform(SrcType::GPR)
+        }
+    }
 }
 
 impl DisplayOp for OpI2F {
@@ -2731,7 +2784,7 @@ impl SrcsAsSlice for OpFRnd {
 
     fn src_types(&self) -> SrcTypeList {
         let src_type = match self.src_type {
-            FloatType::F16 => unimplemented!(),
+            FloatType::F16 => SrcType::ALU,
             FloatType::F32 => SrcType::F32,
             FloatType::F64 => SrcType::F64,
         };
