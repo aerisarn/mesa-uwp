@@ -1315,11 +1315,12 @@ static void amdgpu_inc_bo_num_active_ioctls(unsigned num_buffers,
 static void amdgpu_add_bo_fences_to_dependencies(struct amdgpu_cs *acs,
                                                  struct amdgpu_cs_context *cs,
                                                  struct pipe_fence_handle *fence,
-                                                 unsigned num_buffers,
-                                                 struct amdgpu_cs_buffer *buffers)
+                                                 struct amdgpu_buffer_list *list)
 {
+   unsigned num_buffers = list->num_buffers;
+
    for (unsigned i = 0; i < num_buffers; i++) {
-      struct amdgpu_cs_buffer *buffer = &buffers[i];
+      struct amdgpu_cs_buffer *buffer = &list->buffers[i];
       struct amdgpu_winsys_bo *bo = buffer->bo;
 
       amdgpu_add_bo_fence_dependencies(acs, cs, buffer);
@@ -1386,15 +1387,8 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    /* Since the kernel driver doesn't synchronize execution between different
     * rings automatically, we have to add fence dependencies manually.
     */
-   amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence,
-                                        cs->buffer_lists[AMDGPU_BO_REAL].num_buffers,
-                                        cs->buffer_lists[AMDGPU_BO_REAL].buffers);
-   amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence,
-                                        cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers,
-                                        cs->buffer_lists[AMDGPU_BO_SLAB].buffers);
-   amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence,
-                                        cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers,
-                                        cs->buffer_lists[AMDGPU_BO_SPARSE].buffers);
+   for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++)
+      amdgpu_add_bo_fences_to_dependencies(acs, cs, cs->fence, &cs->buffer_lists[i]);
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    struct drm_amdgpu_bo_list_entry *bo_list = NULL;
