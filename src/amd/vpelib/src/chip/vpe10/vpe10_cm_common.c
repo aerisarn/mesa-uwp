@@ -61,39 +61,21 @@ static bool cm_helper_convert_to_custom_float(struct pwl_result_data *rgb_result
         VPE_ASSERT(0);
         return false;
     }
-
     if (!vpe_convert_to_custom_float_format(
-        corner_points[0].red.y, &fmt, &corner_points[0].red.custom_float_y)) {
+            corner_points[0].red.y, &fmt, &corner_points[0].red.custom_float_y)) {
         VPE_ASSERT(0);
         return false;
     }
     if (!vpe_convert_to_custom_float_format(
-        corner_points[0].green.y, &fmt, &corner_points[0].green.custom_float_y)) {
+            corner_points[0].green.y, &fmt, &corner_points[0].green.custom_float_y)) {
         VPE_ASSERT(0);
         return false;
     }
     if (!vpe_convert_to_custom_float_format(
-        corner_points[0].blue.y, &fmt, &corner_points[0].blue.custom_float_y)) {
+            corner_points[0].blue.y, &fmt, &corner_points[0].blue.custom_float_y)) {
         VPE_ASSERT(0);
         return false;
     }
-
-    if (!vpe_convert_to_custom_float_format(
-            corner_points[0].red.offset, &fmt, &corner_points[0].red.custom_float_offset)) {
-        VPE_ASSERT(0);
-        return false;
-    }
-    if (!vpe_convert_to_custom_float_format(
-            corner_points[0].green.offset, &fmt, &corner_points[0].green.custom_float_offset)) {
-        VPE_ASSERT(0);
-        return false;
-    }
-    if (!vpe_convert_to_custom_float_format(
-            corner_points[0].blue.offset, &fmt, &corner_points[0].blue.custom_float_offset)) {
-        VPE_ASSERT(0);
-        return false;
-    }
-
     if (!vpe_convert_to_custom_float_format(
             corner_points[0].red.slope, &fmt, &corner_points[0].red.custom_float_slope)) {
         VPE_ASSERT(0);
@@ -207,6 +189,27 @@ static bool cm_helper_convert_to_custom_float(struct pwl_result_data *rgb_result
         ++i;
     }
 
+    fmt.exponenta_bits = 6;
+    fmt.mantissa_bits = 12;
+    fmt.sign = 1;
+
+    if (!vpe_convert_to_custom_float_format(
+        corner_points[0].red.offset, &fmt, &corner_points[0].red.custom_float_offset)) {
+        VPE_ASSERT(0);
+        return false;
+    }
+
+    if (!vpe_convert_to_custom_float_format(
+        corner_points[0].green.offset, &fmt, &corner_points[0].green.custom_float_offset)) {
+        VPE_ASSERT(0);
+        return false;
+    }
+
+    if (!vpe_convert_to_custom_float_format(
+        corner_points[0].blue.offset, &fmt, &corner_points[0].blue.custom_float_offset)) {
+        VPE_ASSERT(0);
+        return false;
+    }
     return true;
 }
 
@@ -386,15 +389,12 @@ bool vpe10_cm_helper_translate_curve_to_hw_format(
         ++i;
     }
 
-    corner_points[0].red.y = output_tf->start_base;
-    corner_points[0].green.y = output_tf->start_base;
-    corner_points[0].blue.y = output_tf->start_base;
-
-    if (output_tf->start_base.value != vpe_fixpt_zero.value) {
-        corner_points[0].red.slope = vpe_fixpt_zero;
-        corner_points[0].green.slope = vpe_fixpt_zero;
-        corner_points[0].blue.slope = vpe_fixpt_zero;
-    }
+    corner_points[0].red.y        = vpe_fixpt_zero;
+    corner_points[0].green.y      = vpe_fixpt_zero;
+    corner_points[0].blue.y       = vpe_fixpt_zero;
+    corner_points[0].red.offset   = output_tf->start_base;
+    corner_points[0].green.offset = output_tf->start_base;
+    corner_points[0].blue.offset  = output_tf->start_base;
 
     cm_helper_convert_to_custom_float(rgb_resulted, lut_params->corner_points, hw_points, fixpoint);
 
@@ -507,15 +507,12 @@ bool vpe10_cm_helper_translate_curve_to_degamma_hw_format(
         ++i;
     }
 
-    corner_points[0].red.y = output_tf->start_base;
-    corner_points[0].green.y = output_tf->start_base;
-    corner_points[0].blue.y = output_tf->start_base;
-
-    if (output_tf->start_base.value != vpe_fixpt_zero.value) {
-        corner_points[0].red.slope = vpe_fixpt_zero;
-        corner_points[0].green.slope = vpe_fixpt_zero;
-        corner_points[0].blue.slope = vpe_fixpt_zero;
-    }
+    corner_points[0].red.y        = vpe_fixpt_zero;
+    corner_points[0].green.y      = vpe_fixpt_zero;
+    corner_points[0].blue.y       = vpe_fixpt_zero;
+    corner_points[0].red.offset   = output_tf->start_base;
+    corner_points[0].green.offset = output_tf->start_base;
+    corner_points[0].blue.offset  = output_tf->start_base;
 
     cm_helper_convert_to_custom_float(rgb_resulted, lut_params->corner_points, hw_points, false);
 
@@ -604,6 +601,13 @@ void vpe10_cm_helper_program_gamcor_xfer_func(struct config_writer *config_write
         params->corner_points[0].green.custom_float_y);
     REG_SET_CM(reg->start_base_cntl_b, 0, field_region_start_base,
         params->corner_points[0].blue.custom_float_y);
+
+    REG_SET_CM(reg->offset_r, 0, field_offset,
+        params->corner_points[0].red.custom_float_offset);
+    REG_SET_CM(reg->offset_g, 0, field_offset,
+        params->corner_points[0].green.custom_float_offset);
+    REG_SET_CM(reg->offset_b, 0, field_offset,
+        params->corner_points[0].blue.custom_float_offset);
 
     REG_SET_CM(reg->start_slope_cntl_b, 0, // linear slope at start of curve
         field_region_linear_slope, params->corner_points[0].blue.custom_float_slope);

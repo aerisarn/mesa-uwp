@@ -52,11 +52,11 @@ void vpe_color_setup_x_points_distribution(void);
 void vpe_color_setup_x_points_distribution_degamma(void);
 
 bool vpe_color_calculate_regamma_params(struct vpe_priv *vpe_priv, struct fixed31_32 x_scale,
-    struct fixed31_32 y_scale, struct fixed31_32 y_bias,
-    struct calculate_buffer *cal_buffer, struct transfer_func* output_tf);
+    struct fixed31_32 y_scale, struct calculate_buffer *cal_buffer,
+    struct transfer_func *output_tf);
 
 bool vpe_color_calculate_degamma_params(struct vpe_priv *vpe_priv, struct fixed31_32 x_scale,
-    struct fixed31_32 y_scale, struct fixed31_32 y_bias, struct transfer_func *input_tf);
+    struct fixed31_32 y_scale, struct transfer_func *input_tf);
 
 void vpe_compute_pq(struct fixed31_32 in_x, struct fixed31_32 *out_y);
 

@@ -182,7 +182,6 @@ static bool color_update_regamma_tf(struct vpe_priv *vpe_priv,
         vpe_color_calculate_regamma_params(vpe_priv,
             x_scale,
             y_scale,
-            y_bias,
             &vpe_priv->cal_buffer,
             output_tf);
 
@@ -236,7 +235,6 @@ static bool color_update_degamma_tf(struct vpe_priv *vpe_priv,
         vpe_color_calculate_degamma_params(vpe_priv,
             x_scale,
             y_scale,
-            y_bias,
             input_tf);
     }
 
