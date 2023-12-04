@@ -60,7 +60,7 @@ impl ALUSrc {
                     SrcRef::Reg(reg) => reg,
                     _ => panic!("Invalid source ref"),
                 };
-                assert!(reg.comps() == 1);
+                assert!(reg.comps() <= 2);
                 assert!(reg.file() == file);
                 let alu_ref = ALURegRef {
                     reg: reg,
@@ -776,13 +776,23 @@ impl SM70Instr {
     }
 
     fn encode_f2f(&mut self, op: &OpF2F) {
-        self.encode_alu(
-            0x104,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
+        if op.src_type.bits() <= 32 && op.dst_type.bits() <= 32 {
+            self.encode_alu(
+                0x104,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        } else {
+            self.encode_alu(
+                0x110,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        }
 
         if op.high {
             self.set_field(60..62, 1_u8); // .H1
@@ -795,13 +805,24 @@ impl SM70Instr {
     }
 
     fn encode_f2i(&mut self, op: &OpF2I) {
-        self.encode_alu(
-            0x105,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
+        if op.src_type.bits() <= 32 && op.dst_type.bits() <= 32 {
+            self.encode_alu(
+                0x105,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        } else {
+            self.encode_alu(
+                0x111,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        }
+
         self.set_bit(72, op.dst_type.is_signed());
         self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_bit(77, false); /* NTZ */
@@ -812,13 +833,23 @@ impl SM70Instr {
     }
 
     fn encode_i2f(&mut self, op: &OpI2F) {
-        self.encode_alu(
-            0x106,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
+        if op.src_type.bits() <= 32 && op.dst_type.bits() <= 32 {
+            self.encode_alu(
+                0x106,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        } else {
+            self.encode_alu(
+                0x112,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        }
 
         self.set_field(60..62, 0_u8); /* TODO: subop */
         self.set_bit(74, op.src_type.is_signed());
@@ -828,18 +859,23 @@ impl SM70Instr {
     }
 
     fn encode_frnd(&mut self, op: &OpFRnd) {
-        let opcode = match (op.src_type, op.dst_type) {
-            (FloatType::F64, FloatType::F64) => 0x113,
-            _ => 0x107,
-        };
-
-        self.encode_alu(
-            opcode,
-            Some(op.dst),
-            ALUSrc::None,
-            ALUSrc::from_src(&op.src.into()),
-            ALUSrc::None,
-        );
+        if op.src_type.bits() <= 32 && op.dst_type.bits() <= 32 {
+            self.encode_alu(
+                0x107,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        } else {
+            self.encode_alu(
+                0x113,
+                Some(op.dst),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.src.into()),
+                ALUSrc::None,
+            );
+        }
 
         self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
         self.set_bit(80, false); // TODO: FMZ
