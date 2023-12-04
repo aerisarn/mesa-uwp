@@ -1294,6 +1294,30 @@ pub enum PredSetOp {
     Xor,
 }
 
+impl PredSetOp {
+    pub fn is_trivial(&self, accum: &Src) -> bool {
+        if let Some(b) = accum.as_bool() {
+            match self {
+                PredSetOp::And => b,
+                PredSetOp::Or => !b,
+                PredSetOp::Xor => !b,
+            }
+        } else {
+            false
+        }
+    }
+}
+
+impl fmt::Display for PredSetOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PredSetOp::And => write!(f, ".and"),
+            PredSetOp::Or => write!(f, ".or"),
+            PredSetOp::Xor => write!(f, ".xor"),
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum FloatCmpOp {
@@ -1334,20 +1358,20 @@ impl FloatCmpOp {
 impl fmt::Display for FloatCmpOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FloatCmpOp::OrdEq => write!(f, "eq"),
-            FloatCmpOp::OrdNe => write!(f, "ne"),
-            FloatCmpOp::OrdLt => write!(f, "lt"),
-            FloatCmpOp::OrdLe => write!(f, "le"),
-            FloatCmpOp::OrdGt => write!(f, "gt"),
-            FloatCmpOp::OrdGe => write!(f, "ge"),
-            FloatCmpOp::UnordEq => write!(f, "equ"),
-            FloatCmpOp::UnordNe => write!(f, "neu"),
-            FloatCmpOp::UnordLt => write!(f, "ltu"),
-            FloatCmpOp::UnordLe => write!(f, "leu"),
-            FloatCmpOp::UnordGt => write!(f, "gtu"),
-            FloatCmpOp::UnordGe => write!(f, "geu"),
-            FloatCmpOp::IsNum => write!(f, "num"),
-            FloatCmpOp::IsNan => write!(f, "nan"),
+            FloatCmpOp::OrdEq => write!(f, ".eq"),
+            FloatCmpOp::OrdNe => write!(f, ".ne"),
+            FloatCmpOp::OrdLt => write!(f, ".lt"),
+            FloatCmpOp::OrdLe => write!(f, ".le"),
+            FloatCmpOp::OrdGt => write!(f, ".gt"),
+            FloatCmpOp::OrdGe => write!(f, ".ge"),
+            FloatCmpOp::UnordEq => write!(f, ".equ"),
+            FloatCmpOp::UnordNe => write!(f, ".neu"),
+            FloatCmpOp::UnordLt => write!(f, ".ltu"),
+            FloatCmpOp::UnordLe => write!(f, ".leu"),
+            FloatCmpOp::UnordGt => write!(f, ".gtu"),
+            FloatCmpOp::UnordGe => write!(f, ".geu"),
+            FloatCmpOp::IsNum => write!(f, ".num"),
+            FloatCmpOp::IsNan => write!(f, ".nan"),
         }
     }
 }
@@ -1377,12 +1401,12 @@ impl IntCmpOp {
 impl fmt::Display for IntCmpOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntCmpOp::Eq => write!(f, "eq"),
-            IntCmpOp::Ne => write!(f, "ne"),
-            IntCmpOp::Lt => write!(f, "lt"),
-            IntCmpOp::Le => write!(f, "le"),
-            IntCmpOp::Gt => write!(f, "gt"),
-            IntCmpOp::Ge => write!(f, "ge"),
+            IntCmpOp::Eq => write!(f, ".eq"),
+            IntCmpOp::Ne => write!(f, ".ne"),
+            IntCmpOp::Lt => write!(f, ".lt"),
+            IntCmpOp::Le => write!(f, ".le"),
+            IntCmpOp::Gt => write!(f, ".gt"),
+            IntCmpOp::Ge => write!(f, ".ge"),
         }
     }
 }
@@ -1395,8 +1419,8 @@ pub enum IntCmpType {
 impl fmt::Display for IntCmpType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntCmpType::U32 => write!(f, "u32"),
-            IntCmpType::I32 => write!(f, "i32"),
+            IntCmpType::U32 => write!(f, ".u32"),
+            IntCmpType::I32 => write!(f, ".i32"),
         }
     }
 }
@@ -2132,7 +2156,7 @@ pub struct OpFSet {
 
 impl DisplayOp for OpFSet {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fset.{} {} {}", self.cmp_op, self.srcs[0], self.srcs[1],)
+        write!(f, "fset{} {} {}", self.cmp_op, self.srcs[0], self.srcs[1])
     }
 }
 impl_display_for_op!(OpFSet);
@@ -2154,7 +2178,15 @@ pub struct OpFSetP {
 
 impl DisplayOp for OpFSetP {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fsetp.{} {} {}", self.cmp_op, self.srcs[0], self.srcs[1],)
+        write!(f, "fsetp{}", self.cmp_op)?;
+        if !self.set_op.is_trivial(&self.accum) {
+            write!(f, "{}", self.set_op)?;
+        }
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])?;
+        if !self.set_op.is_trivial(&self.accum) {
+            write!(f, " {}", self.accum)?;
+        }
+        Ok(())
     }
 }
 impl_display_for_op!(OpFSetP);
@@ -2467,7 +2499,7 @@ impl DisplayOp for OpIMnMx {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "imnmx.{} {} {} {}",
+            "imnmx{} {} {} {}",
             self.cmp_type, self.srcs[0], self.srcs[1], self.min
         )
     }
@@ -2492,11 +2524,15 @@ pub struct OpISetP {
 
 impl DisplayOp for OpISetP {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "isetp.{}.{} {} {}",
-            self.cmp_op, self.cmp_type, self.srcs[0], self.srcs[1],
-        )
+        write!(f, "isetp{}{}", self.cmp_op, self.cmp_type)?;
+        if !self.set_op.is_trivial(&self.accum) {
+            write!(f, "{}", self.set_op)?;
+        }
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])?;
+        if !self.set_op.is_trivial(&self.accum) {
+            write!(f, " {}", self.accum)?;
+        }
+        Ok(())
     }
 }
 impl_display_for_op!(OpISetP);
