@@ -1155,7 +1155,7 @@ vn_physical_device_get_passthrough_extensions(
        * VkPhysicalDeviceVulkan13Features.
        *
        * For now, we implement the extension functions natively by using
-       * Mesa's commong implementation. We passthrough
+       * Mesa's common implementation. We passthrough
        * VkDevicePrivateDataCreateInfo to the renderer, which is harmless.
        * We passthrough the extension enablement and feature bits to the
        * renderer because otherwise VkDevicePrivateDataCreateInfo would
