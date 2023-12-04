@@ -9,6 +9,7 @@
 #include "cl9097.h"
 #include "cl9097tex.h"
 #include "cla297.h"
+#include "clb097.h"
 #include "clb097tex.h"
 
 enum nil_format_support_flags {
@@ -37,10 +38,12 @@ struct nil_format_info {
  * D: scanout/display target, blendable
  * Z: depth/stencil
  * I: image / surface, implies T
+ * S: image / surface only
  */
 #define U_T   NIL_FORMAT_SUPPORTS_TEXTURE_BIT
+#define U_S   NIL_FORMAT_SUPPORTS_STORAGE_BIT
 #define U_B   U_T | NIL_FORMAT_SUPPORTS_BUFFER_BIT
-#define U_I   U_B | NIL_FORMAT_SUPPORTS_STORAGE_BIT
+#define U_I   U_B | U_S
 #define U_TR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_T
 #define U_BR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_B
 #define U_IR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_I
@@ -302,6 +305,9 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    I1(A, R32_SINT,   RS32, R, x, x, x, SINT,    R32, IR),
    I1(A, R32_UINT,   RU32, R, x, x, x, UINT,    R32, IR),
 
+   I2(A, R64_SINT,   NONE, R, G, x, x, SINT,    R32_G32, S),
+   I2(A, R64_UINT,   NONE, R, G, x, x, UINT,    R32_G32, S),
+
    C4(A, R16G16B16A16_FLOAT,  RF16_GF16_BF16_AF16, R, G, B, A,    FLOAT,   R16_G16_B16_A16, IA),
    C4(A, R16G16B16A16_UNORM,  R16_G16_B16_A16,     R, G, B, A,    UNORM,   R16_G16_B16_A16, IC),
    C4(A, R16G16B16A16_SNORM,  RN16_GN16_BN16_AN16, R, G, B, A,    SNORM,   R16_G16_B16_A16, IC),
@@ -413,6 +419,10 @@ bool
 nil_format_supports_storage(struct nv_device_info *dev,
                             enum pipe_format format)
 {
+   if ((format == PIPE_FORMAT_R64_UINT || format == PIPE_FORMAT_R64_SINT) &&
+       dev->cls_eng3d < MAXWELL_A)
+      return false;
+
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
    return fmt->support & NIL_FORMAT_SUPPORTS_STORAGE_BIT;
