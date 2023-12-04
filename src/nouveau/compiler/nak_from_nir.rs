@@ -820,7 +820,10 @@ impl<'a> ShaderFromNir<'a> {
                 if alu.get_src(0).bit_size() == 1 {
                     let lop = LogicOp::new_lut(&|x, y, _| !(x ^ y));
                     b.lop2(lop, srcs[0], srcs[1])
+                } else if alu.get_src(0).bit_size() == 64 {
+                    b.isetp64(IntCmpType::I32, IntCmpOp::Eq, srcs[0], srcs[1])
                 } else {
+                    assert!(alu.get_src(0).bit_size() == 32);
                     b.isetp(IntCmpType::I32, IntCmpOp::Eq, srcs[0], srcs[1])
                 }
             }
@@ -834,18 +837,21 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
-            nir_op_ige => {
-                b.isetp(IntCmpType::I32, IntCmpOp::Ge, srcs[0], srcs[1])
-            }
-            nir_op_ilt => {
-                b.isetp(IntCmpType::I32, IntCmpOp::Lt, srcs[0], srcs[1])
-            }
-            nir_op_ine => {
-                if alu.get_src(0).bit_size() == 1 {
-                    let lop = LogicOp::new_lut(&|x, y, _| (x ^ y));
-                    b.lop2(lop, srcs[0], srcs[1])
+            nir_op_ige | nir_op_ilt | nir_op_uge | nir_op_ult => {
+                let x = *srcs[0].as_ssa().unwrap();
+                let y = *srcs[1].as_ssa().unwrap();
+                let (cmp_type, cmp_op) = match alu.op {
+                    nir_op_ige => (IntCmpType::I32, IntCmpOp::Ge),
+                    nir_op_ilt => (IntCmpType::I32, IntCmpOp::Lt),
+                    nir_op_uge => (IntCmpType::U32, IntCmpOp::Ge),
+                    nir_op_ult => (IntCmpType::U32, IntCmpOp::Lt),
+                    _ => panic!("Not an integer comparison"),
+                };
+                if alu.get_src(0).bit_size() == 64 {
+                    b.isetp64(cmp_type, cmp_op, x.into(), y.into())
                 } else {
-                    b.isetp(IntCmpType::I32, IntCmpOp::Ne, srcs[0], srcs[1])
+                    assert!(alu.get_src(0).bit_size() == 32);
+                    b.isetp(cmp_type, cmp_op, x.into(), y.into())
                 }
             }
             nir_op_imax | nir_op_imin | nir_op_umax | nir_op_umin => {
@@ -880,6 +886,17 @@ impl<'a> ShaderFromNir<'a> {
                     signed: alu.op == nir_op_imul_high,
                 });
                 dst[1].into()
+            }
+            nir_op_ine => {
+                if alu.get_src(0).bit_size() == 1 {
+                    let lop = LogicOp::new_lut(&|x, y, _| x ^ y);
+                    b.lop2(lop, srcs[0], srcs[1])
+                } else if alu.get_src(0).bit_size() == 64 {
+                    b.isetp64(IntCmpType::I32, IntCmpOp::Ne, srcs[0], srcs[1])
+                } else {
+                    assert!(alu.get_src(0).bit_size() == 32);
+                    b.isetp(IntCmpType::I32, IntCmpOp::Ne, srcs[0], srcs[1])
+                }
             }
             nir_op_ineg => {
                 if alu.def.bit_size == 64 {
@@ -1061,12 +1078,6 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                 });
                 dst
-            }
-            nir_op_uge => {
-                b.isetp(IntCmpType::U32, IntCmpOp::Ge, srcs[0], srcs[1])
-            }
-            nir_op_ult => {
-                b.isetp(IntCmpType::U32, IntCmpOp::Lt, srcs[0], srcs[1])
             }
             nir_op_unpack_32_2x16_split_x => {
                 b.prmt(srcs[0], 0.into(), [0, 1, 4, 4])

@@ -2514,12 +2514,16 @@ pub struct OpISetP {
     pub set_op: PredSetOp,
     pub cmp_op: IntCmpOp,
     pub cmp_type: IntCmpType,
+    pub ex: bool,
 
     #[src_type(ALU)]
     pub srcs: [Src; 2],
 
     #[src_type(Pred)]
     pub accum: Src,
+
+    #[src_type(Pred)]
+    pub low_cmp: Src,
 }
 
 impl DisplayOp for OpISetP {
@@ -2528,9 +2532,15 @@ impl DisplayOp for OpISetP {
         if !self.set_op.is_trivial(&self.accum) {
             write!(f, "{}", self.set_op)?;
         }
+        if self.ex {
+            write!(f, ".ex")?;
+        }
         write!(f, " {} {}", self.srcs[0], self.srcs[1])?;
         if !self.set_op.is_trivial(&self.accum) {
             write!(f, " {}", self.accum)?;
+        }
+        if self.ex {
+            write!(f, " {}", self.low_cmp)?;
         }
         Ok(())
     }

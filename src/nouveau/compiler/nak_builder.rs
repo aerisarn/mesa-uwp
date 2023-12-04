@@ -201,9 +201,58 @@ pub trait SSABuilder: Builder {
             set_op: PredSetOp::And,
             cmp_op: cmp_op,
             cmp_type: cmp_type,
+            ex: false,
             srcs: [x, y],
-            accum: SrcRef::True.into(),
+            accum: true.into(),
+            low_cmp: true.into(),
         });
+        dst
+    }
+
+    fn isetp64(
+        &mut self,
+        cmp_type: IntCmpType,
+        cmp_op: IntCmpOp,
+        x: Src,
+        y: Src,
+    ) -> SSARef {
+        let x = x.as_ssa().unwrap();
+        let y = y.as_ssa().unwrap();
+
+        // Low bits are always an unsigned comparison
+        let low = self.isetp(IntCmpType::U32, cmp_op, x[0].into(), y[0].into());
+
+        let dst = self.alloc_ssa(RegFile::Pred, 1);
+        match cmp_op {
+            IntCmpOp::Eq | IntCmpOp::Ne => {
+                self.push_op(OpISetP {
+                    dst: dst.into(),
+                    set_op: match cmp_op {
+                        IntCmpOp::Eq => PredSetOp::And,
+                        IntCmpOp::Ne => PredSetOp::Or,
+                        _ => panic!("Not an integer equality"),
+                    },
+                    cmp_op: cmp_op,
+                    cmp_type: IntCmpType::U32,
+                    ex: false,
+                    srcs: [x[1].into(), y[1].into()],
+                    accum: low.into(),
+                    low_cmp: true.into(),
+                });
+            }
+            IntCmpOp::Ge | IntCmpOp::Gt | IntCmpOp::Le | IntCmpOp::Lt => {
+                self.push_op(OpISetP {
+                    dst: dst.into(),
+                    set_op: PredSetOp::And,
+                    cmp_op: cmp_op,
+                    cmp_type: cmp_type,
+                    ex: true,
+                    srcs: [x[1].into(), y[1].into()],
+                    accum: true.into(),
+                    low_cmp: low.into(),
+                });
+            }
+        }
         dst
     }
 

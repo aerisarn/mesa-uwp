@@ -704,7 +704,8 @@ impl SM70Instr {
             ALUSrc::None,
         );
 
-        self.set_pred_src(68..71, 71, SrcRef::True.into());
+        self.set_pred_src(68..71, 71, op.low_cmp);
+        self.set_bit(72, op.ex);
 
         self.set_field(
             73..74,

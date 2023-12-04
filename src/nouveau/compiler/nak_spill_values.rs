@@ -130,8 +130,10 @@ impl Spill for SpillPred {
             set_op: PredSetOp::And,
             cmp_op: IntCmpOp::Ne,
             cmp_type: IntCmpType::U32,
+            ex: false,
             srcs: [src.into(), Src::new_zero()],
-            accum: SrcRef::True.into(),
+            accum: true.into(),
+            low_cmp: true.into(),
         })
     }
 }
