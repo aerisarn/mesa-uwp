@@ -1046,6 +1046,8 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
                       struct gfx9_gs_info *out);
 bool gfx10_is_ngg_passthrough(struct si_shader *shader);
 
+bool si_should_clear_lds(struct si_screen *sscreen, const struct nir_shader *shader);
+
 /* Inline helpers. */
 
 /* Return the pointer to the main shader part's pointer. */

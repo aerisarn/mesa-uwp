@@ -2255,6 +2255,11 @@ static void si_nir_emit_polygon_stipple(nir_shader *nir, struct si_shader_args *
    nir_discard_if(b, nir_inot(b, pass));
 }
 
+bool si_should_clear_lds(struct si_screen *sscreen, const struct nir_shader *shader)
+{
+   return shader->info.stage == MESA_SHADER_COMPUTE && shader->info.shared_size > 0 && sscreen->options.clear_lds;
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                                      struct si_shader_args *args,
                                      bool *free_nir,
@@ -2511,6 +2516,12 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
             &(nir_lower_idiv_options){
                .allow_fp16 = sel->screen->info.gfx_level >= GFX9,
             });
+
+   if (si_should_clear_lds(sel->screen, nir)) {
+      const unsigned chunk_size = 16; /* max single store size */
+      const unsigned shared_size = ALIGN(nir->info.shared_size, chunk_size);
+      NIR_PASS_V(nir, nir_clear_shared_memory, shared_size, chunk_size);
+   }
 
    NIR_PASS(progress, nir, ac_nir_lower_intrinsics_to_args, sel->screen->info.gfx_level,
             si_select_hw_stage(nir->info.stage, key, sel->screen->info.gfx_level),
