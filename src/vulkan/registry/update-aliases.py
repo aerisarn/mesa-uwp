@@ -34,6 +34,10 @@ def get_aliases(xml_file: pathlib.Path):
         + xml.findall('.//type[@alias]')
         + xml.findall('.//command[@alias]')
     ):
+        # Some renames only apply to some APIs
+        if 'api' in node.attrib and 'vulkan' not in node.attrib['api'].split(','):
+            continue
+
         yield node.attrib['name'], node.attrib['alias']
 
 
