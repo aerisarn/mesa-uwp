@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-subdir('nvidia-headers')
+subdir('headers')
 if with_nouveau_vk
   subdir('compiler')
 endif
