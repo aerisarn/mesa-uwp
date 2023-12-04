@@ -1728,6 +1728,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
 
+   case PIPE_CAP_QUERY_BUFFER_OBJECT:
+      return true;
+
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
       return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_FREEDRENO;
 
