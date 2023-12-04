@@ -1562,8 +1562,11 @@ agx_num_general_outputs(struct agx_varyings_vs *vs)
 
 static uint32_t
 agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
-                        struct agx_varyings_fs *fs, bool first_provoking_vertex)
+                        struct agx_varyings_fs *fs, bool first_provoking_vertex,
+                        bool *generate_primitive_id)
 {
+   *generate_primitive_id = false;
+
    /* If there are no bindings, there's nothing to emit */
    if (fs->nr_bindings == 0)
       return 0;
@@ -1592,6 +1595,10 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
          if (fs->bindings[i].slot == VARYING_SLOT_PNTC) {
             assert(fs->bindings[i].offset == 0);
             cfg.source = AGX_COEFFICIENT_SOURCE_POINT_COORD;
+         } else if (fs->bindings[i].slot == VARYING_SLOT_PRIMITIVE_ID &&
+                    vs->slots[VARYING_SLOT_PRIMITIVE_ID] == ~0) {
+            cfg.source = AGX_COEFFICIENT_SOURCE_PRIMITIVE_ID;
+            *generate_primitive_id = true;
          } else {
             cfg.base_slot = agx_find_linked_slot(
                vs, fs, fs->bindings[i].slot, fs->bindings[i].offset,
@@ -2973,7 +2980,6 @@ agx_batch_init_state(struct agx_batch *batch)
    struct agx_ppp_update ppp =
       agx_new_ppp_update(&batch->pool, (struct AGX_PPP_HEADER){
                                           .w_clamp = true,
-                                          .cull_2 = true,
                                           .occlusion_query_2 = true,
                                           .output_unknown = true,
                                           .varying_word_2 = true,
@@ -2982,7 +2988,6 @@ agx_batch_init_state(struct agx_batch *batch)
 
    /* clang-format off */
    agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
-   agx_ppp_push(&ppp, CULL_2, cfg);
    agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
    agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
    agx_ppp_push(&ppp, VARYING_2, cfg);
@@ -3073,7 +3078,19 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
 
    struct agx_compiled_shader *vs = ctx->vs, *fs = ctx->fs;
 
-   if (IS_DIRTY(VS)) {
+   bool varyings_dirty = false;
+
+   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
+      batch->varyings = agx_link_varyings_vs_fs(
+         &batch->pipeline_pool, &vs->info.varyings.vs,
+         &ctx->fs->info.varyings.fs, ctx->rast->base.flatshade_first,
+         &batch->generate_primitive_id);
+
+      varyings_dirty = true;
+      ppp_updates++;
+   }
+
+   if (IS_DIRTY(VS) || varyings_dirty) {
       agx_push(out, VDM_STATE, cfg) {
          cfg.vertex_shader_word_0_present = true;
          cfg.vertex_shader_word_1_present = true;
@@ -3104,6 +3121,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
                                        ? AGX_VDM_VERTEX_0
                                        : AGX_VDM_VERTEX_2;
          cfg.unknown_4 = cfg.unknown_5 = ctx->rast->base.rasterizer_discard;
+
+         cfg.generate_primitive_id = batch->generate_primitive_id;
       }
 
       /* Pad up to a multiple of 8 bytes */
@@ -3125,17 +3144,6 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
                                   ctx->rast->base.scissor ? ctx->scissor : NULL,
                                   ctx->rast->base.clip_halfz,
                                   ctx->vs->info.nonzero_viewport);
-   }
-
-   bool varyings_dirty = false;
-
-   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
-      batch->varyings = agx_link_varyings_vs_fs(
-         &batch->pipeline_pool, &vs->info.varyings.vs,
-         &ctx->fs->info.varyings.fs, ctx->rast->base.flatshade_first);
-
-      varyings_dirty = true;
-      ppp_updates++;
    }
 
    bool object_type_dirty =
@@ -3162,6 +3170,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       .varying_counts_32 = IS_DIRTY(VS_PROG),
       .varying_counts_16 = IS_DIRTY(VS_PROG),
       .cull = IS_DIRTY(RS),
+      .cull_2 = varyings_dirty,
       .fragment_shader =
          IS_DIRTY(FS) || varyings_dirty || IS_DIRTY(SAMPLE_MASK),
       .occlusion_query = IS_DIRTY(QUERY),
@@ -3274,6 +3283,12 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
 
    if (dirty.cull)
       agx_ppp_push_packed(&ppp, ctx->rast->cull, CULL);
+
+   if (dirty.cull_2) {
+      agx_ppp_push(&ppp, CULL_2, cfg) {
+         cfg.needs_primitive_id = batch->generate_primitive_id;
+      }
+   }
 
    if (dirty.fragment_shader) {
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;

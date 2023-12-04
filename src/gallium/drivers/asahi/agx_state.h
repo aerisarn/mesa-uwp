@@ -287,6 +287,11 @@ struct agx_batch {
    /* Whether we're drawing points, lines, or triangles */
    enum mesa_prim reduced_prim;
 
+   /* Whether the bound FS needs a primitive ID that is not supplied by the
+    * bound hardware VS (software GS)
+    */
+   bool generate_primitive_id;
+
    /* Current varyings linkage structures */
    uint32_t varyings;
 
