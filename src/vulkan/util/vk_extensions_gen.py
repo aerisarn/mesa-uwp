@@ -219,11 +219,11 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version,
     }
 
     if out_h:
-        with open(out_h, 'w') as f:
+        with open(out_h, 'w', encoding='utf-8') as f:
             f.write(_TEMPLATE_H.render(**template_env))
 
     if out_c:
-        with open(out_c, 'w') as f:
+        with open(out_c, 'w', encoding='utf-8') as f:
             f.write(_TEMPLATE_C.render(**template_env))
 
 

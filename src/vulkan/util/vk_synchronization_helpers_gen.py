@@ -209,7 +209,7 @@ def main():
     }
 
     try:
-        with open(args.out_c, 'w') as f:
+        with open(args.out_c, 'w', encoding='utf-8') as f:
             f.write(TEMPLATE_C.render(**environment))
     except Exception:
         # In the event there's an error, this imports some helpers from mako
