@@ -915,24 +915,19 @@ static void cleanup_fence_list(struct amdgpu_fence_list *fences)
 
 static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
 {
-   unsigned i;
+   for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++) {
+      struct amdgpu_cs_buffer *buffers = cs->buffer_lists[i].buffers;
+      unsigned num_buffers = cs->buffer_lists[i].num_buffers;
 
-   for (i = 0; i < cs->buffer_lists[AMDGPU_BO_REAL].num_buffers; i++) {
-      amdgpu_winsys_bo_reference(ws, &cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].bo, NULL);
+      for (unsigned j = 0; j < num_buffers; j++)
+         amdgpu_winsys_bo_reference(ws, &buffers[j].bo, NULL);
+
+      cs->buffer_lists[i].num_buffers = 0;
    }
-   for (i = 0; i < cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers; i++) {
-      amdgpu_winsys_bo_reference(ws, &cs->buffer_lists[AMDGPU_BO_SLAB].buffers[i].bo, NULL);
-   }
-   for (i = 0; i < cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers; i++) {
-      amdgpu_winsys_bo_reference(ws, &cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[i].bo, NULL);
-   }
+
    cleanup_fence_list(&cs->fence_dependencies);
    cleanup_fence_list(&cs->syncobj_dependencies);
    cleanup_fence_list(&cs->syncobj_to_signal);
-
-   cs->buffer_lists[AMDGPU_BO_REAL].num_buffers = 0;
-   cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers = 0;
-   cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers = 0;
    amdgpu_fence_reference(&cs->fence, NULL);
    cs->last_added_bo = NULL;
 }
@@ -940,9 +935,8 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs
 static void amdgpu_destroy_cs_context(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
 {
    amdgpu_cs_context_cleanup(ws, cs);
-   FREE(cs->buffer_lists[AMDGPU_BO_REAL].buffers);
-   FREE(cs->buffer_lists[AMDGPU_BO_SLAB].buffers);
-   FREE(cs->buffer_lists[AMDGPU_BO_SPARSE].buffers);
+   for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++)
+      FREE(cs->buffer_lists[i].buffers);
    FREE(cs->fence_dependencies.list);
    FREE(cs->syncobj_dependencies.list);
    FREE(cs->syncobj_to_signal.list);
@@ -1159,16 +1153,17 @@ static unsigned amdgpu_cs_get_buffer_list(struct radeon_cmdbuf *rcs,
                                           struct radeon_bo_list_item *list)
 {
     struct amdgpu_cs_context *cs = amdgpu_cs(rcs)->csc;
-    int i;
+    struct amdgpu_buffer_list *real_buffers = &cs->buffer_lists[AMDGPU_BO_REAL];
+    unsigned num_real_buffers = real_buffers->num_buffers;
 
     if (list) {
-        for (i = 0; i < cs->buffer_lists[AMDGPU_BO_REAL].num_buffers; i++) {
-            list[i].bo_size = cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].bo->base.size;
-            list[i].vm_address = cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].bo->va;
-            list[i].priority_usage = cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].usage;
+        for (unsigned i = 0; i < num_real_buffers; i++) {
+            list[i].bo_size = real_buffers->buffers[i].bo->base.size;
+            list[i].vm_address = real_buffers->buffers[i].bo->va;
+            list[i].priority_usage = real_buffers->buffers[i].usage;
         }
     }
-    return cs->buffer_lists[AMDGPU_BO_REAL].num_buffers;
+    return num_real_buffers;
 }
 
 static void add_fence_to_list(struct amdgpu_fence_list *fences,
@@ -1305,13 +1300,6 @@ void amdgpu_add_fences(struct amdgpu_winsys_bo *bo,
    bo->num_fences = bo_num_fences;
 }
 
-static void amdgpu_inc_bo_num_active_ioctls(unsigned num_buffers,
-                                            struct amdgpu_cs_buffer *buffers)
-{
-   for (unsigned i = 0; i < num_buffers; i++)
-      p_atomic_inc(&buffers[i].bo->num_active_ioctls);
-}
-
 static void amdgpu_add_bo_fences_to_dependencies(struct amdgpu_cs *acs,
                                                  struct amdgpu_cs_context *cs,
                                                  struct pipe_fence_handle *fence,
@@ -1346,7 +1334,9 @@ static void amdgpu_cs_add_syncobj_signal(struct radeon_cmdbuf *rws,
  */
 static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
 {
-   for (unsigned i = 0; i < cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers; ++i) {
+   unsigned num_sparse_buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
+
+   for (unsigned i = 0; i < num_sparse_buffers; ++i) {
       struct amdgpu_cs_buffer *buffer = &cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[i];
       struct amdgpu_bo_sparse *bo = get_sparse_bo(buffer->bo);
 
@@ -1381,7 +1371,6 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    int i, r;
    uint64_t seq_no = 0;
    bool has_user_fence = amdgpu_cs_has_user_fence(cs);
-   unsigned initial_num_real_buffers = cs->buffer_lists[AMDGPU_BO_REAL].num_buffers;
 
    simple_mtx_lock(&ws->bo_fence_lock);
    /* Since the kernel driver doesn't synchronize execution between different
@@ -1393,6 +1382,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
    struct drm_amdgpu_bo_list_entry *bo_list = NULL;
    unsigned num_bo_handles = 0;
+   unsigned initial_num_real_buffers = cs->buffer_lists[AMDGPU_BO_REAL].num_buffers;
 
 #if DEBUG
    /* Prepare the buffer list. */
@@ -1624,9 +1614,13 @@ cleanup:
    /* Only decrement num_active_ioctls for those buffers where we incremented it. */
    for (i = 0; i < initial_num_real_buffers; i++)
       p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].bo->num_active_ioctls);
-   for (i = 0; i < cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers; i++)
+
+   unsigned num_slab_buffers = cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers;
+   for (i = 0; i < num_slab_buffers; i++)
       p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_SLAB].buffers[i].bo->num_active_ioctls);
-   for (i = 0; i < cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers; i++)
+
+   unsigned num_sparse_buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
+   for (i = 0; i < num_sparse_buffers; i++)
       p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[i].bo->num_active_ioctls);
 
    amdgpu_cs_context_cleanup(ws, cs);
@@ -1716,12 +1710,13 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       if (fence)
          amdgpu_fence_reference(fence, cur->fence);
 
-      amdgpu_inc_bo_num_active_ioctls(cur->buffer_lists[AMDGPU_BO_REAL].num_buffers,
-                                      cur->buffer_lists[AMDGPU_BO_REAL].buffers);
-      amdgpu_inc_bo_num_active_ioctls(cur->buffer_lists[AMDGPU_BO_SLAB].num_buffers,
-                                      cur->buffer_lists[AMDGPU_BO_SLAB].buffers);
-      amdgpu_inc_bo_num_active_ioctls(cur->buffer_lists[AMDGPU_BO_SPARSE].num_buffers,
-                                      cur->buffer_lists[AMDGPU_BO_SPARSE].buffers);
+      for (unsigned i = 0; i < ARRAY_SIZE(cur->buffer_lists); i++) {
+         unsigned num_buffers = cur->buffer_lists[i].num_buffers;
+         struct amdgpu_cs_buffer *buffers = cur->buffer_lists[i].buffers;
+
+         for (unsigned j = 0; j < num_buffers; j++)
+            p_atomic_inc(&buffers[j].bo->num_active_ioctls);
+      }
 
       amdgpu_cs_sync_flush(rcs);
 
