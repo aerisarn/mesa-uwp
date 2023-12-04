@@ -601,7 +601,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_sample_locations                               DONE (anv, hasvk, nvk, radv/gfx9-, tu/a650)
   VK_EXT_shader_atomic_float                            DONE (anv, hasvk, lvp, radv)
   VK_EXT_shader_atomic_float2                           DONE (anv/gen9+, lvp, radv)
-  VK_EXT_shader_image_atomic_int64                      DONE (radv)
+  VK_EXT_shader_image_atomic_int64                      DONE (nvk, radv)
   VK_EXT_shader_object                                  DONE (lvp)
   VK_EXT_shader_stencil_export                          DONE (anv/gen9+, lvp, radv, tu, vn)
   VK_EXT_shader_subgroup_ballot                         DONE (anv, dzn, hasvk, lvp, nvk, radv, vn)

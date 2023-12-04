@@ -168,6 +168,8 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_sample_locations = info->cls_eng3d >= MAXWELL_B,
       .EXT_sampler_filter_minmax = info->cls_eng3d >= MAXWELL_B,
       .EXT_separate_stencil_usage = true,
+      .EXT_shader_image_atomic_int64 = info->cls_eng3d >= MAXWELL_A &&
+                                       nvk_use_nak(info),
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_subgroup_ballot = true,
       .EXT_shader_subgroup_vote = true,
@@ -444,6 +446,12 @@ nvk_get_device_features(const struct nv_device_info *info,
       .robustBufferAccess2 = true,
       .robustImageAccess2 = true,
       .nullDescriptor = true,
+
+      /* VK_EXT_shader_image_atomic_int64 */
+      .shaderImageInt64Atomics = info->cls_eng3d >= MAXWELL_A &&
+                                 nvk_use_nak(info),
+      .sparseImageInt64Atomics = info->cls_eng3d >= MAXWELL_A &&
+                                 nvk_use_nak(info),
 
       /* VK_EXT_transform_feedback */
       .transformFeedback = true,
