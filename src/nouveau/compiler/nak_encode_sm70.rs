@@ -51,6 +51,14 @@ fn src_mod_is_bnot(src_mod: SrcMod) -> bool {
     }
 }
 
+fn dst_is_bar(dst: Dst) -> bool {
+    match dst {
+        Dst::None => false,
+        Dst::SSA(ssa) => ssa.file() == RegFile::Bar,
+        Dst::Reg(reg) => reg.file() == RegFile::Bar,
+    }
+}
+
 impl ALUSrc {
     fn from_src_file(src: &Src, file: RegFile) -> ALUSrc {
         match src.src_ref {
@@ -241,6 +249,22 @@ impl SM70Instr {
             Dst::Reg(reg) => self.set_reg(16..24, reg),
             _ => panic!("Not a register"),
         }
+    }
+
+    fn set_bar_reg(&mut self, range: Range<usize>, reg: RegRef) {
+        assert!(range.len() == 4);
+        assert!(reg.file() == RegFile::Bar);
+        assert!(reg.comps() == 1);
+        self.set_field(range, reg.base_idx());
+    }
+
+    fn set_bar_dst(&mut self, range: Range<usize>, dst: Dst) {
+        self.set_bar_reg(range, *dst.as_reg().unwrap());
+    }
+
+    fn set_bar_src(&mut self, range: Range<usize>, src: Src) {
+        assert!(src.src_mod.is_none());
+        self.set_bar_reg(range, *src.src_ref.as_reg().unwrap());
     }
 
     fn set_alu_reg(
@@ -1673,6 +1697,24 @@ impl SM70Instr {
         self.set_bit(84, true); // .CLEAR
     }
 
+    fn encode_bmov(&mut self, op: &OpBMov) {
+        if dst_is_bar(op.dst) {
+            self.set_opcode(0x356);
+
+            self.set_bar_dst(24..28, op.dst);
+            self.set_reg_src(32..40, op.src);
+
+            self.set_bit(84, op.clear);
+        } else {
+            self.set_opcode(0x355);
+
+            self.set_dst(op.dst);
+            self.set_bar_src(24..28, op.src);
+
+            self.set_bit(84, op.clear);
+        }
+    }
+
     fn encode_break(&mut self, op: &OpBreak) {
         self.set_opcode(0x942);
         self.set_field(16..20, op.bar.idx());
@@ -1909,6 +1951,7 @@ impl SM70Instr {
             Op::CCtl(op) => si.encode_cctl(&op),
             Op::MemBar(op) => si.encode_membar(&op),
             Op::BClear(op) => si.encode_bclear(&op),
+            Op::BMov(op) => si.encode_bmov(&op),
             Op::Break(op) => si.encode_break(&op),
             Op::BSSy(op) => si.encode_bssy(&op, ip, labels),
             Op::BSync(op) => si.encode_bsync(&op),

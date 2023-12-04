@@ -354,6 +354,28 @@ pub trait SSABuilder: Builder {
         self.copy_to(dst.into(), src);
         dst
     }
+
+    fn bmov_to_bar(&mut self, src: Src) -> SSARef {
+        assert!(src.src_ref.as_ssa().unwrap().file() == RegFile::GPR);
+        let dst = self.alloc_ssa(RegFile::Bar, 1);
+        self.push_op(OpBMov {
+            dst: dst.into(),
+            src: src,
+            clear: false,
+        });
+        dst
+    }
+
+    fn bmov_to_gpr(&mut self, src: Src) -> SSARef {
+        assert!(src.src_ref.as_ssa().unwrap().file() == RegFile::Bar);
+        let dst = self.alloc_ssa(RegFile::GPR, 1);
+        self.push_op(OpBMov {
+            dst: dst.into(),
+            src: src,
+            clear: false,
+        });
+        dst
+    }
 }
 
 pub struct InstrBuilder {

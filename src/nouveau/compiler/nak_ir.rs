@@ -3645,6 +3645,25 @@ impl_display_for_op!(OpBClear);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBMov {
+    pub dst: Dst,
+    pub src: Src,
+    pub clear: bool,
+}
+
+impl DisplayOp for OpBMov {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "bmov.32")?;
+        if self.clear {
+            write!(f, ".clear")?;
+        }
+        write!(f, " {}", self.src)
+    }
+}
+impl_display_for_op!(OpBMov);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBreak {
     pub bar: BarRef,
 
@@ -4326,6 +4345,7 @@ pub enum Op {
     CCtl(OpCCtl),
     MemBar(OpMemBar),
     BClear(OpBClear),
+    BMov(OpBMov),
     Break(OpBreak),
     BSSy(OpBSSy),
     BSync(OpBSync),
@@ -4695,12 +4715,13 @@ impl Instr {
             | Op::FSOut(_)
             | Op::Out(_)
             | Op::OutFinal(_) => false,
+            Op::BMov(op) => !op.clear,
             _ => true,
         }
     }
 
     pub fn has_fixed_latency(&self) -> bool {
-        match self.op {
+        match &self.op {
             // Float ALU
             Op::FAdd(_)
             | Op::FFma(_)
@@ -4767,6 +4788,14 @@ impl Instr {
             Op::BClear(_) | Op::Break(_) | Op::BSSy(_) | Op::BSync(_) => true,
             Op::Bra(_) | Op::Exit(_) => true,
             Op::WarpSync(_) => false,
+
+            // BMOV: barriers only when using gprs (and only valid for the gpr),
+            // no barriers for the others.
+            Op::BMov(op) => match &op.dst {
+                Dst::None => true,
+                Dst::SSA(vec) => vec.file() == RegFile::Bar,
+                Dst::Reg(reg) => reg.file() == RegFile::Bar,
+            },
 
             // Geometry ops
             Op::Out(_) | Op::OutFinal(_) => false,
