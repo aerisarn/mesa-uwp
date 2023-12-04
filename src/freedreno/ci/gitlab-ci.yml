@@ -146,8 +146,7 @@ a618-traces-performance:
     - !reference [a618-traces, needs]
     - !reference [.piglit-performance:arm64, needs]
 
-# disabled, REVERT as https://lava.collabora.dev/scheduler/device_type/sm8350-hdk comes back
-.a660_gl:
+a660_gl:
   extends:
     - .lava-test-deqp:arm64
     - .collabora-freedreno-rules
@@ -167,8 +166,7 @@ a618-traces-performance:
     DEQP_SUITE: freedreno-a660-vk
     DEQP_FRACTION: 4
 
-# disabled, REVERT as https://lava.collabora.dev/scheduler/device_type/sm8350-hdk comes back
-.a660_vk_full:
+a660_vk_full:
   extends:
     - .a660_vk
     - .collabora-turnip-manual-rules
