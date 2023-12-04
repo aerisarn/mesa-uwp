@@ -1029,9 +1029,8 @@ impl Device {
             images_read_write: self.image_read_write_supported(),
             images_write_3d: self.image_3d_write_supported(),
             integer_dot_product: true,
-            intel_subgroups: false,
             subgroups: self.subgroups_supported(),
-            subgroups_ifp: false,
+            ..Default::default()
         }
     }
 }

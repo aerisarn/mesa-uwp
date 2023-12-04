@@ -64,6 +64,8 @@ struct clc_optional_features {
     * progress
     */
    bool subgroups_ifp;
+   bool subgroups_shuffle;
+   bool subgroups_shuffle_relative;
 };
 
 struct clc_compile_args {

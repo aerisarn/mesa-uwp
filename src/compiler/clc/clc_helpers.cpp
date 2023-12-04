@@ -812,6 +812,14 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       clang_opts.push_back("-D__opencl_c_integer_dot_product_input_4x8bit_packed=1");
       clang_opts.push_back("-D__opencl_c_integer_dot_product_input_4x8bit=1");
    }
+   if (args->features.subgroups) {
+      if (args->features.subgroups_shuffle) {
+         clang_opts.push_back("-Dcl_khr_subgroup_shuffle=1");
+      }
+      if (args->features.subgroups_shuffle_relative) {
+         clang_opts.push_back("-Dcl_khr_subgroup_shuffle_relative=1");
+      }
+   }
 
    // We assume there's appropriate defines for __OPENCL_VERSION__ and __IMAGE_SUPPORT__
    // being provided by the caller here.
