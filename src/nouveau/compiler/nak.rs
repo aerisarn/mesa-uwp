@@ -124,6 +124,7 @@ fn nir_options(_dev: &nv_device_info) -> nir_shader_compiler_options {
     op.lower_insert_word = true;
     op.lower_cs_local_index_to_id = true;
     op.lower_device_index_to_zero = true;
+    op.lower_isign = true;
     op.lower_uadd_sat = true; // TODO
     op.lower_usub_sat = true; // TODO
     op.lower_iadd_sat = true; // TODO
