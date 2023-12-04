@@ -63,28 +63,22 @@ agx_legalize_compression(struct agx_context *ctx, struct agx_resource *rsrc,
    if (rsrc->layout.tiling != AIL_TILING_TWIDDLED_COMPRESSED)
       return;
 
-   /* Normalize due to Gallium shenanigans */
-   if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
-       format == PIPE_FORMAT_Z24X8_UNORM)
-      format = PIPE_FORMAT_Z32_FLOAT;
-
    /* The physical format */
    enum pipe_format storage = rsrc->layout.format;
 
-   /* sRGB vs linear are always compatible */
-   storage = util_format_linear(storage);
-   format = util_format_linear(format);
-
-   /* If no reinterpretation happens, we don't have to decompress */
-   if (storage == format)
+   /* If the formats are compatible, we don't have to decompress. Compatible
+    * formats have the same number/size/order of channels, but may differ in
+    * data type. For example, R32_SINT is compatible with Z32_FLOAT, but not
+    * with R16G16_SINT. This is the relation given by the "channels" part of the
+    * decomposed format.
+    *
+    * This has not been exhaustively tested and might be missing some corner
+    * cases around XR formats, but is well-motivated and seems to work.
+    */
+   if (agx_pixel_format[storage].channels == agx_pixel_format[format].channels)
       return;
 
-   /* Otherwise, decompress. TODO: Reverse-engineer which formats are compatible
-    * and don't need decompression. There are some vague hints in the Metal
-    * documentation:
-    *
-    * https://developer.apple.com/documentation/metal/mtltextureusage/mtltextureusagepixelformatview?language=objc
-    */
+   /* Otherwise, decompress. */
    agx_decompress(ctx, rsrc, "Incompatible formats");
 }
 
