@@ -1559,9 +1559,9 @@ impl FloatType {
 impl fmt::Display for FloatType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FloatType::F16 => write!(f, "f16"),
-            FloatType::F32 => write!(f, "f32"),
-            FloatType::F64 => write!(f, "f64"),
+            FloatType::F16 => write!(f, ".f16"),
+            FloatType::F32 => write!(f, ".f32"),
+            FloatType::F64 => write!(f, ".f64"),
         }
     }
 }
@@ -1578,10 +1578,10 @@ pub enum FRndMode {
 impl fmt::Display for FRndMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FRndMode::NearestEven => write!(f, "re"),
-            FRndMode::NegInf => write!(f, "rm"),
-            FRndMode::PosInf => write!(f, "rp"),
-            FRndMode::Zero => write!(f, "rz"),
+            FRndMode::NearestEven => write!(f, ".re"),
+            FRndMode::NegInf => write!(f, ".rm"),
+            FRndMode::PosInf => write!(f, ".rp"),
+            FRndMode::Zero => write!(f, ".rz"),
         }
     }
 }
@@ -1771,14 +1771,14 @@ impl IntType {
 impl fmt::Display for IntType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IntType::U8 => write!(f, "u8"),
-            IntType::I8 => write!(f, "i8"),
-            IntType::U16 => write!(f, "u16"),
-            IntType::I16 => write!(f, "i16"),
-            IntType::U32 => write!(f, "u32"),
-            IntType::I32 => write!(f, "i32"),
-            IntType::U64 => write!(f, "u64"),
-            IntType::I64 => write!(f, "i64"),
+            IntType::U8 => write!(f, ".u8"),
+            IntType::I8 => write!(f, ".i8"),
+            IntType::U16 => write!(f, ".u16"),
+            IntType::I16 => write!(f, ".i16"),
+            IntType::U32 => write!(f, ".u32"),
+            IntType::I32 => write!(f, ".i32"),
+            IntType::U64 => write!(f, ".u64"),
+            IntType::I64 => write!(f, ".i64"),
         }
     }
 }
@@ -2077,7 +2077,7 @@ impl DisplayOp for OpFAdd {
             write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
-            write!(f, ".{}", self.rnd_mode)?;
+            write!(f, "{}", self.rnd_mode)?;
         }
         write!(f, " {} {}", self.srcs[0], self.srcs[1],)
     }
@@ -2103,7 +2103,7 @@ impl DisplayOp for OpFFma {
             write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
-            write!(f, ".{}", self.rnd_mode)?;
+            write!(f, "{}", self.rnd_mode)?;
         }
         write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.srcs[2])
     }
@@ -2148,7 +2148,7 @@ impl DisplayOp for OpFMul {
             write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
-            write!(f, ".{}", self.rnd_mode)?;
+            write!(f, "{}", self.rnd_mode)?;
         }
         write!(f, " {} {}", self.srcs[0], self.srcs[1],)
     }
@@ -2239,7 +2239,7 @@ impl DisplayOp for OpFSwzAdd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "fswzadd",)?;
         if self.rnd_mode != FRndMode::NearestEven {
-            write!(f, ".{}", self.rnd_mode)?;
+            write!(f, "{}", self.rnd_mode)?;
         }
         write!(
             f,
@@ -2323,7 +2323,7 @@ impl DisplayOp for OpDAdd {
             write!(f, ".sat")?;
         }
         if self.rnd_mode != FRndMode::NearestEven {
-            write!(f, ".{}", self.rnd_mode)?;
+            write!(f, "{}", self.rnd_mode)?;
         }
         write!(f, " {} {}", self.srcs[0], self.srcs[1],)
     }
@@ -2628,7 +2628,7 @@ impl DisplayOp for OpShf {
         if self.wrap {
             write!(f, ".w")?;
         }
-        write!(f, ".{}", self.data_type)?;
+        write!(f, "{}", self.data_type)?;
         if self.dst_high {
             write!(f, ".hi")?;
         }
@@ -2679,7 +2679,7 @@ impl DisplayOp for OpF2F {
         }
         write!(
             f,
-            ".{}.{}.{} {}",
+            "{}{}{} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.src,
         )
     }
@@ -2721,7 +2721,7 @@ impl DisplayOp for OpF2I {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "f2i.{}.{}.{} {}",
+            "f2i{}{}{} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.src,
         )
     }
@@ -2762,7 +2762,7 @@ impl DisplayOp for OpI2F {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "i2f.{}.{}.{} {}",
+            "i2f{}{}{} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.src,
         )
     }
@@ -2804,7 +2804,7 @@ impl DisplayOp for OpFRnd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "frnd.{}.{}.{} {}",
+            "frnd{}{}{} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.src,
         )
     }
