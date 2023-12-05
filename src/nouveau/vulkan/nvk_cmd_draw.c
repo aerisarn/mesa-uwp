@@ -2705,6 +2705,8 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          continue;
 
       VK_FROM_HANDLE(nvk_buffer, buffer, pCounterBuffers[i]);
+      // index of counter buffer corresponts to index of transform buffer
+      uint32_t cb_idx = firstCounterBuffer + i;
       uint64_t offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0;
       uint64_t cb_addr = nvk_buffer_address(buffer, offset);
 
@@ -2716,6 +2718,7 @@ nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          .operation = OPERATION_REPORT_ONLY,
          .pipeline_location = PIPELINE_LOCATION_STREAMING_OUTPUT,
          .report = REPORT_STREAMING_BYTE_COUNT,
+         .sub_report = cb_idx,
          .structure_size = STRUCTURE_SIZE_ONE_WORD,
       });
    }
