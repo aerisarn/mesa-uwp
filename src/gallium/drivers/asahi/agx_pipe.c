@@ -974,7 +974,7 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
     * compression in software. In some cases, we could use this path for
     * twiddled too, but we don't have a use case for that yet.
     */
-   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED) {
+   if (ail_is_level_compressed(&rsrc->layout, level)) {
       /* Should never happen for buffers, and it's not safe */
       assert(resource->target != PIPE_BUFFER);
 
@@ -1007,7 +1007,7 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
 
    agx_bo_mmap(rsrc->bo);
 
-   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
+   if (ail_is_level_twiddled_uncompressed(&rsrc->layout, level)) {
       /* Should never happen for buffers, and it's not safe */
       assert(resource->target != PIPE_BUFFER);
 
@@ -1066,7 +1066,8 @@ agx_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *transfer)
       agx_flush_readers(agx_context(pctx), agx_resource(trans->staging.rsrc),
                         "GPU write staging blit");
    } else if (trans->map && (transfer->usage & PIPE_MAP_WRITE)) {
-      assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
+      assert(
+         ail_is_level_twiddled_uncompressed(&rsrc->layout, transfer->level));
 
       for (unsigned z = 0; z < transfer->box.depth; ++z) {
          uint8_t *map =
