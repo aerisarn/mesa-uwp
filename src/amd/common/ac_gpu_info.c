@@ -624,9 +624,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    assert(info->drm_major == 3);
    info->is_amdgpu = true;
 
-   if (info->drm_minor < 15) {
+   if (info->drm_minor < 27) {
       fprintf(stderr, "amdgpu: DRM version is %u.%u.%u, but this driver is "
-                      "only compatible with 3.15.0 (kernel 4.12) or later.\n",
+                      "only compatible with 3.27.0 (kernel 4.20+) or later.\n",
               info->drm_major, info->drm_minor, info->drm_patchlevel);
       return false;
    }
@@ -1015,8 +1015,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_userptr = true;
    info->has_syncobj = has_syncobj(fd);
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
-   info->has_fence_to_handle = info->has_syncobj && info->drm_minor >= 21;
-   info->has_local_buffers = info->drm_minor >= 20;
+   info->has_fence_to_handle = info->has_syncobj;
+   info->has_local_buffers = true;
    info->has_bo_metadata = true;
    info->has_eqaa_surface_allocator = info->gfx_level < GFX11;
    /* Disable sparse mappings on GFX6 due to VM faults in CP DMA. Enable them once

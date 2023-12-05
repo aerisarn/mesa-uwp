@@ -270,7 +270,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return enable_sparse ? RADEON_SPARSE_PAGE_SIZE : 0;
 
    case PIPE_CAP_CONTEXT_PRIORITY_MASK:
-      if (!(sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 22))
+      if (!sscreen->info.is_amdgpu)
          return 0;
       return PIPE_CONTEXT_PRIORITY_LOW |
              PIPE_CONTEXT_PRIORITY_MEDIUM |
@@ -880,7 +880,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          }
          if (sscreen->info.family < CHIP_CARRIZO || sscreen->info.family >= CHIP_VEGA10)
             return false;
-         if (!(sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 19)) {
+         if (!sscreen->info.is_amdgpu) {
             RVID_ERR("No MJPEG support for the kernel version\n");
             return false;
          }

@@ -476,68 +476,47 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
       *reset_completed = false;
 
    /* Return a failure due to a GPU hang. */
-   if (ctx->ws->info.drm_minor >= 24) {
-      uint64_t flags;
+   uint64_t flags;
 
-      if (full_reset_only && ctx->sw_status == PIPE_NO_RESET) {
-         /* If the caller is only interested in full reset (= wants to ignore soft
-          * recoveries), we can use the rejected cs count as a quick first check.
+   if (full_reset_only && ctx->sw_status == PIPE_NO_RESET) {
+      /* If the caller is only interested in full reset (= wants to ignore soft
+       * recoveries), we can use the rejected cs count as a quick first check.
+       */
+      return PIPE_NO_RESET;
+   }
+
+   r = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
+   if (r) {
+      fprintf(stderr, "amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", r);
+      return PIPE_NO_RESET;
+   }
+
+   if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
+      if (reset_completed) {
+         /* The ARB_robustness spec says:
+          *
+          *    If a reset status other than NO_ERROR is returned and subsequent
+          *    calls return NO_ERROR, the context reset was encountered and
+          *    completed. If a reset status is repeatedly returned, the context may
+          *    be in the process of resetting.
+          *
+          * Starting with drm_minor >= 54 amdgpu reports if the reset is complete,
+          * so don't do anything special. On older kernels, submit a no-op cs. If it
+          * succeeds then assume the reset is complete.
           */
-         return PIPE_NO_RESET;
-      }
+         if (!(flags & AMDGPU_CTX_QUERY2_FLAGS_RESET_IN_PROGRESS))
+            *reset_completed = true;
 
-      r = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", r);
-         return PIPE_NO_RESET;
-      }
-
-      if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
-         if (reset_completed) {
-            /* The ARB_robustness spec says:
-             *
-             *    If a reset status other than NO_ERROR is returned and subsequent
-             *    calls return NO_ERROR, the context reset was encountered and
-             *    completed. If a reset status is repeatedly returned, the context may
-             *    be in the process of resetting.
-             *
-             * Starting with drm_minor >= 54 amdgpu reports if the reset is complete,
-             * so don't do anything special. On older kernels, submit a no-op cs. If it
-             * succeeds then assume the reset is complete.
-             */
-            if (!(flags & AMDGPU_CTX_QUERY2_FLAGS_RESET_IN_PROGRESS))
-               *reset_completed = true;
-
-            if (ctx->ws->info.drm_minor < 54 && ctx->ws->info.has_graphics)
-               *reset_completed = amdgpu_submit_gfx_nop(ctx) == 0;
-         }
-
-         if (needs_reset)
-               *needs_reset = flags & AMDGPU_CTX_QUERY2_FLAGS_VRAMLOST;
-         if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY)
-            return PIPE_GUILTY_CONTEXT_RESET;
-         else
-            return PIPE_INNOCENT_CONTEXT_RESET;
-      }
-   } else {
-      uint32_t result, hangs;
-
-      r = amdgpu_cs_query_reset_state(ctx->ctx, &result, &hangs);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_cs_query_reset_state failed. (%i)\n", r);
-         return PIPE_NO_RESET;
+         if (ctx->ws->info.drm_minor < 54 && ctx->ws->info.has_graphics)
+            *reset_completed = amdgpu_submit_gfx_nop(ctx) == 0;
       }
 
       if (needs_reset)
-         *needs_reset = true;
-      switch (result) {
-      case AMDGPU_CTX_GUILTY_RESET:
+            *needs_reset = flags & AMDGPU_CTX_QUERY2_FLAGS_VRAMLOST;
+      if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY)
          return PIPE_GUILTY_CONTEXT_RESET;
-      case AMDGPU_CTX_INNOCENT_RESET:
+      else
          return PIPE_INNOCENT_CONTEXT_RESET;
-      case AMDGPU_CTX_UNKNOWN_RESET:
-         return PIPE_UNKNOWN_CONTEXT_RESET;
-      }
    }
 
    /* Return a failure due to SW issues. */
@@ -1036,10 +1015,8 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
        * the next IB starts drawing, and so the cache flush at the end of IB
        * is always late.
        */
-      if (ws->info.drm_minor >= 26) {
-         cs->chunk_ib[IB_PREAMBLE].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
-         cs->chunk_ib[IB_MAIN].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
-      }
+      cs->chunk_ib[IB_PREAMBLE].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
+      cs->chunk_ib[IB_MAIN].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
       break;
 
    default:
@@ -1535,16 +1512,16 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    struct amdgpu_winsys *ws = acs->ws;
    struct amdgpu_cs_context *cs = acs->cst;
    int i, r;
-   uint32_t bo_list = 0;
    uint64_t seq_no = 0;
    bool has_user_fence = amdgpu_cs_has_user_fence(cs);
-   bool use_bo_list_create = ws->info.drm_minor < 27;
-   struct drm_amdgpu_bo_list_in bo_list_in;
    unsigned initial_num_real_buffers = cs->num_real_buffers;
 
    simple_mtx_lock(&ws->bo_fence_lock);
    amdgpu_add_fence_dependencies_bo_lists(acs, cs);
    simple_mtx_unlock(&ws->bo_fence_lock);
+
+   struct drm_amdgpu_bo_list_entry *bo_list = NULL;
+   unsigned num_bo_handles = 0;
 
 #if DEBUG
    /* Prepare the buffer list. */
@@ -1552,24 +1529,16 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
       /* The buffer list contains all buffers. This is a slow path that
        * ensures that no buffer is missing in the BO list.
        */
-      unsigned num_handles = 0;
-      struct drm_amdgpu_bo_list_entry *list =
-         alloca(ws->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
+      bo_list = alloca(ws->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
       struct amdgpu_winsys_bo *bo;
 
       simple_mtx_lock(&ws->global_bo_list_lock);
       LIST_FOR_EACH_ENTRY(bo, &ws->global_bo_list, u.real.global_list_item) {
-         list[num_handles].bo_handle = bo->u.real.kms_handle;
-         list[num_handles].bo_priority = 0;
-         ++num_handles;
+         bo_list[num_bo_handles].bo_handle = bo->u.real.kms_handle;
+         bo_list[num_bo_handles].bo_priority = 0;
+         ++num_bo_handles;
       }
-
-      r = amdgpu_bo_list_create_raw(ws->dev, ws->num_buffers, list, &bo_list);
       simple_mtx_unlock(&ws->global_bo_list_lock);
-      if (r) {
-         fprintf(stderr, "amdgpu: buffer list creation failed (%d)\n", r);
-         goto cleanup;
-      }
    } else
 #endif
    {
@@ -1579,33 +1548,15 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
          goto cleanup;
       }
 
-      struct drm_amdgpu_bo_list_entry *list =
-         alloca((cs->num_real_buffers + 2) * sizeof(struct drm_amdgpu_bo_list_entry));
+      bo_list = alloca((cs->num_real_buffers + 2) * sizeof(struct drm_amdgpu_bo_list_entry));
 
-      unsigned num_handles = 0;
       for (i = 0; i < cs->num_real_buffers; ++i) {
          struct amdgpu_cs_buffer *buffer = &cs->real_buffers[i];
 
-         list[num_handles].bo_handle = buffer->bo->u.real.kms_handle;
-         list[num_handles].bo_priority =
+         bo_list[num_bo_handles].bo_handle = buffer->bo->u.real.kms_handle;
+         bo_list[num_bo_handles].bo_priority =
             (util_last_bit(buffer->usage & RADEON_ALL_PRIORITIES) - 1) / 2;
-         ++num_handles;
-      }
-
-      if (use_bo_list_create) {
-         /* Legacy path creating the buffer list handle and passing it to the CS ioctl. */
-         r = amdgpu_bo_list_create_raw(ws->dev, num_handles, list, &bo_list);
-         if (r) {
-            fprintf(stderr, "amdgpu: buffer list creation failed (%d)\n", r);
-            goto cleanup;
-         }
-      } else {
-         /* Standard path passing the buffer list via the CS ioctl. */
-         bo_list_in.operation = ~0;
-         bo_list_in.list_handle = ~0;
-         bo_list_in.bo_number = num_handles;
-         bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
-         bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)list;
+         ++num_bo_handles;
       }
    }
 
@@ -1616,12 +1567,17 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    unsigned num_chunks = 0;
 
    /* BO list */
-   if (!use_bo_list_create) {
-      chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
-      chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
-      chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
-      num_chunks++;
-   }
+   struct drm_amdgpu_bo_list_in bo_list_in;
+   bo_list_in.operation = ~0;
+   bo_list_in.list_handle = ~0;
+   bo_list_in.bo_number = num_bo_handles;
+   bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
+   bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)bo_list;
+
+   chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
+   chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
+   chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
+   num_chunks++;
 
    /* Fence dependencies. */
    unsigned num_dependencies = cs->fence_dependencies.num;
@@ -1757,8 +1713,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
          if (r == -ENOMEM)
             os_time_sleep(1000);
 
-         r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
-                                   num_chunks, chunks, &seq_no);
+         r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, 0, num_chunks, chunks, &seq_no);
       } while (r == -ENOMEM);
 
       if (!r) {
@@ -1776,10 +1731,6 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
          amdgpu_fence_submitted(cs->fence, seq_no, user_fence);
       }
    }
-
-   /* Cleanup. */
-   if (bo_list)
-      amdgpu_bo_list_destroy_raw(ws->dev, bo_list);
 
 cleanup:
    if (unlikely(r)) {
