@@ -31,6 +31,7 @@
 
 #include <fcntl.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -242,7 +243,7 @@ main(int argc, char *argv[])
       case 's': {
          uint64_t *addr = util_dynarray_grow(&shader_addresses, uint64_t, 1);
          *addr = strtol(optarg, NULL, 0);
-         fprintf(stderr, "shader addr=0x%016lx\n", *addr);
+         fprintf(stderr, "shader addr=0x%016"PRIx64"\n", *addr);
          break;
       }
       case 'h':
@@ -320,7 +321,7 @@ main(int argc, char *argv[])
          total_vma += bo->size;
          skip_data(file_fd, bo->size);
          if (list) {
-            fprintf(stderr, "buffer: offset=0x%016lx size=0x%016lx name=%s\n",
+            fprintf(stderr, "buffer: offset=0x%016"PRIx64" size=0x%016"PRIx64" name=%s\n",
                     bo->offset, bo->size, block_header.bo.name);
          }
          break;
@@ -337,7 +338,7 @@ main(int argc, char *argv[])
          total_vma += bo->size;
          skip_data(file_fd, bo->size);
          if (list) {
-            fprintf(stderr, "buffer: offset=0x%016lx size=0x%016lx name=hw_img\n",
+            fprintf(stderr, "buffer: offset=0x%016"PRIx64" size=0x%016"PRIx64" name=hw_img\n",
                     bo->offset, bo->size);
          }
          has_hw_image = true;
@@ -353,7 +354,7 @@ main(int argc, char *argv[])
          };
          total_vma += bo->size;
          if (list) {
-            fprintf(stderr, "map   : offset=0x%016lx size=0x%016lx name=%s\n",
+            fprintf(stderr, "map   : offset=0x%016"PRIx64" size=0x%016"PRIx64" name=%s\n",
                     bo->offset, bo->size, block_header.map.name);
          }
          break;
@@ -362,11 +363,11 @@ main(int argc, char *argv[])
       case INTEL_HANG_DUMP_BLOCK_TYPE_EXEC: {
          if (init.offset == 0 && !has_hw_image) {
             if (list)
-               fprintf(stderr, "init  : offset=0x%016lx\n", block_header.exec.offset);
+               fprintf(stderr, "init  : offset=0x%016"PRIx64"\n", block_header.exec.offset);
             init = block_header.exec;
          } else {
             if (list)
-               fprintf(stderr, "exec  : offset=0x%016lx\n", block_header.exec.offset);
+               fprintf(stderr, "exec  : offset=0x%016"PRIx64"\n", block_header.exec.offset);
             exec = block_header.exec;
          }
          break;
@@ -377,7 +378,7 @@ main(int argc, char *argv[])
       }
    }
 
-   fprintf(stderr, "total_vma: 0x%016lx\n", total_vma);
+   fprintf(stderr, "total_vma: 0x%016"PRIx64"\n", total_vma);
 
    if (check_addr != -1) {
       struct gem_bo *check_bo = NULL;
@@ -389,10 +390,10 @@ main(int argc, char *argv[])
       }
 
       if (check_bo) {
-         fprintf(stderr, "address=0x%016lx found in buffer 0x%016lx size=0x%016lx\n",
+         fprintf(stderr, "address=0x%016"PRIx64" found in buffer 0x%016"PRIx64" size=0x%016"PRIx64"\n",
                  check_addr, check_bo->offset, check_bo->size);
       } else {
-         fprintf(stderr, "address=0x%016lx not found in buffer list\n", check_addr);
+         fprintf(stderr, "address=0x%016"PRIx64" not found in buffer list\n", check_addr);
       }
    }
 
@@ -412,7 +413,7 @@ main(int argc, char *argv[])
             break;
 
          found = true;
-         fprintf(stderr, "shader at 0x%016lx file_offset=0%016lx addr_offset=%016lx:\n", *addr,
+         fprintf(stderr, "shader at 0x%016"PRIx64" file_offset=0%016"PRIx64" addr_offset=%016"PRIx64":\n", *addr,
                  (bo->file_offset - aligned_offset), (*addr - bo->offset));
          struct brw_isa_info _isa, *isa = &_isa;
          brw_init_isa_info(isa, &devinfo);
@@ -424,7 +425,7 @@ main(int argc, char *argv[])
       }
 
       if (!found)
-         fprintf(stderr, "shader at 0x%016lx not found\n", *addr);
+         fprintf(stderr, "shader at 0x%016"PRIx64" not found\n", *addr);
    }
 
    if (!list && util_dynarray_num_elements(&shader_addresses, uint64_t) == 0) {
@@ -486,7 +487,7 @@ main(int argc, char *argv[])
       int ret;
 
       if (init_bo) {
-         fprintf(stderr, "init: 0x%016lx\n", init_bo->offset);
+         fprintf(stderr, "init: 0x%016"PRIx64"\n", init_bo->offset);
          *execbuf_bo = (struct drm_i915_gem_exec_object2) {
             .handle           = init_bo->gem_handle,
             .relocation_count = 0,
@@ -506,7 +507,7 @@ main(int argc, char *argv[])
       }
 
       if (batch_bo) {
-         fprintf(stderr, "exec: 0x%016lx aperture=%.2fMb\n", batch_bo->offset,
+         fprintf(stderr, "exec: 0x%016"PRIx64" aperture=%.2fMb\n", batch_bo->offset,
                  gem_allocated / 1024.0 / 1024.0);
          *execbuf_bo = (struct drm_i915_gem_exec_object2) {
             .handle           = batch_bo->gem_handle,
