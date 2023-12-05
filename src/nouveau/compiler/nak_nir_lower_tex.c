@@ -314,6 +314,47 @@ shrink_image_load(nir_builder *b, nir_intrinsic_instr *intrin,
    enum pipe_format format = nir_intrinsic_format(intrin);
    nir_component_mask_t comps_read = nir_def_components_read(&intrin->def);
 
+   if (intrin->def.bit_size == 64) {
+      assert(format == PIPE_FORMAT_NONE ||
+             format == PIPE_FORMAT_R64_UINT ||
+             format == PIPE_FORMAT_R64_SINT);
+
+      b->cursor = nir_after_instr(&intrin->instr);
+
+      nir_def *data_xy, *data_w;
+      if (comps_read & BITFIELD_BIT(3)) {
+         /* Thanks to descriptor indexing, we need to ensure that null
+          * descriptor behavior works properly.  In particular, normal zero
+          * reads will return (0, 0, 0, 1) whereas null descriptor reads need
+          * to return (0, 0, 0, 0).  This means we can't blindly extend with
+          * an alpha component of 1.  Instead, we need to trust the hardware
+          * to extend the original RG32 with z = 0 and w = 1 and copy the w
+          * value all the way out to 64-bit w value.
+          */
+         assert(intrin->num_components == 4);
+         assert(intrin->def.num_components == 4);
+         intrin->def.bit_size = 32;
+
+         data_xy = nir_channels(b, &intrin->def, 0x3);
+         data_w = nir_channels(b, &intrin->def, 0x8);
+      } else {
+         intrin->num_components = 2;
+         intrin->def.num_components = 2;
+         intrin->def.bit_size = 32;
+
+         data_xy = nir_channels(b, &intrin->def, 0x3);
+         data_w = nir_imm_int(b, 0);
+      }
+
+      nir_def *data = nir_vec4(b, nir_pack_64_2x32(b, data_xy),
+                               nir_imm_zero(b, 1, 64),
+                               nir_imm_zero(b, 1, 64),
+                               nir_u2u64(b, data_w));
+
+      nir_def_rewrite_uses_after(&intrin->def, data, data->parent_instr);
+      return true;
+   }
+
    if (format == PIPE_FORMAT_NONE)
       return false;
 
@@ -361,6 +402,20 @@ shrink_image_store(nir_builder *b, nir_intrinsic_instr *intrin,
 {
    enum pipe_format format = nir_intrinsic_format(intrin);
    nir_def *data = intrin->src[3].ssa;
+
+   if (data->bit_size == 64) {
+      assert(format == PIPE_FORMAT_NONE ||
+             format == PIPE_FORMAT_R64_UINT ||
+             format == PIPE_FORMAT_R64_SINT);
+
+      b->cursor = nir_before_instr(&intrin->instr);
+
+      /* For 64-bit image ops, we actually want a vec2 */
+      nir_def *data_vec2 = nir_unpack_64_2x32(b, nir_channel(b, data, 0));
+      nir_src_rewrite(&intrin->src[3], data_vec2);
+      intrin->num_components = 2;
+      return true;
+   }
 
    if (format == PIPE_FORMAT_NONE)
       return false;
