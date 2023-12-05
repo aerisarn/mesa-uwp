@@ -750,6 +750,9 @@ typedef struct nir_variable {
        */
       int location;
 
+      /** Required alignment of this variable */
+      unsigned alignment;
+
       /**
        * The actual location of the variable in the IR. Only valid for inputs,
        * outputs, uniforms (including samplers and images), and for UBO and SSBO

@@ -1513,6 +1513,28 @@ gather_var_kind_cb(struct vtn_builder *b, struct vtn_value *val, int member,
 }
 
 static void
+var_set_alignment(struct vtn_builder *b, struct vtn_variable *vtn_var,
+                  uint32_t alignment)
+{
+   if (alignment == 0) {
+      vtn_warn("Specified alignment is zero, ignoring");
+      return;
+   }
+
+   if (!util_is_power_of_two_or_zero(alignment)) {
+      /* This isn't actually a requirement anywhere in any spec but it seems
+       * reasonable to enforce.
+       */
+      unsigned real_align = 1 << (ffs(alignment) - 1);
+      vtn_warn("Alignment of %u specified, which not a power of two, "
+               "using %u instead", alignment, real_align);
+      alignment = real_align;
+   }
+
+   vtn_var->var->data.alignment = alignment;
+}
+
+static void
 var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
                   const struct vtn_decoration *dec, void *void_var)
 {
@@ -1531,6 +1553,12 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
       vtn_var->input_attachment_index = dec->operands[0];
       vtn_var->access |= ACCESS_NON_WRITEABLE;
       return;
+   case SpvDecorationAlignment:
+      var_set_alignment(b, vtn_var, dec->operands[0]);
+      break;
+   case SpvDecorationAlignmentId:
+      var_set_alignment(b, vtn_var, vtn_constant_uint(b, dec->operands[0]));
+      break;
    case SpvDecorationPatch:
       vtn_var->var->data.patch = true;
       break;
