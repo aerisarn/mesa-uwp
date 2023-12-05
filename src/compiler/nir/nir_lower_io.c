@@ -2491,9 +2491,10 @@ lower_vars_to_explicit(nir_shader *shader,
       if (var->data.mode != mode)
          continue;
 
-      unsigned size, align;
+      unsigned size, alignment;
       const struct glsl_type *explicit_type =
-         glsl_get_explicit_type_for_size_align(var->type, type_info, &size, &align);
+         glsl_get_explicit_type_for_size_align(var->type, type_info,
+                                               &size, &alignment);
 
       if (explicit_type != var->type)
          var->type = explicit_type;
@@ -2502,9 +2503,12 @@ lower_vars_to_explicit(nir_shader *shader,
          glsl_type_is_struct_or_ifc(explicit_type) &&
          glsl_get_length(explicit_type) == 0;
 
-      assert(util_is_power_of_two_nonzero(align) || is_empty_struct ||
+      assert(util_is_power_of_two_nonzero(alignment) || is_empty_struct ||
              glsl_type_is_cmat(glsl_without_array(explicit_type)));
-      var->data.driver_location = ALIGN_POT(offset, align);
+      assert(util_is_power_of_two_or_zero(var->data.alignment));
+      alignment = MAX2(alignment, var->data.alignment);
+
+      var->data.driver_location = ALIGN_POT(offset, alignment);
       offset = var->data.driver_location + size;
       progress = true;
    }
