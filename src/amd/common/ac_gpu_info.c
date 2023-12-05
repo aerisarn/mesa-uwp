@@ -1420,16 +1420,16 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    if (info->gfx_level >= GFX10_3)
-      info->max_wave64_per_simd = 16;
+      info->max_waves_per_simd = 16;
    else if (info->gfx_level == GFX10)
-      info->max_wave64_per_simd = 20;
+      info->max_waves_per_simd = 20;
    else if (info->family >= CHIP_POLARIS10 && info->family <= CHIP_VEGAM)
-      info->max_wave64_per_simd = 8;
+      info->max_waves_per_simd = 8;
    else
-      info->max_wave64_per_simd = 10;
+      info->max_waves_per_simd = 10;
 
    if (info->gfx_level >= GFX10) {
-      info->num_physical_sgprs_per_simd = 128 * info->max_wave64_per_simd;
+      info->num_physical_sgprs_per_simd = 128 * info->max_waves_per_simd;
       info->min_sgpr_alloc = 128;
       info->sgpr_alloc_granularity = 128;
    } else if (info->gfx_level >= GFX8) {
@@ -1863,7 +1863,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "    max_se = %i\n", info->max_se);
    fprintf(f, "    max_sa_per_se = %i\n", info->max_sa_per_se);
    fprintf(f, "    num_cu_per_sh = %i\n", info->num_cu_per_sh);
-   fprintf(f, "    max_wave64_per_simd = %i\n", info->max_wave64_per_simd);
+   fprintf(f, "    max_waves_per_simd = %i\n", info->max_waves_per_simd);
    fprintf(f, "    num_physical_sgprs_per_simd = %i\n", info->num_physical_sgprs_per_simd);
    fprintf(f, "    num_physical_wave64_vgprs_per_simd = %i\n",
            info->num_physical_wave64_vgprs_per_simd);
@@ -2163,7 +2163,7 @@ ac_get_compute_resource_limits(const struct radeon_info *info, unsigned waves_pe
       /* Gfx9 should set the limit to max instead of 0 to fix high priority compute. */
       if (info->gfx_level == GFX9 && !max_waves_per_sh) {
          max_waves_per_sh = info->max_good_cu_per_sa * info->num_simd_per_compute_unit *
-                            info->max_wave64_per_simd;
+                            info->max_waves_per_simd;
       }
 
       /* Force even distribution on all SIMDs in CU if the workgroup

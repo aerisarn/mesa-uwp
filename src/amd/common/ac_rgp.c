@@ -431,7 +431,7 @@ static void ac_sqtt_fill_asic_info(const struct radeon_info *rad_info,
    chunk->shader_engines = rad_info->max_se;
    chunk->compute_unit_per_shader_engine = rad_info->min_good_cu_per_sa * rad_info->max_sa_per_se;
    chunk->simd_per_compute_unit = rad_info->num_simd_per_compute_unit;
-   chunk->wavefronts_per_simd = rad_info->max_wave64_per_simd;
+   chunk->wavefronts_per_simd = rad_info->max_waves_per_simd;
 
    chunk->minimum_vgpr_alloc = rad_info->min_wave64_vgpr_alloc;
    chunk->vgpr_alloc_granularity = rad_info->wave64_vgpr_alloc_granularity * (has_wave32 ? 2 : 1);

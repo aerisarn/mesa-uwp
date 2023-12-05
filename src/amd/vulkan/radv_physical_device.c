@@ -1483,7 +1483,7 @@ radv_get_physical_device_properties(struct radv_physical_device *pdevice)
    p->shaderArraysPerEngineCount = pdevice->rad_info.max_sa_per_se;
    p->computeUnitsPerShaderArray = pdevice->rad_info.min_good_cu_per_sa;
    p->simdPerComputeUnit = pdevice->rad_info.num_simd_per_compute_unit;
-   p->wavefrontsPerSimd = pdevice->rad_info.max_wave64_per_simd;
+   p->wavefrontsPerSimd = pdevice->rad_info.max_waves_per_simd;
    p->wavefrontSize = 64;
 
    /* SGPR. */

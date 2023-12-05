@@ -2885,10 +2885,8 @@ radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader,
    const enum amd_gfx_level gfx_level = info->gfx_level;
    const uint8_t wave_size = shader->info.wave_size;
    const struct ac_shader_config *conf = &shader->config;
-   unsigned max_simd_waves;
+   unsigned max_simd_waves = info->max_waves_per_simd;
    unsigned lds_per_wave = 0;
-
-   max_simd_waves = info->max_wave64_per_simd * (64 / wave_size);
 
    if (stage == MESA_SHADER_FRAGMENT) {
       lds_per_wave = conf->lds_size * info->lds_encode_granularity + shader->info.ps.num_interp * 48;
