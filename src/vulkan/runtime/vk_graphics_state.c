@@ -337,12 +337,12 @@ vk_vertex_input_state_init(struct vk_vertex_input_state *vi,
       vi->attributes[a].offset = desc->offset;
    }
 
-   const VkPipelineVertexInputDivisorStateCreateInfoEXT *vi_div_state =
+   const VkPipelineVertexInputDivisorStateCreateInfoKHR *vi_div_state =
       vk_find_struct_const(vi_info->pNext,
-                           PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
+                           PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_KHR);
    if (vi_div_state) {
       for (uint32_t i = 0; i < vi_div_state->vertexBindingDivisorCount; i++) {
-         const VkVertexInputBindingDivisorDescriptionEXT *desc =
+         const VkVertexInputBindingDivisorDescriptionKHR *desc =
             &vi_div_state->pVertexBindingDivisors[i];
 
          assert(desc->binding < MESA_VK_MAX_VERTEX_BINDINGS);

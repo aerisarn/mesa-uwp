@@ -128,7 +128,7 @@ struct vk_vertex_binding_state {
    /** VkVertexInputBindingDescription::inputRate */
    uint16_t input_rate;
 
-   /** VkVertexInputBindingDivisorDescriptionEXT::divisor or 1 */
+   /** VkVertexInputBindingDivisorDescriptionKHR::divisor or 1 */
    uint32_t divisor;
 };
 
