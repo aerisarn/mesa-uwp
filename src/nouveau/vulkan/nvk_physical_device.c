@@ -117,6 +117,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_shader_clock = true,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_float16_int8 = true,
+      .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_shader_subgroup_extended_types = true,
       .KHR_shader_terminate_invocation =
@@ -312,6 +313,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .computeFullSubgroups = true,
       .synchronization2 = true,
       .dynamicRendering = true,
+      .shaderIntegerDotProduct = true,
       .maintenance4 = true,
 
       /* VK_KHR_fragment_shader_barycentric */
@@ -689,6 +691,12 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       .maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = 32,
       .maxDescriptorSetInlineUniformBlocks = 6 * 32,
       .maxDescriptorSetUpdateAfterBindInlineUniformBlocks = 6 * 32,
+      .integerDotProduct4x8BitPackedUnsignedAccelerated
+         = info->cls_eng3d >= VOLTA_A,
+      .integerDotProduct4x8BitPackedSignedAccelerated
+         = info->cls_eng3d >= VOLTA_A,
+      .integerDotProduct4x8BitPackedMixedSignednessAccelerated
+         = info->cls_eng3d >= VOLTA_A,
       .storageTexelBufferOffsetAlignmentBytes = 16,
       .storageTexelBufferOffsetSingleTexelAlignment = true,
       .uniformTexelBufferOffsetAlignmentBytes = 16,
