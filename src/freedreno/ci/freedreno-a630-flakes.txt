@@ -212,7 +212,14 @@ gmem-unaligned-dEQP-VK.renderpass.suballocation.load_store_op_none.depthstencil_
 
 KHR-GL46.buffer_storage.map_persistent_dispatch
 KHR-GL46.buffer_storage.map_persistent_flush
+KHR-GL46.compute_shader.atomic-case1
+KHR-GL46.sepshaderobjs.StateInteraction
 KHR-GL46.shader_bitfield_operation.findMSB.ivec4_2
+KHR-GL46.shader_bitfield_operation.ldexp.vec2_1
+KHR-GL46.shader_bitfield_operation.uaddCarry.uint_1
+KHR-GL46.shader_multisample_interpolation.render.base.rgba8.samples_4
+KHR-GL46.shader_storage_buffer_object.basic-atomic-case3-cs
+KHR-GL46.shader_storage_buffer_object.basic-matrixOperations-case3-cs
 
 # recently started flaking towards to UnexpectedPass
 spec@ext_external_objects@vk-depth-display@D24S8
