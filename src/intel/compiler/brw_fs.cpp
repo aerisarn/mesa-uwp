@@ -6661,7 +6661,7 @@ fs_visitor::run_vs()
 
    payload_ = new vs_thread_payload(*this);
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (failed)
       return false;
@@ -6787,7 +6787,7 @@ fs_visitor::run_tcs()
       bld.IF(BRW_PREDICATE_NORMAL);
    }
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (fix_dispatch_mask) {
       bld.emit(BRW_OPCODE_ENDIF);
@@ -6823,7 +6823,7 @@ fs_visitor::run_tes()
 
    payload_ = new tes_thread_payload(*this);
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (failed)
       return false;
@@ -6872,7 +6872,7 @@ fs_visitor::run_gs()
       }
    }
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    emit_gs_thread_end();
 
@@ -6967,7 +6967,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       if (nir->info.writes_memory)
          wm_prog_data->has_side_effects = true;
 
-      emit_nir_code();
+      nir_to_brw(this);
 
       if (failed)
 	 return false;
@@ -7016,7 +7016,7 @@ fs_visitor::run_cs(bool allow_spilling)
                suboffset(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UW), 1));
    }
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (failed)
       return false;
@@ -7047,7 +7047,7 @@ fs_visitor::run_bs(bool allow_spilling)
 
    payload_ = new bs_thread_payload(*this);
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (failed)
       return false;
@@ -7079,7 +7079,7 @@ fs_visitor::run_task(bool allow_spilling)
 
    payload_ = new task_mesh_thread_payload(*this);
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (failed)
       return false;
@@ -7112,7 +7112,7 @@ fs_visitor::run_mesh(bool allow_spilling)
 
    payload_ = new task_mesh_thread_payload(*this);
 
-   emit_nir_code();
+   nir_to_brw(this);
 
    if (failed)
       return false;

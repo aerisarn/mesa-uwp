@@ -308,8 +308,6 @@ public:
 
    void set_tcs_invocation_id();
 
-   void emit_nir_code();
-
    void emit_alpha_test();
    fs_inst *emit_single_fb_write(const brw::fs_builder &bld,
                                  fs_reg color1, fs_reg color2,
@@ -615,5 +613,6 @@ void brw_emit_predicate_on_sample_mask(const brw::fs_builder &bld, fs_inst *inst
 int brw_get_subgroup_id_param_index(const intel_device_info *devinfo,
                                     const brw_stage_prog_data *prog_data);
 
+void nir_to_brw(fs_visitor *s);
 
 #endif /* BRW_FS_H */

@@ -8464,13 +8464,13 @@ emit_shader_float_controls_execution_mode(nir_to_brw_state *ntb)
 }
 
 void
-fs_visitor::emit_nir_code()
+nir_to_brw(fs_visitor *s)
 {
    nir_to_brw_state *ntb = rzalloc(NULL, nir_to_brw_state);
-   ntb->s = this;
-   ntb->devinfo = devinfo;
-   ntb->nir = nir;
-   ntb->bld = fs_builder(this).at_end();
+   ntb->s = s;
+   ntb->devinfo = s->devinfo;
+   ntb->nir = s->nir;
+   ntb->bld = fs_builder(s).at_end();
 
    emit_shader_float_controls_execution_mode(ntb);
 
@@ -8478,11 +8478,11 @@ fs_visitor::emit_nir_code()
     * be converted to reads/writes of these arrays
     */
    fs_nir_setup_outputs(ntb);
-   fs_nir_setup_uniforms(this);
+   fs_nir_setup_uniforms(s);
    fs_nir_emit_system_values(ntb);
-   last_scratch = ALIGN(nir->scratch_size, 4) * dispatch_width;
+   s->last_scratch = ALIGN(s->nir->scratch_size, 4) * s->dispatch_width;
 
-   fs_nir_emit_impl(ntb, nir_shader_get_entrypoint((nir_shader *)nir));
+   fs_nir_emit_impl(ntb, nir_shader_get_entrypoint((nir_shader *)s->nir));
 
    ntb->bld.emit(SHADER_OPCODE_HALT_TARGET);
 
