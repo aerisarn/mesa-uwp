@@ -58,9 +58,16 @@ lower_image_deref_impl(nir_builder *b, struct clc_image_lower_context *context,
                        unsigned *num_bindings)
 {
    nir_variable *in_var = nir_deref_instr_get_variable(context->deref);
+   nir_foreach_variable_with_modes(var, b->shader, var_mode) {
+      // Check if we've already created a variable for this image
+      if (var->data.driver_location == in_var->data.driver_location &&
+          var->type == new_var_type)
+         return var->data.binding;
+   }
    nir_variable *image = nir_variable_create(b->shader, var_mode, new_var_type, NULL);
    image->data.access = in_var->data.access;
    image->data.binding = in_var->data.binding;
+   image->data.driver_location = in_var->data.driver_location;
    if (context->num_buf_ids > 0) {
       // Need to assign a new binding
       context->metadata->args[context->metadata_index].
@@ -132,7 +139,7 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
    while (context->metadata->args[context->metadata_index].image.buf_ids[0] != in_var->data.binding)
       context->metadata_index++;
 
-   context->num_buf_ids = 0;
+   context->num_buf_ids = context->metadata->args[context->metadata_index].image.num_buf_ids;
 
    /* Do this in 2 passes:
     * 1. When encountering a strongly-typed access (load/store), replace the deref
@@ -206,11 +213,23 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
                nir_def **cached_deref = intrinsic->intrinsic == nir_intrinsic_image_deref_format ?
                   &format_deref_dest : &order_deref_dest;
                if (!*cached_deref) {
-                  nir_variable *new_input = nir_variable_create(b->shader, nir_var_uniform, glsl_uint_type(), NULL);
-                  new_input->data.driver_location = in_var->data.driver_location;
+                  unsigned driver_location = in_var->data.driver_location;
                   if (intrinsic->intrinsic == nir_intrinsic_image_deref_format) {
                      /* Match cl_image_format { image_channel_order, image_channel_data_type }; */
-                     new_input->data.driver_location += glsl_get_cl_size(new_input->type);
+                     driver_location += 4;
+                  }
+
+                  nir_variable *new_input = NULL;
+                  nir_foreach_variable_with_modes(var, b->shader, nir_var_uniform) {
+                     if (var->data.driver_location == driver_location &&
+                         var->type == glsl_uint_type()) {
+                        new_input = var;
+                        break;
+                     }
+                  }
+                  if (!new_input) {
+                     new_input = nir_variable_create(b->shader, nir_var_uniform, glsl_uint_type(), NULL);
+                     new_input->data.driver_location = driver_location;
                   }
 
                   b->cursor = nir_after_instr(&context->deref->instr);
@@ -814,7 +833,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
          metadata->args[i].image.buf_ids[0] = uav_id++;
       }
 
-      metadata->args[i].image.num_buf_ids = 1;
+      metadata->args[i].image.num_buf_ids = 0;
       var->data.binding = metadata->args[i].image.buf_ids[0];
 
       // Assign location that'll be used for uniforms for format/order
