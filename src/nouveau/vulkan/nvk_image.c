@@ -26,17 +26,14 @@ nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
-   if (!nil_format_supports_texturing(&pdev->info, p_format))
-      return 0;
-
    /* You can't tile a non-power-of-two */
    if (!util_is_power_of_two_nonzero(util_format_get_blocksize(p_format)))
       return 0;
 
-   features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
-   features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
-   features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
-   features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
+   if (nil_format_supports_texturing(&pdev->info, p_format)) {
+      features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
+      features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
+   }
 
    if (nil_format_supports_filtering(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
@@ -74,6 +71,11 @@ nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
 
    if (p_format == PIPE_FORMAT_R32_UINT || p_format == PIPE_FORMAT_R32_SINT)
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT;
+
+   if (features != 0) {
+      features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
+      features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+   }
 
    return features;
 }
