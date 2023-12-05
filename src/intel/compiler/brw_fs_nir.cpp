@@ -60,36 +60,36 @@ struct nir_to_brw_state {
    fs_reg *system_values;
 };
 
-static fs_reg get_nir_src(nir_to_brw_state *ntb, const nir_src &src);
-static fs_reg get_nir_def(nir_to_brw_state *ntb, const nir_def &def);
+static fs_reg get_nir_src(nir_to_brw_state &ntb, const nir_src &src);
+static fs_reg get_nir_def(nir_to_brw_state &ntb, const nir_def &def);
 static nir_component_mask_t get_nir_write_mask(const nir_def &def);
 
-static void fs_nir_emit_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld, nir_intrinsic_instr *instr);
-static fs_reg emit_samplepos_setup(nir_to_brw_state *ntb);
-static fs_reg emit_sampleid_setup(nir_to_brw_state *ntb);
-static fs_reg emit_samplemaskin_setup(nir_to_brw_state *ntb);
-static fs_reg emit_shading_rate_setup(nir_to_brw_state *ntb);
+static void fs_nir_emit_intrinsic(nir_to_brw_state &ntb, const fs_builder &bld, nir_intrinsic_instr *instr);
+static fs_reg emit_samplepos_setup(nir_to_brw_state &ntb);
+static fs_reg emit_sampleid_setup(nir_to_brw_state &ntb);
+static fs_reg emit_samplemaskin_setup(nir_to_brw_state &ntb);
+static fs_reg emit_shading_rate_setup(nir_to_brw_state &ntb);
 
-static void fs_nir_emit_impl(nir_to_brw_state *ntb, nir_function_impl *impl);
-static void fs_nir_emit_cf_list(nir_to_brw_state *ntb, exec_list *list);
-static void fs_nir_emit_if(nir_to_brw_state *ntb, nir_if *if_stmt);
-static void fs_nir_emit_loop(nir_to_brw_state *ntb, nir_loop *loop);
-static void fs_nir_emit_block(nir_to_brw_state *ntb, nir_block *block);
-static void fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr);
+static void fs_nir_emit_impl(nir_to_brw_state &ntb, nir_function_impl *impl);
+static void fs_nir_emit_cf_list(nir_to_brw_state &ntb, exec_list *list);
+static void fs_nir_emit_if(nir_to_brw_state &ntb, nir_if *if_stmt);
+static void fs_nir_emit_loop(nir_to_brw_state &ntb, nir_loop *loop);
+static void fs_nir_emit_block(nir_to_brw_state &ntb, nir_block *block);
+static void fs_nir_emit_instr(nir_to_brw_state &ntb, nir_instr *instr);
 
-static void fs_nir_emit_surface_atomic(nir_to_brw_state *ntb,
+static void fs_nir_emit_surface_atomic(nir_to_brw_state &ntb,
                                        const fs_builder &bld,
                                        nir_intrinsic_instr *instr,
                                        fs_reg surface,
                                        bool bindless);
-static void fs_nir_emit_global_atomic(nir_to_brw_state *ntb,
+static void fs_nir_emit_global_atomic(nir_to_brw_state &ntb,
                                       const fs_builder &bld,
                                       nir_intrinsic_instr *instr);
 
 static void
-fs_nir_setup_outputs(nir_to_brw_state *ntb)
+fs_nir_setup_outputs(nir_to_brw_state &ntb)
 {
-   fs_visitor *s = ntb->s;
+   fs_visitor *s = ntb.s;
 
    if (s->stage == MESA_SHADER_TESS_CTRL ||
        s->stage == MESA_SHADER_TASK ||
@@ -125,10 +125,10 @@ fs_nir_setup_outputs(nir_to_brw_state *ntb)
          reg_size = MAX2(vec4s[i + loc] + i, reg_size);
       }
 
-      fs_reg reg = ntb->bld.vgrf(BRW_REGISTER_TYPE_F, 4 * reg_size);
+      fs_reg reg = ntb.bld.vgrf(BRW_REGISTER_TYPE_F, 4 * reg_size);
       for (unsigned i = 0; i < reg_size; i++) {
          assert(loc + i < ARRAY_SIZE(s->outputs));
-         s->outputs[loc + i] = offset(reg, ntb->bld, 4 * i);
+         s->outputs[loc + i] = offset(reg, ntb.bld, 4 * i);
       }
 
       loc += reg_size;
@@ -161,10 +161,10 @@ fs_nir_setup_uniforms(fs_visitor *s)
 }
 
 static fs_reg
-emit_work_group_id_setup(nir_to_brw_state *ntb)
+emit_work_group_id_setup(nir_to_brw_state &ntb)
 {
-   fs_visitor *s = ntb->s;
-   const fs_builder &bld = ntb->bld;
+   fs_visitor *s = ntb.s;
+   const fs_builder &bld = ntb.bld;
 
    assert(gl_shader_stage_is_compute(s->stage));
 
@@ -182,9 +182,9 @@ emit_work_group_id_setup(nir_to_brw_state *ntb)
 }
 
 static bool
-emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
+emit_system_values_block(nir_to_brw_state &ntb, nir_block *block)
 {
-   fs_visitor *v = ntb->s;
+   fs_visitor *v = ntb.s;
    fs_reg *reg;
 
    nir_foreach_instr(instr, block) {
@@ -217,9 +217,9 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          if (v->stage == MESA_SHADER_TESS_CTRL)
             break;
          assert(v->stage == MESA_SHADER_GEOMETRY);
-         reg = &ntb->system_values[SYSTEM_VALUE_INVOCATION_ID];
+         reg = &ntb.system_values[SYSTEM_VALUE_INVOCATION_ID];
          if (reg->file == BAD_FILE) {
-            const fs_builder abld = ntb->bld.annotate("gl_InvocationID", NULL);
+            const fs_builder abld = ntb.bld.annotate("gl_InvocationID", NULL);
             fs_reg g1(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
             fs_reg iid = abld.vgrf(BRW_REGISTER_TYPE_UD, 1);
             abld.SHR(iid, g1, brw_imm_ud(27u));
@@ -230,14 +230,14 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
       case nir_intrinsic_load_sample_pos:
       case nir_intrinsic_load_sample_pos_or_center:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_POS];
+         reg = &ntb.system_values[SYSTEM_VALUE_SAMPLE_POS];
          if (reg->file == BAD_FILE)
             *reg = emit_samplepos_setup(ntb);
          break;
 
       case nir_intrinsic_load_sample_id:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_ID];
+         reg = &ntb.system_values[SYSTEM_VALUE_SAMPLE_ID];
          if (reg->file == BAD_FILE)
             *reg = emit_sampleid_setup(ntb);
          break;
@@ -245,7 +245,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
       case nir_intrinsic_load_sample_mask_in:
          assert(v->stage == MESA_SHADER_FRAGMENT);
          assert(v->devinfo->ver >= 7);
-         reg = &ntb->system_values[SYSTEM_VALUE_SAMPLE_MASK_IN];
+         reg = &ntb.system_values[SYSTEM_VALUE_SAMPLE_MASK_IN];
          if (reg->file == BAD_FILE)
             *reg = emit_samplemaskin_setup(ntb);
          break;
@@ -255,17 +255,17 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          if (gl_shader_stage_is_mesh(v->stage))
             unreachable("should be lowered by nir_lower_compute_system_values().");
          assert(gl_shader_stage_is_compute(v->stage));
-         reg = &ntb->system_values[SYSTEM_VALUE_WORKGROUP_ID];
+         reg = &ntb.system_values[SYSTEM_VALUE_WORKGROUP_ID];
          if (reg->file == BAD_FILE)
             *reg = emit_work_group_id_setup(ntb);
          break;
 
       case nir_intrinsic_load_helper_invocation:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         reg = &ntb->system_values[SYSTEM_VALUE_HELPER_INVOCATION];
+         reg = &ntb.system_values[SYSTEM_VALUE_HELPER_INVOCATION];
          if (reg->file == BAD_FILE) {
             const fs_builder abld =
-               ntb->bld.annotate("gl_HelperInvocation", NULL);
+               ntb.bld.annotate("gl_HelperInvocation", NULL);
 
             /* On Gfx6+ (gl_HelperInvocation is only exposed on Gfx7+) the
              * pixel mask is in g1.7 of the thread payload.
@@ -316,7 +316,7 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
          break;
 
       case nir_intrinsic_load_frag_shading_rate:
-         reg = &ntb->system_values[SYSTEM_VALUE_FRAG_SHADING_RATE];
+         reg = &ntb.system_values[SYSTEM_VALUE_FRAG_SHADING_RATE];
          if (reg->file == BAD_FILE)
             *reg = emit_shading_rate_setup(ntb);
          break;
@@ -330,14 +330,14 @@ emit_system_values_block(nir_to_brw_state *ntb, nir_block *block)
 }
 
 static void
-fs_nir_emit_system_values(nir_to_brw_state *ntb)
+fs_nir_emit_system_values(nir_to_brw_state &ntb)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
-   ntb->system_values = ralloc_array(ntb, fs_reg, SYSTEM_VALUE_MAX);
+   ntb.system_values = ralloc_array(&ntb, fs_reg, SYSTEM_VALUE_MAX);
    for (unsigned i = 0; i < SYSTEM_VALUE_MAX; i++) {
-      ntb->system_values[i] = fs_reg();
+      ntb.system_values[i] = fs_reg();
    }
 
    /* Always emit SUBGROUP_INVOCATION.  Dead code will clean it up if we
@@ -345,7 +345,7 @@ fs_nir_emit_system_values(nir_to_brw_state *ntb)
     */
    {
       const fs_builder abld = bld.annotate("gl_SubgroupInvocation", NULL);
-      fs_reg &reg = ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+      fs_reg &reg = ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
       reg = abld.vgrf(BRW_REGISTER_TYPE_UW);
       abld.UNDEF(reg);
 
@@ -365,18 +365,18 @@ fs_nir_emit_system_values(nir_to_brw_state *ntb)
 }
 
 static void
-fs_nir_emit_impl(nir_to_brw_state *ntb, nir_function_impl *impl)
+fs_nir_emit_impl(nir_to_brw_state &ntb, nir_function_impl *impl)
 {
-   ntb->ssa_values = rzalloc_array(ntb, fs_reg, impl->ssa_alloc);
-   ntb->resource_insts = rzalloc_array(ntb, fs_inst *, impl->ssa_alloc);
-   ntb->ssa_bind_infos = rzalloc_array(ntb, struct brw_fs_bind_info, impl->ssa_alloc);
-   ntb->resource_values = rzalloc_array(ntb, fs_reg, impl->ssa_alloc);
+   ntb.ssa_values = rzalloc_array(&ntb, fs_reg, impl->ssa_alloc);
+   ntb.resource_insts = rzalloc_array(&ntb, fs_inst *, impl->ssa_alloc);
+   ntb.ssa_bind_infos = rzalloc_array(&ntb, struct brw_fs_bind_info, impl->ssa_alloc);
+   ntb.resource_values = rzalloc_array(&ntb, fs_reg, impl->ssa_alloc);
 
    fs_nir_emit_cf_list(ntb, &impl->body);
 }
 
 static void
-fs_nir_emit_cf_list(nir_to_brw_state *ntb, exec_list *list)
+fs_nir_emit_cf_list(nir_to_brw_state &ntb, exec_list *list)
 {
    exec_list_validate(list);
    foreach_list_typed(nir_cf_node, node, node, list) {
@@ -400,10 +400,10 @@ fs_nir_emit_cf_list(nir_to_brw_state *ntb, exec_list *list)
 }
 
 static void
-fs_nir_emit_if(nir_to_brw_state *ntb, nir_if *if_stmt)
+fs_nir_emit_if(nir_to_brw_state &ntb, nir_if *if_stmt)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
 
    bool invert;
    fs_reg cond_reg;
@@ -438,15 +438,15 @@ fs_nir_emit_if(nir_to_brw_state *ntb, nir_if *if_stmt)
    bld.emit(BRW_OPCODE_ENDIF);
 
    if (devinfo->ver < 7)
-      ntb->s->limit_dispatch_width(16, "Non-uniform control flow unsupported "
+      ntb.s->limit_dispatch_width(16, "Non-uniform control flow unsupported "
                                    "in SIMD32 mode.");
 }
 
 static void
-fs_nir_emit_loop(nir_to_brw_state *ntb, nir_loop *loop)
+fs_nir_emit_loop(nir_to_brw_state &ntb, nir_loop *loop)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
 
    assert(!nir_loop_has_continue_construct(loop));
    bld.emit(BRW_OPCODE_DO);
@@ -456,20 +456,20 @@ fs_nir_emit_loop(nir_to_brw_state *ntb, nir_loop *loop)
    bld.emit(BRW_OPCODE_WHILE);
 
    if (devinfo->ver < 7)
-      ntb->s->limit_dispatch_width(16, "Non-uniform control flow unsupported "
+      ntb.s->limit_dispatch_width(16, "Non-uniform control flow unsupported "
                                    "in SIMD32 mode.");
 }
 
 static void
-fs_nir_emit_block(nir_to_brw_state *ntb, nir_block *block)
+fs_nir_emit_block(nir_to_brw_state &ntb, nir_block *block)
 {
-   fs_builder bld = ntb->bld;
+   fs_builder bld = ntb.bld;
 
    nir_foreach_instr(instr, block) {
       fs_nir_emit_instr(ntb, instr);
    }
 
-   ntb->bld = bld;
+   ntb.bld = bld;
 }
 
 /**
@@ -477,11 +477,11 @@ fs_nir_emit_block(nir_to_brw_state *ntb, nir_block *block)
  * match instr.
  */
 static bool
-optimize_extract_to_float(nir_to_brw_state *ntb, nir_alu_instr *instr,
+optimize_extract_to_float(nir_to_brw_state &ntb, nir_alu_instr *instr,
                           const fs_reg &result)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
 
    if (!instr->src[0].src.ssa->parent_instr)
       return false;
@@ -514,12 +514,12 @@ optimize_extract_to_float(nir_to_brw_state *ntb, nir_alu_instr *instr,
 }
 
 static bool
-optimize_frontfacing_ternary(nir_to_brw_state *ntb,
+optimize_frontfacing_ternary(nir_to_brw_state &ntb,
                              nir_alu_instr *instr,
                              const fs_reg &result)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   fs_visitor *s = ntb.s;
 
    nir_intrinsic_instr *src0 = nir_src_as_intrinsic(instr->src[0].src);
    if (src0 == NULL || src0->intrinsic != nir_intrinsic_load_front_face)
@@ -553,7 +553,7 @@ optimize_frontfacing_ternary(nir_to_brw_state *ntb,
       if (value1 == -1.0f)
          g1.negate = true;
 
-      ntb->bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
+      ntb.bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
                   g1, brw_imm_uw(0x3f80));
    } else if (devinfo->ver >= 6) {
       /* Bit 15 of g0.0 is 0 if the polygon is front facing. */
@@ -574,7 +574,7 @@ optimize_frontfacing_ternary(nir_to_brw_state *ntb,
          g0.negate = true;
       }
 
-      ntb->bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
+      ntb.bld.OR(subscript(tmp, BRW_REGISTER_TYPE_W, 1),
                   g0, brw_imm_uw(0x3f80));
    } else {
       /* Bit 31 of g1.6 is 0 if the polygon is front facing. */
@@ -595,9 +595,9 @@ optimize_frontfacing_ternary(nir_to_brw_state *ntb,
          g1_6.negate = true;
       }
 
-      ntb->bld.OR(tmp, g1_6, brw_imm_d(0x3f800000));
+      ntb.bld.OR(tmp, g1_6, brw_imm_d(0x3f800000));
    }
-   ntb->bld.AND(retype(result, BRW_REGISTER_TYPE_D), tmp, brw_imm_d(0xbf800000));
+   ntb.bld.AND(retype(result, BRW_REGISTER_TYPE_D), tmp, brw_imm_d(0xbf800000));
 
    return true;
 }
@@ -625,13 +625,13 @@ brw_rnd_mode_from_execution_mode(unsigned execution_mode)
 }
 
 static fs_reg
-prepare_alu_destination_and_sources(nir_to_brw_state *ntb,
+prepare_alu_destination_and_sources(nir_to_brw_state &ntb,
                                     const fs_builder &bld,
                                     nir_alu_instr *instr,
                                     fs_reg *op,
                                     bool need_dest)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
+   const intel_device_info *devinfo = ntb.devinfo;
 
    fs_reg result =
       need_dest ? get_nir_def(ntb, instr->def) : bld.null_reg_ud();
@@ -701,7 +701,7 @@ resolve_source_modifiers(const fs_builder &bld, const fs_reg &src)
 }
 
 static void
-resolve_inot_sources(nir_to_brw_state *ntb, const fs_builder &bld, nir_alu_instr *instr,
+resolve_inot_sources(nir_to_brw_state &ntb, const fs_builder &bld, nir_alu_instr *instr,
                      fs_reg *op)
 {
    for (unsigned i = 0; i < 2; i++) {
@@ -720,7 +720,7 @@ resolve_inot_sources(nir_to_brw_state *ntb, const fs_builder &bld, nir_alu_instr
 }
 
 static bool
-try_emit_b2fi_of_inot(nir_to_brw_state *ntb, const fs_builder &bld,
+try_emit_b2fi_of_inot(nir_to_brw_state &ntb, const fs_builder &bld,
                       fs_reg result,
                       nir_alu_instr *instr)
 {
@@ -766,11 +766,11 @@ try_emit_b2fi_of_inot(nir_to_brw_state *ntb, const fs_builder &bld,
  * the source of \c instr that is a \c nir_op_fsign.
  */
 static void
-emit_fsign(nir_to_brw_state *ntb, const fs_builder &bld, const nir_alu_instr *instr,
+emit_fsign(nir_to_brw_state &ntb, const fs_builder &bld, const nir_alu_instr *instr,
            fs_reg result, fs_reg *op, unsigned fsign_src)
 {
-   fs_visitor *s = ntb->s;
-   const intel_device_info *devinfo = ntb->devinfo;
+   fs_visitor *s = ntb.s;
+   const intel_device_info *devinfo = ntb.devinfo;
 
    fs_inst *inst;
 
@@ -935,12 +935,12 @@ is_const_zero(const nir_src &src)
 }
 
 static void
-fs_nir_emit_alu(nir_to_brw_state *ntb, nir_alu_instr *instr,
+fs_nir_emit_alu(nir_to_brw_state &ntb, nir_alu_instr *instr,
                 bool need_dest)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    fs_inst *inst;
    unsigned execution_mode =
@@ -1939,11 +1939,11 @@ fs_nir_emit_alu(nir_to_brw_state *ntb, nir_alu_instr *instr,
 }
 
 static void
-fs_nir_emit_load_const(nir_to_brw_state *ntb,
+fs_nir_emit_load_const(nir_to_brw_state &ntb,
                        nir_load_const_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
 
    const brw_reg_type reg_type =
       brw_reg_type_from_bit_size(instr->def.bit_size, BRW_REGISTER_TYPE_D);
@@ -1982,13 +1982,13 @@ fs_nir_emit_load_const(nir_to_brw_state *ntb,
       unreachable("Invalid bit size");
    }
 
-   ntb->ssa_values[instr->def.index] = reg;
+   ntb.ssa_values[instr->def.index] = reg;
 }
 
 static bool
-get_nir_src_bindless(nir_to_brw_state *ntb, const nir_src &src)
+get_nir_src_bindless(nir_to_brw_state &ntb, const nir_src &src)
 {
-   return ntb->ssa_bind_infos[src.ssa->index].bindless;
+   return ntb.ssa_bind_infos[src.ssa->index].bindless;
 }
 
 static bool
@@ -1999,17 +1999,17 @@ is_resource_src(nir_src src)
 }
 
 static fs_reg
-get_resource_nir_src(nir_to_brw_state *ntb, const nir_src &src)
+get_resource_nir_src(nir_to_brw_state &ntb, const nir_src &src)
 {
    if (!is_resource_src(src))
       return fs_reg();
-   return ntb->resource_values[src.ssa->index];
+   return ntb.resource_values[src.ssa->index];
 }
 
 static fs_reg
-get_nir_src(nir_to_brw_state *ntb, const nir_src &src)
+get_nir_src(nir_to_brw_state &ntb, const nir_src &src)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
+   const intel_device_info *devinfo = ntb.devinfo;
 
    nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
 
@@ -2019,16 +2019,16 @@ get_nir_src(nir_to_brw_state *ntb, const nir_src &src)
          const brw_reg_type reg_type =
             brw_reg_type_from_bit_size(src.ssa->bit_size,
                                        BRW_REGISTER_TYPE_D);
-         reg = ntb->bld.vgrf(reg_type, src.ssa->num_components);
+         reg = ntb.bld.vgrf(reg_type, src.ssa->num_components);
       } else {
-         reg = ntb->ssa_values[src.ssa->index];
+         reg = ntb.ssa_values[src.ssa->index];
       }
    } else {
       nir_intrinsic_instr *decl_reg = nir_reg_get_decl(load_reg->src[0].ssa);
       /* We don't handle indirects on locals */
       assert(nir_intrinsic_base(load_reg) == 0);
       assert(load_reg->intrinsic != nir_intrinsic_load_reg_indirect);
-      reg = ntb->ssa_values[decl_reg->def.index];
+      reg = ntb.ssa_values[decl_reg->def.index];
    }
 
    if (nir_src_bit_size(src) == 64 && devinfo->ver == 7) {
@@ -2056,7 +2056,7 @@ get_nir_src(nir_to_brw_state *ntb, const nir_src &src)
  * value and treat it the same as the result of get_nir_src().
  */
 static fs_reg
-get_nir_src_imm(nir_to_brw_state *ntb, const nir_src &src)
+get_nir_src_imm(nir_to_brw_state &ntb, const nir_src &src)
 {
    assert(nir_src_bit_size(src) == 32);
    return nir_src_is_const(src) ?
@@ -2064,9 +2064,9 @@ get_nir_src_imm(nir_to_brw_state *ntb, const nir_src &src)
 }
 
 static fs_reg
-get_nir_def(nir_to_brw_state *ntb, const nir_def &def)
+get_nir_def(nir_to_brw_state &ntb, const nir_def &def)
 {
-   const fs_builder &bld = ntb->bld;
+   const fs_builder &bld = ntb.bld;
 
    nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&def);
    if (!store_reg) {
@@ -2075,17 +2075,17 @@ get_nir_def(nir_to_brw_state *ntb, const nir_def &def)
                                     def.bit_size == 8 ?
                                     BRW_REGISTER_TYPE_D :
                                     BRW_REGISTER_TYPE_F);
-      ntb->ssa_values[def.index] =
+      ntb.ssa_values[def.index] =
          bld.vgrf(reg_type, def.num_components);
-      bld.UNDEF(ntb->ssa_values[def.index]);
-      return ntb->ssa_values[def.index];
+      bld.UNDEF(ntb.ssa_values[def.index]);
+      return ntb.ssa_values[def.index];
    } else {
       nir_intrinsic_instr *decl_reg =
          nir_reg_get_decl(store_reg->src[1].ssa);
       /* We don't handle indirects on locals */
       assert(nir_intrinsic_base(store_reg) == 0);
       assert(store_reg->intrinsic != nir_intrinsic_store_reg_indirect);
-      return ntb->ssa_values[decl_reg->def.index];
+      return ntb.ssa_values[decl_reg->def.index];
    }
 }
 
@@ -2151,9 +2151,9 @@ intexp2(const fs_builder &bld, const fs_reg &x)
 }
 
 static void
-emit_gs_end_primitive(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src)
+emit_gs_end_primitive(nir_to_brw_state &ntb, const nir_src &vertex_count_nir_src)
 {
-   fs_visitor *s = ntb->s;
+   fs_visitor *s = ntb.s;
    assert(s->stage == MESA_SHADER_GEOMETRY);
 
    struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(s->prog_data);
@@ -2197,10 +2197,10 @@ emit_gs_end_primitive(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src
     *   control_data_bits register to 0 when the first vertex is emitted.
     */
 
-   const fs_builder abld = ntb->bld.annotate("end primitive");
+   const fs_builder abld = ntb.bld.annotate("end primitive");
 
    /* control_data_bits |= 1 << ((vertex_count - 1) % 32) */
-   fs_reg prev_count = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg prev_count = ntb.bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.ADD(prev_count, vertex_count, brw_imm_ud(0xffffffffu));
    fs_reg mask = intexp2(abld, prev_count);
    /* Note: we're relying on the fact that the GEN SHL instruction only pays
@@ -2316,10 +2316,10 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
 }
 
 static void
-set_gs_stream_control_data_bits(nir_to_brw_state *ntb, const fs_reg &vertex_count,
+set_gs_stream_control_data_bits(nir_to_brw_state &ntb, const fs_reg &vertex_count,
                                 unsigned stream_id)
 {
-   fs_visitor *s = ntb->s;
+   fs_visitor *s = ntb.s;
 
    /* control_data_bits |= stream_id << ((2 * (vertex_count - 1)) % 32) */
 
@@ -2339,14 +2339,14 @@ set_gs_stream_control_data_bits(nir_to_brw_state *ntb, const fs_reg &vertex_coun
    if (stream_id == 0)
       return;
 
-   const fs_builder abld = ntb->bld.annotate("set stream control data bits", NULL);
+   const fs_builder abld = ntb.bld.annotate("set stream control data bits", NULL);
 
    /* reg::sid = stream_id */
-   fs_reg sid = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg sid = ntb.bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.MOV(sid, brw_imm_ud(stream_id));
 
    /* reg:shift_count = 2 * (vertex_count - 1) */
-   fs_reg shift_count = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg shift_count = ntb.bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.SHL(shift_count, vertex_count, brw_imm_ud(1u));
 
    /* Note: we're relying on the fact that the GEN SHL instruction only pays
@@ -2354,16 +2354,16 @@ set_gs_stream_control_data_bits(nir_to_brw_state *ntb, const fs_reg &vertex_coun
     * architecture, stream_id << 2 * (vertex_count - 1) is equivalent to
     * stream_id << ((2 * (vertex_count - 1)) % 32).
     */
-   fs_reg mask = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg mask = ntb.bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    abld.SHL(mask, sid, shift_count);
    abld.OR(s->control_data_bits, s->control_data_bits, mask);
 }
 
 static void
-emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
+emit_gs_vertex(nir_to_brw_state &ntb, const nir_src &vertex_count_nir_src,
                unsigned stream_id)
 {
-   fs_visitor *s = ntb->s;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_GEOMETRY);
 
@@ -2394,7 +2394,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
     */
    if (s->gs_compile->control_data_header_size_bits > 32) {
       const fs_builder abld =
-         ntb->bld.annotate("emit vertex: emit control data bits");
+         ntb.bld.annotate("emit vertex: emit control data bits");
 
       /* Only emit control data bits if we've finished accumulating a batch
        * of 32 bits.  This is the case when:
@@ -2418,7 +2418,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
        *       at compile time...
        */
       fs_inst *inst =
-         abld.AND(ntb->bld.null_reg_d(), vertex_count,
+         abld.AND(ntb.bld.null_reg_d(), vertex_count,
                   brw_imm_ud(32u / s->gs_compile->control_data_bits_per_vertex - 1u));
       inst->conditional_mod = BRW_CONDITIONAL_Z;
 
@@ -2426,7 +2426,7 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
       /* If vertex_count is 0, then no control data bits have been
        * accumulated yet, so we can skip emitting them.
        */
-      abld.CMP(ntb->bld.null_reg_d(), vertex_count, brw_imm_ud(0u),
+      abld.CMP(ntb.bld.null_reg_d(), vertex_count, brw_imm_ud(0u),
                BRW_CONDITIONAL_NEQ);
       abld.IF(BRW_PREDICATE_NORMAL);
       s->emit_gs_control_data_bits(vertex_count);
@@ -2458,16 +2458,16 @@ emit_gs_vertex(nir_to_brw_state *ntb, const nir_src &vertex_count_nir_src,
 }
 
 static void
-emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
+emit_gs_input_load(nir_to_brw_state &ntb, const fs_reg &dst,
                    const nir_src &vertex_src,
                    unsigned base_offset,
                    const nir_src &offset_src,
                    unsigned num_components,
                    unsigned first_component)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(type_sz(dst.type) == 4);
    struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(s->prog_data);
@@ -2480,7 +2480,7 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
       int imm_offset = (base_offset + nir_src_as_uint(offset_src)) * 4 +
                        nir_src_as_uint(vertex_src) * push_reg_count;
       for (unsigned i = 0; i < num_components; i++) {
-         ntb->bld.MOV(offset(dst, ntb->bld, i),
+         ntb.bld.MOV(offset(dst, ntb.bld, i),
                       fs_reg(ATTR, imm_offset + i + first_component, dst.type));
       }
       return;
@@ -2490,12 +2490,12 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
    assert(gs_prog_data->base.include_vue_handles);
 
    fs_reg start = s->gs_payload().icp_handle_start;
-   fs_reg icp_handle = ntb->bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   fs_reg icp_handle = ntb.bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
    if (gs_prog_data->invocations == 1) {
       if (nir_src_is_const(vertex_src)) {
          /* The vertex index is constant; just select the proper URB handle. */
-         icp_handle = offset(start, ntb->bld, nir_src_as_uint(vertex_src));
+         icp_handle = offset(start, ntb.bld, nir_src_as_uint(vertex_src));
       } else {
          /* The vertex index is non-constant.  We need to use indirect
           * addressing to fetch the proper URB handle.
@@ -2509,7 +2509,7 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
           * the final indirect byte offset.
           */
          fs_reg sequence =
-            ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+            ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
          fs_reg channel_offsets = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
          fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
          fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
@@ -2615,7 +2615,7 @@ emit_gs_input_load(nir_to_brw_state *ntb, const fs_reg &dst,
 }
 
 static fs_reg
-get_indirect_offset(nir_to_brw_state *ntb, nir_intrinsic_instr *instr)
+get_indirect_offset(nir_to_brw_state &ntb, nir_intrinsic_instr *instr)
 {
    nir_src *offset_src = nir_get_io_offset_src(instr);
 
@@ -2632,11 +2632,11 @@ get_indirect_offset(nir_to_brw_state *ntb, nir_intrinsic_instr *instr)
 }
 
 static void
-fs_nir_emit_vs_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_vs_intrinsic(nir_to_brw_state &ntb,
                          nir_intrinsic_instr *instr)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
    assert(s->stage == MESA_SHADER_VERTEX);
 
    fs_reg dest;
@@ -2674,7 +2674,7 @@ fs_nir_emit_vs_intrinsic(nir_to_brw_state *ntb,
 }
 
 static fs_reg
-get_tcs_single_patch_icp_handle(nir_to_brw_state *ntb, const fs_builder &bld,
+get_tcs_single_patch_icp_handle(nir_to_brw_state &ntb, const fs_builder &bld,
                                 nir_intrinsic_instr *instr)
 {
    fs_visitor *s = (fs_visitor *)bld.shader;
@@ -2721,7 +2721,7 @@ get_tcs_single_patch_icp_handle(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static fs_reg
-get_tcs_multi_patch_icp_handle(nir_to_brw_state *ntb, const fs_builder &bld,
+get_tcs_multi_patch_icp_handle(nir_to_brw_state &ntb, const fs_builder &bld,
                                nir_intrinsic_instr *instr)
 {
    fs_visitor *s = (fs_visitor *)bld.shader;
@@ -2748,7 +2748,7 @@ get_tcs_multi_patch_icp_handle(nir_to_brw_state *ntb, const fs_builder &bld,
     * the final indirect byte offset.
     */
    fs_reg icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-   fs_reg sequence = ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+   fs_reg sequence = ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
    fs_reg channel_offsets = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
@@ -2789,11 +2789,11 @@ setup_barrier_message_payload_gfx125(const fs_builder &bld,
 }
 
 static void
-emit_barrier(nir_to_brw_state *ntb)
+emit_barrier(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    /* We are getting the barrier ID from the compute shader header */
    assert(gl_shader_stage_uses_workgroup(s->stage));
@@ -2835,11 +2835,11 @@ emit_barrier(nir_to_brw_state *ntb)
 }
 
 static void
-emit_tcs_barrier(nir_to_brw_state *ntb)
+emit_tcs_barrier(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_TESS_CTRL);
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(s->prog_data);
@@ -2878,12 +2878,12 @@ emit_tcs_barrier(nir_to_brw_state *ntb)
 }
 
 static void
-fs_nir_emit_tcs_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_tcs_intrinsic(nir_to_brw_state &ntb,
                           nir_intrinsic_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_TESS_CTRL);
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(s->prog_data);
@@ -3110,12 +3110,12 @@ fs_nir_emit_tcs_intrinsic(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_tes_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_tes_intrinsic(nir_to_brw_state &ntb,
                           nir_intrinsic_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_TESS_EVAL);
    struct brw_tes_prog_data *tes_prog_data = brw_tes_prog_data(s->prog_data);
@@ -3220,11 +3220,11 @@ fs_nir_emit_tes_intrinsic(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_gs_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_gs_intrinsic(nir_to_brw_state &ntb,
                          nir_intrinsic_instr *instr)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_GEOMETRY);
    fs_reg indirect_offset;
@@ -3262,7 +3262,7 @@ fs_nir_emit_gs_intrinsic(nir_to_brw_state *ntb,
       break;
 
    case nir_intrinsic_load_invocation_id: {
-      fs_reg val = ntb->system_values[SYSTEM_VALUE_INVOCATION_ID];
+      fs_reg val = ntb.system_values[SYSTEM_VALUE_INVOCATION_ID];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       bld.MOV(dest, val);
@@ -3307,13 +3307,13 @@ fetch_render_target_array_index(const fs_builder &bld)
 
 /* Sample from the MCS surface attached to this multisample texture. */
 static fs_reg
-emit_mcs_fetch(nir_to_brw_state *ntb, const fs_reg &coordinate, unsigned components,
+emit_mcs_fetch(nir_to_brw_state &ntb, const fs_reg &coordinate, unsigned components,
                const fs_reg &texture,
                const fs_reg &texture_handle)
 {
-   const fs_builder &bld = ntb->bld;
+   const fs_builder &bld = ntb.bld;
 
-   const fs_reg dest = ntb->s->vgrf(glsl_type::uvec4_type);
+   const fs_reg dest = ntb.s->vgrf(glsl_type::uvec4_type);
 
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
    srcs[TEX_LOGICAL_SRC_COORDINATE] = coordinate;
@@ -3340,7 +3340,7 @@ emit_mcs_fetch(nir_to_brw_state *ntb, const fs_reg &coordinate, unsigned compone
  * framebuffer at the current fragment coordinates and sample index.
  */
 static fs_inst *
-emit_non_coherent_fb_read(nir_to_brw_state *ntb, const fs_builder &bld, const fs_reg &dst,
+emit_non_coherent_fb_read(nir_to_brw_state &ntb, const fs_builder &bld, const fs_reg &dst,
                           unsigned target)
 {
    fs_visitor *s = (fs_visitor *)bld.shader;
@@ -3365,10 +3365,10 @@ emit_non_coherent_fb_read(nir_to_brw_state *ntb, const fs_builder &bld, const fs
    assert(wm_key->multisample_fbo == BRW_ALWAYS ||
           wm_key->multisample_fbo == BRW_NEVER);
    if (wm_key->multisample_fbo &&
-       ntb->system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
+       ntb.system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
+      ntb.system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
 
-   const fs_reg sample = ntb->system_values[SYSTEM_VALUE_SAMPLE_ID];
+   const fs_reg sample = ntb.system_values[SYSTEM_VALUE_SAMPLE_ID];
    const fs_reg mcs = wm_key->multisample_fbo ?
       emit_mcs_fetch(ntb, coords, 3, brw_imm_ud(target), fs_reg()) : fs_reg();
 
@@ -3445,9 +3445,9 @@ alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n)
 }
 
 static fs_reg
-alloc_frag_output(nir_to_brw_state *ntb, unsigned location)
+alloc_frag_output(nir_to_brw_state &ntb, unsigned location)
 {
-   fs_visitor *v = ntb->s;
+   fs_visitor *v = ntb.s;
 
    assert(v->stage == MESA_SHADER_FRAGMENT);
    const brw_wm_prog_key *const key =
@@ -3456,24 +3456,24 @@ alloc_frag_output(nir_to_brw_state *ntb, unsigned location)
    const unsigned i = GET_FIELD(location, BRW_NIR_FRAG_OUTPUT_INDEX);
 
    if (i > 0 || (key->force_dual_color_blend && l == FRAG_RESULT_DATA1))
-      return alloc_temporary(ntb->bld, 4, &v->dual_src_output, 1);
+      return alloc_temporary(ntb.bld, 4, &v->dual_src_output, 1);
 
    else if (l == FRAG_RESULT_COLOR)
-      return alloc_temporary(ntb->bld, 4, v->outputs,
+      return alloc_temporary(ntb.bld, 4, v->outputs,
                              MAX2(key->nr_color_regions, 1));
 
    else if (l == FRAG_RESULT_DEPTH)
-      return alloc_temporary(ntb->bld, 1, &v->frag_depth, 1);
+      return alloc_temporary(ntb.bld, 1, &v->frag_depth, 1);
 
    else if (l == FRAG_RESULT_STENCIL)
-      return alloc_temporary(ntb->bld, 1, &v->frag_stencil, 1);
+      return alloc_temporary(ntb.bld, 1, &v->frag_stencil, 1);
 
    else if (l == FRAG_RESULT_SAMPLE_MASK)
-      return alloc_temporary(ntb->bld, 1, &v->sample_mask, 1);
+      return alloc_temporary(ntb.bld, 1, &v->sample_mask, 1);
 
    else if (l >= FRAG_RESULT_DATA0 &&
             l < FRAG_RESULT_DATA0 + BRW_MAX_DRAW_BUFFERS)
-      return alloc_temporary(ntb->bld, 4,
+      return alloc_temporary(ntb.bld, 4,
                              &v->outputs[l - FRAG_RESULT_DATA0], 1);
 
    else
@@ -3481,9 +3481,9 @@ alloc_frag_output(nir_to_brw_state *ntb, unsigned location)
 }
 
 static void
-emit_is_helper_invocation(nir_to_brw_state *ntb, fs_reg result)
+emit_is_helper_invocation(nir_to_brw_state &ntb, fs_reg result)
 {
-   const fs_builder &bld = ntb->bld;
+   const fs_builder &bld = ntb.bld;
 
    /* Unlike the regular gl_HelperInvocation, that is defined at dispatch,
     * the helperInvocationEXT() (aka SpvOpIsHelperInvocationEXT) takes into
@@ -3510,11 +3510,11 @@ emit_is_helper_invocation(nir_to_brw_state *ntb, fs_reg result)
 }
 
 static void
-emit_fragcoord_interpolation(nir_to_brw_state *ntb, fs_reg wpos)
+emit_fragcoord_interpolation(nir_to_brw_state &ntb, fs_reg wpos)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
 
@@ -3541,10 +3541,10 @@ emit_fragcoord_interpolation(nir_to_brw_state *ntb, fs_reg wpos)
 }
 
 static fs_reg
-emit_frontfacing_interpolation(nir_to_brw_state *ntb)
+emit_frontfacing_interpolation(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
 
    fs_reg ff = bld.vgrf(BRW_REGISTER_TYPE_D);
 
@@ -3591,11 +3591,11 @@ emit_frontfacing_interpolation(nir_to_brw_state *ntb)
 }
 
 static fs_reg
-emit_samplepos_setup(nir_to_brw_state *ntb)
+emit_samplepos_setup(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(s->prog_data);
@@ -3653,11 +3653,11 @@ emit_samplepos_setup(nir_to_brw_state *ntb)
 }
 
 static fs_reg
-emit_sampleid_setup(nir_to_brw_state *ntb)
+emit_sampleid_setup(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
    ASSERTED brw_wm_prog_key *key = (brw_wm_prog_key*) s->key;
@@ -3768,11 +3768,11 @@ emit_sampleid_setup(nir_to_brw_state *ntb)
 }
 
 static fs_reg
-emit_samplemaskin_setup(nir_to_brw_state *ntb)
+emit_samplemaskin_setup(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(s->prog_data);
@@ -3799,13 +3799,13 @@ emit_samplemaskin_setup(nir_to_brw_state *ntb)
     */
    const fs_builder abld = bld.annotate("compute gl_SampleMaskIn");
 
-   if (ntb->system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      ntb->system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
+   if (ntb.system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
+      ntb.system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
 
    fs_reg one = s->vgrf(glsl_type::int_type);
    fs_reg enabled_mask = s->vgrf(glsl_type::int_type);
    abld.MOV(one, brw_imm_d(1));
-   abld.SHL(enabled_mask, one, ntb->system_values[SYSTEM_VALUE_SAMPLE_ID]);
+   abld.SHL(enabled_mask, one, ntb.system_values[SYSTEM_VALUE_SAMPLE_ID]);
    fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
    abld.AND(mask, enabled_mask, coverage_mask);
 
@@ -3820,10 +3820,10 @@ emit_samplemaskin_setup(nir_to_brw_state *ntb)
 }
 
 static fs_reg
-emit_shading_rate_setup(nir_to_brw_state *ntb)
+emit_shading_rate_setup(nir_to_brw_state &ntb)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
 
    assert(devinfo->ver >= 11);
 
@@ -3870,12 +3870,12 @@ emit_shading_rate_setup(nir_to_brw_state *ntb)
 }
 
 static void
-fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
                          nir_intrinsic_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_FRAGMENT);
 
@@ -3891,7 +3891,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb,
 
    case nir_intrinsic_load_sample_pos:
    case nir_intrinsic_load_sample_pos_or_center: {
-      fs_reg sample_pos = ntb->system_values[SYSTEM_VALUE_SAMPLE_POS];
+      fs_reg sample_pos = ntb.system_values[SYSTEM_VALUE_SAMPLE_POS];
       assert(sample_pos.file != BAD_FILE);
       dest.type = sample_pos.type;
       bld.MOV(dest, sample_pos);
@@ -3913,7 +3913,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb,
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_frag_shading_rate: {
       gl_system_value sv = nir_system_value_from_intrinsic(instr->intrinsic);
-      fs_reg val = ntb->system_values[sv];
+      fs_reg val = ntb.system_values[sv];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       bld.MOV(dest, val);
@@ -4257,12 +4257,12 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_cs_intrinsic(nir_to_brw_state &ntb,
                          nir_intrinsic_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(gl_shader_stage_uses_workgroup(s->stage));
    struct brw_cs_prog_data *cs_prog_data = brw_cs_prog_data(s->prog_data);
@@ -4296,7 +4296,7 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb,
       break;
 
    case nir_intrinsic_load_local_invocation_id: {
-      fs_reg val = ntb->system_values[SYSTEM_VALUE_LOCAL_INVOCATION_ID];
+      fs_reg val = ntb.system_values[SYSTEM_VALUE_LOCAL_INVOCATION_ID];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       for (unsigned i = 0; i < 3; i++)
@@ -4306,7 +4306,7 @@ fs_nir_emit_cs_intrinsic(nir_to_brw_state *ntb,
 
    case nir_intrinsic_load_workgroup_id:
    case nir_intrinsic_load_workgroup_id_zero_base: {
-      fs_reg val = ntb->system_values[SYSTEM_VALUE_WORKGROUP_ID];
+      fs_reg val = ntb.system_values[SYSTEM_VALUE_WORKGROUP_ID];
       assert(val.file != BAD_FILE);
       dest.type = val.type;
       for (unsigned i = 0; i < 3; i++)
@@ -4474,11 +4474,11 @@ emit_rt_lsc_fence(const fs_builder &bld,
 
 
 static void
-fs_nir_emit_bs_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_bs_intrinsic(nir_to_brw_state &ntb,
                          nir_intrinsic_instr *instr)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(brw_shader_stage_is_bindless(s->stage));
    const bs_thread_payload &payload = s->bs_payload();
@@ -4598,7 +4598,7 @@ add_rebuild_src(nir_src *src, void *state)
 }
 
 static fs_reg
-try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def *resource_def)
+try_rebuild_resource(nir_to_brw_state &ntb, const brw::fs_builder &bld, nir_def *resource_def)
 {
    /* Create a build at the location of the resource_intel intrinsic */
    fs_builder ubld8 = bld.exec_all().group(8, 0);
@@ -4640,7 +4640,7 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
          nir_load_const_instr *load_const =
             nir_instr_as_load_const(instr);
          fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-         ntb->resource_insts[def->index] =
+         ntb.resource_insts[def->index] =
             ubld8.MOV(dst, brw_imm_ud(load_const->value[0].i32));
          break;
       }
@@ -4665,11 +4665,11 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
          switch (alu->op) {
          case nir_op_iadd: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src0 = ntb.resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb.resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            ntb->resource_insts[def->index] =
+            ntb.resource_insts[def->index] =
                ubld8.ADD(dst,
                          src0.file != IMM ? src0 : src1,
                          src0.file != IMM ? src1 : src0);
@@ -4677,12 +4677,12 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
          }
          case nir_op_iadd3: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
-            fs_reg src2 = ntb->resource_insts[alu->src[2].src.ssa->index]->dst;
+            fs_reg src0 = ntb.resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb.resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src2 = ntb.resource_insts[alu->src[2].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE && src2.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            ntb->resource_insts[def->index] =
+            ntb.resource_insts[def->index] =
                ubld8.ADD3(dst,
                           src1.file == IMM ? src1 : src0,
                           src1.file == IMM ? src0 : src1,
@@ -4691,20 +4691,20 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
          }
          case nir_op_ushr: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src0 = ntb.resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb.resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            ntb->resource_insts[def->index] = ubld8.SHR(dst, src0, src1);
+            ntb.resource_insts[def->index] = ubld8.SHR(dst, src0, src1);
             break;
          }
          case nir_op_ishl: {
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
-            fs_reg src0 = ntb->resource_insts[alu->src[0].src.ssa->index]->dst;
-            fs_reg src1 = ntb->resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src0 = ntb.resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = ntb.resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            ntb->resource_insts[def->index] = ubld8.SHL(dst, src0, src1);
+            ntb.resource_insts[def->index] = ubld8.SHL(dst, src0, src1);
             break;
          }
          case nir_op_mov: {
@@ -4720,8 +4720,8 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
          case nir_intrinsic_resource_intel:
-            ntb->resource_insts[def->index] =
-               ntb->resource_insts[intrin->src[1].ssa->index];
+            ntb.resource_insts[def->index] =
+               ntb.resource_insts[intrin->src[1].ssa->index];
             break;
 
          case nir_intrinsic_load_uniform: {
@@ -4733,7 +4733,7 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
             fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src(UNIFORM, base_offset / 4, BRW_REGISTER_TYPE_UD);
             src.offset = load_offset + base_offset % 4;
-            ntb->resource_insts[def->index] = ubld8.MOV(dst, src);
+            ntb.resource_insts[def->index] = ubld8.MOV(dst, src);
             break;
          }
 
@@ -4747,16 +4747,16 @@ try_rebuild_resource(nir_to_brw_state *ntb, const brw::fs_builder &bld, nir_def 
          break;
       }
 
-      if (ntb->resource_insts[def->index] == NULL)
+      if (ntb.resource_insts[def->index] == NULL)
          return fs_reg();
    }
 
-   assert(ntb->resource_insts[resource_def->index] != NULL);
-   return component(ntb->resource_insts[resource_def->index]->dst, 0);
+   assert(ntb.resource_insts[resource_def->index] != NULL);
+   return component(ntb.resource_insts[resource_def->index]->dst, 0);
 }
 
 static fs_reg
-get_nir_image_intrinsic_image(nir_to_brw_state *ntb, const brw::fs_builder &bld,
+get_nir_image_intrinsic_image(nir_to_brw_state &ntb, const brw::fs_builder &bld,
                               nir_intrinsic_instr *instr)
 {
    if (is_resource_src(instr->src[0])) {
@@ -4772,7 +4772,7 @@ get_nir_image_intrinsic_image(nir_to_brw_state *ntb, const brw::fs_builder &bld,
 }
 
 static fs_reg
-get_nir_buffer_intrinsic_index(nir_to_brw_state *ntb, const brw::fs_builder &bld,
+get_nir_buffer_intrinsic_index(nir_to_brw_state &ntb, const brw::fs_builder &bld,
                                nir_intrinsic_instr *instr)
 {
    /* SSBO stores are weird in that their index is in src[1] */
@@ -4815,15 +4815,15 @@ get_nir_buffer_intrinsic_index(nir_to_brw_state *ntb, const brw::fs_builder &bld
  * continuous elements and we get good cache locality.
  */
 static fs_reg
-swizzle_nir_scratch_addr(nir_to_brw_state *ntb,
+swizzle_nir_scratch_addr(nir_to_brw_state &ntb,
                          const brw::fs_builder &bld,
                          const fs_reg &nir_addr,
                          bool in_dwords)
 {
-   fs_visitor *s = ntb->s;
+   fs_visitor *s = ntb.s;
 
    const fs_reg &chan_index =
-      ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
+      ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
    const unsigned chan_index_bits = ffs(s->dispatch_width) - 1;
 
    fs_reg addr = bld.vgrf(BRW_REGISTER_TYPE_UD);
@@ -5491,7 +5491,7 @@ emit_urb_indirect_reads_xe2(const fs_builder &bld, nir_intrinsic_instr *instr,
 }
 
 static void
-emit_task_mesh_store(nir_to_brw_state *ntb,
+emit_task_mesh_store(nir_to_brw_state &ntb,
                      const fs_builder &bld, nir_intrinsic_instr *instr,
                      const fs_reg &urb_handle)
 {
@@ -5529,7 +5529,7 @@ emit_task_mesh_store(nir_to_brw_state *ntb,
 }
 
 static void
-emit_task_mesh_load(nir_to_brw_state *ntb,
+emit_task_mesh_load(nir_to_brw_state &ntb,
                     const fs_builder &bld, nir_intrinsic_instr *instr,
                     const fs_reg &urb_handle)
 {
@@ -5555,10 +5555,10 @@ emit_task_mesh_load(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_task_mesh_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_task_mesh_intrinsic(nir_to_brw_state &ntb, const fs_builder &bld,
                                 nir_intrinsic_instr *instr)
 {
-   fs_visitor *s = ntb->s;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_MESH || s->stage == MESA_SHADER_TASK);
    const task_mesh_thread_payload &payload = s->task_mesh_payload();
@@ -5607,11 +5607,11 @@ fs_nir_emit_task_mesh_intrinsic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_task_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_task_intrinsic(nir_to_brw_state &ntb,
                            nir_intrinsic_instr *instr)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_TASK);
    const task_mesh_thread_payload &payload = s->task_mesh_payload();
@@ -5634,11 +5634,11 @@ fs_nir_emit_task_intrinsic(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_mesh_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_mesh_intrinsic(nir_to_brw_state &ntb,
                            nir_intrinsic_instr *instr)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    assert(s->stage == MESA_SHADER_MESH);
    const task_mesh_thread_payload &payload = s->task_mesh_payload();
@@ -5667,11 +5667,11 @@ fs_nir_emit_mesh_intrinsic(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
+fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
                       const fs_builder &bld, nir_intrinsic_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   fs_visitor *s = ntb.s;
 
    /* We handle this as a special case */
    if (instr->intrinsic == nir_intrinsic_decl_reg) {
@@ -5684,7 +5684,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
                                               BRW_REGISTER_TYPE_F);
 
       /* Re-use the destination's slot in the table for the register */
-      ntb->ssa_values[instr->def.index] =
+      ntb.ssa_values[instr->def.index] =
          bld.vgrf(reg_type, num_components);
       return;
    }
@@ -5695,26 +5695,26 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_resource_intel:
-      ntb->ssa_bind_infos[instr->def.index].valid = true;
-      ntb->ssa_bind_infos[instr->def.index].bindless =
+      ntb.ssa_bind_infos[instr->def.index].valid = true;
+      ntb.ssa_bind_infos[instr->def.index].bindless =
          (nir_intrinsic_resource_access_intel(instr) &
           nir_resource_intel_bindless) != 0;
-      ntb->ssa_bind_infos[instr->def.index].block =
+      ntb.ssa_bind_infos[instr->def.index].block =
          nir_intrinsic_resource_block_intel(instr);
-      ntb->ssa_bind_infos[instr->def.index].set =
+      ntb.ssa_bind_infos[instr->def.index].set =
          nir_intrinsic_desc_set(instr);
-      ntb->ssa_bind_infos[instr->def.index].binding =
+      ntb.ssa_bind_infos[instr->def.index].binding =
          nir_intrinsic_binding(instr);
 
       if (nir_intrinsic_resource_access_intel(instr) &
            nir_resource_intel_non_uniform) {
-         ntb->resource_values[instr->def.index] = fs_reg();
+         ntb.resource_values[instr->def.index] = fs_reg();
       } else {
-         ntb->resource_values[instr->def.index] =
+         ntb.resource_values[instr->def.index] =
             try_rebuild_resource(ntb, bld, instr->src[1].ssa);
       }
-      ntb->ssa_values[instr->def.index] =
-         ntb->ssa_values[instr->src[1].ssa->index];
+      ntb.ssa_values[instr->def.index] =
+         ntb.ssa_values[instr->src[1].ssa->index];
       break;
 
    case nir_intrinsic_load_reg:
@@ -6936,7 +6936,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
 
    case nir_intrinsic_load_subgroup_invocation:
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D),
-              ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
+              ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
       break;
 
    case nir_intrinsic_load_subgroup_eq_mask:
@@ -7185,7 +7185,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
           * MOVs or else fall back to doing indirects.
           */
          fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_W);
-         bld.XOR(idx, ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
+         bld.XOR(idx, ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
                       brw_imm_w(0x2));
          bld.emit(SHADER_OPCODE_SHUFFLE, retype(dest, value.type), value, idx);
       }
@@ -7206,7 +7206,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
           * MOVs or else fall back to doing indirects.
           */
          fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_W);
-         bld.XOR(idx, ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
+         bld.XOR(idx, ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
                       brw_imm_w(0x3));
          bld.emit(SHADER_OPCODE_SHUFFLE, retype(dest, value.type), value, idx);
       }
@@ -7289,7 +7289,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
           */
          fs_reg shifted = bld.vgrf(src.type);
          fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_W);
-         allbld.ADD(idx, ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
+         allbld.ADD(idx, ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION],
                          brw_imm_w(-1));
          allbld.emit(SHADER_OPCODE_SHUFFLE, shifted, scan, idx);
          allbld.group(1, 0).MOV(component(shifted, 0), identity);
@@ -7520,7 +7520,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state *ntb,
          /* LaneID[0:3] << 0 (Use nir SYSTEM_VALUE_SUBGROUP_INVOCATION) */
          assert(bld.dispatch_width() <= 16); /* Limit to 4 bits */
          bld.ADD(dst, dst,
-                 ntb->system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
+                 ntb.system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
          break;
       }
       default:
@@ -7626,13 +7626,13 @@ expand_to_32bit(const fs_builder &bld, const fs_reg &src)
 }
 
 static void
-fs_nir_emit_surface_atomic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_surface_atomic(nir_to_brw_state &ntb, const fs_builder &bld,
                            nir_intrinsic_instr *instr,
                            fs_reg surface,
                            bool bindless)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   fs_visitor *s = ntb.s;
 
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
    int num_data = lsc_op_num_data_values(op);
@@ -7717,7 +7717,7 @@ fs_nir_emit_surface_atomic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_global_atomic(nir_to_brw_state *ntb, const fs_builder &bld,
+fs_nir_emit_global_atomic(nir_to_brw_state &ntb, const fs_builder &bld,
                           nir_intrinsic_instr *instr)
 {
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
@@ -7767,12 +7767,12 @@ fs_nir_emit_global_atomic(nir_to_brw_state *ntb, const fs_builder &bld,
 }
 
 static void
-fs_nir_emit_texture(nir_to_brw_state *ntb,
+fs_nir_emit_texture(nir_to_brw_state &ntb,
                     nir_tex_instr *instr)
 {
-   const intel_device_info *devinfo = ntb->devinfo;
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const intel_device_info *devinfo = ntb.devinfo;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
 
@@ -8113,17 +8113,17 @@ fs_nir_emit_texture(nir_to_brw_state *ntb,
 }
 
 static void
-fs_nir_emit_jump(nir_to_brw_state *ntb, nir_jump_instr *instr)
+fs_nir_emit_jump(nir_to_brw_state &ntb, nir_jump_instr *instr)
 {
    switch (instr->type) {
    case nir_jump_break:
-      ntb->bld.emit(BRW_OPCODE_BREAK);
+      ntb.bld.emit(BRW_OPCODE_BREAK);
       break;
    case nir_jump_continue:
-      ntb->bld.emit(BRW_OPCODE_CONTINUE);
+      ntb.bld.emit(BRW_OPCODE_CONTINUE);
       break;
    case nir_jump_halt:
-      ntb->bld.emit(BRW_OPCODE_HALT);
+      ntb.bld.emit(BRW_OPCODE_HALT);
       break;
    case nir_jump_return:
    default:
@@ -8318,9 +8318,9 @@ setup_imm_ub(const fs_builder &bld, uint8_t v)
 }
 
 static void
-fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
+fs_nir_emit_instr(nir_to_brw_state &ntb, nir_instr *instr)
 {
-   ntb->bld = ntb->bld.annotate(NULL, instr);
+   ntb.bld = ntb.bld.annotate(NULL, instr);
 
    switch (instr->type) {
    case nir_instr_type_alu:
@@ -8332,7 +8332,7 @@ fs_nir_emit_instr(nir_to_brw_state *ntb, nir_instr *instr)
       break;
 
    case nir_instr_type_intrinsic:
-      switch (ntb->s->stage) {
+      switch (ntb.s->stage) {
       case MESA_SHADER_VERTEX:
          fs_nir_emit_vs_intrinsic(ntb, nir_instr_as_intrinsic(instr));
          break;
@@ -8443,10 +8443,10 @@ brw_rnd_mode_from_nir(unsigned mode, unsigned *mask)
 }
 
 static void
-emit_shader_float_controls_execution_mode(nir_to_brw_state *ntb)
+emit_shader_float_controls_execution_mode(nir_to_brw_state &ntb)
 {
-   const fs_builder &bld = ntb->bld;
-   fs_visitor *s = ntb->s;
+   const fs_builder &bld = ntb.bld;
+   fs_visitor *s = ntb.s;
 
    unsigned execution_mode = s->nir->info.float_controls_execution_mode;
    if (execution_mode == FLOAT_CONTROLS_DEFAULT_FLOAT_CONTROL_MODE)
@@ -8466,11 +8466,11 @@ emit_shader_float_controls_execution_mode(nir_to_brw_state *ntb)
 void
 nir_to_brw(fs_visitor *s)
 {
-   nir_to_brw_state *ntb = rzalloc(NULL, nir_to_brw_state);
-   ntb->s = s;
-   ntb->devinfo = s->devinfo;
-   ntb->nir = s->nir;
-   ntb->bld = fs_builder(s).at_end();
+   nir_to_brw_state &ntb = *rzalloc(NULL, nir_to_brw_state);
+   ntb.s = s;
+   ntb.devinfo = s->devinfo;
+   ntb.nir = s->nir;
+   ntb.bld = fs_builder(s).at_end();
 
    emit_shader_float_controls_execution_mode(ntb);
 
@@ -8484,8 +8484,8 @@ nir_to_brw(fs_visitor *s)
 
    fs_nir_emit_impl(ntb, nir_shader_get_entrypoint((nir_shader *)s->nir));
 
-   ntb->bld.emit(SHADER_OPCODE_HALT_TARGET);
+   ntb.bld.emit(SHADER_OPCODE_HALT_TARGET);
 
-   ralloc_free(ntb);
+   ralloc_free(&ntb);
 }
 
