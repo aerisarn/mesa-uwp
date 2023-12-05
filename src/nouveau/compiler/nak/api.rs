@@ -118,6 +118,9 @@ fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     op.lower_scmp = true;
     op.lower_uadd_carry = true;
     op.lower_usub_borrow = true;
+    op.has_sdot_4x8 = dev.sm >= 70;
+    op.has_udot_4x8 = dev.sm >= 70;
+    op.has_sudot_4x8 = dev.sm >= 70;
 
     op
 }

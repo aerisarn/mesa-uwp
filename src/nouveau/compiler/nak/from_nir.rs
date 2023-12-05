@@ -1024,6 +1024,33 @@ impl<'a> ShaderFromNir<'a> {
 
                 b.prmt(low.into(), high.into(), [0, 1, 4, 5])
             }
+            nir_op_sdot_4x8_iadd => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpIDp4 {
+                    dst: dst.into(),
+                    src_types: [IntType::I8, IntType::I8],
+                    srcs: [srcs[0], srcs[1], srcs[2]],
+                });
+                dst
+            }
+            nir_op_sudot_4x8_iadd => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpIDp4 {
+                    dst: dst.into(),
+                    src_types: [IntType::I8, IntType::U8],
+                    srcs: [srcs[0], srcs[1], srcs[2]],
+                });
+                dst
+            }
+            nir_op_udot_4x8_uadd => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpIDp4 {
+                    dst: dst.into(),
+                    src_types: [IntType::U8, IntType::U8],
+                    srcs: [srcs[0], srcs[1], srcs[2]],
+                });
+                dst
+            }
             nir_op_u2f16 | nir_op_u2f32 | nir_op_u2f64 => {
                 let src_bits = alu.get_src(0).src.bit_size();
                 let dst_bits = alu.def.bit_size();

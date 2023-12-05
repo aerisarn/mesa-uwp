@@ -63,9 +63,12 @@ fn copy_src_if_not_reg(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
     }
 }
 
-fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) {
+fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) -> bool {
     if !src_is_reg(x) && src_is_reg(y) {
         std::mem::swap(x, y);
+        true
+    } else {
+        false
     }
 }
 
@@ -149,6 +152,15 @@ fn legalize_instr(
                     carry: [false.into(); 2],
                 });
                 *src0 = val.into();
+            }
+            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_src_if_not_reg(b, src2, RegFile::GPR);
+        }
+        Op::IDp4(op) => {
+            let [ref mut src_type0, ref mut src_type1] = op.src_types;
+            let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
+            if swap_srcs_if_not_reg(src0, src1) {
+                std::mem::swap(src_type0, src_type1);
             }
             copy_src_if_not_reg(b, src0, RegFile::GPR);
             copy_src_if_not_reg(b, src2, RegFile::GPR);

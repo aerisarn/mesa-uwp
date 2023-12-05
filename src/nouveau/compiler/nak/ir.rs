@@ -2452,6 +2452,32 @@ impl_display_for_op!(OpIAdd3X);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIDp4 {
+    pub dst: Dst,
+
+    pub src_types: [IntType; 2],
+
+    #[src_type(I32)]
+    pub srcs: [Src; 3],
+}
+
+impl DisplayOp for OpIDp4 {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "idp4{}{} {} {} {}",
+            self.src_types[0],
+            self.src_types[1],
+            self.srcs[0],
+            self.srcs[1],
+            self.srcs[2],
+        )
+    }
+}
+impl_display_for_op!(OpIDp4);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMad {
     pub dst: Dst,
 
@@ -4299,6 +4325,7 @@ pub enum Op {
     INeg(OpINeg),
     IAdd3(OpIAdd3),
     IAdd3X(OpIAdd3X),
+    IDp4(OpIDp4),
     IMad(OpIMad),
     IMad64(OpIMad64),
     IMnMx(OpIMnMx),
@@ -4731,6 +4758,7 @@ impl Instr {
             | Op::INeg(_)
             | Op::IAdd3(_)
             | Op::IAdd3X(_)
+            | Op::IDp4(_)
             | Op::IMad(_)
             | Op::IMad64(_)
             | Op::IMnMx(_)

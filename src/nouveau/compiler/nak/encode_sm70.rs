@@ -661,6 +661,33 @@ impl SM70Instr {
         self.set_pred_src(77..80, 80, op.carry[1]);
     }
 
+    fn encode_idp4(&mut self, op: &OpIDp4) {
+        self.encode_alu(
+            0x026,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
+        );
+
+        self.set_bit(
+            73,
+            match op.src_types[0] {
+                IntType::U8 => false,
+                IntType::I8 => true,
+                _ => panic!("Invalid DP4 source type"),
+            },
+        );
+        self.set_bit(
+            74,
+            match op.src_types[1] {
+                IntType::U8 => false,
+                IntType::I8 => true,
+                _ => panic!("Invalid DP4 source type"),
+            },
+        );
+    }
+
     fn encode_imad(&mut self, op: &OpIMad) {
         self.encode_alu(
             0x024,
@@ -1915,6 +1942,7 @@ impl SM70Instr {
             Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::IAdd3X(op) => si.encode_iadd3x(&op),
+            Op::IDp4(op) => si.encode_idp4(&op),
             Op::IMad(op) => si.encode_imad(&op),
             Op::IMad64(op) => si.encode_imad64(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),
