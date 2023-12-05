@@ -1743,6 +1743,7 @@ impl SM70Instr {
         self.set_opcode(0x805);
         self.set_dst(op.dst);
         self.set_field(72..80, op.idx);
+        self.set_bit(80, op.dst.as_reg().unwrap().comps() == 2); // .64
     }
 
     fn encode_isberd(&mut self, op: &OpIsberd) {
