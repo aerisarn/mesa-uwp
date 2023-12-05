@@ -1709,7 +1709,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 let comps = u8::try_from(intrin.num_components).unwrap();
                 assert!(intrin.def.bit_size() == 32);
-                assert!(comps == 1 || comps == 4);
+                assert!(comps == 1 || comps == 2 || comps == 4);
 
                 let dst = b.alloc_ssa(RegFile::GPR, comps);
 
@@ -1735,7 +1735,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 let comps = u8::try_from(intrin.num_components).unwrap();
                 assert!(srcs[3].bit_size() == 32);
-                assert!(comps == 1 || comps == 4);
+                assert!(comps == 1 || comps == 2 || comps == 4);
 
                 b.push_op(OpSuSt {
                     image_dim: dim,

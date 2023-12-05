@@ -7,6 +7,8 @@
 #include "nir_builder.h"
 #include "nir_format_convert.h"
 
+#include "util/u_math.h"
+
 static enum glsl_sampler_dim
 remap_sampler_dim(enum glsl_sampler_dim dim)
 {
@@ -306,6 +308,77 @@ lower_txq(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
 }
 
 static bool
+shrink_image_load(nir_builder *b, nir_intrinsic_instr *intrin,
+                  const struct nak_compiler *nak)
+{
+   enum pipe_format format = nir_intrinsic_format(intrin);
+   nir_component_mask_t comps_read = nir_def_components_read(&intrin->def);
+
+   if (format == PIPE_FORMAT_NONE)
+      return false;
+
+   /* In order for null descriptors to work properly, we don't want to shrink
+    * loads when the alpha channel is read even if we know the format has
+    * fewer channels.
+    */
+   if (comps_read & BITFIELD_BIT(3))
+      return false;
+
+   const unsigned old_comps = intrin->def.num_components;
+
+   unsigned new_comps = util_format_get_nr_components(format);
+   new_comps = util_next_power_of_two(new_comps);
+   if (comps_read <= BITFIELD_MASK(2))
+      new_comps = 2;
+   if (comps_read <= BITFIELD_MASK(1))
+      new_comps = 1;
+
+   if (new_comps >= intrin->num_components)
+      return false;
+
+   b->cursor = nir_after_instr(&intrin->instr);
+
+   intrin->num_components = new_comps;
+   intrin->def.num_components = new_comps;
+
+   assert(new_comps <= 4);
+   nir_def *comps[4];
+   for (unsigned c = 0; c < new_comps; c++)
+      comps[c] = nir_channel(b, &intrin->def, c);
+   for (unsigned c = new_comps; c < 3; c++)
+      comps[c] = nir_imm_intN_t(b, 0, intrin->def.bit_size);
+   if (new_comps < 4)
+      comps[3] = nir_imm_intN_t(b, 1, intrin->def.bit_size);
+
+   nir_def *data = nir_vec(b, comps, old_comps);
+   nir_def_rewrite_uses_after(&intrin->def, data, data->parent_instr);
+   return true;
+}
+
+static bool
+shrink_image_store(nir_builder *b, nir_intrinsic_instr *intrin,
+                  const struct nak_compiler *nak)
+{
+   enum pipe_format format = nir_intrinsic_format(intrin);
+   nir_def *data = intrin->src[3].ssa;
+
+   if (format == PIPE_FORMAT_NONE)
+      return false;
+
+   unsigned new_comps = util_format_get_nr_components(format);
+   new_comps = util_next_power_of_two(new_comps);
+   if (new_comps >= intrin->num_components)
+      return false;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   nir_def *trimmed = nir_trim_vector(b, data, new_comps);
+   nir_src_rewrite(&intrin->src[3], trimmed);
+   intrin->num_components = new_comps;
+   return true;
+}
+
+static bool
 lower_image_txq(nir_builder *b, nir_intrinsic_instr *intrin,
                 const struct nak_compiler *nak)
 {
@@ -386,6 +459,10 @@ lower_tex_instr(nir_builder *b, nir_instr *instr, void *_data)
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
+      case nir_intrinsic_bindless_image_load:
+         return shrink_image_load(b, intrin, nak);
+      case nir_intrinsic_bindless_image_store:
+         return shrink_image_store(b, intrin, nak);
       case nir_intrinsic_bindless_image_size:
       case nir_intrinsic_bindless_image_samples:
          return lower_image_txq(b, intrin, nak);
