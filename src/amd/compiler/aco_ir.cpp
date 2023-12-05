@@ -143,13 +143,13 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
 
    program->dev.scratch_alloc_granule = gfx_level >= GFX11 ? 256 : 1024;
 
-   program->dev.max_wave64_per_simd = 10;
+   program->dev.max_waves_per_simd = 10;
    if (program->gfx_level >= GFX10_3)
-      program->dev.max_wave64_per_simd = 16;
+      program->dev.max_waves_per_simd = 16;
    else if (program->gfx_level == GFX10)
-      program->dev.max_wave64_per_simd = 20;
+      program->dev.max_waves_per_simd = 20;
    else if (program->family >= CHIP_POLARIS10 && program->family <= CHIP_VEGAM)
-      program->dev.max_wave64_per_simd = 8;
+      program->dev.max_waves_per_simd = 8;
 
    program->dev.simd_per_cu = program->gfx_level >= GFX10 ? 2 : 4;
 
@@ -1353,8 +1353,7 @@ dealloc_vgprs(Program* program)
       return false;
 
    /* skip if deallocating VGPRs won't increase occupancy */
-   uint16_t max_waves = program->dev.max_wave64_per_simd * (64 / program->wave_size);
-   max_waves = max_suitable_waves(program, max_waves);
+   uint16_t max_waves = max_suitable_waves(program, program->dev.max_waves_per_simd);
    if (program->max_reg_demand.vgpr <= get_addr_vgpr_from_waves(program, max_waves))
       return false;
 
