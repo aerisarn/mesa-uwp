@@ -2172,8 +2172,8 @@ radv_GetMemoryFdPropertiesKHR(VkDevice _device, VkExternalMemoryHandleTypeFlagBi
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
-                                const VkCalibratedTimestampInfoEXT *pTimestampInfos, uint64_t *pTimestamps,
+radv_GetCalibratedTimestampsKHR(VkDevice _device, uint32_t timestampCount,
+                                const VkCalibratedTimestampInfoKHR *pTimestampInfos, uint64_t *pTimestamps,
                                 uint64_t *pMaxDeviation)
 {
 #ifndef _WIN32
@@ -2191,18 +2191,18 @@ radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
 
    for (d = 0; d < timestampCount; d++) {
       switch (pTimestampInfos[d].timeDomain) {
-      case VK_TIME_DOMAIN_DEVICE_EXT:
+      case VK_TIME_DOMAIN_DEVICE_KHR:
          pTimestamps[d] = device->ws->query_value(device->ws, RADEON_TIMESTAMP);
          uint64_t device_period = DIV_ROUND_UP(1000000, clock_crystal_freq);
          max_clock_period = MAX2(max_clock_period, device_period);
          break;
-      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
+      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR:
          pTimestamps[d] = vk_clock_gettime(CLOCK_MONOTONIC);
          max_clock_period = MAX2(max_clock_period, 1);
          break;
 
 #ifdef CLOCK_MONOTONIC_RAW
-      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR:
          pTimestamps[d] = begin;
          break;
 #endif

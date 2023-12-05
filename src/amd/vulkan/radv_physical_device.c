@@ -84,6 +84,13 @@ radv_NV_device_generated_commands_enabled(const struct radv_physical_device *dev
 }
 
 static bool
+radv_calibrated_timestamps_enabled(const struct radv_physical_device *pdevice)
+{
+   return RADV_SUPPORT_CALIBRATED_TIMESTAMPS &&
+          !(pdevice->rad_info.family == CHIP_RAVEN || pdevice->rad_info.family == CHIP_RAVEN2);
+}
+
+static bool
 radv_is_conformant(const struct radv_physical_device *pdevice)
 {
    return pdevice->rad_info.gfx_level >= GFX8;
@@ -394,6 +401,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_8bit_storage = true,
       .KHR_16bit_storage = true,
       .KHR_acceleration_structure = radv_enable_rt(device, false),
+      .KHR_calibrated_timestamps = radv_calibrated_timestamps_enabled(device),
       .KHR_cooperative_matrix = device->rad_info.gfx_level >= GFX11 && !device->use_llvm,
       .KHR_bind_memory2 = true,
       .KHR_buffer_device_address = true,
@@ -482,8 +490,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_attachment_feedback_loop_layout = true,
       .EXT_border_color_swizzle = device->rad_info.gfx_level >= GFX10,
       .EXT_buffer_device_address = true,
-      .EXT_calibrated_timestamps = RADV_SUPPORT_CALIBRATED_TIMESTAMPS &&
-                                   !(device->rad_info.family == CHIP_RAVEN || device->rad_info.family == CHIP_RAVEN2),
+      .EXT_calibrated_timestamps = radv_calibrated_timestamps_enabled(device),
       .EXT_color_write_enable = true,
       .EXT_conditional_rendering = true,
       .EXT_conservative_rasterization = device->rad_info.gfx_level >= GFX9,
@@ -2341,23 +2348,23 @@ radv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
       radv_get_memory_budget_properties(physicalDevice, memory_budget);
 }
 
-static const VkTimeDomainEXT radv_time_domains[] = {
-   VK_TIME_DOMAIN_DEVICE_EXT,
-   VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT,
+static const VkTimeDomainKHR radv_time_domains[] = {
+   VK_TIME_DOMAIN_DEVICE_KHR,
+   VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR,
 #ifdef CLOCK_MONOTONIC_RAW
-   VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT,
+   VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR,
 #endif
 };
 
 VKAPI_ATTR VkResult VKAPI_CALL
-radv_GetPhysicalDeviceCalibrateableTimeDomainsEXT(VkPhysicalDevice physicalDevice, uint32_t *pTimeDomainCount,
-                                                  VkTimeDomainEXT *pTimeDomains)
+radv_GetPhysicalDeviceCalibrateableTimeDomainsKHR(VkPhysicalDevice physicalDevice, uint32_t *pTimeDomainCount,
+                                                  VkTimeDomainKHR *pTimeDomains)
 {
    int d;
-   VK_OUTARRAY_MAKE_TYPED(VkTimeDomainEXT, out, pTimeDomains, pTimeDomainCount);
+   VK_OUTARRAY_MAKE_TYPED(VkTimeDomainKHR, out, pTimeDomains, pTimeDomainCount);
 
    for (d = 0; d < ARRAY_SIZE(radv_time_domains); d++) {
-      vk_outarray_append_typed(VkTimeDomainEXT, &out, i)
+      vk_outarray_append_typed(VkTimeDomainKHR, &out, i)
       {
          *i = radv_time_domains[d];
       }

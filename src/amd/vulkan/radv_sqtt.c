@@ -997,17 +997,17 @@ radv_get_calibrated_timestamps(struct radv_device *device, uint64_t *cpu_timesta
    uint64_t max_deviation;
    VkResult result;
 
-   const VkCalibratedTimestampInfoEXT timestamp_infos[2] = {{
-                                                               .sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT,
-                                                               .timeDomain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT,
+   const VkCalibratedTimestampInfoKHR timestamp_infos[2] = {{
+                                                               .sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR,
+                                                               .timeDomain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR,
                                                             },
                                                             {
-                                                               .sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT,
-                                                               .timeDomain = VK_TIME_DOMAIN_DEVICE_EXT,
+                                                               .sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR,
+                                                               .timeDomain = VK_TIME_DOMAIN_DEVICE_KHR,
                                                             }};
 
    result =
-      radv_GetCalibratedTimestampsEXT(radv_device_to_handle(device), 2, timestamp_infos, timestamps, &max_deviation);
+      radv_GetCalibratedTimestampsKHR(radv_device_to_handle(device), 2, timestamp_infos, timestamps, &max_deviation);
    if (result != VK_SUCCESS)
       return result;
 
