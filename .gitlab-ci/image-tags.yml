@@ -10,7 +10,7 @@ variables:
    DEBIAN_BASE_TAG: "2023-11-18-deqp-runner"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
-   DEBIAN_BUILD_TAG: "2023-12-01-debian-x86_32-d3d12_2"
+   DEBIAN_BUILD_TAG: "2023-12-05-directx-headers-dep-611"
 
    DEBIAN_X86_64_TEST_BASE_IMAGE: "debian/x86_64_test-base"
 
@@ -33,7 +33,7 @@ variables:
    WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
 
    WINDOWS_X64_BUILD_PATH: "windows/x64_build"
-   WINDOWS_X64_BUILD_TAG: "2023-06-24-agility-711"
+   WINDOWS_X64_BUILD_TAG: "2023-12-07-directx-headers-611"
 
    WINDOWS_X64_TEST_PATH: "windows/x64_test"
    WINDOWS_X64_TEST_TAG: "2023-05-30-warp-1.0.7.1"
