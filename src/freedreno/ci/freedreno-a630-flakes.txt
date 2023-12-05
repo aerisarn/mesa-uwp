@@ -213,8 +213,10 @@ gmem-unaligned-dEQP-VK.renderpass.suballocation.load_store_op_none.depthstencil_
 KHR-GL46.buffer_storage.map_persistent_dispatch
 KHR-GL46.buffer_storage.map_persistent_flush
 KHR-GL46.compute_shader.atomic-case1
+KHR-GL46.compute_shader.resource-uniform
 KHR-GL46.sepshaderobjs.StateInteraction
 KHR-GL46.shader_bitfield_operation.findMSB.ivec4_2
+KHR-GL46.shader_bitfield_operation.imulExtended.ivec2_3
 KHR-GL46.shader_bitfield_operation.ldexp.vec2_1
 KHR-GL46.shader_bitfield_operation.uaddCarry.uint_1
 KHR-GL46.shader_multisample_interpolation.render.base.rgba8.samples_4
