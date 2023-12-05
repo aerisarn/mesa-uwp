@@ -36,6 +36,7 @@ vk_video_session_init(struct vk_device *device,
 {
    vk_object_base_init(device, &vid->base, VK_OBJECT_TYPE_VIDEO_SESSION_KHR);
 
+   vid->flags = create_info->flags;
    vid->op = create_info->pVideoProfile->videoCodecOperation;
    vid->max_coded = create_info->maxCodedExtent;
    vid->picture_format = create_info->pictureFormat;

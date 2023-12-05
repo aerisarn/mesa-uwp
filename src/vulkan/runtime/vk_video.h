@@ -31,6 +31,7 @@ extern "C" {
 
 struct vk_video_session {
    struct vk_object_base base;
+   VkVideoSessionCreateFlagsKHR flags;
    VkVideoCodecOperationFlagsKHR op;
    VkExtent2D max_coded;
    VkFormat picture_format;
