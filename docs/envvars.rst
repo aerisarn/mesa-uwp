@@ -1063,6 +1063,7 @@ clc environment variables
 
    a comma-separated list of debug channels to enable.
 
+   - ``dump_llvm`` Dumps all generated LLVM IRs
    - ``dump_spirv`` Dumps all compiled, linked and specialized SPIR-Vs
    - ``verbose`` Enable debug logging of clc code
 

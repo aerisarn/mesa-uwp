@@ -35,6 +35,7 @@
 
 static const struct debug_named_value clc_debug_options[] = {
    { "dump_spirv",  CLC_DEBUG_DUMP_SPIRV, "Dump spirv blobs" },
+   { "dump_llvm",  CLC_DEBUG_DUMP_LLVM, "Dump LLVM blobs" },
    { "verbose",  CLC_DEBUG_VERBOSE, NULL },
    DEBUG_NAMED_VALUE_END
 };

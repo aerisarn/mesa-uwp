@@ -80,6 +80,9 @@ using ::llvm::raw_string_ostream;
 using ::clang::driver::Driver;
 
 static void
+clc_dump_llvm(const llvm::Module *mod, FILE *f);
+
+static void
 llvm_log_handler(const ::llvm::DiagnosticInfo &di, void *data) {
    const clc_logger *logger = static_cast<clc_logger *>(data);
 
@@ -968,7 +971,12 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       return {};
    }
 
-   return act.takeModule();
+   auto mod = act.takeModule();
+
+   if (clc_debug_flags() & CLC_DEBUG_DUMP_LLVM)
+      clc_dump_llvm(mod.get(), stdout);
+
+   return mod;
 }
 
 static SPIRV::VersionNumber
@@ -1250,6 +1258,18 @@ clc_spirv_specialize(const struct clc_binary *in_spirv,
    out_spirv->data = malloc(out_spirv->size);
    memcpy(out_spirv->data, result.data(), out_spirv->size);
    return true;
+}
+
+static void
+clc_dump_llvm(const llvm::Module *mod, FILE *f)
+{
+   std::string out;
+   raw_string_ostream os(out);
+
+   mod->print(os, nullptr);
+   os.flush();
+
+   fwrite(out.c_str(), out.size(), 1, f);
 }
 
 void
