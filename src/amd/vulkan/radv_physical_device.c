@@ -478,6 +478,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_timeline_semaphore = true,
       .KHR_uniform_buffer_standard_layout = true,
       .KHR_variable_pointers = true,
+      .KHR_vertex_attribute_divisor = true,
       .KHR_video_queue = !!(device->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE),
       .KHR_video_decode_queue = !!(device->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE),
       .KHR_video_decode_h264 = VIDEO_CODEC_H264DEC && !!(device->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE),
@@ -761,7 +762,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       .conditionalRendering = true,
       .inheritedConditionalRendering = false,
 
-      /* VK_EXT_vertex_attribute_divisor */
+      /* VK_KHR_vertex_attribute_divisor */
       .vertexAttributeInstanceRateDivisor = true,
       .vertexAttributeInstanceRateZeroDivisor = true,
 
@@ -1502,8 +1503,9 @@ radv_get_physical_device_properties(struct radv_physical_device *pdevice)
    p->shaderCoreFeatures = 0;
    p->activeComputeUnitCount = pdevice->rad_info.num_cu;
 
-   /* VK_EXT_vertex_attribute_divisor */
+   /* VK_KHR_vertex_attribute_divisor */
    p->maxVertexAttribDivisor = UINT32_MAX;
+   p->supportsNonZeroFirstInstance = true;
 
    /* VK_EXT_conservative_rasterization */
    p->primitiveOverestimationSize = 0;
