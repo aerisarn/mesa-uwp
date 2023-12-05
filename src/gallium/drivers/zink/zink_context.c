@@ -2986,6 +2986,10 @@ zink_batch_rp(struct zink_context *ctx)
    else
       clear_buffers = begin_rendering(ctx);
    assert(!ctx->rp_changed);
+
+   /* update the render-passes HUD query */
+   ctx->hud.render_passes++;
+
    if (!in_rp && ctx->batch.in_rp) {
       /* only hit this for valid swapchain and new renderpass */
       if (ctx->render_condition.query)

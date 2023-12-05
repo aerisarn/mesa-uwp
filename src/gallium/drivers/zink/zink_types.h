@@ -1931,6 +1931,9 @@ struct zink_context {
       bool inverted;
       bool active; //this is the internal vk state
    } render_condition;
+   struct {
+      uint64_t render_passes;
+   } hud;
 
    struct {
       bool valid;

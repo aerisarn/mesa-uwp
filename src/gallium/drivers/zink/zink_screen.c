@@ -3380,6 +3380,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
    screen->base.finalize_nir = zink_shader_finalize;
    screen->base.get_disk_shader_cache = zink_get_disk_shader_cache;
    screen->base.get_sparse_texture_virtual_page_size = zink_get_sparse_texture_virtual_page_size;
+   screen->base.get_driver_query_group_info = zink_get_driver_query_group_info;
+   screen->base.get_driver_query_info = zink_get_driver_query_info;
 
    if (screen->info.have_EXT_sample_locations) {
       VkMultisamplePropertiesEXT prop;
