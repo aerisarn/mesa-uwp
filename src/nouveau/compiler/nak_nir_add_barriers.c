@@ -299,7 +299,7 @@ nak_nir_add_barriers_impl(nir_function_impl *impl,
 bool
 nak_nir_add_barriers(nir_shader *nir, const struct nak_compiler *nak)
 {
-   if (nak->sm < 75) {
+   if (nak->sm < 70) {
       nir_shader_preserve_all_metadata(nir);
       return false;
    }
