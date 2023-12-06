@@ -389,6 +389,15 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    }
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_shared,
             nir_address_format_32bit_offset);
+
+   if (nir->info.zero_initialize_shared_memory && nir->info.shared_size > 0) {
+      /* QMD::SHARED_MEMORY_SIZE requires an alignment of 256B so it's safe to
+       * align everything up to 16B so we can write whole vec4s.
+       */
+      nir->info.shared_size = align(nir->info.shared_size, 16);
+      NIR_PASS(_, nir, nir_zero_initialize_shared_memory,
+               nir->info.shared_size, 16);
+   }
 }
 
 #ifndef NDEBUG
