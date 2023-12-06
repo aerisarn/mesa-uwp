@@ -2296,10 +2296,6 @@ link_intrastage_shaders(void *mem_ctx,
                         unsigned num_shaders,
                         bool allow_missing_main)
 {
-   struct gl_uniform_block *ubo_blocks = NULL;
-   struct gl_uniform_block *ssbo_blocks = NULL;
-   unsigned num_ubo_blocks = 0;
-   unsigned num_ssbo_blocks = 0;
    bool arb_fragment_coord_conventions_enable = false;
 
    /* Check that global variables defined in multiple shaders are consistent.
@@ -2466,49 +2462,10 @@ link_intrastage_shaders(void *mem_ctx,
    array_length_to_const_visitor len_v;
    len_v.run(linked->ir);
 
-   /* Link up uniform blocks defined within this stage. */
-   link_uniform_blocks(mem_ctx, &ctx->Const, prog, linked, &ubo_blocks,
-                       &num_ubo_blocks, &ssbo_blocks, &num_ssbo_blocks);
-
-   const unsigned max_uniform_blocks =
-      ctx->Const.Program[linked->Stage].MaxUniformBlocks;
-   if (num_ubo_blocks > max_uniform_blocks) {
-      linker_error(prog, "Too many %s uniform blocks (%d/%d)\n",
-                   _mesa_shader_stage_to_string(linked->Stage),
-                   num_ubo_blocks, max_uniform_blocks);
-   }
-
-   const unsigned max_shader_storage_blocks =
-      ctx->Const.Program[linked->Stage].MaxShaderStorageBlocks;
-   if (num_ssbo_blocks > max_shader_storage_blocks) {
-      linker_error(prog, "Too many %s shader storage blocks (%d/%d)\n",
-                   _mesa_shader_stage_to_string(linked->Stage),
-                   num_ssbo_blocks, max_shader_storage_blocks);
-   }
-
    if (!prog->data->LinkStatus) {
       _mesa_delete_linked_shader(ctx, linked);
       return NULL;
    }
-
-   /* Copy ubo blocks to linked shader list */
-   linked->Program->sh.UniformBlocks =
-      ralloc_array(linked, gl_uniform_block *, num_ubo_blocks);
-   ralloc_steal(linked, ubo_blocks);
-   for (unsigned i = 0; i < num_ubo_blocks; i++) {
-      linked->Program->sh.UniformBlocks[i] = &ubo_blocks[i];
-   }
-   linked->Program->sh.NumUniformBlocks = num_ubo_blocks;
-   linked->Program->info.num_ubos = num_ubo_blocks;
-
-   /* Copy ssbo blocks to linked shader list */
-   linked->Program->sh.ShaderStorageBlocks =
-      ralloc_array(linked, gl_uniform_block *, num_ssbo_blocks);
-   ralloc_steal(linked, ssbo_blocks);
-   for (unsigned i = 0; i < num_ssbo_blocks; i++) {
-      linked->Program->sh.ShaderStorageBlocks[i] = &ssbo_blocks[i];
-   }
-   linked->Program->info.num_ssbos = num_ssbo_blocks;
 
    /* At this point linked should contain all of the linked IR, so
     * validate it to make sure nothing went wrong.

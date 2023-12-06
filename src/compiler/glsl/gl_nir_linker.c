@@ -1476,7 +1476,8 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       }
    }
 
-
+   if (!gl_nir_link_uniform_blocks(consts, prog))
+      return false;
 
    if (!gl_nir_link_uniforms(consts, prog, true))
       return false;
