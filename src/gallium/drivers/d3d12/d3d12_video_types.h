@@ -37,11 +37,6 @@
 #include <directx/d3d12video.h>
 #include <dxguids/dxguids.h>
 
-#if ((D3D12_SDK_VERSION < 611) || (D3D12_PREVIEW_SDK_VERSION < 711))
-using D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT1 = D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT;
-constexpr D3D12_FEATURE_VIDEO D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1 = D3D12_FEATURE_VIDEO_ENCODER_SUPPORT;
-#endif
-
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
@@ -136,7 +131,6 @@ d3d12_video_encoder_convert_from_d3d12_level_h264(D3D12_VIDEO_ENCODER_LEVELS_H26
 void
 d3d12_video_encoder_convert_from_d3d12_level_hevc(D3D12_VIDEO_ENCODER_LEVELS_HEVC level12,
                                                   uint32_t &                      specLevel);
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 void
 d3d12_video_encoder_convert_d3d12_to_spec_level_av1(D3D12_VIDEO_ENCODER_AV1_LEVELS   level12,
                                                     uint32_t &                      specLevel);
@@ -146,15 +140,12 @@ d3d12_video_encoder_convert_spec_to_d3d12_level_av1(uint32_t specLevel,
 void
 d3d12_video_encoder_convert_spec_to_d3d12_tier_av1(uint32_t specTier,
                                                    D3D12_VIDEO_ENCODER_AV1_TIER & tier12);           
-#endif                                                                                      
 D3D12_VIDEO_ENCODER_PROFILE_H264
 d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_h264(enum pipe_video_profile profile);
 D3D12_VIDEO_ENCODER_PROFILE_HEVC
 d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_hevc(enum pipe_video_profile profile);
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 D3D12_VIDEO_ENCODER_AV1_PROFILE
 d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_av1(enum pipe_video_profile profile);
-#endif
 D3D12_VIDEO_ENCODER_CODEC
 d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(enum pipe_video_profile profile);
 GUID

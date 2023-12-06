@@ -102,13 +102,11 @@ if _codecs.contains('h265enc')
 endif
 
 if _codecs.contains('av1enc')
-  if (dep_dxheaders.version().version_compare('>= 1.611.0') and dep_dxheaders.version().version_compare('< 1.700.0')) or dep_dxheaders.version().version_compare('>= 1.712.0')
-    files_libd3d12 += [
-      'd3d12_video_enc_av1.cpp',
-      'd3d12_video_encoder_references_manager_av1.cpp',
-      'd3d12_video_encoder_bitstream_builder_av1.cpp',
-    ]
-  endif
+  files_libd3d12 += [
+    'd3d12_video_enc_av1.cpp',
+    'd3d12_video_encoder_references_manager_av1.cpp',
+    'd3d12_video_encoder_bitstream_builder_av1.cpp',
+  ]
 endif
 
 endif # with_gallium_d3d12_video

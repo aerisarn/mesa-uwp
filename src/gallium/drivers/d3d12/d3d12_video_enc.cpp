@@ -37,18 +37,14 @@
 #include "d3d12_video_enc_hevc.h"
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 #include "d3d12_video_enc_av1.h"
-#endif
 #endif
 #include "d3d12_video_buffer.h"
 #include "d3d12_video_texture_array_dpb_manager.h"
 #include "d3d12_video_array_of_textures_dpb_manager.h"
 #include "d3d12_video_encoder_references_manager_h264.h"
 #include "d3d12_video_encoder_references_manager_hevc.h"
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 #include "d3d12_video_encoder_references_manager_av1.h"
-#endif
 #include "d3d12_residency.h"
 
 #include "vl/vl_video_buffer.h"
@@ -71,12 +67,10 @@ d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(enum pipe_video_profile pro
       {
          return D3D12_VIDEO_ENCODER_CODEC_HEVC;
       } break;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          return D3D12_VIDEO_ENCODER_CODEC_AV1;
       } break;
-#endif
       case PIPE_VIDEO_FORMAT_MPEG12:
       case PIPE_VIDEO_FORMAT_MPEG4:
       case PIPE_VIDEO_FORMAT_VC1:
@@ -324,12 +318,10 @@ d3d12_video_encoder_update_picparams_tracking(struct d3d12_video_encoder *pD3D12
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          d3d12_video_encoder_update_current_frame_pic_params_info_av1(pD3D12Enc, srcTexture, picture, currentPicParams, bUsedAsReference);
       } break;
-#endif
 #endif
       default:
       {
@@ -596,7 +588,6 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          bool hasInterFrames =
@@ -613,7 +604,6 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
          // We use packed headers and pist encode execution syntax for AV1
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_av1>();
       } break;
-#endif
 #endif
       default:
       {
@@ -654,7 +644,6 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA subregionData = {};
@@ -666,7 +655,6 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
          }
          return subregionData;
       } break;
-#endif
 #endif
       default:
       {
@@ -699,7 +687,6 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curPicParamsData = {};
@@ -707,7 +694,6 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
          curPicParamsData.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_AV1PicData);
          return curPicParamsData;
       } break;
-#endif
 #endif
       default:
       {
@@ -724,7 +710,6 @@ d3d12_video_encoder_get_current_rate_control_settings(struct d3d12_video_encoder
    curRateControlDesc.Flags           = pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags;
    curRateControlDesc.TargetFrameRate = pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_FrameRate;
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    if ((curRateControlDesc.Flags & D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_EXTENSION1_SUPPORT) != 0)
    {
       switch (pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Mode) {
@@ -768,7 +753,6 @@ d3d12_video_encoder_get_current_rate_control_settings(struct d3d12_video_encoder
       }
    }
    else 
-#endif
    {
       switch (pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Mode) {
          case D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_ABSOLUTE_QP_MAP:
@@ -838,7 +822,6 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          D3D12_VIDEO_ENCODER_LEVEL_SETTING curLevelDesc = {};
@@ -846,7 +829,6 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
          curLevelDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderLevelDesc.m_AV1LevelSetting);
          return curLevelDesc;
       } break;
-#endif
 #endif
       default:
       {
@@ -919,7 +901,6 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE curGOPDesc = {};
@@ -928,7 +909,6 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
          curGOPDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_AV1SequenceStructure);
          return curGOPDesc;
       } break;
-#endif
 #endif
       default:
       {
@@ -963,7 +943,6 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfigDesc = {};
@@ -972,7 +951,6 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
             sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_AV1Config);
          return codecConfigDesc;
       } break;
-#endif
 #endif
       default:
       {
@@ -999,12 +977,10 @@ d3d12_video_encoder_get_current_codec(struct d3d12_video_encoder *pD3D12Enc)
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          return D3D12_VIDEO_ENCODER_CODEC_AV1;
       } break;
-#endif
 #endif
       default:
       {
@@ -1028,13 +1004,11 @@ d3d12_video_encoder_disable_rc_vbv_sizes(struct D3D12EncodeRateControlState & rc
          rcState.m_Config.m_Configuration_VBR.VBVCapacity = 0;
          rcState.m_Config.m_Configuration_VBR.InitialVBVFullness = 0;
       } break;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_QVBR:
       {
          rcState.m_Config.m_Configuration_QVBR1.VBVCapacity = 0;
          rcState.m_Config.m_Configuration_QVBR1.InitialVBVFullness = 0;
       } break;
-#endif
       default:
       {
          unreachable("Unsupported D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE for VBV Sizes");
@@ -1067,7 +1041,6 @@ d3d12_video_encoder_disable_rc_maxframesize(struct D3D12EncodeRateControlState &
    }
 }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 static bool
 d3d12_video_encoder_is_qualitylevel_in_range(struct D3D12EncodeRateControlState & rcState, UINT MaxQualityVsSpeed)
 {
@@ -1118,7 +1091,6 @@ d3d12_video_encoder_disable_rc_qualitylevels(struct D3D12EncodeRateControlState 
       } break;
    }
 }
-#endif
 
 static void
 d3d12_video_encoder_disable_rc_minmaxqp(struct D3D12EncodeRateControlState & rcState)
@@ -1147,7 +1119,6 @@ d3d12_video_encoder_disable_rc_minmaxqp(struct D3D12EncodeRateControlState & rcS
    }
 }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 static void
 d3d12_video_encoder_disable_rc_extended1_to_legacy(struct D3D12EncodeRateControlState & rcState)
 {
@@ -1157,7 +1128,6 @@ d3d12_video_encoder_disable_rc_extended1_to_legacy(struct D3D12EncodeRateControl
    // rcState.m_Configuration_XXX and m_Configuration_XXX1 are unions, can be aliased
    // as the m_Configuration_XXX1 extensions are binary backcompat with m_Configuration_XXX
 }
-#endif
 
 ///
 /// Call d3d12_video_encoder_query_d3d12_driver_caps and see if any optional feature requested
@@ -1207,7 +1177,6 @@ bool d3d12_video_encoder_negotiate_requested_features_and_d3d12_driver_caps(stru
          d3d12_video_encoder_disable_rc_minmaxqp(pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc);
       }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       bool isRequestingExtended1RCSupported = ((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_EXTENSION1_SUPPORT) != 0);
       bool isClientRequestingExtended1RC = ((pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags & D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_EXTENSION1_SUPPORT) != 0);
 
@@ -1233,7 +1202,6 @@ bool d3d12_video_encoder_negotiate_requested_features_and_d3d12_driver_caps(stru
             }
          }
       }
-#endif
 
       ///
       /// Try fallback configuration
@@ -1347,7 +1315,6 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          capEncoderSupportData1.SuggestedProfile.pAV1Profile =
@@ -1360,7 +1327,6 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
             sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_AV1LevelSetting);
       } break;
 #endif
-#endif
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -1371,9 +1337,7 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
    capEncoderSupportData1.pResolutionDependentSupport =
       &pD3D12Enc->m_currentEncodeCapabilities.m_currentResolutionSupportCaps;
    
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    capEncoderSupportData1.SubregionFrameEncodingData = d3d12_video_encoder_get_current_slice_param_settings(pD3D12Enc);
-#endif
    HRESULT hr = pD3D12Enc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_SUPPORT1,
                                                                          &capEncoderSupportData1,
                                                                          sizeof(capEncoderSupportData1));
@@ -1439,7 +1403,6 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          D3D12_VIDEO_ENCODER_PROFILE_DESC curProfDesc = {};
@@ -1447,7 +1410,6 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
          curProfDesc.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderProfileDesc.m_AV1Profile);
          return curProfDesc;
       } break;
-#endif
 #endif
       default:
       {
@@ -1484,12 +1446,10 @@ d3d12_video_encoder_update_current_encoder_config_state(struct d3d12_video_encod
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          return d3d12_video_encoder_update_current_encoder_config_state_av1(pD3D12Enc, srcTextureDesc, picture);
       } break;
-#endif
 #endif
       default:
       {
@@ -1810,13 +1770,11 @@ d3d12_video_encoder_calculate_metadata_resolved_buffer_size(enum pipe_video_form
          break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          size_t extra_av1_size = d3d12_video_encoder_calculate_metadata_resolved_buffer_size_av1(maxSliceNumber);
          bufferSize += extra_av1_size;
       } break;
-#endif
 #endif
       default:
       {
@@ -2483,7 +2441,6 @@ d3d12_video_encoder_build_post_encode_codec_bitstream(struct d3d12_video_encoder
       } break; // Do not need post encode values in headers
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          return d3d12_video_encoder_build_post_encode_codec_bitstream_av1(
@@ -2495,7 +2452,6 @@ d3d12_video_encoder_build_post_encode_codec_bitstream(struct d3d12_video_encoder
             associatedMetadata
          );
       } break;
-#endif
 #endif
       default:
          unreachable("Unsupported pipe_video_format");
@@ -2623,12 +2579,10 @@ d3d12_video_encoder_store_current_picture_references(d3d12_video_encoder *pD3D12
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          d3d12_video_encoder_store_current_picture_references_av1(pD3D12Enc, current_metadata_slot);
       } break;
-#endif
 #endif
       default:
       {

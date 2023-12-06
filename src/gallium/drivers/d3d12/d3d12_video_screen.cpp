@@ -50,10 +50,8 @@ struct d3d12_encode_codec_support {
          union pipe_av1_enc_cap_features features;
          union pipe_av1_enc_cap_features_ext1 features_ext1;
          union pipe_av1_enc_cap_features_ext2 features_ext2;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
          D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION_SUPPORT d3d12_caps;
          D3D12_VIDEO_ENCODER_CODEC_AV1_PICTURE_CONTROL_SUPPORT d3d12_picture_control;
-#endif
       } av1_support;
    };
 };
@@ -331,7 +329,6 @@ d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_E
          supportedMaxRefFrames = (maxRefForL0 & 0xffff) | ((maxRefForL1 & 0xffff) << 16);
       }
    }
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    else if(codec == D3D12_VIDEO_ENCODER_CODEC_AV1){
       codecSupport.av1_support.d3d12_picture_control = {};
       capPictureControlData.Profile = profile;
@@ -353,11 +350,9 @@ d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_E
             supportedMaxRefFrames = (supportedMaxRefFrames & 0xffff) | ((supportedMaxRefFrames & 0xffff) << 16);
       }
    }
-#endif
    return supportedMaxRefFrames;
 }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 static void
 d3d12_video_encode_supported_tile_structures(const D3D12_VIDEO_ENCODER_CODEC &codec,
                                              const D3D12_VIDEO_ENCODER_PROFILE_DESC &profile,
@@ -457,7 +452,6 @@ d3d12_video_encode_supported_tile_structures(const D3D12_VIDEO_ENCODER_CODEC &co
                                       PIPE_VIDEO_CAP_SLICE_STRUCTURE_ARBITRARY_ROWS);
    }
 }
-#endif
 
 static uint32_t
 d3d12_video_encode_supported_slice_structures(const D3D12_VIDEO_ENCODER_CODEC &codec,
@@ -598,12 +592,10 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
    D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC hevcLvl = { };
    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = { 1, 0, 0 };
    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC hevcConfig = {};
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    D3D12_VIDEO_ENCODER_AV1_PROFILE av1prof = { };
    D3D12_VIDEO_ENCODER_AV1_LEVEL_TIER_CONSTRAINTS av1Lvl = { };
    D3D12_VIDEO_ENCODER_AV1_SEQUENCE_STRUCTURE av1Gop = { 1, 0 };
    D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION av1Config = {};
-#endif
    switch (argTargetCodec) {
       case D3D12_VIDEO_ENCODER_CODEC_H264:
       {
@@ -645,7 +637,6 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
          capEncoderSupportData1.CodecConfiguration.pHEVCConfig = &hevcConfig;
       } break;
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case D3D12_VIDEO_ENCODER_CODEC_AV1:
       {
          capEncoderSupportData1.SuggestedProfile.pAV1Profile = &av1prof;
@@ -675,7 +666,6 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
          capEncoderSupportData1.CodecConfiguration.DataSize = sizeof(av1Config);
          capEncoderSupportData1.CodecConfiguration.pAV1Config = &av1Config;
       } break;
-#endif
       default:
       {
          unreachable("Unsupported D3D12_VIDEO_ENCODER_CODEC");
@@ -705,7 +695,6 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
       }
    }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    // Convert between D3D12 definition and PIPE definition
 
    // D3D12: QualityVsSpeed must be in the range [0, D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT1.MaxQualityVsSpeed]
@@ -716,9 +705,6 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
    // The quality level setting is used as a trade-off between quality and speed/power 
    // consumption, with higher quality corresponds to lower speed and higher power consumption.
    maxQualityLevels = capEncoderSupportData1.MaxQualityVsSpeed + 1; // VA range starts from 1, D3D12 starts from 0
-#else
-   maxQualityLevels = 1; // This needs to be 1 for backcompat of frontend/va calling for PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL > 0
-#endif
 
    bool configSupported =
       (((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_GENERAL_SUPPORT_OK) != 0) &&
@@ -727,7 +713,6 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
    return configSupported;
 }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 bool
 static d3d12_video_encode_get_av1_codec_support ( const D3D12_VIDEO_ENCODER_CODEC &argCodec,
                                                    const D3D12_VIDEO_ENCODER_PROFILE_DESC &argTargetProfile,
@@ -748,7 +733,6 @@ static d3d12_video_encode_get_av1_codec_support ( const D3D12_VIDEO_ENCODER_CODE
    memset(&av1Support, 0, sizeof(D3D12_VIDEO_ENCODER_AV1_CODEC_CONFIGURATION_SUPPORT));
    return false;
 }
-#endif
 
 bool
 static d3d12_video_encode_get_h264_codec_support(const D3D12_VIDEO_ENCODER_PROFILE_DESC &argTargetProfile,
@@ -926,11 +910,9 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
             capEncoderSupportData1.SubregionFrameEncoding = (supportedSliceStructures == PIPE_VIDEO_CAP_SLICE_STRUCTURE_NONE) ?
                                                              D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME :
                                                              D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
             D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_SLICES sliceData = { };
             capEncoderSupportData1.SubregionFrameEncodingData.DataSize = sizeof(sliceData);
             capEncoderSupportData1.SubregionFrameEncodingData.pSlicesPartition_H264 = &sliceData;
-#endif
             supportsProfile = supportsProfile && d3d12_video_encode_support_caps(codecDesc,
                                                                                  maxRes,
                                                                                  encodeFormat,
@@ -1104,11 +1086,9 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                capEncoderSupportData1.SubregionFrameEncoding = (supportedSliceStructures == PIPE_VIDEO_CAP_SLICE_STRUCTURE_NONE) ?
                                                                 D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME :
                                                                 D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
                D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_SLICES sliceData = { };
                capEncoderSupportData1.SubregionFrameEncodingData.DataSize = sizeof(sliceData);
                capEncoderSupportData1.SubregionFrameEncodingData.pSlicesPartition_HEVC = &sliceData;
-#endif
                supportsProfile = supportsProfile && d3d12_video_encode_support_caps(codecDesc,
                                                                                     maxRes,
                                                                                     encodeFormat,
@@ -1129,7 +1109,6 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_PROFILE_AV1_MAIN:
       {
          D3D12_VIDEO_ENCODER_PROFILE_DESC profDesc = {};
@@ -1387,7 +1366,6 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
             }
          }
       } break;
-#endif // #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
 #endif // #if VIDEO_CODEC_AV1ENC
       default:
          supportsProfile = false;
@@ -1794,7 +1772,6 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                      return codec_specific_support.hevc_support.prediction_direction;
                   return 0;
                }
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
                else if (param == PIPE_VIDEO_CAP_ENC_AV1_FEATURE) {
                  return codec_specific_support.av1_support.features.value;
                } else if (param == PIPE_VIDEO_CAP_ENC_AV1_FEATURE_EXT1) {
@@ -1806,7 +1783,6 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                } else if(param == PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL) {
                   return maxQualityLevels;
                }
-#endif
             }
          } else if (param == PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL) {
             return 1; // This needs to be 1 for backcompat of frontend/va calling for PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL > 0
@@ -1881,9 +1857,7 @@ is_d3d12_video_encode_format_supported(struct pipe_screen *screen,
    D3D12_VIDEO_ENCODER_PROFILE_HEVC profHEVC = {};
 #endif
 #if VIDEO_CODEC_AV1ENC
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
    D3D12_VIDEO_ENCODER_AV1_PROFILE profAV1 = {};
-#endif
 #endif
    D3D12_FEATURE_DATA_VIDEO_ENCODER_INPUT_FORMAT capDataFmt = {};
    capDataFmt.NodeIndex = 0;
@@ -1907,14 +1881,12 @@ is_d3d12_video_encode_format_supported(struct pipe_screen *screen,
       } break;
 #endif
 #if VIDEO_CODEC_AV1ENC
-   #if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
       case PIPE_VIDEO_FORMAT_AV1:
       {
          profAV1 = d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_av1(profile);
          capDataFmt.Profile.DataSize = sizeof(profAV1);
          capDataFmt.Profile.pAV1Profile = &profAV1;
       } break;
-   #endif
 #endif
       default:
       {

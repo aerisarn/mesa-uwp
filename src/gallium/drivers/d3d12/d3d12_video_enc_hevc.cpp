@@ -98,7 +98,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
                picture->rc.max_qp;
          }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
          if (picture->quality_modes.level > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_QUALITY_VS_SPEED;
@@ -116,7 +115,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_VBR1.QualityVsSpeed =
                pD3D12Enc->max_quality_levels - picture->quality_modes.level;
          }
-#endif
 
       } break;
       case PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE:
@@ -128,7 +126,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
             picture->rc.peak_bitrate;
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_QVBR.ConstantQualityTarget =
             picture->rc.vbr_quality_factor;
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
          if (D3D12_VIDEO_ENC_CBR_FORCE_VBV_EQUAL_BITRATE) {
             debug_printf("[d3d12_video_encoder_hevc] d3d12_video_encoder_update_current_rate_control_hevc D3D12_VIDEO_ENC_CBR_FORCE_VBV_EQUAL_BITRATE environment variable is set, "
                        ", forcing VBV Size = VBV Initial Capacity = Target Bitrate = %" PRIu64 " (bits)\n", pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_QVBR1.TargetAvgBitRate);
@@ -152,7 +149,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_QVBR1.InitialVBVFullness =
                picture->rc.vbv_buf_initial_size;
          }
-#endif
          pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.max_frame_size = picture->rc.max_au_size;
          if (picture->rc.max_au_size > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
@@ -179,7 +175,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
                picture->rc.max_qp;
          }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
          if (picture->quality_modes.level > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_QUALITY_VS_SPEED;
@@ -197,7 +192,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_QVBR1.QualityVsSpeed =
                pD3D12Enc->max_quality_levels - picture->quality_modes.level;
          }
-#endif
 
       } break;
       case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
@@ -257,7 +251,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
                picture->rc.max_qp;
          }
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
          if (picture->quality_modes.level > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_QUALITY_VS_SPEED;
@@ -275,7 +268,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_CBR1.QualityVsSpeed =
                pD3D12Enc->max_quality_levels - picture->quality_modes.level;
          }
-#endif
 
       } break;
       case PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE:
@@ -288,7 +280,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
          pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_CQP
             .ConstantQP_InterPredictedFrame_BiDirectionalRef = picture->rc.quant_b_frames;
 
-#if ((D3D12_SDK_VERSION >= 611) && (D3D12_PREVIEW_SDK_VERSION >= 712))
          if (picture->quality_modes.level > 0) {
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
                D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_QUALITY_VS_SPEED;
@@ -306,7 +297,6 @@ d3d12_video_encoder_update_current_rate_control_hevc(struct d3d12_video_encoder 
             pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_CQP1.QualityVsSpeed =
                pD3D12Enc->max_quality_levels - picture->quality_modes.level;
          }
-#endif
       } break;
       default:
       {
