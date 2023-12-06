@@ -128,6 +128,7 @@ fn legalize_instr(
                 let val = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpIAdd3 {
                     srcs: [Src::new_zero(), *src0, Src::new_zero()],
+                    overflow: [Dst::None; 2],
                     dst: val.into(),
                 });
                 *src0 = val.into();

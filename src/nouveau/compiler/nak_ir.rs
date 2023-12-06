@@ -2405,6 +2405,7 @@ impl_display_for_op!(OpINeg);
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
     pub dst: Dst,
+    pub overflow: [Dst; 2],
 
     #[src_type(I32)]
     pub srcs: [Src; 3],
@@ -2427,9 +2428,7 @@ pub struct OpIAdd3X {
     pub dst: Dst,
     pub overflow: [Dst; 2],
 
-    pub high: bool,
-
-    #[src_type(ALU)]
+    #[src_type(B32)]
     pub srcs: [Src; 3],
 
     #[src_type(Pred)]
@@ -2438,17 +2437,15 @@ pub struct OpIAdd3X {
 
 impl DisplayOp for OpIAdd3X {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "iadd3")?;
-        if self.high {
-            write!(f, ".hi")?;
-        } else {
-            write!(f, ".lo")?;
-        }
-        write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.srcs[2])?;
-        if self.high {
-            write!(f, " {} {}", self.carry[0], self.carry[1])?;
-        }
-        Ok(())
+        write!(
+            f,
+            "iadd3.x {} {} {} {} {}",
+            self.srcs[0],
+            self.srcs[1],
+            self.srcs[2],
+            self.carry[0],
+            self.carry[1]
+        )
     }
 }
 impl_display_for_op!(OpIAdd3X);
@@ -5306,6 +5303,7 @@ impl Shader {
             match instr.op {
                 Op::INeg(neg) => MappedInstrs::One(Instr::new_boxed(OpIAdd3 {
                     dst: neg.dst,
+                    overflow: [Dst::None; 2],
                     srcs: [Src::new_zero(), neg.src.ineg(), Src::new_zero()],
                 })),
                 _ => MappedInstrs::One(instr),

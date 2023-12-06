@@ -154,6 +154,7 @@ pub trait SSABuilder: Builder {
         self.push_op(OpIAdd3 {
             dst: dst.into(),
             srcs: [Src::new_zero(), x, y],
+            overflow: [Dst::None; 2],
         });
         dst
     }

@@ -636,8 +636,8 @@ impl SM70Instr {
             ALUSrc::from_src(&op.srcs[2]),
         );
 
-        self.set_pred_dst(81..84, Dst::None);
-        self.set_pred_dst(84..87, Dst::None);
+        self.set_pred_dst(81..84, op.overflow[0]);
+        self.set_pred_dst(84..87, op.overflow[1]);
     }
 
     fn encode_iadd3x(&mut self, op: &OpIAdd3X) {
@@ -652,8 +652,7 @@ impl SM70Instr {
             ALUSrc::from_src(&op.srcs[2]),
         );
 
-        // .X
-        self.set_bit(74, op.high);
+        self.set_bit(74, true); // .X
 
         self.set_pred_dst(81..84, op.overflow[0]);
         self.set_pred_dst(84..87, op.overflow[1]);
