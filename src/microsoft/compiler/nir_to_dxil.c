@@ -184,8 +184,6 @@ dxil_get_nir_compiler_options(nir_shader_compiler_options *options,
    if (shader_model_max >= SHADER_MODEL_6_4) {
       options->has_sdot_4x8 = true;
       options->has_udot_4x8 = true;
-      options->has_sdot_4x8_sat = true;
-      options->has_udot_4x8_sat = true;
    }
 }
 
