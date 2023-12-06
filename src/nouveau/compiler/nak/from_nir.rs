@@ -1176,17 +1176,23 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             nir_op_ixor => b.lop2(LogicOp2::Xor, srcs[0], srcs[1]),
-            nir_op_pack_half_2x16_split => {
+            nir_op_pack_half_2x16_split | nir_op_pack_half_2x16_rtz_split => {
                 assert!(alu.get_src(0).bit_size() == 32);
                 let low = b.alloc_ssa(RegFile::GPR, 1);
                 let high = b.alloc_ssa(RegFile::GPR, 1);
+
+                let rnd_mode = match alu.op {
+                    nir_op_pack_half_2x16_split => FRndMode::NearestEven,
+                    nir_op_pack_half_2x16_rtz_split => FRndMode::Zero,
+                    _ => panic!("Unhandled fp16 pack op"),
+                };
 
                 b.push_op(OpF2F {
                     dst: low.into(),
                     src: srcs[0],
                     src_type: FloatType::F32,
                     dst_type: FloatType::F16,
-                    rnd_mode: FRndMode::NearestEven,
+                    rnd_mode: rnd_mode,
                     ftz: false,
                     high: false,
                     integer_rnd: false,
@@ -1200,7 +1206,7 @@ impl<'a> ShaderFromNir<'a> {
                     src: srcs[1],
                     src_type: FloatType::F32,
                     dst_type: FloatType::F16,
-                    rnd_mode: FRndMode::NearestEven,
+                    rnd_mode: rnd_mode,
                     ftz: false,
                     high: false,
                     integer_rnd: false,
