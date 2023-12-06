@@ -258,7 +258,6 @@ spec@!opengl 1.1@line-smooth-stipple,Fail
 # Delta over NAVI10
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=6,Fail
-spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=8,Fail
 
 spec@ext_transform_feedback@tessellation quad_strip wireframe,Fail
 spec@ext_transform_feedback@tessellation quads wireframe,Fail
@@ -348,13 +347,7 @@ spec@arb_viewport_array@display-list,Fail
 
 dEQP-GLES3.functional.shaders.precision.uint.highp_div_fragment,Fail
 dEQP-GLES31.functional.image_load_store.buffer.atomic.comp_swap_r32i_return_value,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=6,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=8,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=6,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=8,Fail
-spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-drawpixels-float-and-ushort,Fail
 spec@arb_sample_shading@arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-float-and-ushort,Fail
 
 dEQP-GLES31.functional.image_load_store.buffer.atomic.comp_swap_r32ui_return_value,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
