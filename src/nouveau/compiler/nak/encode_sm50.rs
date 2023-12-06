@@ -398,7 +398,7 @@ impl SM50Instr {
         );
     }
 
-    fn set_mem_order(&mut self, order: &MemOrder) {
+    fn set_mem_order(&mut self, _order: &MemOrder) {
         // TODO: order and scope aren't present before SM70, what should we do?
     }
 
@@ -732,7 +732,6 @@ impl SM50Instr {
         assert!(op.srcs[1].is_reg_or_zero());
         assert!(op.srcs[2].is_reg_or_zero());
 
-        let neg_0_bit = 51;
         let neg_1_bit = 51;
         let neg_2_bit = 52;
 
@@ -740,7 +739,7 @@ impl SM50Instr {
             SrcRef::Imm32(imm) => {
                 panic!("Invalid immediate src2 for IMAD {}", *imm)
             }
-            SrcRef::Reg(reg) => match &op.srcs[1].src_ref {
+            SrcRef::Reg(_) => match &op.srcs[1].src_ref {
                 SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3400);
                     self.set_src_imm_i20(20..40, 56, *imm);
@@ -1360,7 +1359,7 @@ impl SM50Instr {
 
     fn encode_fadd(&mut self, op: &OpFAdd) {
         let ftz = false; /* TODO: FTZ */
-        let dnz = false; /* TODO: DNZ */
+        let _dnz = false; /* TODO: DNZ */
         if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
             self.set_opcode(0x0800);
             self.set_dst(op.dst);
@@ -1378,7 +1377,7 @@ impl SM50Instr {
                     self.set_src_imm_f20(20..40, 56, *imm);
                     assert!(op.srcs[1].src_mod.is_none());
                 }
-                SrcRef::CBuf(cb) => {
+                SrcRef::CBuf(_) => {
                     self.set_opcode(0x4c58);
                     self.set_cb_fmod_src(20..39, 49, 45, op.srcs[1]);
                 }
@@ -1832,7 +1831,7 @@ impl Shader {
 
             let mut instrs_iter = b.instrs.iter();
 
-            for instr_group in 0..(block_num_instrs / 3) {
+            for _ in 0..(block_num_instrs / 3) {
                 let mut ip = ((encoded.len() / 2) + 1) * 8;
 
                 let mut sched_instr = [0x0; 2];
