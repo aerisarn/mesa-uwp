@@ -333,18 +333,17 @@ fn legalize_instr(
                     SrcMod::FNeg => *u ^ !(1_u32 << 31),
                     SrcMod::FNegAbs => *u | !(1_u32 << 31),
                     _ => panic!("Not a float source modifier"),
-
-                }
+                },
                 SrcType::I32 => match src.src_mod {
                     SrcMod::None => *u,
                     SrcMod::INeg => -(*u as i32) as u32,
                     _ => panic!("Not an integer source modifier"),
-                }
+                },
                 SrcType::B32 => match src.src_mod {
                     SrcMod::None => *u,
                     SrcMod::BNot => !*u,
                     _ => panic!("Not a bitwise source modifier"),
-                }
+                },
                 _ => {
                     assert!(src.src_mod.is_none());
                     *u
