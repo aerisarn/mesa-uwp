@@ -2814,7 +2814,7 @@ anv_get_memory_budget(VkPhysicalDevice physicalDevice,
          }
       } else {
          total_heaps_size = total_sys_heaps_size;
-         mem_available = device->sys.available;
+         mem_available = MIN2(device->sys.available, total_heaps_size);
       }
 
       double heap_proportion = (double) heap_size / total_heaps_size;
