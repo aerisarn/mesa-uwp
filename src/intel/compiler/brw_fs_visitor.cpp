@@ -671,7 +671,7 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
 
    if (prog_data->uses_kill) {
       write->predicate = BRW_PREDICATE_NORMAL;
-      write->flag_subreg = sample_mask_flag_subreg(this);
+      write->flag_subreg = sample_mask_flag_subreg(*this);
    }
 
    return write;

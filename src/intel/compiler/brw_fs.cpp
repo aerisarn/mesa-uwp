@@ -4391,15 +4391,15 @@ fs_visitor::lower_sub_sat()
 fs_reg
 brw_sample_mask_reg(const fs_builder &bld)
 {
-   const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
+   const fs_visitor &s = *bld.shader;
 
-   if (v->stage != MESA_SHADER_FRAGMENT) {
+   if (s.stage != MESA_SHADER_FRAGMENT) {
       return brw_imm_ud(0xffffffff);
-   } else if (brw_wm_prog_data(v->stage_prog_data)->uses_kill) {
+   } else if (brw_wm_prog_data(s.stage_prog_data)->uses_kill) {
       assert(bld.dispatch_width() <= 16);
-      return brw_flag_subreg(sample_mask_flag_subreg(v) + bld.group() / 16);
+      return brw_flag_subreg(sample_mask_flag_subreg(s) + bld.group() / 16);
    } else {
-      assert(v->devinfo->ver >= 6 && bld.dispatch_width() <= 16);
+      assert(s.devinfo->ver >= 6 && bld.dispatch_width() <= 16);
       return retype(brw_vec1_grf((bld.group() >= 16 ? 2 : 1), 7),
                     BRW_REGISTER_TYPE_UW);
    }
@@ -4447,11 +4447,11 @@ brw_emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
           bld.group() == inst->group &&
           bld.dispatch_width() == inst->exec_size);
 
-   const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
+   const fs_visitor &s = *bld.shader;
    const fs_reg sample_mask = brw_sample_mask_reg(bld);
-   const unsigned subreg = sample_mask_flag_subreg(v);
+   const unsigned subreg = sample_mask_flag_subreg(s);
 
-   if (brw_wm_prog_data(v->stage_prog_data)->uses_kill) {
+   if (brw_wm_prog_data(s.stage_prog_data)->uses_kill) {
       assert(sample_mask.file == ARF &&
              sample_mask.nr == brw_flag_subreg(subreg).nr &&
              sample_mask.subnr == brw_flag_subreg(

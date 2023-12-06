@@ -452,10 +452,10 @@ public:
  * limits the dispatch width to SIMD16 for fragment shaders that use discard.
  */
 static inline unsigned
-sample_mask_flag_subreg(const fs_visitor *shader)
+sample_mask_flag_subreg(const fs_visitor &s)
 {
-   assert(shader->stage == MESA_SHADER_FRAGMENT);
-   return shader->devinfo->ver >= 7 ? 2 : 1;
+   assert(s.stage == MESA_SHADER_FRAGMENT);
+   return s.devinfo->ver >= 7 ? 2 : 1;
 }
 
 /**
