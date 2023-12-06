@@ -151,7 +151,5 @@ zink-radv-navi31-valve:
   timeout: 1h 20m
   variables:
     GPU_VERSION: zink-radv-navi31
-    # TODO: Multithreading issues (lot of AMDGPU errors reported)
-    FDO_CI_CONCURRENT: 1
     B2C_TIMEOUT_BOOT_MINUTES: 75
     B2C_TIMEOUT_OVERALL_MINUTES: 75
