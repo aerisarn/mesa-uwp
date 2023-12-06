@@ -643,6 +643,18 @@ impl SM70Instr {
         self.set_pred_src(87..90, 90, op.accum);
     }
 
+    fn encode_bmsk(&mut self, op: &OpBMsk) {
+        self.encode_alu(
+            0x01b,
+            Some(op.dst),
+            ALUSrc::from_src(&op.pos),
+            ALUSrc::from_src(&op.width),
+            ALUSrc::None,
+        );
+
+        self.set_bit(75, op.wrap);
+    }
+
     fn encode_brev(&mut self, op: &OpBRev) {
         self.encode_alu(
             0x101,
@@ -1995,6 +2007,7 @@ impl SM70Instr {
             Op::DMul(op) => si.encode_dmul(&op),
             Op::DSetP(op) => si.encode_dsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
+            Op::BMsk(op) => si.encode_bmsk(&op),
             Op::BRev(op) => si.encode_brev(&op),
             Op::Flo(op) => si.encode_flo(&op),
             Op::IAbs(op) => si.encode_iabs(&op),

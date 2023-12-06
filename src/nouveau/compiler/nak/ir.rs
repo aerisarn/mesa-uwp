@@ -2580,6 +2580,28 @@ impl_display_for_op!(OpDSetP);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBMsk {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub pos: Src,
+
+    #[src_type(ALU)]
+    pub width: Src,
+
+    pub wrap: bool,
+}
+
+impl DisplayOp for OpBMsk {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let wrap = if self.wrap { ".wrap" } else { ".clamp" };
+        write!(f, "bmsk{} {} {}", wrap, self.pos, self.width)
+    }
+}
+impl_display_for_op!(OpBMsk);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBRev {
     pub dst: Dst,
 
@@ -4727,6 +4749,7 @@ pub enum Op {
     DMnMx(OpDMnMx),
     DMul(OpDMul),
     DSetP(OpDSetP),
+    BMsk(OpBMsk),
     BRev(OpBRev),
     Flo(OpFlo),
     IAbs(OpIAbs),
@@ -5172,7 +5195,8 @@ impl Instr {
 
             // Integer ALU
             Op::BRev(_) | Op::Flo(_) | Op::PopC(_) => false,
-            Op::IAbs(_)
+            Op::BMsk(_)
+            | Op::IAbs(_)
             | Op::INeg(_)
             | Op::IAdd2(_)
             | Op::IAdd3(_)

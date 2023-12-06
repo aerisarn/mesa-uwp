@@ -525,6 +525,16 @@ impl<'a> ShaderFromNir<'a> {
                 [lo[0], hi[0]].into()
             }
             nir_op_bcsel => b.sel(srcs[0], srcs[1], srcs[2]),
+            nir_op_bfm => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpBMsk {
+                    dst: dst.into(),
+                    pos: srcs[1],
+                    width: srcs[0],
+                    wrap: true,
+                });
+                dst
+            }
             nir_op_bit_count => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpPopC {

@@ -432,7 +432,8 @@ fn legalize_sm70_instr(
             }
             copy_alu_src_if_not_reg(b, src0, SrcType::F64);
         }
-        Op::BRev(_) | Op::Flo(_) | Op::IAbs(_) | Op::INeg(_) => (),
+        Op::BMsk(_) | Op::BRev(_) | Op::Flo(_) => (),
+        Op::IAbs(_) | Op::INeg(_) => (),
         Op::IAdd3(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);

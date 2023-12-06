@@ -138,6 +138,7 @@ fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     op.has_fmulz_no_denorms = true;
     op.has_find_msb_rev = true;
     op.has_pack_half_2x16_rtz = true;
+    op.has_bfm = dev.sm >= 70;
 
     op.max_unroll_iterations = 32;
 
