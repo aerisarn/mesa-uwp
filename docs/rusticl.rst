@@ -86,7 +86,7 @@ that add new features should be ran against the appropriate conformance
 tests.
 
 Also, make sure the formatting is in order before submitting code. That
-can easily be done via ``git ls-files */{lib,app}.rs | xargs rustfmt``.
+can easily be done via ``git ls-files */{lib,main}.rs | xargs rustfmt``.
 
 When submitting Merge Requests or filing bugs related to Rusticl, make
 sure to add the ``Rusticl`` label so people subscribed to that Label get

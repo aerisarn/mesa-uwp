@@ -46,6 +46,7 @@ rustfmt:
     - shopt -s globstar
     - rustfmt --version
     - rustfmt --verbose src/**/lib.rs
+    - rustfmt --verbose src/**/main.rs
 
 clang-format:
   extends:
