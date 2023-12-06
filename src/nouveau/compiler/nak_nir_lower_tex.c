@@ -66,8 +66,15 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
           *
           * TODO: Use F2I.U32.RNE
           */
-         if (tex->op != nir_texop_txf && tex->op != nir_texop_txf_ms)
-            arr_idx = nir_f2u32(b, nir_fadd_imm(b, arr_idx, 0.5));
+         if (tex->op != nir_texop_txf && tex->op != nir_texop_txf_ms) {
+            arr_idx = nir_fadd_imm(b, arr_idx, 0.5);
+
+            // TODO: Hardware seems to clamp negative values to zero for us
+            // in f2u, but we still need this fmax for constant folding.
+            arr_idx = nir_fmax(b, arr_idx, nir_imm_float(b, 0.0));
+
+            arr_idx = nir_f2u32(b, arr_idx);
+         }
 
          arr_idx = nir_umin(b, arr_idx, nir_imm_int(b, UINT16_MAX));
       }
