@@ -448,9 +448,9 @@ fn lower_and_optimize_nir(
 
     nir_pass!(nir, nir_dedup_inline_samplers);
 
-    let mut printf_opts = nir_lower_printf_options::default();
-    printf_opts.set_treat_doubles_as_floats(false);
-    printf_opts.max_buffer_size = dev.printf_buffer_size() as u32;
+    let printf_opts = nir_lower_printf_options {
+        max_buffer_size: dev.printf_buffer_size() as u32,
+    };
     nir_pass!(nir, nir_lower_printf, &printf_opts);
 
     opt_nir(nir, dev, false);

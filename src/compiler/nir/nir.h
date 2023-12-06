@@ -6243,7 +6243,6 @@ bool nir_lower_ssbo(nir_shader *shader);
 bool nir_lower_helper_writes(nir_shader *shader, bool lower_plain_stores);
 
 typedef struct nir_lower_printf_options {
-   bool treat_doubles_as_floats : 1;
    unsigned max_buffer_size;
 } nir_lower_printf_options;
 

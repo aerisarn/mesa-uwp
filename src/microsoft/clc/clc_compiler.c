@@ -772,7 +772,6 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp, glsl_get_cl_type_size_align);
 
    nir_lower_printf_options printf_options = {
-      .treat_doubles_as_floats = true,
       .max_buffer_size = 1024 * 1024
    };
    NIR_PASS_V(nir, nir_lower_printf, &printf_options);
