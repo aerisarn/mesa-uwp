@@ -1015,13 +1015,22 @@ impl<'a> ShaderFromNir<'a> {
                     b.isetp(IntCmpType::I32, IntCmpOp::Eq, srcs[0], srcs[1])
                 }
             }
-            nir_op_ifind_msb | nir_op_ufind_msb => {
+            nir_op_ifind_msb | nir_op_ifind_msb_rev | nir_op_ufind_msb
+            | nir_op_ufind_msb_rev => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpFlo {
                     dst: dst.into(),
                     src: srcs[0],
-                    signed: alu.op == nir_op_ifind_msb,
-                    return_shift_amount: false,
+                    signed: match alu.op {
+                        nir_op_ifind_msb | nir_op_ifind_msb_rev => true,
+                        nir_op_ufind_msb | nir_op_ufind_msb_rev => false,
+                        _ => panic!("Not a find_msb op"),
+                    },
+                    return_shift_amount: match alu.op {
+                        nir_op_ifind_msb | nir_op_ufind_msb => false,
+                        nir_op_ifind_msb_rev | nir_op_ufind_msb_rev => true,
+                        _ => panic!("Not a find_msb op"),
+                    },
                 });
                 dst
             }
