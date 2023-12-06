@@ -323,6 +323,37 @@ fn legalize_instr(
         }
     }
 
+    let src_types = instr.src_types();
+    for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
+        if let SrcRef::Imm32(u) = &mut src.src_ref {
+            *u = match src_types[i] {
+                SrcType::F32 | SrcType::F64 => match src.src_mod {
+                    SrcMod::None => *u,
+                    SrcMod::FAbs => *u & !(1_u32 << 31),
+                    SrcMod::FNeg => *u ^ !(1_u32 << 31),
+                    SrcMod::FNegAbs => *u | !(1_u32 << 31),
+                    _ => panic!("Not a float source modifier"),
+
+                }
+                SrcType::I32 => match src.src_mod {
+                    SrcMod::None => *u,
+                    SrcMod::INeg => -(*u as i32) as u32,
+                    _ => panic!("Not an integer source modifier"),
+                }
+                SrcType::B32 => match src.src_mod {
+                    SrcMod::None => *u,
+                    SrcMod::BNot => !*u,
+                    _ => panic!("Not a bitwise source modifier"),
+                }
+                _ => {
+                    assert!(src.src_mod.is_none());
+                    *u
+                }
+            };
+            src.src_mod = SrcMod::None;
+        }
+    }
+
     let mut vec_src_map: HashMap<SSARef, SSARef> = HashMap::new();
     let mut vec_comps = HashSet::new();
     for src in instr.srcs_mut() {
