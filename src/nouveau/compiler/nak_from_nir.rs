@@ -1037,6 +1037,35 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_uadd_sat => {
+                let x = srcs[0].as_ssa().unwrap();
+                let y = srcs[1].as_ssa().unwrap();
+                let sum_lo = b.alloc_ssa(RegFile::GPR, 1);
+                let ovf_lo = b.alloc_ssa(RegFile::Pred, 1);
+                b.push_op(OpIAdd3 {
+                    dst: sum_lo.into(),
+                    overflow: [ovf_lo.into(), Dst::None],
+                    srcs: [0.into(), x[0].into(), y[0].into()],
+                });
+                if alu.def.bit_size() == 64 {
+                    let sum_hi = b.alloc_ssa(RegFile::GPR, 1);
+                    let ovf_hi = b.alloc_ssa(RegFile::Pred, 1);
+                    b.push_op(OpIAdd3X {
+                        dst: sum_hi.into(),
+                        overflow: [ovf_hi.into(), Dst::None],
+                        srcs: [0.into(), x[1].into(), y[1].into()],
+                        carry: [ovf_lo.into(), false.into()],
+                    });
+                    let lo =
+                        b.sel(ovf_hi.into(), u32::MAX.into(), sum_lo.into());
+                    let hi =
+                        b.sel(ovf_hi.into(), u32::MAX.into(), sum_hi.into());
+                    [lo[0], hi[0]].into()
+                } else {
+                    assert!(alu.def.bit_size() == 32);
+                    b.sel(ovf_lo.into(), u32::MAX.into(), sum_lo.into())
+                }
+            }
             nir_op_unpack_32_2x16_split_x => {
                 b.prmt(srcs[0], 0.into(), [0, 1, 4, 4])
             }
