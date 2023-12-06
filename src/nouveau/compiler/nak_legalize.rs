@@ -140,6 +140,16 @@ fn legalize_instr(
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
             swap_srcs_if_not_reg(src2, src1);
+            if !src0.src_mod.is_none() && !src1.src_mod.is_none() {
+                let val = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpIAdd3X {
+                    srcs: [Src::new_zero(), *src0, Src::new_zero()],
+                    overflow: [Dst::None; 2],
+                    dst: val.into(),
+                    carry: [false.into(); 2],
+                });
+                *src0 = val.into();
+            }
             copy_src_if_not_reg(b, src0, RegFile::GPR);
             copy_src_if_not_reg(b, src2, RegFile::GPR);
         }
