@@ -172,6 +172,15 @@ vn_ring_wait_seqno(struct vn_ring *ring, uint32_t seqno)
    } while (true);
 }
 
+void
+vn_ring_wait_all(struct vn_ring *ring)
+{
+   /* load from tail rather than ring->cur for atomicity */
+   const uint32_t pending_seqno =
+      atomic_load_explicit(ring->shared.tail, memory_order_relaxed);
+   vn_ring_wait_seqno(ring, pending_seqno);
+}
+
 static bool
 vn_ring_has_space(const struct vn_ring *ring,
                   uint32_t size,

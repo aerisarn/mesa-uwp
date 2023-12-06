@@ -417,6 +417,34 @@ vn_DestroyPipelineCache(VkDevice device,
    vk_free(alloc, cache);
 }
 
+static struct vn_ring *
+vn_get_target_ring(struct vn_device *dev)
+{
+   if (dev->force_primary_ring_submission)
+      return dev->primary_ring;
+
+   if (vn_tls_get_primary_ring_submission())
+      return dev->primary_ring;
+
+   if (!dev->secondary_ring) {
+      if (!vn_device_secondary_ring_init_once(dev)) {
+         /* fallback to primary ring submission */
+         return dev->primary_ring;
+      }
+   }
+
+   /* Ensure pipeline cache and pipeline deps are ready in the renderer.
+    *
+    * TODO:
+    * - For cache retrieval, track ring seqno of cache obj and only wait
+    *   for that seqno once.
+    * - For pipeline creation, track ring seqnos of pipeline layout and
+    *   renderpass objs it depends on, and only wait for those seqnos once.
+    */
+   vn_ring_wait_all(dev->primary_ring);
+   return dev->secondary_ring;
+}
+
 VkResult
 vn_GetPipelineCacheData(VkDevice device,
                         VkPipelineCache pipelineCache,
@@ -427,10 +455,13 @@ vn_GetPipelineCacheData(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_physical_device *physical_dev = dev->physical_device;
 
+   struct vn_ring *target_ring = vn_get_target_ring(dev);
+   assert(target_ring);
+
    struct vk_pipeline_cache_header *header = pData;
    VkResult result;
    if (!pData) {
-      result = vn_call_vkGetPipelineCacheData(dev->primary_ring, device,
+      result = vn_call_vkGetPipelineCacheData(target_ring, device,
                                               pipelineCache, pDataSize, NULL);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
@@ -454,7 +485,7 @@ vn_GetPipelineCacheData(VkDevice device,
 
    *pDataSize -= header->header_size;
    result =
-      vn_call_vkGetPipelineCacheData(dev->primary_ring, device, pipelineCache,
+      vn_call_vkGetPipelineCacheData(target_ring, device, pipelineCache,
                                      pDataSize, pData + header->header_size);
    if (result < VK_SUCCESS)
       return vn_error(dev->instance, result);
@@ -1404,16 +1435,18 @@ vn_CreateGraphicsPipelines(VkDevice device,
          (const VkBaseInStructure *)pCreateInfos[i].pNext);
    }
 
-   if (want_sync) {
+   struct vn_ring *target_ring = vn_get_target_ring(dev);
+   assert(target_ring);
+   if (want_sync || target_ring == dev->secondary_ring) {
       result = vn_call_vkCreateGraphicsPipelines(
-         dev->primary_ring, device, pipelineCache, createInfoCount,
-         pCreateInfos, NULL, pPipelines);
+         target_ring, device, pipelineCache, createInfoCount, pCreateInfos,
+         NULL, pPipelines);
       if (result != VK_SUCCESS)
          vn_destroy_failed_pipelines(dev, createInfoCount, pPipelines, alloc);
    } else {
-      vn_async_vkCreateGraphicsPipelines(dev->primary_ring, device,
-                                         pipelineCache, createInfoCount,
-                                         pCreateInfos, NULL, pPipelines);
+      vn_async_vkCreateGraphicsPipelines(target_ring, device, pipelineCache,
+                                         createInfoCount, pCreateInfos, NULL,
+                                         pPipelines);
       result = VK_SUCCESS;
    }
 
@@ -1458,16 +1491,18 @@ vn_CreateComputePipelines(VkDevice device,
          (const VkBaseInStructure *)pCreateInfos[i].pNext);
    }
 
-   if (want_sync) {
+   struct vn_ring *target_ring = vn_get_target_ring(dev);
+   assert(target_ring);
+   if (want_sync || target_ring == dev->secondary_ring) {
       result = vn_call_vkCreateComputePipelines(
-         dev->primary_ring, device, pipelineCache, createInfoCount,
-         pCreateInfos, NULL, pPipelines);
+         target_ring, device, pipelineCache, createInfoCount, pCreateInfos,
+         NULL, pPipelines);
       if (result != VK_SUCCESS)
          vn_destroy_failed_pipelines(dev, createInfoCount, pPipelines, alloc);
    } else {
-      vn_async_vkCreateComputePipelines(dev->primary_ring, device,
-                                        pipelineCache, createInfoCount,
-                                        pCreateInfos, NULL, pPipelines);
+      vn_async_vkCreateComputePipelines(target_ring, device, pipelineCache,
+                                        createInfoCount, pCreateInfos, NULL,
+                                        pPipelines);
       result = VK_SUCCESS;
    }
 

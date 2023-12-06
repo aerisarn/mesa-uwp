@@ -124,6 +124,7 @@ enum vn_perf {
    VN_PERF_NO_QUERY_FEEDBACK = 1ull << 8,
    VN_PERF_NO_ASYNC_MEM_ALLOC = 1ull << 9,
    VN_PERF_NO_TILED_WSI_IMAGE = 1ull << 10,
+   VN_PERF_NO_MULTI_RING = 1ull << 11,
 };
 
 typedef uint64_t vn_object_id;
@@ -206,6 +207,16 @@ struct vn_relax_state {
    struct vn_instance *instance;
    uint32_t iter;
    const char *reason;
+};
+
+struct vn_tls {
+   /* Track swapchain and command pool creations on threads so dispatch of the
+    * following on non-tracked threads can be routed as synchronous on the
+    * secondary ring:
+    * - pipeline creations
+    * - pipeline cache retrievals
+    */
+   bool primary_ring_submission;
 };
 
 void
@@ -467,6 +478,26 @@ vn_gettid(void)
 #else
    return syscall(SYS_gettid);
 #endif
+}
+
+struct vn_tls *
+vn_tls_get(void);
+
+static inline void
+vn_tls_set_primary_ring_submission(void)
+{
+   struct vn_tls *tls = vn_tls_get();
+   if (likely(tls))
+      tls->primary_ring_submission = true;
+}
+
+static inline bool
+vn_tls_get_primary_ring_submission(void)
+{
+   const struct vn_tls *tls = vn_tls_get();
+   if (likely(tls))
+      return tls->primary_ring_submission;
+   return true;
 }
 
 #endif /* VN_COMMON_H */

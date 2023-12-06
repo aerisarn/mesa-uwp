@@ -51,6 +51,7 @@ static const struct debug_control vn_perf_options[] = {
    { "no_query_feedback", VN_PERF_NO_QUERY_FEEDBACK },
    { "no_async_mem_alloc", VN_PERF_NO_ASYNC_MEM_ALLOC },
    { "no_tiled_wsi_image", VN_PERF_NO_TILED_WSI_IMAGE },
+   { "no_multi_ring", VN_PERF_NO_MULTI_RING },
    { NULL, 0 },
    /* clang-format on */
 };
@@ -237,4 +238,41 @@ vn_relax(struct vn_relax_state *state)
 
    const uint32_t shift = util_last_bit(*iter) - busy_wait_order - 1;
    os_time_sleep(base_sleep_us << shift);
+}
+
+static void
+vn_tls_free(void *tls)
+{
+   free(tls);
+}
+
+static tss_t vn_tls_key;
+static bool vn_tls_key_valid;
+
+static void
+vn_tls_key_create_once(void)
+{
+   vn_tls_key_valid = tss_create(&vn_tls_key, vn_tls_free) == thrd_success;
+   if (!vn_tls_key_valid && VN_DEBUG(INIT))
+      vn_log(NULL, "WARNING: failed to create vn_tls_key");
+}
+
+struct vn_tls *
+vn_tls_get(void)
+{
+   static once_flag once = ONCE_FLAG_INIT;
+   call_once(&once, vn_tls_key_create_once);
+   if (unlikely(!vn_tls_key_valid))
+      return NULL;
+
+   struct vn_tls *tls = tss_get(vn_tls_key);
+   if (likely(tls))
+      return tls;
+
+   tls = calloc(1, sizeof(*tls));
+   if (tls && tss_set(vn_tls_key, tls) == thrd_success)
+      return tls;
+
+   free(tls);
+   return NULL;
 }

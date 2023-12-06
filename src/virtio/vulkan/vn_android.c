@@ -355,6 +355,8 @@ vn_GetSwapchainGrallocUsage2ANDROID(
    if (swapchainImageUsage & VK_SWAPCHAIN_IMAGE_USAGE_SHARED_BIT_ANDROID)
       *grallocProducerUsage |= vn_android_gralloc_get_shared_present_usage();
 
+   vn_tls_set_primary_ring_submission();
+
    return VK_SUCCESS;
 }
 

@@ -687,6 +687,8 @@ vn_CreateCommandPool(VkDevice device,
    vn_async_vkCreateCommandPool(dev->primary_ring, device, pCreateInfo, NULL,
                                 &pool_handle);
 
+   vn_tls_set_primary_ring_submission();
+
    *pCommandPool = pool_handle;
 
    return VK_SUCCESS;
