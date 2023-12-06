@@ -114,7 +114,7 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    program->dev.vgpr_alloc_granule = 4;
 
    if (gfx_level >= GFX10) {
-      program->dev.physical_sgprs = 5120; /* doesn't matter as long as it's at least 128 * 40 */
+      program->dev.physical_sgprs = 128 * 20; /* enough for max waves */
       program->dev.sgpr_alloc_granule = 128;
       program->dev.sgpr_limit =
          108; /* includes VCC, which can be treated as s[106-107] on GFX10+ */
