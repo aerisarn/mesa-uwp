@@ -176,6 +176,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_shader_subgroup_vote = true,
       .EXT_shader_viewport_index_layer = info->cls_eng3d >= MAXWELL_B,
       .EXT_subgroup_size_control = true,
+      .EXT_texel_buffer_alignment = true,
       .EXT_tooling_info = true,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
@@ -456,6 +457,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       .sparseImageInt64Atomics = info->cls_eng3d >= MAXWELL_A &&
                                  nvk_use_nak(info),
 
+      /* VK_EXT_texel_buffer_alignment */
+      .texelBufferAlignment = true,
+
       /* VK_EXT_transform_feedback */
       .transformFeedback = true,
       .geometryStreams = true,
@@ -685,6 +689,10 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       .maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = 32,
       .maxDescriptorSetInlineUniformBlocks = 6 * 32,
       .maxDescriptorSetUpdateAfterBindInlineUniformBlocks = 6 * 32,
+      .storageTexelBufferOffsetAlignmentBytes = 16,
+      .storageTexelBufferOffsetSingleTexelAlignment = true,
+      .uniformTexelBufferOffsetAlignmentBytes = 16,
+      .uniformTexelBufferOffsetSingleTexelAlignment = true,
       .maxBufferSize = NVK_MAX_BUFFER_SIZE,
 
       /* VK_KHR_push_descriptor */
