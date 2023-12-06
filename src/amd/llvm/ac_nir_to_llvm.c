@@ -4003,7 +4003,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
          num_deriv_channels = 2;
          break;
       case GLSL_SAMPLER_DIM_1D:
-         num_deriv_channels = ctx->ac.gfx_level == GFX9 ? 2 : 1;
+         num_deriv_channels = 1;
          break;
       }
 
