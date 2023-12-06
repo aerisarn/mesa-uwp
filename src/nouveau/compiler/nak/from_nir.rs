@@ -164,7 +164,7 @@ impl Default for ShaderFloatControls {
                 rnd_mode: FRndMode::NearestEven,
             },
             fp32: PerSizeFloatControls {
-                ftz: false,
+                ftz: true, // Default FTZ on fp32
                 rnd_mode: FRndMode::NearestEven,
             },
             fp64: PerSizeFloatControls {
