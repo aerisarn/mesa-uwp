@@ -763,6 +763,18 @@ impl Device {
         self.get_nir_options().has_pack_32_4x8
     }
 
+    pub fn sdot_4x8_sat_supported(&self) -> bool {
+        self.get_nir_options().has_sdot_4x8_sat
+    }
+
+    pub fn udot_4x8_sat_supported(&self) -> bool {
+        self.get_nir_options().has_udot_4x8_sat
+    }
+
+    pub fn sudot_4x8_sat_supported(&self) -> bool {
+        self.get_nir_options().has_sudot_4x8_sat
+    }
+
     pub fn fp64_is_softfp(&self) -> bool {
         bit_check(
             self.get_nir_options().lower_doubles_options as u32,

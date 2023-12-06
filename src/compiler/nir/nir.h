@@ -3876,14 +3876,23 @@ typedef struct nir_shader_compiler_options {
     * lowerings. */
    bool has_texture_scaling;
 
-   /** Backend supports sdot_4x8 opcodes. */
+   /** Backend supports sdot_4x8_iadd. */
    bool has_sdot_4x8;
 
-   /** Backend supports udot_4x8 opcodes. */
+   /** Backend supports udot_4x8_uadd. */
    bool has_udot_4x8;
 
-   /** Backend supports sudot_4x8 opcodes. */
+   /** Backend supports sudot_4x8_iadd. */
    bool has_sudot_4x8;
+
+   /** Backend supports sdot_4x8_iadd_sat. */
+   bool has_sdot_4x8_sat;
+
+   /** Backend supports udot_4x8_uadd_sat. */
+   bool has_udot_4x8_sat;
+
+   /** Backend supports sudot_4x8_iadd_sat. */
+   bool has_sudot_4x8_sat;
 
    /** Backend supports sdot_2x16 and udot_2x16 opcodes. */
    bool has_dot_2x16;
