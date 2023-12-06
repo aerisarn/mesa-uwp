@@ -248,6 +248,19 @@ ail_is_level_compressed(struct ail_layout *layout, unsigned level)
           u_minify(MAX2(width_sa, height_sa), level) >= 16;
 }
 
+static inline bool
+ail_is_level_twiddled_uncompressed(struct ail_layout *layout, unsigned level)
+{
+   switch (layout->tiling) {
+   case AIL_TILING_TWIDDLED:
+      return true;
+   case AIL_TILING_TWIDDLED_COMPRESSED:
+      return !ail_is_level_compressed(layout, level);
+   default:
+      return false;
+   }
+}
+
 void ail_make_miptree(struct ail_layout *layout);
 
 void ail_detile(void *_tiled, void *_linear, struct ail_layout *tiled_layout,
