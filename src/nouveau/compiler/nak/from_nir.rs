@@ -535,6 +535,7 @@ impl<'a> ShaderFromNir<'a> {
                         dst_is_signed,
                     ),
                     rnd_mode: FRndMode::Zero,
+                    ftz: false,
                 });
                 dst
             }
@@ -553,6 +554,7 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [x, y],
                     saturate: saturate,
                     rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
                 });
                 dst
             }
@@ -591,6 +593,7 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [srcs[0], srcs[1], srcs[2]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
                 };
                 b.push_op(ffma);
                 dst
@@ -614,6 +617,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst: dst.into(),
                     srcs: [srcs[0], srcs[1]],
                     min: (alu.op == nir_op_fmin).into(),
+                    ftz: false,
                 });
                 dst
             }
@@ -625,6 +629,7 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [srcs[0], srcs[1]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
                 };
                 b.push_op(fmul);
                 dst
@@ -673,6 +678,7 @@ impl<'a> ShaderFromNir<'a> {
                         srcs: [srcs[0], 0.into()],
                         saturate: true,
                         rnd_mode: FRndMode::NearestEven,
+                        ftz: false,
                     });
                     dst
                 }
@@ -1154,6 +1160,7 @@ impl<'a> ShaderFromNir<'a> {
                         FSwzAddOp::SubRight,
                     ],
                     rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
                 });
 
                 dst
@@ -1185,6 +1192,7 @@ impl<'a> ShaderFromNir<'a> {
                         FSwzAddOp::SubRight,
                     ],
                     rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
                 });
 
                 dst
@@ -2499,6 +2507,7 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [depth.into(), 0.into()],
                     saturate: true,
                     rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
                 });
                 srcs.push(sat_depth.into());
             }

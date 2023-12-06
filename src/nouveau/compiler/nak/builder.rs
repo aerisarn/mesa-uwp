@@ -177,6 +177,7 @@ pub trait SSABuilder: Builder {
             srcs: [x, y],
             saturate: false,
             rnd_mode: FRndMode::NearestEven,
+            ftz: false,
         });
         dst
     }
@@ -188,6 +189,7 @@ pub trait SSABuilder: Builder {
             srcs: [x, y],
             saturate: false,
             rnd_mode: FRndMode::NearestEven,
+            ftz: false,
         });
         dst
     }

@@ -2182,6 +2182,7 @@ pub struct OpFAdd {
 
     pub saturate: bool,
     pub rnd_mode: FRndMode,
+    pub ftz: bool,
 }
 
 impl DisplayOp for OpFAdd {
@@ -2192,6 +2193,9 @@ impl DisplayOp for OpFAdd {
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
+        }
+        if self.ftz {
+            write!(f, ".ftz")?;
         }
         write!(f, " {} {}", self.srcs[0], self.srcs[1],)
     }
@@ -2208,6 +2212,7 @@ pub struct OpFFma {
 
     pub saturate: bool,
     pub rnd_mode: FRndMode,
+    pub ftz: bool,
 }
 
 impl DisplayOp for OpFFma {
@@ -2218,6 +2223,9 @@ impl DisplayOp for OpFFma {
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
+        }
+        if self.ftz {
+            write!(f, ".ftz")?;
         }
         write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.srcs[2])
     }
@@ -2234,11 +2242,18 @@ pub struct OpFMnMx {
 
     #[src_type(Pred)]
     pub min: Src,
+
+    pub ftz: bool,
 }
 
 impl DisplayOp for OpFMnMx {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fmnmx {} {} {}", self.srcs[0], self.srcs[1], self.min)
+        let ftz = if self.ftz { ".ftz" } else { "" };
+        write!(
+            f,
+            "fmnmx{} {} {} {}",
+            ftz, self.srcs[0], self.srcs[1], self.min
+        )
     }
 }
 impl_display_for_op!(OpFMnMx);
@@ -2253,6 +2268,7 @@ pub struct OpFMul {
 
     pub saturate: bool,
     pub rnd_mode: FRndMode,
+    pub ftz: bool,
 }
 
 impl DisplayOp for OpFMul {
@@ -2263,6 +2279,9 @@ impl DisplayOp for OpFMul {
         }
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
+        }
+        if self.ftz {
+            write!(f, ".ftz")?;
         }
         write!(f, " {} {}", self.srcs[0], self.srcs[1],)
     }
@@ -2345,6 +2364,7 @@ pub struct OpFSwzAdd {
     pub srcs: [Src; 2],
 
     pub rnd_mode: FRndMode,
+    pub ftz: bool,
 
     pub ops: [FSwzAddOp; 4],
 }
@@ -2354,6 +2374,9 @@ impl DisplayOp for OpFSwzAdd {
         write!(f, "fswzadd",)?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
+        }
+        if self.ftz {
+            write!(f, ".ftz")?;
         }
         write!(
             f,
@@ -2959,6 +2982,7 @@ pub struct OpF2I {
     pub src_type: FloatType,
     pub dst_type: IntType,
     pub rnd_mode: FRndMode,
+    pub ftz: bool,
 }
 
 impl SrcsAsSlice for OpF2I {
@@ -2982,10 +3006,11 @@ impl SrcsAsSlice for OpF2I {
 
 impl DisplayOp for OpF2I {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ftz = if self.ftz { ".ftz" } else { "" };
         write!(
             f,
-            "f2i{}{}{} {}",
-            self.dst_type, self.src_type, self.rnd_mode, self.src,
+            "f2i{}{}{}{} {}",
+            self.dst_type, self.src_type, self.rnd_mode, ftz, self.src,
         )
     }
 }
