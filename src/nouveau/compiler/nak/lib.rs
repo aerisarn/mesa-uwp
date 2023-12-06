@@ -7,6 +7,7 @@ mod bitset;
 mod builder;
 mod calc_instr_deps;
 mod cfg;
+mod encode_sm50;
 mod encode_sm70;
 mod from_nir;
 mod ir;
