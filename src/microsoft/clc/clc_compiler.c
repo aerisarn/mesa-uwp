@@ -136,7 +136,7 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
    nir_variable *in_var = nir_deref_instr_get_variable(context->deref);
 
    context->metadata_index = 0;
-   while (context->metadata->args[context->metadata_index].image.buf_ids[0] != in_var->data.binding)
+   while (context->metadata->args[context->metadata_index].offset != in_var->data.driver_location)
       context->metadata_index++;
 
    context->num_buf_ids = context->metadata->args[context->metadata_index].image.num_buf_ids;
