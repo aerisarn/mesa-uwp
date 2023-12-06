@@ -883,11 +883,6 @@ anv_compute_sys_heap_size(struct anv_physical_device *device,
    else
       available_ram = total_ram * 3 / 4;
 
-   /* We also want to leave some padding for things we allocate in the driver,
-    * so don't go over 3/4 of the GTT either.
-    */
-   available_ram = MIN2(available_ram, device->gtt_size * 3 / 4);
-
    return available_ram;
 }
 
