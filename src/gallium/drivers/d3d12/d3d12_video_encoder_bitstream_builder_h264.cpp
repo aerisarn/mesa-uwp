@@ -172,7 +172,7 @@ d3d12_video_bitstream_builder_h264::build_sps(const struct pipe_h264_enc_seq_par
    spsStructure.vui.num_reorder_frames = seqData.max_num_reorder_frames;
    spsStructure.vui.max_dec_frame_buffering = seqData.max_dec_frame_buffering;
 
-   // Print built PPS structure
+   // Print built SPS structure
    debug_printf(
       "[D3D12 d3d12_video_bitstream_builder_h264] H264_SPS Structure generated before writing to bitstream:\n");
    print_sps(spsStructure);
@@ -245,7 +245,7 @@ d3d12_video_bitstream_builder_h264::build_pps(const enum pipe_video_profile &   
       "[D3D12 d3d12_video_bitstream_builder_h264] H264_PPS Structure generated before writing to bitstream:\n");
    print_pps(ppsStructure);
 
-   // Convert the H264 PPS structure into bytes
+   // Convert the H264 SPS structure into bytes
    m_h264Encoder.pps_to_nalu_bytes(&ppsStructure, headerBitstream, bIsHighProfile, placingPositionStart, writtenBytes);
 }
 
