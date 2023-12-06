@@ -1,8 +1,8 @@
 // Copyright © 2022 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
-use crate::nak_ir::*;
-use crate::{GetDebugFlags, DEBUG};
+use crate::api::{GetDebugFlags, DEBUG};
+use crate::ir::*;
 
 use std::cmp::max;
 use std::collections::HashSet;

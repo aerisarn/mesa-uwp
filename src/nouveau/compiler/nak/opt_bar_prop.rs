@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::bitset::BitSet;
-use crate::nak_ir::*;
+use crate::ir::*;
 
 use std::collections::HashMap;
 

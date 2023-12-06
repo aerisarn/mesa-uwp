@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::nak_ir::*;
+use crate::ir::*;
 
 use std::collections::HashMap;
 use std::slice;

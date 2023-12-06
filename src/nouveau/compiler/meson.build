@@ -28,8 +28,22 @@ libnak_c_files = files(
   'nak_nir_lower_gs_intrinsics.c',
 )
 
-libnak_rs_files = files(
-  'nak.rs',
+_libbitview_rs = static_library(
+  'bitview',
+  files('bitview/lib.rs'),
+  gnu_symbol_visibility : 'hidden',
+  rust_abi : 'rust',
+  rust_args : [
+    # we error on all clippy warnings unless they are disabled
+    '-Dclippy::all',
+    # we want to add asserts in control flow
+    '-Aclippy::assertions_on_constants',
+    # dunno, kind of looks nicier being explicit
+    '-Aclippy::redundant_field_names',
+    '-Aclippy::too_many_arguments',
+    '-Aclippy::type_complexity',
+    '-Anon_snake_case',
+  ],
 )
 
 libnak_deps = [
@@ -80,15 +94,15 @@ libnak_bindings_gen = static_library(
   rust_abi : 'rust',
 )
 
-libnak_ir_proc = rust.proc_macro(
+_libnak_ir_proc_rs = rust.proc_macro(
   'nak_ir_proc',
-  files('nak_ir_proc.rs'),
+  files('nak/ir_proc.rs'),
   dependencies : [dep_syn],
 )
 
 _libnak_rs = static_library(
   'nak_rs',
-  [libnak_rs_files],
+  files('nak/lib.rs'),
   gnu_symbol_visibility : 'hidden',
   rust_abi : 'c',
   rust_args : [
@@ -102,7 +116,7 @@ _libnak_rs = static_library(
     '-Aclippy::type_complexity',
     '-Anon_snake_case',
   ],
-  link_with: [libnak_bindings_gen, libnak_ir_proc],
+  link_with: [_libbitview_rs, libnak_bindings_gen, _libnak_ir_proc_rs],
 )
 
 _libnak = static_library(
@@ -118,8 +132,9 @@ _libnak = static_library(
 if with_tools.contains('nouveau')
   executable(
     'nvfuzz',
-    files('nvfuzz.rs'),
+    files('nvfuzz/main.rs'),
     rust_crate_type : 'bin',
+    link_with: [_libbitview_rs],
     install : true
   )
 endif

@@ -1,7 +1,7 @@
 // Copyright © 2022 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
-use crate::nak_ir::*;
+use crate::ir::*;
 
 use std::cmp::max;
 

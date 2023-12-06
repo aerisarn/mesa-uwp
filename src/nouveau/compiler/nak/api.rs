@@ -1,37 +1,12 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
-mod bitset;
-mod bitview;
-mod nak_assign_regs;
-mod nak_builder;
-mod nak_calc_instr_deps;
-mod nak_cfg;
-mod nak_encode_sm70;
-mod nak_from_nir;
-mod nak_ir;
-mod nak_legalize;
-mod nak_liveness;
-mod nak_lower_copy_swap;
-mod nak_lower_par_copies;
-mod nak_opt_bar_prop;
-mod nak_opt_copy_prop;
-mod nak_opt_dce;
-mod nak_opt_lop;
-mod nak_opt_out;
-mod nak_repair_ssa;
-mod nak_sph;
-mod nak_spill_values;
-mod nak_to_cssa;
-mod nir;
-
-use crate::nak_ir::ShaderStageInfo;
+use crate::from_nir::*;
+use crate::ir::{ShaderIoInfo, ShaderStageInfo};
+use crate::sph;
 
 use nak_bindings::*;
-use nak_from_nir::*;
-use nak_ir::ShaderIoInfo;
+
 use std::cmp::max;
 use std::env;
 use std::ffi::{CStr, CString};
@@ -46,7 +21,7 @@ enum DebugFlags {
     Spill,
 }
 
-struct Debug {
+pub struct Debug {
     flags: u32,
 }
 
@@ -73,7 +48,7 @@ impl Debug {
     }
 }
 
-trait GetDebugFlags {
+pub trait GetDebugFlags {
     fn debug_flags(&self) -> u32;
 
     fn print(&self) -> bool {
@@ -89,7 +64,7 @@ trait GetDebugFlags {
     }
 }
 
-static DEBUG: OnceLock<Debug> = OnceLock::new();
+pub static DEBUG: OnceLock<Debug> = OnceLock::new();
 
 impl GetDebugFlags for OnceLock<Debug> {
     fn debug_flags(&self) -> u32 {
@@ -397,7 +372,7 @@ pub extern "C" fn nak_compile_shader(
             }
             _ => unsafe { std::mem::zeroed() },
         },
-        hdr: nak_sph::encode_header(&s.info, fs_key),
+        hdr: sph::encode_header(&s.info, fs_key),
     };
 
     let mut asm = String::new();

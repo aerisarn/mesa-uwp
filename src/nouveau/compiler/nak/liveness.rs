@@ -4,7 +4,7 @@
  */
 
 use crate::bitset::BitSet;
-use crate::nak_ir::*;
+use crate::ir::*;
 
 use std::cell::RefCell;
 use std::cmp::{max, Ord, Ordering};

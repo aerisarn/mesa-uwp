@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+extern crate bitview;
 extern crate nak_ir_proc;
 
-use crate::bitview::BitMutView;
-pub use crate::nak_builder::{
-    Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
-};
-use crate::nak_cfg::CFG;
-use crate::nak_sph::{OutputTopology, PixelImap};
-use crate::{GetDebugFlags, DEBUG};
+use bitview::BitMutView;
+
+use crate::api::{GetDebugFlags, DEBUG};
+pub use crate::builder::{Builder, InstrBuilder, SSABuilder, SSAInstrBuilder};
+use crate::cfg::CFG;
+use crate::sph::{OutputTopology, PixelImap};
 use nak_ir_proc::*;
 use std::cmp::{max, min};
 use std::fmt;

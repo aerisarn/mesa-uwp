@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::nak_ir::*;
+use crate::ir::*;
 
 pub trait Builder {
     fn push_instr(&mut self, instr: Box<Instr>) -> &mut Instr;

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mod bitview;
+extern crate bitview;
 
 use crate::bitview::*;
 

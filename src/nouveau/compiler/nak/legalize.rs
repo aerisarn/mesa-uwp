@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::nak_ir::*;
-use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
+use crate::ir::*;
+use crate::liveness::{BlockLiveness, Liveness, SimpleLiveness};
 
 use std::collections::{HashMap, HashSet};
 

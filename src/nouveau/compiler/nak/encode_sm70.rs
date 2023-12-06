@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::bitview::*;
-use crate::nak_ir::*;
+use crate::ir::*;
+use bitview::*;
 
 use std::collections::HashMap;
 use std::ops::Range;

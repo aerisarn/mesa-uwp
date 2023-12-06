@@ -5,10 +5,10 @@
 
 #![allow(non_upper_case_globals)]
 
-use crate::nak_cfg::CFGBuilder;
-use crate::nak_ir::*;
-use crate::nak_sph::{OutputTopology, PixelImap};
+use crate::cfg::CFGBuilder;
+use crate::ir::*;
 use crate::nir::*;
+use crate::sph::{OutputTopology, PixelImap};
 
 use nak_bindings::*;
 

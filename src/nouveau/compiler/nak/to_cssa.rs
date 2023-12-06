@@ -1,9 +1,9 @@
 // Copyright © 2023 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
-use crate::nak_cfg::CFG;
-use crate::nak_ir::*;
-use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
+use crate::cfg::CFG;
+use crate::ir::*;
+use crate::liveness::{BlockLiveness, Liveness, SimpleLiveness};
 
 use std::collections::HashMap;
 use std::iter::Peekable;

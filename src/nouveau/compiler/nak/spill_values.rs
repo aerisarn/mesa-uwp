@@ -3,12 +3,12 @@
 
 #![allow(unstable_name_collisions)]
 
+use crate::api::{GetDebugFlags, DEBUG};
 use crate::bitset::BitSet;
-use crate::nak_ir::*;
-use crate::nak_liveness::{
+use crate::ir::*;
+use crate::liveness::{
     BlockLiveness, LiveSet, Liveness, NextUseBlockLiveness, NextUseLiveness,
 };
-use crate::{GetDebugFlags, DEBUG};
 
 use std::cell::RefCell;
 use std::cmp::{max, Ordering, Reverse};

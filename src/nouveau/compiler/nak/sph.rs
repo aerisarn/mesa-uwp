@@ -1,17 +1,15 @@
 // Copyright © 2023 Collabora, Ltd.
 // SPDX-License-Identifier: MIT
 
-use std::ops::Range;
+extern crate bitview;
 
-use nak_bindings::*;
-
-use crate::{
-    bitview::{
-        BitMutView, BitMutViewable, BitView, BitViewable, SetBit, SetField,
-        SetFieldU64,
-    },
-    nak_ir::{ShaderInfo, ShaderIoInfo, ShaderStageInfo},
+use crate::ir::{ShaderInfo, ShaderIoInfo, ShaderStageInfo};
+use bitview::{
+    BitMutView, BitMutViewable, BitView, BitViewable, SetBit, SetField,
+    SetFieldU64,
 };
+use nak_bindings::*;
+use std::ops::Range;
 
 pub const _FERMI_SHADER_HEADER_SIZE: usize = 20;
 pub const TURING_SHADER_HEADER_SIZE: usize = 32;

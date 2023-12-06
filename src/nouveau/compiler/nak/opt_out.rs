@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::nak_ir::*;
+use crate::ir::*;
 
 fn try_combine_outs(emit: &mut Instr, cut: &Instr) -> bool {
     let Op::Out(emit) = &mut emit.op else {
