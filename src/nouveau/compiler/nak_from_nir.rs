@@ -1066,6 +1066,39 @@ impl<'a> ShaderFromNir<'a> {
                     b.sel(ovf_lo.into(), u32::MAX.into(), sum_lo.into())
                 }
             }
+            nir_op_usub_sat => {
+                let x = srcs[0].as_ssa().unwrap();
+                let y = srcs[1].as_ssa().unwrap();
+                let sum_lo = b.alloc_ssa(RegFile::GPR, 1);
+                let ovf_lo = b.alloc_ssa(RegFile::Pred, 1);
+                // The result of OpIAdd3X is the 33-bit value
+                //
+                //  s|o = x + !y + 1
+                //
+                // The overflow bit of this result is true if and only if the
+                // subtract did NOT overflow.
+                b.push_op(OpIAdd3 {
+                    dst: sum_lo.into(),
+                    overflow: [ovf_lo.into(), Dst::None],
+                    srcs: [0.into(), x[0].into(), Src::from(y[0]).ineg()],
+                });
+                if alu.def.bit_size() == 64 {
+                    let sum_hi = b.alloc_ssa(RegFile::GPR, 1);
+                    let ovf_hi = b.alloc_ssa(RegFile::Pred, 1);
+                    b.push_op(OpIAdd3X {
+                        dst: sum_hi.into(),
+                        overflow: [ovf_hi.into(), Dst::None],
+                        srcs: [0.into(), x[1].into(), Src::from(y[1]).bnot()],
+                        carry: [ovf_lo.into(), false.into()],
+                    });
+                    let lo = b.sel(ovf_hi.into(), sum_lo.into(), 0.into());
+                    let hi = b.sel(ovf_hi.into(), sum_hi.into(), 0.into());
+                    [lo[0], hi[0]].into()
+                } else {
+                    assert!(alu.def.bit_size() == 32);
+                    b.sel(ovf_lo.into(), sum_lo.into(), 0.into())
+                }
+            }
             nir_op_unpack_32_2x16_split_x => {
                 b.prmt(srcs[0], 0.into(), [0, 1, 4, 4])
             }

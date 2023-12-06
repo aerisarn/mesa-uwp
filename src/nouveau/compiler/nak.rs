@@ -127,7 +127,7 @@ fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     op.lower_device_index_to_zero = true;
     op.lower_isign = true;
     op.lower_uadd_sat = dev.sm < 70;
-    op.lower_usub_sat = true; // TODO
+    op.lower_usub_sat = dev.sm < 70;
     op.lower_iadd_sat = true; // TODO
     op.use_interpolated_input_intrinsics = true;
     op.lower_int64_options = !(nir_lower_icmp64
