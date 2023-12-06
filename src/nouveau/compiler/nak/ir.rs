@@ -2580,19 +2580,19 @@ impl_display_for_op!(OpDSetP);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpBrev {
+pub struct OpBRev {
     pub dst: Dst,
 
     #[src_type(ALU)]
     pub src: Src,
 }
 
-impl DisplayOp for OpBrev {
+impl DisplayOp for OpBRev {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "brev {}", self.src,)
+        write!(f, "brev {}", self.src)
     }
 }
-impl_display_for_op!(OpBrev);
+impl_display_for_op!(OpBRev);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
@@ -4727,7 +4727,7 @@ pub enum Op {
     DMnMx(OpDMnMx),
     DMul(OpDMul),
     DSetP(OpDSetP),
-    Brev(OpBrev),
+    BRev(OpBRev),
     Flo(OpFlo),
     IAbs(OpIAbs),
     INeg(OpINeg),
@@ -5171,7 +5171,7 @@ impl Instr {
             | Op::DSetP(_) => false,
 
             // Integer ALU
-            Op::Brev(_) | Op::Flo(_) | Op::PopC(_) => false,
+            Op::BRev(_) | Op::Flo(_) | Op::PopC(_) => false,
             Op::IAbs(_)
             | Op::INeg(_)
             | Op::IAdd2(_)

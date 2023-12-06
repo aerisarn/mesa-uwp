@@ -643,7 +643,7 @@ impl SM70Instr {
         self.set_pred_src(87..90, 90, op.accum);
     }
 
-    fn encode_brev(&mut self, op: &OpBrev) {
+    fn encode_brev(&mut self, op: &OpBRev) {
         self.encode_alu(
             0x101,
             Some(op.dst),
@@ -1995,7 +1995,7 @@ impl SM70Instr {
             Op::DMul(op) => si.encode_dmul(&op),
             Op::DSetP(op) => si.encode_dsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
-            Op::Brev(op) => si.encode_brev(&op),
+            Op::BRev(op) => si.encode_brev(&op),
             Op::Flo(op) => si.encode_flo(&op),
             Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),

@@ -535,7 +535,7 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_bitfield_reverse => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpBrev {
+                b.push_op(OpBRev {
                     dst: dst.into(),
                     src: srcs[0],
                 });
@@ -605,7 +605,7 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_find_lsb => {
                 let tmp = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpBrev {
+                b.push_op(OpBRev {
                     dst: tmp.into(),
                     src: srcs[0],
                 });
