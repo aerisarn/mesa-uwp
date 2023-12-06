@@ -993,6 +993,7 @@ pub enum SrcType {
     F32,
     F64,
     I32,
+    B32,
     Pred,
     Bar,
 }
@@ -1154,6 +1155,14 @@ impl Src {
             SrcType::I32 => {
                 match self.src_mod {
                     SrcMod::None | SrcMod::INeg => (),
+                    _ => return false,
+                }
+
+                self.src_ref.is_alu()
+            }
+            SrcType::B32 => {
+                match self.src_mod {
+                    SrcMod::None | SrcMod::BNot => (),
                     _ => return false,
                 }
 

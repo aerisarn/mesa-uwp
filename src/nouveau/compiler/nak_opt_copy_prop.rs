@@ -294,7 +294,11 @@ impl CopyPropPass {
             SrcType::GPR => {
                 self.prop_to_gpr_src(src);
             }
-            SrcType::ALU | SrcType::F32 | SrcType::I32 | SrcType::Pred => {
+            SrcType::ALU
+            | SrcType::F32
+            | SrcType::I32
+            | SrcType::B32
+            | SrcType::Pred => {
                 self.prop_to_scalar_src(src_type, src);
             }
             SrcType::F64 => {

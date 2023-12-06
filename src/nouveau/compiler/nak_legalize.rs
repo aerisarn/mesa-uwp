@@ -299,7 +299,8 @@ fn legalize_instr(
                     SrcType::ALU
                     | SrcType::F32
                     | SrcType::F64
-                    | SrcType::I32 => {
+                    | SrcType::I32
+                    | SrcType::B32 => {
                         panic!("ALU srcs must be legalized explicitly");
                     }
                     SrcType::Pred => {
