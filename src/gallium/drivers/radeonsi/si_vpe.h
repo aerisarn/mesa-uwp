@@ -39,6 +39,9 @@
  */
 #define VPE_FENCE_TIMEOUT_NS 1000000000
 
+/* VPE 1st generation only support 1 input stram */
+#define VPE_STREAM_MAX_NUM   1
+
 #define VPE_BUFFERS_NUM      6
 #define VPE_EMBBUF_SIZE      20000
 
@@ -49,9 +52,6 @@ struct vpe_video_processor {
     struct pipe_screen *screen;
     struct radeon_winsys *ws;
     struct radeon_cmdbuf cs;
-
-    struct rvid_buffer cmd_buffer;
-    struct rvid_buffer emb_buffer;
 
     uint8_t bufs_num;
     uint8_t cur_buf;

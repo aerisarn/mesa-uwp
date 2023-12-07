@@ -635,14 +635,16 @@ si_vpe_processor_destroy(struct pipe_video_codec *codec)
       vpeproc->ws->fence_wait(vpeproc->ws, vpeproc->process_fence, PIPE_DEFAULT_DECODER_FEEDBACK_TIMEOUT_NS);
    }
    vpeproc->ws->cs_destroy(&vpeproc->cs);
-   si_vid_destroy_buffer(&vpeproc->emb_buffer);
 
    if (vpeproc->vpe_build_bufs)
       si_vpe_free_buffer(vpeproc->vpe_build_bufs);
    if (vpeproc->vpe_handle)
       vpe_destroy(&vpeproc->vpe_handle);
-   if (vpeproc->vpe_build_param)
+   if (vpeproc->vpe_build_param) {
+      if (vpeproc->vpe_build_param->streams)
+         FREE(vpeproc->vpe_build_param->streams);
       FREE(vpeproc->vpe_build_param);
+   }
    if (vpeproc->emb_buffers) {
       for (i = 0; i < vpeproc->bufs_num; i++) {
          if (vpeproc->emb_buffers[i].res)
@@ -718,12 +720,13 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    /* Following setting is from si_vpe_set_build_param()*/
    /* VPE 1.0 only support one input */
    build_param->num_streams = 1;
+   if (build_param->num_streams > VPE_STREAM_MAX_NUM) {
+      SIVPE_ERR("Can only suppport %d stream(s) now\n", VPE_STREAM_MAX_NUM);
+      return;
+   }
 
-   /* Allocate array "streams" */
-   build_param->streams = (struct vpe_stream *)CALLOC(build_param->num_streams, sizeof(struct vpe_stream));
    if (!build_param->streams) {
-      SIVPE_ERR("Allocate streams failed\n");
-      free(build_param);
+      SIVPE_ERR("Streams structure is not allocated\n");
       return;
    }
 
@@ -929,13 +932,11 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->src_surfaces, RADEON_USAGE_READ);
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->dst_surfaces, RADEON_USAGE_WRITE);
 
-   FREE(build_param->streams);
    SIVPE_DBG(vpeproc->log_level, "Success\n");
    return;
 
 fail:
    vpeproc->ws->buffer_unmap(vpeproc->ws, emb_buf->res->buf);
-   FREE(build_param->streams);
    SIVPE_ERR("Failed\n");
    return;
 }
@@ -1075,7 +1076,14 @@ si_vpe_create_processor(struct pipe_context *context, const struct pipe_video_co
    /* Create VPE parameters structure */
    vpeproc->vpe_build_param = CALLOC_STRUCT(vpe_build_param);
    if (!vpeproc->vpe_build_param) {
-      SIVPE_ERR("Allocate build-paramaters sturcture  failed\n");
+      SIVPE_ERR("Allocate build-paramaters sturcture failed\n");
+      goto fail;
+   }
+
+   /* Pre-allocate the streams */
+   vpeproc->vpe_build_param->streams = (struct vpe_stream *)CALLOC(VPE_STREAM_MAX_NUM, sizeof(struct vpe_stream));
+   if (!vpeproc->vpe_build_param->streams) {
+      SIVPE_ERR("Allocate streams sturcture failed\n");
       goto fail;
    }
 
