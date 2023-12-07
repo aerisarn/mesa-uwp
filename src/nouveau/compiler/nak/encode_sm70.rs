@@ -426,7 +426,6 @@ impl SM70Instr {
         self.set_bit(77, op.saturate);
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);
-        self.set_bit(81, false); /* TODO: DNZ */
     }
 
     fn encode_ffma(&mut self, op: &OpFFma) {
@@ -877,8 +876,7 @@ impl SM70Instr {
         self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_bit(77, false); /* NTZ */
         self.set_rnd_mode(78..80, op.rnd_mode);
-        self.set_bit(80, op.ftz); /* FTZ */
-        self.set_bit(81, false); /* DNZ */
+        self.set_bit(80, op.ftz);
         self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
     }
 
