@@ -3085,13 +3085,10 @@ agx_batch_init_state(struct agx_batch *batch)
       unsigned level = batch->key.zsbuf->u.tex.level;
       struct agx_resource *rsrc = agx_resource(batch->key.zsbuf->texture);
 
-      agx_batch_writes(batch, rsrc);
-      BITSET_SET(rsrc->data_valid, level);
+      agx_batch_writes(batch, rsrc, level);
 
-      if (rsrc->separate_stencil) {
-         agx_batch_writes(batch, rsrc->separate_stencil);
-         BITSET_SET(rsrc->separate_stencil->data_valid, level);
-      }
+      if (rsrc->separate_stencil)
+         agx_batch_writes(batch, rsrc->separate_stencil, level);
    }
 
    for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
@@ -3102,8 +3099,7 @@ agx_batch_init_state(struct agx_batch *batch)
          if (agx_resource_valid(rsrc, level))
             batch->load |= PIPE_CLEAR_COLOR0 << i;
 
-         agx_batch_writes(batch, rsrc);
-         BITSET_SET(rsrc->data_valid, batch->key.cbufs[i]->u.tex.level);
+         agx_batch_writes(batch, rsrc, batch->key.cbufs[i]->u.tex.level);
       }
    }
 
@@ -3528,7 +3524,7 @@ agx_batch_geometry_state(struct agx_batch *batch)
          .heap = agx_resource(ctx->heap)->bo->ptr.gpu,
       };
 
-      agx_batch_writes(batch, agx_resource(ctx->heap));
+      agx_batch_writes(batch, agx_resource(ctx->heap), 0);
 
       batch->geometry_state =
          agx_pool_upload_aligned(&batch->pool, &state, sizeof(state), 8);
@@ -3608,7 +3604,7 @@ agx_batch_geometry_params(struct agx_batch *batch, uint64_t input_index_buffer,
 
       if (rsrc) {
          params.xfb_offs_ptrs[i] = rsrc->bo->ptr.gpu;
-         agx_batch_writes(batch, rsrc);
+         agx_batch_writes(batch, rsrc, 0);
       } else {
          params.xfb_offs_ptrs[i] = 0;
       }
@@ -4412,7 +4408,7 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
          continue;
 
       struct agx_resource *buffer = agx_resource(*res);
-      agx_batch_writes(batch, buffer);
+      agx_batch_writes(batch, buffer, 0);
    }
 
    agx_batch_add_bo(batch, cs->bo);

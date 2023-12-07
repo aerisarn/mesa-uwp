@@ -661,11 +661,10 @@ agx_batch_track_image(struct agx_batch *batch, struct pipe_image_view *image)
    struct agx_resource *rsrc = agx_resource(image->resource);
 
    if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
-      agx_batch_writes(batch, rsrc);
-
       bool is_buffer = rsrc->base.target == PIPE_BUFFER;
       unsigned level = is_buffer ? 0 : image->u.tex.level;
-      BITSET_SET(rsrc->data_valid, level);
+
+      agx_batch_writes(batch, rsrc, level);
 
       if (is_buffer) {
          util_range_add(&rsrc->base, &rsrc->valid_buffer_range, 0,

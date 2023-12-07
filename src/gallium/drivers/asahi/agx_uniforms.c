@@ -26,7 +26,7 @@ agx_shader_buffer_ptr(struct agx_batch *batch, struct pipe_shader_buffer *sb)
       struct agx_resource *rsrc = agx_resource(sb->buffer);
 
       /* Assume SSBOs are written. TODO: Optimize read-only SSBOs */
-      agx_batch_writes(batch, rsrc);
+      agx_batch_writes(batch, rsrc, 0);
 
       return rsrc->bo->ptr.gpu + sb->buffer_offset;
    } else {

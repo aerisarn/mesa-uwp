@@ -6,6 +6,7 @@
 
 #include <xf86drm.h>
 #include "asahi/lib/decode.h"
+#include "util/bitset.h"
 #include "util/u_dynarray.h"
 #include "agx_state.h"
 
@@ -476,7 +477,8 @@ agx_batch_reads(struct agx_batch *batch, struct agx_resource *rsrc)
 }
 
 void
-agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc)
+agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc,
+                 unsigned level)
 {
    struct agx_context *ctx = batch->ctx;
    struct agx_batch *writer = agx_writer_get(ctx, rsrc->bo->handle);
@@ -484,6 +486,8 @@ agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc)
    assert(batch->initialized);
 
    agx_flush_readers_except(ctx, rsrc, batch, "Write from other batch", false);
+
+   BITSET_SET(rsrc->data_valid, level);
 
    /* Nothing to do if we're already writing */
    if (writer == batch)
