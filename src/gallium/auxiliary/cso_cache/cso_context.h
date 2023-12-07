@@ -225,12 +225,6 @@ cso_draw_arrays(struct cso_context *cso, unsigned mode, unsigned start, unsigned
 
 /* Inline functions. */
 
-static inline struct pipe_context *
-cso_get_pipe_context(struct cso_context *cso)
-{
-   return cso->pipe;
-}
-
 static ALWAYS_INLINE void
 cso_draw_vbo(struct cso_context *cso,
              struct pipe_draw_info *info,
