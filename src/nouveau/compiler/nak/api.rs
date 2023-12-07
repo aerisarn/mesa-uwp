@@ -123,6 +123,10 @@ fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     op.has_sudot_4x8 = dev.sm >= 70;
     op.max_unroll_iterations = 32;
 
+    // We set .ftz on f32 by default so we can support fmulz whenever the client
+    // doesn't explicitly request denorms.
+    op.has_fmulz_no_denorms = true;
+
     op
 }
 

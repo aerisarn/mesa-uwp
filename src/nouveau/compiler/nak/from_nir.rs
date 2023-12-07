@@ -703,7 +703,7 @@ impl<'a> ShaderFromNir<'a> {
                 dst
             }
             nir_op_fexp2 => b.mufu(MuFuOp::Exp2, srcs[0]),
-            nir_op_ffma => {
+            nir_op_ffma | nir_op_ffmaz => {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -713,7 +713,7 @@ impl<'a> ShaderFromNir<'a> {
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
                     ftz: self.float_ctl[ftype].ftz,
-                    dnz: false,
+                    dnz: alu.op == nir_op_ffmaz,
                 });
                 dst
             }
@@ -732,7 +732,7 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
-            nir_op_fmul => {
+            nir_op_fmul | nir_op_fmulz => {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -742,7 +742,7 @@ impl<'a> ShaderFromNir<'a> {
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
                     ftz: self.float_ctl[ftype].ftz,
-                    dnz: false,
+                    dnz: alu.op == nir_op_fmulz,
                 });
                 dst
             }
