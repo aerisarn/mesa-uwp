@@ -647,7 +647,7 @@ agx_nir_needs_texture_crawl(nir_instr *instr)
       nir_tex_instr *tex = nir_instr_as_tex(instr);
 
       /* Array textures get clamped to their size via txs */
-      if (tex->is_array)
+      if (tex->is_array && !(tex->backend_flags & AGX_TEXTURE_FLAG_NO_CLAMP))
          return true;
 
       switch (tex->op) {
