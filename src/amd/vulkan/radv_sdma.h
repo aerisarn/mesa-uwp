@@ -30,25 +30,27 @@
 extern "C" {
 #endif
 
-struct radv_sdma_linear_info {
-   uint64_t va;
-   unsigned pitch;
-   unsigned slice_pitch;
-   unsigned bpp;
-   unsigned blk_w;
-   unsigned blk_h;
-};
+struct radv_sdma_surf {
+   VkExtent3D extent; /* Image extent. */
+   uint64_t va;       /* Virtual address of image data. */
+   unsigned bpp;      /* Bytes per pixel. */
+   unsigned blk_w;    /* Image format block width in pixels. */
+   unsigned blk_h;    /* Image format block height in pixels. */
 
-struct radv_sdma_tiled_info {
-   VkExtent3D extent;
-   uint64_t va;
-   uint64_t meta_va;
-   uint32_t meta_config;
-   uint32_t info_dword;
-   uint32_t header_dword;
-   unsigned bpp;
-   unsigned blk_w;
-   unsigned blk_h;
+   union {
+      /* linear images only */
+      struct {
+         unsigned pitch;       /* Row pitch in bytes. */
+         unsigned slice_pitch; /* Slice pitch in bytes. */
+      };
+      /* tiled images only */
+      struct {
+         uint64_t meta_va;      /* Virtual address of metadata. */
+         uint32_t meta_config;  /* Metadata configuration DWORD. */
+         uint32_t header_dword; /* Extra bits for the copy packet header. */
+         uint32_t info_dword;   /* Image information DWORD. */
+      };
+   };
 };
 
 void radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs, struct radv_image *image,
