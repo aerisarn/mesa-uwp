@@ -118,23 +118,27 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
 
       /* Images writeable with pixel granularity are incompatible with
        * compression. Decompress if necessary.
+       *
+       * Driver-internal images are used by the compute blitter and are exempt
+       * from these transitions, as it only uses compressed images when safe.
        */
-      struct agx_resource *rsrc = agx_resource(image->resource);
-      if (!rsrc->layout.writeable_image &&
-          (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)) {
+      if (!(image->access & PIPE_IMAGE_ACCESS_DRIVER_INTERNAL)) {
+         struct agx_resource *rsrc = agx_resource(image->resource);
+         if (!rsrc->layout.writeable_image &&
+             (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)) {
 
-         agx_decompress(ctx, rsrc, "Shader image");
+            agx_decompress(ctx, rsrc, "Shader image");
+         }
+
+         /* Readable images may be compressed but are still subject to format
+          * reinterpretation rules.
+          */
+         agx_legalize_compression(ctx, rsrc, image->format);
+
+         if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)
+            assert(rsrc->layout.writeable_image);
       }
 
-      /* Readable images may be compressed but are still subject to format
-       * reinterpretation rules.
-       */
-      agx_legalize_compression(ctx, rsrc, image->format);
-
-      if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)
-         assert(rsrc->layout.writeable_image);
-
-      /* FIXME: Decompress here once we have texture compression */
       util_copy_image_view(&ctx->stage[shader].images[start_slot + i], image);
    }
 
