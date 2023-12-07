@@ -102,16 +102,6 @@ radv_sdma_get_copy_extent(const struct radv_image *const image, const VkImageSub
 }
 
 ALWAYS_INLINE static VkExtent3D
-radv_sdma_get_image_extent(const struct radv_image *const image)
-{
-   VkExtent3D extent = image->vk.extent;
-   if (image->vk.image_type != VK_IMAGE_TYPE_3D)
-      extent.depth = image->vk.array_layers;
-
-   return extent;
-}
-
-ALWAYS_INLINE static VkExtent3D
 radv_sdma_pixel_extent_to_blocks(const VkExtent3D extent, const unsigned blk_w, const unsigned blk_h)
 {
    const VkExtent3D r = {
@@ -184,8 +174,8 @@ radv_sdma_get_chunked_copy_info(const struct radv_device *const device, const st
 }
 
 static struct radv_sdma_surf
-radv_sdma_get_linear_buf_info(const struct radv_buffer *const buffer, const struct radv_image *const image,
-                              const VkBufferImageCopy2 *const region)
+radv_sdma_get_buf_surf(const struct radv_buffer *const buffer, const struct radv_image *const image,
+                       const VkBufferImageCopy2 *const region)
 {
    const unsigned pitch = (region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width);
    const unsigned slice_pitch =
@@ -204,39 +194,15 @@ radv_sdma_get_linear_buf_info(const struct radv_buffer *const buffer, const stru
    return info;
 }
 
-static struct radv_sdma_surf
-radv_sdma_get_linear_img_info(const struct radv_image *const image, const VkImageSubresourceLayers subresource)
-{
-   const struct radeon_surf *surf = &image->planes[0].surface;
-
-   if (!surf->is_linear) {
-      const struct radv_sdma_surf empty_info = {0};
-      return empty_info;
-   }
-
-   const struct radv_sdma_surf info = {
-      .va = image->bindings[0].bo->va + image->bindings[0].offset + surf->u.gfx9.surf_offset +
-            surf->u.gfx9.offset[subresource.mipLevel],
-      .pitch = surf->u.gfx9.pitch[subresource.mipLevel],
-      .slice_pitch = surf->blk_w * surf->blk_h * surf->u.gfx9.surf_slice_size / surf->bpe,
-      .bpp = surf->bpe,
-      .blk_w = surf->blk_w,
-      .blk_h = surf->blk_h,
-   };
-
-   return info;
-}
-
 static uint32_t
 radv_sdma_get_metadata_config(const struct radv_device *const device, const struct radv_image *const image,
-                              const VkImageSubresourceLayers subresource)
+                              const struct radeon_surf *const surf, const VkImageSubresourceLayers subresource)
 {
    if (!device->physical_device->rad_info.sdma_supports_compression ||
        !(radv_dcc_enabled(image, subresource.mipLevel) || radv_image_has_htile(image))) {
       return 0;
    }
 
-   const struct radeon_surf *const surf = &image->planes[0].surface;
    const VkFormat format = vk_format_get_aspect_format(image->vk.format, subresource.aspectMask);
    const struct util_format_description *desc = vk_format_description(format);
 
@@ -255,9 +221,8 @@ radv_sdma_get_metadata_config(const struct radv_device *const device, const stru
 
 static uint32_t
 radv_sdma_get_tiled_info_dword(const struct radv_device *const device, const struct radv_image *const image,
-                               const VkImageSubresourceLayers subresource)
+                               const struct radeon_surf *const surf, const VkImageSubresourceLayers subresource)
 {
-   const struct radeon_surf *const surf = &image->planes[0].surface;
    const uint32_t element_size = util_logbase2(surf->bpe);
    const uint32_t swizzle_mode = surf->has_stencil ? surf->u.gfx9.zs.stencil_swizzle_mode : surf->u.gfx9.swizzle_mode;
    const enum gfx9_resource_type dimension = radv_sdma_surface_resource_type(device, surf);
@@ -294,29 +259,42 @@ radv_sdma_get_tiled_header_dword(const struct radv_device *const device, const s
 }
 
 static struct radv_sdma_surf
-radv_sdma_get_tiled_img_info(const struct radv_device *const device, const struct radv_image *const image,
-                             const VkImageSubresourceLayers subresource)
+radv_sdma_get_surf(const struct radv_device *const device, const struct radv_image *const image,
+                   const VkImageSubresourceLayers subresource)
 {
+   const struct radv_image_binding *binding = &image->bindings[0];
    const struct radeon_surf *const surf = &image->planes[0].surface;
-
-   /* 1D resources should be linear. */
-   assert(surf->u.gfx9.resource_type != RADEON_RESOURCE_1D);
-
-   const uint32_t meta_config = radv_sdma_get_metadata_config(device, image, subresource);
-   const uint64_t meta_va = image->bindings[0].bo->va + image->bindings[0].offset + surf->meta_offset;
-
    struct radv_sdma_surf info = {
+      .extent =
+         {
+            .width = vk_format_get_plane_width(image->vk.format, 0, image->vk.extent.width),
+            .height = vk_format_get_plane_height(image->vk.format, 0, image->vk.extent.height),
+            .depth = image->vk.image_type == VK_IMAGE_TYPE_3D ? image->vk.extent.depth : image->vk.array_layers,
+         },
       .bpp = surf->bpe,
-      .va = (image->bindings[0].bo->va + image->bindings[0].offset + surf->u.gfx9.surf_offset) | surf->tile_swizzle
-                                                                                                    << 8,
-      .meta_va = meta_config ? meta_va : 0,
-      .meta_config = meta_config,
-      .extent = radv_sdma_get_image_extent(image),
-      .info_dword = radv_sdma_get_tiled_info_dword(device, image, subresource),
-      .header_dword = radv_sdma_get_tiled_header_dword(device, image, subresource),
       .blk_w = surf->blk_w,
       .blk_h = surf->blk_h,
    };
+
+   if (surf->is_linear) {
+      info.va =
+         binding->bo->va + binding->offset + surf->u.gfx9.surf_offset + surf->u.gfx9.offset[subresource.mipLevel];
+      info.pitch = surf->u.gfx9.pitch[subresource.mipLevel];
+      info.slice_pitch = surf->blk_w * surf->blk_h * surf->u.gfx9.surf_slice_size / surf->bpe;
+   } else {
+      /* 1D resources should be linear. */
+      assert(surf->u.gfx9.resource_type != RADEON_RESOURCE_1D);
+
+      info.va = (binding->bo->va + binding->offset + surf->u.gfx9.surf_offset) | surf->tile_swizzle << 8;
+      info.info_dword = radv_sdma_get_tiled_info_dword(device, image, surf, subresource);
+      info.header_dword = radv_sdma_get_tiled_header_dword(device, image, subresource);
+
+      if (device->physical_device->rad_info.sdma_supports_compression &&
+          (radv_dcc_enabled(image, subresource.mipLevel) || radv_image_has_htile(image))) {
+         info.meta_va = binding->bo->va + binding->offset + surf->meta_offset;
+         info.meta_config = radv_sdma_get_metadata_config(device, image, surf, subresource);
+      }
+   }
 
    return info;
 }
@@ -509,21 +487,19 @@ void
 radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs, struct radv_image *image,
                             struct radv_buffer *buffer, const VkBufferImageCopy2 *region, bool to_image)
 {
-   const struct radv_sdma_surf buf_info = radv_sdma_get_linear_buf_info(buffer, image, region);
+   const struct radv_sdma_surf buf = radv_sdma_get_buf_surf(buffer, image, region);
+   const struct radv_sdma_surf img = radv_sdma_get_surf(device, image, region->imageSubresource);
    const VkExtent3D extent = radv_sdma_get_copy_extent(image, region->imageSubresource, region->imageExtent);
    const VkOffset3D img_offset = radv_sdma_get_img_offset(image, region->imageSubresource, region->imageOffset);
    const VkOffset3D zero_offset = {0};
 
    if (image->planes[0].surface.is_linear) {
-      const struct radv_sdma_surf linear = radv_sdma_get_linear_img_info(image, region->imageSubresource);
-
       if (to_image)
-         radv_sdma_emit_copy_linear_sub_window(device, cs, &buf_info, &linear, zero_offset, img_offset, extent);
+         radv_sdma_emit_copy_linear_sub_window(device, cs, &buf, &img, zero_offset, img_offset, extent);
       else
-         radv_sdma_emit_copy_linear_sub_window(device, cs, &linear, &buf_info, img_offset, zero_offset, extent);
+         radv_sdma_emit_copy_linear_sub_window(device, cs, &img, &buf, img_offset, zero_offset, extent);
    } else {
-      const struct radv_sdma_surf tiled = radv_sdma_get_tiled_img_info(device, image, region->imageSubresource);
-      radv_sdma_emit_copy_tiled_sub_window(device, cs, &tiled, &buf_info, img_offset, zero_offset, extent, !to_image);
+      radv_sdma_emit_copy_tiled_sub_window(device, cs, &img, &buf, img_offset, zero_offset, extent, !to_image);
    }
 }
 
@@ -564,9 +540,8 @@ radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct r
    const VkOffset3D base_offset = radv_sdma_get_img_offset(image, region->imageSubresource, region->imageOffset);
    const VkExtent3D base_extent = radv_sdma_get_copy_extent(image, region->imageSubresource, region->imageExtent);
    const struct radv_sdma_chunked_copy_info info = radv_sdma_get_chunked_copy_info(device, image, base_extent);
-   const struct radv_sdma_surf buf = radv_sdma_get_linear_buf_info(buffer, image, region);
-   const struct radv_sdma_surf linear = radv_sdma_get_linear_img_info(image, region->imageSubresource);
-   const struct radv_sdma_surf tiled = radv_sdma_get_tiled_img_info(device, image, region->imageSubresource);
+   const struct radv_sdma_surf buf = radv_sdma_get_buf_surf(buffer, image, region);
+   const struct radv_sdma_surf img = radv_sdma_get_surf(device, image, region->imageSubresource);
 
    struct radv_sdma_surf tmp = {
       .va = temp_bo->va,
@@ -598,9 +573,9 @@ radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct r
          if (!to_image) {
             /* Copy the rows from the source image to the temporary buffer. */
             if (is_linear)
-               radv_sdma_emit_copy_linear_sub_window(device, cs, &linear, &tmp, offset, zero_offset, extent);
+               radv_sdma_emit_copy_linear_sub_window(device, cs, &img, &tmp, offset, zero_offset, extent);
             else
-               radv_sdma_emit_copy_tiled_sub_window(device, cs, &tiled, &tmp, offset, zero_offset, extent, true);
+               radv_sdma_emit_copy_tiled_sub_window(device, cs, &img, &tmp, offset, zero_offset, extent, true);
 
             /* Wait for the copy to finish. */
             radv_sdma_emit_nop(device, cs);
@@ -623,9 +598,9 @@ radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct r
          if (to_image) {
             /* Copy the rows from the temporary buffer to the destination image. */
             if (is_linear)
-               radv_sdma_emit_copy_linear_sub_window(device, cs, &tmp, &linear, zero_offset, offset, extent);
+               radv_sdma_emit_copy_linear_sub_window(device, cs, &tmp, &img, zero_offset, offset, extent);
             else
-               radv_sdma_emit_copy_tiled_sub_window(device, cs, &tiled, &tmp, offset, zero_offset, extent, false);
+               radv_sdma_emit_copy_tiled_sub_window(device, cs, &img, &tmp, offset, zero_offset, extent, false);
 
             /* Wait for the copy to finish. */
             radv_sdma_emit_nop(device, cs);
