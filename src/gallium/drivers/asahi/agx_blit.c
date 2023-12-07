@@ -387,3 +387,71 @@ agx_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
    agx_blitter_save(ctx, ctx->blitter, info->render_condition_enable);
    util_blitter_blit(ctx->blitter, info);
 }
+
+static bool
+try_copy_via_blit(struct pipe_context *pctx, struct pipe_resource *dst,
+                  unsigned dst_level, unsigned dstx, unsigned dsty,
+                  unsigned dstz, struct pipe_resource *src, unsigned src_level,
+                  const struct pipe_box *src_box)
+{
+   struct agx_context *ctx = agx_context(pctx);
+
+   if (dst->target == PIPE_BUFFER)
+      return false;
+
+   struct pipe_blit_info info = {
+      .dst =
+         {
+            .resource = dst,
+            .level = dst_level,
+            .box.x = dstx,
+            .box.y = dsty,
+            .box.z = dstz,
+            .box.width = src_box->width,
+            .box.height = src_box->height,
+            .box.depth = src_box->depth,
+            .format = dst->format,
+         },
+      .src =
+         {
+            .resource = src,
+            .level = src_level,
+            .box = *src_box,
+            .format = src->format,
+         },
+      .mask = util_format_get_mask(src->format),
+      .filter = PIPE_TEX_FILTER_NEAREST,
+      .scissor_enable = 0,
+   };
+
+   /* snorm formats don't round trip, so don't use them for copies */
+   if (util_format_is_snorm(info.dst.format))
+      info.dst.format = util_format_snorm_to_sint(info.dst.format);
+
+   if (util_format_is_snorm(info.src.format))
+      info.src.format = util_format_snorm_to_sint(info.src.format);
+
+   if (util_blitter_is_blit_supported(ctx->blitter, &info) &&
+       info.dst.format == info.src.format) {
+
+      agx_blit(pctx, &info);
+      return true;
+   } else {
+      return false;
+   }
+}
+
+void
+agx_resource_copy_region(struct pipe_context *pctx, struct pipe_resource *dst,
+                         unsigned dst_level, unsigned dstx, unsigned dsty,
+                         unsigned dstz, struct pipe_resource *src,
+                         unsigned src_level, const struct pipe_box *src_box)
+{
+   if (try_copy_via_blit(pctx, dst, dst_level, dstx, dsty, dstz, src, src_level,
+                         src_box))
+      return;
+
+   /* CPU fallback */
+   util_resource_copy_region(pctx, dst, dst_level, dstx, dsty, dstz, src,
+                             src_level, src_box);
+}

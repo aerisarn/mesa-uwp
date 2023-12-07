@@ -1470,7 +1470,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->destroy = agx_destroy_context;
    pctx->flush = agx_flush;
    pctx->clear = agx_clear;
-   pctx->resource_copy_region = util_resource_copy_region;
+   pctx->resource_copy_region = agx_resource_copy_region;
    pctx->blit = agx_blit;
    pctx->flush_resource = agx_flush_resource;
 
