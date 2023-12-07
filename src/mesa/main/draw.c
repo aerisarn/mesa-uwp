@@ -1420,26 +1420,7 @@ void GLAPIENTRY
 _mesa_DrawArraysInstanced(GLenum mode, GLint start, GLsizei count,
                           GLsizei numInstances)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   FLUSH_FOR_DRAW(ctx);
-
-   _mesa_set_varying_vp_inputs(ctx, ctx->VertexProgram._VPModeInputFilter &
-                               ctx->Array._DrawVAO->_EnabledWithMapMode);
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
-
-   if (!_mesa_is_no_error_enabled(ctx) &&
-       !_mesa_validate_DrawArraysInstanced(ctx, mode, start, count,
-                                           numInstances))
-      return;
-
-   if (0)
-      check_draw_arrays_data(ctx, start, count);
-
-   _mesa_draw_arrays(ctx, mode, start, count, numInstances, 0);
-
-   if (0)
-      print_draw_arrays(ctx, mode, start, count);
+   _mesa_DrawArraysInstancedBaseInstance(mode, start, count, numInstances, 0);
 }
 
 
@@ -1819,21 +1800,7 @@ void GLAPIENTRY
 _mesa_DrawElements(GLenum mode, GLsizei count, GLenum type,
                    const GLvoid * indices)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   FLUSH_FOR_DRAW(ctx);
-
-   _mesa_set_varying_vp_inputs(ctx, ctx->VertexProgram._VPModeInputFilter &
-                               ctx->Array._DrawVAO->_EnabledWithMapMode);
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
-
-   if (!_mesa_is_no_error_enabled(ctx) &&
-       !_mesa_validate_DrawElements(ctx, mode, count, type))
-      return;
-
-   _mesa_validated_drawrangeelements(ctx, ctx->Array.VAO->IndexBufferObj,
-                                     mode, false, 0, ~0,
-                                     count, type, indices, 0, 1, 0);
+   _mesa_DrawElementsBaseVertex(mode, count, type, indices, 0);
 }
 
 
