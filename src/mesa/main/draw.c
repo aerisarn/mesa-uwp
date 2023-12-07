@@ -1623,8 +1623,21 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
    struct pipe_draw_start_count_bias draw;
    unsigned index_size_shift = get_index_size_shift(type);
 
-   if (index_bo && !indices_aligned(index_size_shift, indices))
-      return;
+   if (index_bo) {
+      if (!indices_aligned(index_size_shift, indices))
+         return;
+
+      if (unlikely(index_bo->Size < (uintptr_t)indices || !index_bo->buffer)) {
+#ifndef NDEBUG
+         _mesa_warning(ctx, "Invalid indices offset 0x%" PRIxPTR
+                            " (indices buffer size is %ld bytes)"
+                            " or unallocated buffer (%u). Draw skipped.",
+                            (uintptr_t)indices, (long)index_bo->Size,
+                       !!index_bo->buffer);
+#endif
+         return;
+      }
+   }
 
    info.mode = mode;
    info.index_size = 1 << index_size_shift;
@@ -1646,16 +1659,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
       info.index.user = indices;
       draw.start = 0;
    } else {
-      uintptr_t start = (uintptr_t) indices;
-      if (unlikely(index_bo->Size < start || !index_bo->buffer)) {
-         _mesa_warning(ctx, "Invalid indices offset 0x%" PRIxPTR
-                            " (indices buffer size is %ld bytes)"
-                            " or unallocated buffer (%u). Draw skipped.",
-                            start, (long)index_bo->Size, !!index_bo->buffer);
-         return;
-      }
-
-      draw.start = start >> index_size_shift;
+      draw.start = (uintptr_t)indices >> index_size_shift;
 
       if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
          /* Fast path for u_threaded_context to eliminate atomics. */
