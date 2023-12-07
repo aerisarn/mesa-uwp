@@ -677,7 +677,7 @@ clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
                            unsigned *num_spec_constants,
                            const struct clc_logger *logger)
 {
-   struct clc_kernel_info *kernels;
+   struct clc_kernel_info *kernels = NULL;
    struct clc_parsed_spec_constant *spec_constants = NULL;
 
    SPIRVKernelParser parser;
@@ -687,35 +687,34 @@ clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
 
    *num_kernels = parser.kernels.size();
    *num_spec_constants = parser.specConstants.size();
-   if (!*num_kernels)
-      return false;
+   if (*num_kernels) {
+      kernels = reinterpret_cast<struct clc_kernel_info *>(calloc(*num_kernels,
+                                                                  sizeof(*kernels)));
+      assert(kernels);
+      for (unsigned i = 0; i < parser.kernels.size(); i++) {
+         kernels[i].name = strdup(parser.kernels[i].name.c_str());
+         kernels[i].num_args = parser.kernels[i].args.size();
+         kernels[i].vec_hint_size = parser.kernels[i].vecHint >> 16;
+         kernels[i].vec_hint_type = (enum clc_vec_hint_type)(parser.kernels[i].vecHint & 0xFFFF);
+         memcpy(kernels[i].local_size, parser.kernels[i].localSize, sizeof(kernels[i].local_size));
+         memcpy(kernels[i].local_size_hint, parser.kernels[i].localSizeHint, sizeof(kernels[i].local_size_hint));
+         if (!kernels[i].num_args)
+            continue;
 
-   kernels = reinterpret_cast<struct clc_kernel_info *>(calloc(*num_kernels,
-                                                               sizeof(*kernels)));
-   assert(kernels);
-   for (unsigned i = 0; i < parser.kernels.size(); i++) {
-      kernels[i].name = strdup(parser.kernels[i].name.c_str());
-      kernels[i].num_args = parser.kernels[i].args.size();
-      kernels[i].vec_hint_size = parser.kernels[i].vecHint >> 16;
-      kernels[i].vec_hint_type = (enum clc_vec_hint_type)(parser.kernels[i].vecHint & 0xFFFF);
-      memcpy(kernels[i].local_size, parser.kernels[i].localSize, sizeof(kernels[i].local_size));
-      memcpy(kernels[i].local_size_hint, parser.kernels[i].localSizeHint, sizeof(kernels[i].local_size_hint));
-      if (!kernels[i].num_args)
-         continue;
+         struct clc_kernel_arg *args;
 
-      struct clc_kernel_arg *args;
-
-      args = reinterpret_cast<struct clc_kernel_arg *>(calloc(kernels[i].num_args,
-                                                       sizeof(*kernels->args)));
-      kernels[i].args = args;
-      assert(args);
-      for (unsigned j = 0; j < kernels[i].num_args; j++) {
-         if (!parser.kernels[i].args[j].name.empty())
-            args[j].name = strdup(parser.kernels[i].args[j].name.c_str());
-         args[j].type_name = strdup(parser.kernels[i].args[j].typeName.c_str());
-         args[j].address_qualifier = parser.kernels[i].args[j].addrQualifier;
-         args[j].type_qualifier = parser.kernels[i].args[j].typeQualifier;
-         args[j].access_qualifier = parser.kernels[i].args[j].accessQualifier;
+         args = reinterpret_cast<struct clc_kernel_arg *>(calloc(kernels[i].num_args,
+                                                                 sizeof(*kernels->args)));
+         kernels[i].args = args;
+         assert(args);
+         for (unsigned j = 0; j < kernels[i].num_args; j++) {
+            if (!parser.kernels[i].args[j].name.empty())
+               args[j].name = strdup(parser.kernels[i].args[j].name.c_str());
+            args[j].type_name = strdup(parser.kernels[i].args[j].typeName.c_str());
+            args[j].address_qualifier = parser.kernels[i].args[j].addrQualifier;
+            args[j].type_qualifier = parser.kernels[i].args[j].typeQualifier;
+            args[j].access_qualifier = parser.kernels[i].args[j].accessQualifier;
+         }
       }
    }
 
