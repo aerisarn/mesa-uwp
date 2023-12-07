@@ -89,11 +89,6 @@ st_draw_quad(struct st_context *st,
              unsigned num_instances);
 
 void
-st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
-                           unsigned num_instances, unsigned stream,
-                           struct gl_transform_feedback_object *tfb_vertcount);
-
-void
 st_indirect_draw_vbo(struct gl_context *ctx,
                      GLenum mode, GLenum index_type,
                      GLintptr indirect_offset,

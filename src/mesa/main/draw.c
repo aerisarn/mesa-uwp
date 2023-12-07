@@ -46,6 +46,7 @@
 
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_draw.h"
+#include "util/u_draw.h"
 #include "util/u_threaded_context.h"
 
 typedef struct {
@@ -2193,11 +2194,22 @@ _mesa_DrawTransformFeedbackStreamInstanced(GLenum mode, GLuint name,
                                              primcount))
       return;
 
-   /* Maybe we should do some primitive splitting for primitive restart
-    * (like in DrawArrays), but we have no way to know how many vertices
-    * will be rendered. */
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   st_draw_transform_feedback(ctx, mode, primcount, stream, obj);
+   struct pipe_draw_indirect_info indirect;
+   memset(&indirect, 0, sizeof(indirect));
+   indirect.count_from_stream_output = obj->draw_count[stream];
+   if (indirect.count_from_stream_output == NULL)
+      return;
+
+   struct pipe_draw_start_count_bias draw = {0};
+   struct pipe_draw_info info;
+   util_draw_init_info(&info);
+   info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
+   info.mode = mode;
+   info.instance_count = primcount;
+
+   cso_draw_vbo(st_context(ctx)->cso_context, &info, 0, &indirect, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);

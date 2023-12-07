@@ -299,33 +299,6 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       _mesa_flush(ctx);
 }
 
-void
-st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
-                           unsigned num_instances, unsigned stream,
-                           struct gl_transform_feedback_object *tfb_vertcount)
-{
-   struct st_context *st = st_context(ctx);
-   struct pipe_draw_info info;
-   struct pipe_draw_indirect_info indirect;
-   struct pipe_draw_start_count_bias draw = {0};
-
-   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-   memset(&indirect, 0, sizeof(indirect));
-   util_draw_init_info(&info);
-   info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
-   info.mode = mode;
-   info.instance_count = num_instances;
-
-   /* Transform feedback drawing is always non-indexed. */
-   /* Set info.count_from_stream_output. */
-   indirect.count_from_stream_output = tfb_vertcount->draw_count[stream];
-   if (indirect.count_from_stream_output == NULL)
-      return;
-
-   cso_draw_vbo(st->cso_context, &info, 0, &indirect, &draw, 1);
-}
-
 static void
 st_draw_gallium_vertex_state(struct gl_context *ctx,
                              struct pipe_vertex_state *state,
