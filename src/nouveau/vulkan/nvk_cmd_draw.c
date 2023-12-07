@@ -2674,7 +2674,8 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
          P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
-         P_INLINE_DATA(p, cb_idx);
+         /* The STREAM_OUT_BUFFER_LOAD_WRITE_POINTER registers are 8 dword stride */
+         P_INLINE_DATA(p, cb_idx * 8);
          P_INLINE_DATA(p, cb_addr >> 32);
          P_INLINE_DATA(p, cb_addr);
       } else {
