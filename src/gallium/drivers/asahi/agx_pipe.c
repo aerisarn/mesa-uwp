@@ -762,6 +762,13 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
    if (staging_blit)
       return;
 
+   /* If the level has not been written, we may freely do CPU access (writes),
+    * even if other levels are being written by the GPU. This lets us write some
+    * mip levels on the CPU and some on the GPU, without stalling.
+    */
+   if (!agx_resource_valid(rsrc, level))
+      return;
+
    /* Upgrade DISCARD_RANGE to WHOLE_RESOURCE if the whole resource is
     * being mapped.
     */
