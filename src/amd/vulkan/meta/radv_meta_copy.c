@@ -103,7 +103,7 @@ transfer_copy_buffer_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffe
    const struct radv_sdma_surf img = radv_sdma_get_surf(device, image, region->imageSubresource, region->imageOffset);
    const VkExtent3D extent = radv_sdma_get_copy_extent(image, region->imageSubresource, region->imageExtent);
 
-   if (radv_sdma_use_unaligned_buffer_image_copy(device, image, buffer, region)) {
+   if (radv_sdma_use_unaligned_buffer_image_copy(device, &buf, &img, extent)) {
       if (!alloc_transfer_temp_bo(cmd_buffer))
          return;
 

@@ -73,8 +73,8 @@ struct radv_sdma_surf radv_sdma_get_surf(const struct radv_device *const device,
 void radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs,
                                  const struct radv_sdma_surf *buf, const struct radv_sdma_surf *img,
                                  const VkExtent3D extent, bool to_image);
-bool radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, const struct radv_image *image,
-                                               const struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
+bool radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, const struct radv_sdma_surf *buf,
+                                               const struct radv_sdma_surf *img, const VkExtent3D ext);
 void radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct radeon_cmdbuf *cs,
                                            const struct radv_sdma_surf *buf, const struct radv_sdma_surf *img_in,
                                            const VkExtent3D copy_extent, struct radeon_winsys_bo *temp_bo,

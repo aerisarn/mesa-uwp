@@ -41,6 +41,15 @@ struct radv_sdma_chunked_copy_info {
    unsigned num_rows_per_copy;
 };
 
+ALWAYS_INLINE static unsigned
+radv_sdma_pitch_alignment(const struct radv_device *device, const unsigned bpp)
+{
+   if (device->physical_device->rad_info.sdma_ip_version >= SDMA_5_0)
+      return MAX2(1, 4 / bpp);
+
+   return 4;
+}
+
 ALWAYS_INLINE static void
 radv_sdma_check_pitches(const unsigned pitch, const unsigned slice_pitch, const unsigned bpp, const bool uses_depth)
 {
@@ -79,16 +88,6 @@ radv_sdma_surface_type_from_aspect_mask(const VkImageAspectFlags aspectMask)
       return 2;
 
    return 0;
-}
-
-ALWAYS_INLINE static VkOffset3D
-radv_sdma_get_image_offset(const struct radv_image *const image, const VkImageSubresourceLayers subresource,
-                           VkOffset3D offset)
-{
-   if (image->vk.image_type != VK_IMAGE_TYPE_3D)
-      offset.z = subresource.baseArrayLayer;
-
-   return offset;
 }
 
 ALWAYS_INLINE static VkExtent3D
@@ -494,26 +493,16 @@ radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdb
 }
 
 bool
-radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, const struct radv_image *image,
-                                          const struct radv_buffer *buffer, const VkBufferImageCopy2 *region)
+radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, const struct radv_sdma_surf *buf,
+                                          const struct radv_sdma_surf *img, const VkExtent3D ext)
 {
-   const struct radeon_surf *const surf = &image->planes[0].surface;
-   const enum sdma_version ver = device->physical_device->rad_info.sdma_ip_version;
-   const unsigned pitch_alignment = ver >= SDMA_5_0 ? MAX2(1, 4 / surf->bpe) : 4;
-   const unsigned pitch = (region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width);
-   const unsigned pitch_blocks = radv_sdma_pixels_to_blocks(pitch, surf->blk_w);
-
-   if (!radv_is_aligned(pitch_blocks, pitch_alignment))
+   const unsigned pitch_blocks = radv_sdma_pixels_to_blocks(buf->pitch, img->blk_w);
+   if (!radv_is_aligned(pitch_blocks, radv_sdma_pitch_alignment(device, img->bpp)))
       return true;
 
-   const VkOffset3D off = radv_sdma_get_image_offset(image, region->imageSubresource, region->imageOffset);
-   const VkExtent3D ext = radv_sdma_get_copy_extent(image, region->imageSubresource, region->imageExtent);
-   const bool uses_depth = off.z != 0 || ext.depth != 1;
-   if (!surf->is_linear && uses_depth) {
-      const unsigned slice_pitch =
-         (region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height) * pitch;
-      const unsigned slice_pitch_blocks = radv_sdma_pixel_area_to_blocks(slice_pitch, surf->blk_w, surf->blk_h);
-
+   const bool uses_depth = img->offset.z != 0 || ext.depth != 1;
+   if (!img->is_linear && uses_depth) {
+      const unsigned slice_pitch_blocks = radv_sdma_pixel_area_to_blocks(buf->slice_pitch, img->blk_w, img->blk_h);
       if (!radv_is_aligned(slice_pitch_blocks, 4))
          return true;
    }
