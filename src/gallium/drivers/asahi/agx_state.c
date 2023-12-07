@@ -1231,6 +1231,8 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
    if (!is_buffer && view->u.tex.single_layer_view)
       target = PIPE_TEXTURE_2D;
 
+   arrays_as_2d |= (view->access & PIPE_IMAGE_ACCESS_DRIVER_INTERNAL);
+
    /* To reduce shader variants, spilled layered render targets are accessed as
     * 2D Arrays regardless of the actual target, so force in that case.
     *
