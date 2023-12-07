@@ -39,10 +39,7 @@
 extern "C" {
 #endif
 
-struct cso_context;
-struct u_vbuf;
-
-struct cso_context_base {
+struct cso_context {
    struct pipe_context *pipe;
 
    /* This is equal to either pipe_context::draw_vbo or u_vbuf_draw_vbo. */
@@ -231,9 +228,7 @@ cso_draw_arrays(struct cso_context *cso, unsigned mode, unsigned start, unsigned
 static inline struct pipe_context *
 cso_get_pipe_context(struct cso_context *cso)
 {
-   struct cso_context_base *cso_base = (struct cso_context_base *)cso;
-
-   return cso_base->pipe;
+   return cso->pipe;
 }
 
 static ALWAYS_INLINE void
@@ -257,10 +252,7 @@ cso_draw_vbo(struct cso_context *cso,
    /* Indirect only uses indirect->draw_count, not num_draws. */
    assert(!indirect || num_draws == 1);
 
-   struct cso_context_base *cso_base = (struct cso_context_base *)cso;
-
-   cso_base->draw_vbo(cso_base->pipe, info, drawid_offset, indirect, draws,
-                      num_draws);
+   cso->draw_vbo(cso->pipe, info, drawid_offset, indirect, draws, num_draws);
 }
 
 #ifdef __cplusplus
