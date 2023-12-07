@@ -310,7 +310,7 @@ agx_get_batch_for_framebuffer(struct agx_context *ctx,
 struct agx_batch *
 agx_get_batch(struct agx_context *ctx)
 {
-   if (!ctx->batch) {
+   if (!ctx->batch || agx_batch_is_compute(ctx->batch)) {
       ctx->batch = agx_get_batch_for_framebuffer(ctx, &ctx->framebuffer);
       agx_dirty_all(ctx);
    }
