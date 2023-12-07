@@ -226,22 +226,6 @@ void radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image 
 void radv_meta_decode_astc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image, VkImageLayout layout,
                            const VkImageSubresourceLayers *subresource, VkOffset3D offset, VkExtent3D extent);
 
-/**
- * Return whether the bound pipeline is the DCC decompress pass.
- */
-static inline bool
-radv_is_dcc_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
-{
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-
-   if (!pipeline)
-      return false;
-
-   return pipeline->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX8 ||
-          (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11 &&
-           pipeline->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX11);
-}
-
 /* common nir builder helpers */
 #include "nir/nir_builder.h"
 

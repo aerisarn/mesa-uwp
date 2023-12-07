@@ -1744,11 +1744,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       }
 
       if (radv_image_is_tc_compat_cmask(iview->image)) {
-         /* Allow the texture block to read FMASK directly
-          * without decompressing it. This bit must be cleared
-          * when performing FMASK_DECOMPRESS or DCC_COMPRESS,
-          * otherwise the operation doesn't happen.
-          */
+         /* Allow the texture block to read FMASK directly without decompressing it. */
          cb->cb_color_info |= S_028C70_FMASK_COMPRESS_1FRAG_ONLY(1);
 
          if (device->physical_device->rad_info.gfx_level == GFX8) {
