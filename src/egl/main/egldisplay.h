@@ -257,6 +257,23 @@ _eglGetDisplayHandle(_EGLDisplay *disp)
    return (EGLDisplay)((disp) ? disp : EGL_NO_DISPLAY);
 }
 
+static inline EGLBoolean
+_eglHasAttrib(_EGLDisplay *disp, EGLAttrib attrib)
+{
+   EGLAttrib *attribs = disp->Options.Attribs;
+
+   if (!attribs) {
+      return EGL_FALSE;
+   }
+
+   for (int i = 0; attribs[i] != EGL_NONE; i += 2) {
+      if (attrib == attribs[i]) {
+         return EGL_TRUE;
+      }
+   }
+   return EGL_FALSE;
+}
+
 extern void
 _eglInitResource(_EGLResource *res, EGLint size, _EGLDisplay *disp);
 
