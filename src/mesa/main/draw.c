@@ -2248,43 +2248,6 @@ _mesa_MultiDrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
 
 
 /**
- * Draw a GL primitive using a vertex count obtained from transform feedback.
- * \param mode  the type of GL primitive to draw
- * \param obj  the transform feedback object to use
- * \param stream  index of the transform feedback stream from which to
- *                get the primitive count.
- * \param numInstances  number of instances to draw
- */
-static void
-_mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
-                              struct gl_transform_feedback_object *obj,
-                              GLuint stream, GLuint numInstances)
-{
-   FLUSH_FOR_DRAW(ctx);
-
-   _mesa_set_varying_vp_inputs(ctx, ctx->VertexProgram._VPModeInputFilter &
-                               ctx->Array._DrawVAO->_EnabledWithMapMode);
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
-
-   if (!_mesa_is_no_error_enabled(ctx) &&
-       !_mesa_validate_DrawTransformFeedback(ctx, mode, obj, stream,
-                                             numInstances))
-      return;
-
-   /* Maybe we should do some primitive splitting for primitive restart
-    * (like in DrawArrays), but we have no way to know how many vertices
-    * will be rendered. */
-
-   st_draw_transform_feedback(ctx, mode, numInstances, stream, obj);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
-      _mesa_flush(ctx);
-   }
-}
-
-
-/**
  * Like DrawArrays, but take the count from a transform feedback object.
  * \param mode  GL_POINTS, GL_LINES, GL_TRIANGLE_STRIP, etc.
  * \param name  the transform feedback object
@@ -2295,22 +2258,14 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 void GLAPIENTRY
 _mesa_DrawTransformFeedback(GLenum mode, GLuint name)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   struct gl_transform_feedback_object *obj =
-      _mesa_lookup_transform_feedback_object(ctx, name);
-
-   _mesa_draw_transform_feedback(ctx, mode, obj, 0, 1);
+   _mesa_DrawTransformFeedbackStreamInstanced(mode, name, 0, 1);
 }
 
 
 void GLAPIENTRY
 _mesa_DrawTransformFeedbackStream(GLenum mode, GLuint name, GLuint stream)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   struct gl_transform_feedback_object *obj =
-      _mesa_lookup_transform_feedback_object(ctx, name);
-
-   _mesa_draw_transform_feedback(ctx, mode, obj, stream, 1);
+   _mesa_DrawTransformFeedbackStreamInstanced(mode, name, stream, 1);
 }
 
 
@@ -2318,11 +2273,7 @@ void GLAPIENTRY
 _mesa_DrawTransformFeedbackInstanced(GLenum mode, GLuint name,
                                      GLsizei primcount)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   struct gl_transform_feedback_object *obj =
-      _mesa_lookup_transform_feedback_object(ctx, name);
-
-   _mesa_draw_transform_feedback(ctx, mode, obj, 0, primcount);
+   _mesa_DrawTransformFeedbackStreamInstanced(mode, name, 0, primcount);
 }
 
 
@@ -2335,7 +2286,27 @@ _mesa_DrawTransformFeedbackStreamInstanced(GLenum mode, GLuint name,
    struct gl_transform_feedback_object *obj =
       _mesa_lookup_transform_feedback_object(ctx, name);
 
-   _mesa_draw_transform_feedback(ctx, mode, obj, stream, primcount);
+   FLUSH_FOR_DRAW(ctx);
+
+   _mesa_set_varying_vp_inputs(ctx, ctx->VertexProgram._VPModeInputFilter &
+                               ctx->Array._DrawVAO->_EnabledWithMapMode);
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_DrawTransformFeedback(ctx, mode, obj, stream,
+                                             primcount))
+      return;
+
+   /* Maybe we should do some primitive splitting for primitive restart
+    * (like in DrawArrays), but we have no way to know how many vertices
+    * will be rendered. */
+
+   st_draw_transform_feedback(ctx, mode, primcount, stream, obj);
+
+   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
+      _mesa_flush(ctx);
+   }
 }
 
 
