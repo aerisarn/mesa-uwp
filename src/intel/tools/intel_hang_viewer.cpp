@@ -362,9 +362,9 @@ display_hang_stats()
 
    if (ImGui::Button("Help") || has_ctrl_key('h')) { ImGui::OpenPopup("Help"); }
 
-   ImGui::Text("BOs:        %lu", context.bos.size());
-   ImGui::Text("Execs       %lu", context.execs.size());
-   ImGui::Text("Maps:       %lu", context.maps.size());
+   ImGui::Text("BOs:        %zu", context.bos.size());
+   ImGui::Text("Execs       %zu", context.execs.size());
+   ImGui::Text("Maps:       %zu", context.maps.size());
    ImGui::Text("PCI ID:    0x%x", context.devinfo.pci_device_id);
 
    ImGui::SetNextWindowContentWidth(500);
