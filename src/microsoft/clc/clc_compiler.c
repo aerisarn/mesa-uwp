@@ -662,6 +662,11 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
          .kernel_image_read_write = true,
          .literal_sampler = true,
          .printf = true,
+
+         // These aren't fully supported, but silence warnings about them from
+         // code that doesn't really use them.
+         .linkage = true,
+         .generic_pointers = true,
       },
    };
    unsigned supported_int_sizes = (16 | 32 | 64);
