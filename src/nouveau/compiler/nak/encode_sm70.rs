@@ -437,7 +437,7 @@ impl SM70Instr {
             ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::from_src(&op.srcs[2]),
         );
-        self.set_bit(76, false); /* TODO: DNZ */
+        self.set_bit(76, op.dnz);
         self.set_bit(77, op.saturate);
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);
@@ -463,7 +463,7 @@ impl SM70Instr {
             ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::from_src(&Src::new_zero()),
         );
-        self.set_bit(76, false); /* TODO: DNZ */
+        self.set_bit(76, op.dnz);
         self.set_bit(77, op.saturate);
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);

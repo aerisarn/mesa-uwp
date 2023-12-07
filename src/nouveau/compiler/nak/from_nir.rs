@@ -707,14 +707,14 @@ impl<'a> ShaderFromNir<'a> {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
-                let ffma = OpFFma {
+                b.push_op(OpFFma {
                     dst: dst.into(),
                     srcs: [srcs[0], srcs[1], srcs[2]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
                     ftz: self.float_ctl[ftype].ftz,
-                };
-                b.push_op(ffma);
+                    dnz: false,
+                });
                 dst
             }
             nir_op_flog2 => {
@@ -736,14 +736,14 @@ impl<'a> ShaderFromNir<'a> {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
-                let fmul = OpFMul {
+                b.push_op(OpFMul {
                     dst: dst.into(),
                     srcs: [srcs[0], srcs[1]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
                     ftz: self.float_ctl[ftype].ftz,
-                };
-                b.push_op(fmul);
+                    dnz: false,
+                });
                 dst
             }
             nir_op_fquantize2f16 => {

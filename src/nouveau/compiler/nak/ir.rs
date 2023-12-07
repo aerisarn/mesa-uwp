@@ -2213,6 +2213,7 @@ pub struct OpFFma {
     pub saturate: bool,
     pub rnd_mode: FRndMode,
     pub ftz: bool,
+    pub dnz: bool,
 }
 
 impl DisplayOp for OpFFma {
@@ -2224,7 +2225,9 @@ impl DisplayOp for OpFFma {
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }
-        if self.ftz {
+        if self.dnz {
+            write!(f, ".dnz")?;
+        } else if self.ftz {
             write!(f, ".ftz")?;
         }
         write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.srcs[2])
@@ -2269,6 +2272,7 @@ pub struct OpFMul {
     pub saturate: bool,
     pub rnd_mode: FRndMode,
     pub ftz: bool,
+    pub dnz: bool,
 }
 
 impl DisplayOp for OpFMul {
@@ -2280,7 +2284,9 @@ impl DisplayOp for OpFMul {
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }
-        if self.ftz {
+        if self.dnz {
+            write!(f, ".dnz")?;
+        } else if self.ftz {
             write!(f, ".ftz")?;
         }
         write!(f, " {} {}", self.srcs[0], self.srcs[1],)

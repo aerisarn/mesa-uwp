@@ -190,6 +190,7 @@ pub trait SSABuilder: Builder {
             saturate: false,
             rnd_mode: FRndMode::NearestEven,
             ftz: false,
+            dnz: false,
         });
         dst
     }
