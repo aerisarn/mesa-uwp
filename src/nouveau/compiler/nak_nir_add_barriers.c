@@ -113,7 +113,7 @@ lower_control_barriers_block(nir_block *block,
              "Control barrier with scope > WORKGROUP");
 
       if (exec_scope == SCOPE_WORKGROUP &&
-          nak_nir_has_one_subgroup(state->builder.shader))
+          nak_nir_workgroup_has_one_subgroup(state->builder.shader))
          exec_scope = SCOPE_SUBGROUP;
 
       /* Because we're guaranteeing maximal convergence with this pass,

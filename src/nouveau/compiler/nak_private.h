@@ -108,18 +108,7 @@ enum PACKED nak_sv {
    NAK_SV_CLOCK            = 0x50,
 };
 
-static bool
-nak_nir_has_one_subgroup(const nir_shader *nir)
-{
-   if (nir->info.workgroup_size_variable)
-      return false;
-
-   uint16_t wg_sz = nir->info.workgroup_size[0] *
-                    nir->info.workgroup_size[1] *
-                    nir->info.workgroup_size[2];
-
-   return wg_sz <= 32;
-}
+bool nak_nir_workgroup_has_one_subgroup(const nir_shader *nir);
 
 struct nak_xfb_info
 nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb);

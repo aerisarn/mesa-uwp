@@ -19,6 +19,41 @@
 
 #define OPT_V(nir, pass, ...) NIR_PASS_V(nir, pass, ##__VA_ARGS__)
 
+bool
+nak_nir_workgroup_has_one_subgroup(const nir_shader *nir)
+{
+   switch (nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_FRAGMENT:
+      unreachable("Shader stage does not have workgroups");
+      break;
+
+   case MESA_SHADER_TESS_CTRL:
+      /* Tessellation only ever has one subgroup per workgroup.  The Vulkan
+       * limit on the number of tessellation invocations is 32 to allow for
+       * this.
+       */
+      return true;
+
+   case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_KERNEL: {
+      if (nir->info.workgroup_size_variable)
+         return false;
+
+      uint16_t wg_sz = nir->info.workgroup_size[0] *
+                       nir->info.workgroup_size[1] *
+                       nir->info.workgroup_size[2];
+
+      return wg_sz <= 32;
+   }
+
+   default:
+      unreachable("Unknown shader stage");
+   }
+}
+
 static void
 optimize_nir(nir_shader *nir, const struct nak_compiler *nak, bool allow_copies)
 {
@@ -204,7 +239,7 @@ nak_nir_lower_subgroup_id_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       b->cursor = nir_instr_remove(&intrin->instr);
 
       nir_def *num_subgroups;
-      if (nak_nir_has_one_subgroup(b->shader)) {
+      if (nak_nir_workgroup_has_one_subgroup(b->shader)) {
          num_subgroups = nir_imm_int(b, 1);
       } else {
          assert(b->shader->info.cs.derivative_group == DERIVATIVE_GROUP_NONE);
@@ -225,7 +260,7 @@ nak_nir_lower_subgroup_id_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       b->cursor = nir_instr_remove(&intrin->instr);
 
       nir_def *subgroup_id;
-      if (nak_nir_has_one_subgroup(b->shader)) {
+      if (nak_nir_workgroup_has_one_subgroup(b->shader)) {
          subgroup_id = nir_imm_int(b, 0);
       } else {
          assert(b->shader->info.cs.derivative_group == DERIVATIVE_GROUP_NONE);

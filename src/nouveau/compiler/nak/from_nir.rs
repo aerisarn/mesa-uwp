@@ -2228,13 +2228,13 @@ impl<'a> ShaderFromNir<'a> {
                 match intrin.execution_scope() {
                     SCOPE_NONE => (),
                     SCOPE_WORKGROUP => {
-                        if self.nir.info.stage() == MESA_SHADER_COMPUTE {
-                            // OpBar needs num_barriers > 0 but, as far as we
-                            // know, it doesn't actually use a barrier.
-                            self.info.num_barriers = 1;
-                            b.push_op(OpBar {});
-                            b.push_op(OpNop { label: None });
-                        }
+                        assert!(
+                            self.nir.info.stage() == MESA_SHADER_COMPUTE
+                                || self.nir.info.stage() == MESA_SHADER_KERNEL
+                        );
+                        self.info.num_barriers = 1;
+                        b.push_op(OpBar {});
+                        b.push_op(OpNop { label: None });
                     }
                     _ => panic!("Unhandled execution scope"),
                 }
