@@ -2655,11 +2655,12 @@ d3d12_video_encoder_get_feedback_fence(struct pipe_video_codec *codec, void *fee
    return (pipe_fence_handle*) feedback;
 }
 
-int d3d12_video_encoder_get_encode_headers(struct pipe_video_codec *codec,
-                                           struct pipe_picture_desc *picture,
-                                           void* bitstream_buf,
-                                           unsigned *bitstream_buf_size)
+int d3d12_video_encoder_get_encode_headers([[maybe_unused]] struct pipe_video_codec *codec,
+                                           [[maybe_unused]] struct pipe_picture_desc *picture,
+                                           [[maybe_unused]] void* bitstream_buf,
+                                           [[maybe_unused]] unsigned *bitstream_buf_size)
 {
+#if (VIDEO_CODEC_H264ENC || VIDEO_CODEC_H265ENC)
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    D3D12_VIDEO_SAMPLE srcTextureDesc = {};
    srcTextureDesc.Width = pD3D12Enc->base.width;
@@ -2669,10 +2670,14 @@ int d3d12_video_encoder_get_encode_headers(struct pipe_video_codec *codec,
       return EINVAL;
 
    if (!pD3D12Enc->m_upBitstreamBuilder) {
+#if VIDEO_CODEC_H264ENC
       if (u_reduce_video_profile(pD3D12Enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_h264>();
-      else if (u_reduce_video_profile(pD3D12Enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC)
+#endif
+#if VIDEO_CODEC_H265ENC
+      if (u_reduce_video_profile(pD3D12Enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC)
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_hevc>();
+#endif
    }
    bool postEncodeHeadersNeeded = false;
    uint64_t preEncodeGeneratedHeadersByteSize = 0;
@@ -2690,4 +2695,7 @@ int d3d12_video_encoder_get_encode_headers(struct pipe_video_codec *codec,
           pD3D12Enc->m_BitstreamHeadersBuffer.data(),
           *bitstream_buf_size);
    return 0;
+#else
+   return ENOTSUP;
+#endif
 }
