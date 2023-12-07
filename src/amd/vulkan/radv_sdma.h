@@ -32,10 +32,12 @@ extern "C" {
 
 struct radv_sdma_surf {
    VkExtent3D extent; /* Image extent. */
+   VkOffset3D offset; /* Image offset. */
    uint64_t va;       /* Virtual address of image data. */
    unsigned bpp;      /* Bytes per pixel. */
    unsigned blk_w;    /* Image format block width in pixels. */
    unsigned blk_h;    /* Image format block height in pixels. */
+   bool is_linear;    /* Whether the image is linear. */
 
    union {
       /* linear images only */
@@ -53,13 +55,29 @@ struct radv_sdma_surf {
    };
 };
 
-void radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs, struct radv_image *image,
-                                 struct radv_buffer *buffer, const VkBufferImageCopy2 *region, bool to_image);
+ALWAYS_INLINE static VkExtent3D
+radv_sdma_get_copy_extent(const struct radv_image *const image, const VkImageSubresourceLayers subresource,
+                          VkExtent3D extent)
+{
+   if (image->vk.image_type != VK_IMAGE_TYPE_3D)
+      extent.depth = vk_image_subresource_layer_count(&image->vk, &subresource);
+
+   return extent;
+}
+
+struct radv_sdma_surf radv_sdma_get_buf_surf(const struct radv_buffer *const buffer,
+                                             const struct radv_image *const image,
+                                             const VkBufferImageCopy2 *const region);
+struct radv_sdma_surf radv_sdma_get_surf(const struct radv_device *const device, const struct radv_image *const image,
+                                         const VkImageSubresourceLayers subresource, const VkOffset3D offset);
+void radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs,
+                                 const struct radv_sdma_surf *buf, const struct radv_sdma_surf *img,
+                                 const VkExtent3D extent, bool to_image);
 bool radv_sdma_use_unaligned_buffer_image_copy(const struct radv_device *device, const struct radv_image *image,
                                                const struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
 void radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct radeon_cmdbuf *cs,
-                                           struct radv_image *image, struct radv_buffer *buffer,
-                                           const VkBufferImageCopy2 *region, struct radeon_winsys_bo *temp_bo,
+                                           const struct radv_sdma_surf *buf, const struct radv_sdma_surf *img_in,
+                                           const VkExtent3D copy_extent, struct radeon_winsys_bo *temp_bo,
                                            bool to_image);
 void radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va, uint64_t dst_va,
                            uint64_t size);
