@@ -103,28 +103,20 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
       return;
    }
 
-   /* Bind start_slot...start_slot+count */
+   /* Images writeable with pixel granularity are incompatible with
+    * compression. Decompress if necessary.
+    *
+    * Driver-internal images are used by the compute blitter and are exempt
+    * from these transitions, as it only uses compressed images when safe.
+    *
+    * We do this upfront because agx_decompress and agx_legalize_compression can
+    * call set_shader_images internall.
+    */
    for (int i = 0; i < count; i++) {
       const struct pipe_image_view *image = &iviews[i];
+      struct agx_resource *rsrc = agx_resource(image->resource);
 
-      if (image->resource)
-         ctx->stage[shader].image_mask |= BITFIELD_BIT(start_slot + i);
-      else
-         ctx->stage[shader].image_mask &= ~BITFIELD_BIT(start_slot + i);
-
-      if (!image->resource) {
-         util_copy_image_view(&ctx->stage[shader].images[start_slot + i], NULL);
-         continue;
-      }
-
-      /* Images writeable with pixel granularity are incompatible with
-       * compression. Decompress if necessary.
-       *
-       * Driver-internal images are used by the compute blitter and are exempt
-       * from these transitions, as it only uses compressed images when safe.
-       */
-      if (!(image->access & PIPE_IMAGE_ACCESS_DRIVER_INTERNAL)) {
-         struct agx_resource *rsrc = agx_resource(image->resource);
+      if (rsrc && !(image->access & PIPE_IMAGE_ACCESS_DRIVER_INTERNAL)) {
          if (!rsrc->layout.writeable_image &&
              (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)) {
 
@@ -139,8 +131,20 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
          if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)
             assert(rsrc->layout.writeable_image);
       }
+   }
 
-      util_copy_image_view(&ctx->stage[shader].images[start_slot + i], image);
+   /* Bind start_slot...start_slot+count */
+   for (int i = 0; i < count; i++) {
+      const struct pipe_image_view *image = &iviews[i];
+
+      if (!image->resource) {
+         util_copy_image_view(&ctx->stage[shader].images[start_slot + i], NULL);
+         ctx->stage[shader].image_mask &= ~BITFIELD_BIT(start_slot + i);
+      } else {
+         util_copy_image_view(&ctx->stage[shader].images[start_slot + i],
+                              image);
+         ctx->stage[shader].image_mask |= BITFIELD_BIT(start_slot + i);
+      }
    }
 
    /* Unbind start_slot+count...start_slot+count+unbind_num_trailing_slots */
@@ -4456,7 +4460,8 @@ static void
 agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 {
    struct agx_context *ctx = agx_context(pipe);
-   if (unlikely(!agx_render_condition_check(ctx)))
+   if (unlikely(!ctx->compute_blitter.active &&
+                !agx_render_condition_check(ctx)))
       return;
 
    struct agx_batch *batch = agx_get_compute_batch(ctx);
