@@ -46,6 +46,10 @@ signed_zero_nan_preserve_32 = ('(nir_is_float_control_signed_zero_preserve(info-
 signed_zero_inf_nan_preserve_16 = 'nir_is_float_control_signed_zero_inf_nan_preserve(info->float_controls_execution_mode, 16)'
 signed_zero_inf_nan_preserve_32 = 'nir_is_float_control_signed_zero_inf_nan_preserve(info->float_controls_execution_mode, 32)'
 
+has_fmulz = '(options->has_fmulz || \
+              (options->has_fmulz_no_denorms && \
+               !nir_is_denorm_preserve(info->float_controls_execution_mode, 32)))'
+
 ignore_exact = nir_algebraic.ignore_exact
 
 # Written in the form (<search>, <replace>) where <search> is an expression
@@ -274,20 +278,20 @@ optimizations = [
    # Optimize open-coded fmulz.
    # (b==0.0 ? 0.0 : a) * (a==0.0 ? 0.0 : b) -> fmulz(a, b)
    (('fmul@32', ('bcsel', ignore_exact('feq', b, 0.0), 0.0, a), ('bcsel', ignore_exact('feq', a, 0.0), 0.0, b)),
-    ('fmulz', a, b), 'options->has_fmulz && !'+signed_zero_preserve_32),
+    ('fmulz', a, b), has_fmulz+' && !'+signed_zero_preserve_32),
    (('fmul@32', a, ('bcsel', ignore_exact('feq', a, 0.0), 0.0, '#b(is_not_const_zero)')),
-    ('fmulz', a, b), 'options->has_fmulz && !'+signed_zero_preserve_32),
+    ('fmulz', a, b), has_fmulz+' && !'+signed_zero_preserve_32),
 
    # ffma(b==0.0 ? 0.0 : a, a==0.0 ? 0.0 : b, c) -> ffmaz(a, b, c)
    (('ffma@32', ('bcsel', ignore_exact('feq', b, 0.0), 0.0, a), ('bcsel', ignore_exact('feq', a, 0.0), 0.0, b), c),
-    ('ffmaz', a, b, c), 'options->has_fmulz && !'+signed_zero_preserve_32),
+    ('ffmaz', a, b, c), has_fmulz+' && !'+signed_zero_preserve_32),
    (('ffma@32', a, ('bcsel', ignore_exact('feq', a, 0.0), 0.0, '#b(is_not_const_zero)'), c),
-    ('ffmaz', a, b, c), 'options->has_fmulz && !'+signed_zero_preserve_32),
+    ('ffmaz', a, b, c), has_fmulz+' && !'+signed_zero_preserve_32),
 
    # b == 0.0 ? 1.0 : fexp2(fmul(a, b)) -> fexp2(fmulz(a, b))
    (('bcsel', ignore_exact('feq', b, 0.0), 1.0, ('fexp2', ('fmul@32', a, b))),
     ('fexp2', ('fmulz', a, b)),
-    'options->has_fmulz && !'+signed_zero_inf_nan_preserve_32),
+    has_fmulz+' && !'+signed_zero_inf_nan_preserve_32),
 ]
 
 # Shorthand for the expansion of just the dot product part of the [iu]dp4a
