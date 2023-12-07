@@ -901,7 +901,7 @@ agx_blit_from_staging(struct pipe_context *pctx, struct agx_transfer *trans)
    blit.dst.level = trans->base.level;
    blit.dst.box = trans->base.box;
    blit.src.resource = trans->staging.rsrc;
-   blit.src.format = trans->staging.rsrc->format;
+   blit.src.format = blit.dst.format;
    blit.src.level = 0;
    blit.src.box = trans->staging.box;
    blit.mask = util_format_get_mask(blit.src.format);
@@ -922,7 +922,7 @@ agx_blit_to_staging(struct pipe_context *pctx, struct agx_transfer *trans)
    blit.src.level = trans->base.level;
    blit.src.box = trans->base.box;
    blit.dst.resource = trans->staging.rsrc;
-   blit.dst.format = trans->staging.rsrc->format;
+   blit.dst.format = blit.src.format;
    blit.dst.level = 0;
    blit.dst.box = trans->staging.box;
    blit.mask = util_format_get_mask(blit.dst.format);
