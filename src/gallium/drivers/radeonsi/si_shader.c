@@ -157,8 +157,10 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
       /* Use the largest workgroup size for streamout */
       if (shader->key.ge.as_ngg)
          return si_shader_uses_streamout(shader) ? 256 : 128;
-      else
-         return 0;
+
+      /* As part of merged shader. */
+      return shader->selector->screen->info.gfx_level >= GFX9 &&
+         (shader->key.ge.as_ls || shader->key.ge.as_es) ? 128 : 0;
 
    case MESA_SHADER_TESS_CTRL:
       /* Return this so that LLVM doesn't remove s_barrier
