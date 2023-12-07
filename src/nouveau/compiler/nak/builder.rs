@@ -181,16 +181,6 @@ pub trait SSABuilder: Builder {
         dst
     }
 
-    fn fmnmx(&mut self, x: Src, y: Src, min: Src) -> SSARef {
-        let dst = self.alloc_ssa(RegFile::GPR, 1);
-        self.push_op(OpFMnMx {
-            dst: dst.into(),
-            srcs: [x, y],
-            min: min,
-        });
-        dst
-    }
-
     fn fmul(&mut self, x: Src, y: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpFMul {

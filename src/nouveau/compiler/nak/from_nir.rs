@@ -607,13 +607,15 @@ impl<'a> ShaderFromNir<'a> {
                 assert!(alu.get_src(0).bit_size() == 32);
                 b.fsetp(FloatCmpOp::OrdLt, srcs[0], srcs[1])
             }
-            nir_op_fmax => {
+            nir_op_fmax | nir_op_fmin => {
                 assert!(alu.def.bit_size() == 32);
-                b.fmnmx(srcs[0], srcs[1], false.into())
-            }
-            nir_op_fmin => {
-                assert!(alu.def.bit_size() == 32);
-                b.fmnmx(srcs[0], srcs[1], true.into())
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpFMnMx {
+                    dst: dst.into(),
+                    srcs: [srcs[0], srcs[1]],
+                    min: (alu.op == nir_op_fmin).into(),
+                });
+                dst
             }
             nir_op_fmul => {
                 assert!(alu.def.bit_size() == 32);
