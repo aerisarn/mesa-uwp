@@ -85,8 +85,9 @@
     - !reference [.test, rules]
     - !reference [.igalia-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
+    - !reference [.broadcom-common-rules, rules]
     - changes: &v3dv_file_list
-        - src/broadcom/**/*
+        - src/broadcom/vulkan/**/*
       when: on_success
 
 .v3dv-manual-rules:
@@ -95,6 +96,7 @@
     - !reference [.test, rules]
     - !reference [.igalia-farm-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
+    - !reference [.broadcom-common-manual-rules, rules]
     - changes: *v3dv_file_list
       when: manual
 
