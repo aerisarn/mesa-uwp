@@ -2983,6 +2983,28 @@ agx_batch_init_state(struct agx_batch *batch)
 
    if (agx_batch_is_compute(batch)) {
       batch->initialized = true;
+
+      struct agx_context *ctx = batch->ctx;
+      struct agx_device *dev = agx_device(ctx->base.screen);
+      uint8_t *out = batch->cdm.current;
+
+      /* See below */
+      agx_push(out, CDM_BARRIER, cfg) {
+         cfg.usc_cache_inval = true;
+         cfg.unk_5 = true;
+         cfg.unk_6 = true;
+         cfg.unk_8 = true;
+         // cfg.unk_11 = true;
+         // cfg.unk_20 = true;
+         if (dev->params.num_clusters_total > 1) {
+            // cfg.unk_24 = true;
+            if (dev->params.gpu_generation == 13) {
+               cfg.unk_4 = true;
+               // cfg.unk_26 = true;
+            }
+         }
+      }
+
       return;
    }
 
@@ -4449,6 +4471,34 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
             // cfg.unk_26 = true;
          }
       }
+
+      /* With multiple launches in the same CDM stream, we can get cache
+       * coherency (? or sync?) issues. We hit this with blits, which need - in
+       * between dispatches - need the PBE cache to be flushed and the texture
+       * cache to be invalidated. Until we know what bits mean what exactly,
+       * let's just set these after every launch to be safe. We can revisit in
+       * the future when we figure out what the bits mean.
+       */
+      cfg.unk_0 = true;
+      cfg.unk_1 = true;
+      cfg.unk_2 = true;
+      cfg.usc_cache_inval = true;
+      cfg.unk_4 = true;
+      cfg.unk_5 = true;
+      cfg.unk_6 = true;
+      cfg.unk_7 = true;
+      cfg.unk_8 = true;
+      cfg.unk_9 = true;
+      cfg.unk_10 = true;
+      cfg.unk_11 = true;
+      cfg.unk_12 = true;
+      cfg.unk_13 = true;
+      cfg.unk_14 = true;
+      cfg.unk_15 = true;
+      cfg.unk_16 = true;
+      cfg.unk_17 = true;
+      cfg.unk_18 = true;
+      cfg.unk_19 = true;
    }
 
    batch->cdm.current = out;
@@ -4484,10 +4534,20 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    agx_launch(batch, info, cs, PIPE_SHADER_COMPUTE);
 
    /* TODO: Dirty tracking? */
+   agx_dirty_all(ctx);
 
-   /* TODO: Allow multiple kernels in a batch? */
-   agx_flush_batch_for_reason(ctx, batch, "Compute kernel serialization");
    batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] = 0;
+
+   /* If the next dispatch might overflow, flush now. TODO: If this is ever hit
+    * in practice, we can use CDM stream links.
+    */
+   size_t dispatch_upper_bound =
+      AGX_CDM_LAUNCH_LENGTH + AGX_CDM_UNK_G14X_LENGTH +
+      AGX_CDM_INDIRECT_LENGTH + AGX_CDM_GLOBAL_SIZE_LENGTH +
+      AGX_CDM_LOCAL_SIZE_LENGTH + AGX_CDM_BARRIER_LENGTH;
+
+   if (batch->cdm.current + dispatch_upper_bound >= batch->cdm.end)
+      agx_flush_batch_for_reason(ctx, batch, "CDM overfull");
 }
 
 static void
