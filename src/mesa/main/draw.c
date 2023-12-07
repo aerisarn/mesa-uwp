@@ -1574,6 +1574,23 @@ dump_element_buffer(struct gl_context *ctx, GLenum type)
 }
 #endif
 
+static bool
+validate_index_bounds(struct gl_context *ctx, struct pipe_draw_info *info,
+                      const struct pipe_draw_start_count_bias *draws,
+                      unsigned num_draws)
+{
+   assert(info->index_size);
+
+   /* Get index bounds for user buffers. */
+   if (!info->index_bounds_valid && ctx->st->draw_needs_minmax_index) {
+      /* Return if this fails, which means all draws have count == 0. */
+      if (!vbo_get_minmax_indices_gallium(ctx, info, draws, num_draws))
+         return false;
+
+      info->index_bounds_valid = true;
+   }
+   return true;
+}
 
 /**
  * Inner support for both _mesa_DrawElements and _mesa_DrawRangeElements.
@@ -1655,8 +1672,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
    draw.count = count;
 
    st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-   if (!st_prepare_indexed_draw(ctx, &info, &draw, 1))
+   if (!validate_index_bounds(ctx, &info, &draw, 1))
       return;
 
    ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
@@ -2040,8 +2056,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
       }
 
       st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-      if (!st_prepare_indexed_draw(ctx, &info, draw, primcount))
+      if (!validate_index_bounds(ctx, &info, draw, primcount))
          return;
 
       ctx->Driver.DrawGallium(ctx, &info, 0, draw, primcount);
@@ -2064,9 +2079,8 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
          draw.count = count[i];
 
          st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-         if (!st_prepare_indexed_draw(ctx, &info, &draw, 1))
-            return;
+         if (!validate_index_bounds(ctx, &info, &draw, 1))
+            continue;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
       }
@@ -2506,9 +2520,8 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
          draw.index_bias = cmd->baseVertex;
 
          st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-         if (!st_prepare_indexed_draw(ctx, &info, &draw, 1))
-            return;
+         if (!validate_index_bounds(ctx, &info, &draw, 1))
+            continue;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
          ptr += stride;

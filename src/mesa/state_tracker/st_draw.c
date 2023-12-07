@@ -111,26 +111,6 @@ st_prepare_draw(struct gl_context *ctx, uint64_t state_mask)
    }
 }
 
-bool
-st_prepare_indexed_draw(struct gl_context *ctx, struct pipe_draw_info *info,
-                        const struct pipe_draw_start_count_bias *draws,
-                        unsigned num_draws)
-{
-   struct st_context *st = ctx->st;
-
-   assert(info->index_size);
-
-   /* Get index bounds for user buffers. */
-   if (!info->index_bounds_valid && st->draw_needs_minmax_index) {
-      /* Return if this fails, which means all draws have count == 0. */
-      if (!vbo_get_minmax_indices_gallium(ctx, info, draws, num_draws))
-         return false;
-
-      info->index_bounds_valid = true;
-   }
-   return true;
-}
-
 static void
 st_draw_gallium(struct gl_context *ctx,
                 struct pipe_draw_info *info,

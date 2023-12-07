@@ -77,11 +77,6 @@ void
 st_prepare_draw(struct gl_context *ctx, uint64_t state_mask);
 
 bool
-st_prepare_indexed_draw(struct gl_context *ctx, struct pipe_draw_info *info,
-                        const struct pipe_draw_start_count_bias *draws,
-                        unsigned num_draws);
-
-bool
 st_draw_quad(struct st_context *st,
              float x0, float y0, float x1, float y1, float z,
              float s0, float t0, float s1, float t1,
