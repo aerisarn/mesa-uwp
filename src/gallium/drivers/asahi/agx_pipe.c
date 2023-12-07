@@ -1093,27 +1093,6 @@ agx_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *transfer)
    FREE(transfer);
 }
 
-static bool
-agx_generate_mipmap(struct pipe_context *pctx, struct pipe_resource *prsrc,
-                    enum pipe_format format, unsigned base_level,
-                    unsigned last_level, unsigned first_layer,
-                    unsigned last_layer)
-{
-   struct agx_resource *rsrc = agx_resource(prsrc);
-
-   /* Generating a mipmap invalidates the written levels. Make that
-    * explicit so we don't reload the previous contents.
-    */
-   for (unsigned l = base_level + 1; l <= last_level; ++l)
-      BITSET_CLEAR(rsrc->data_valid, l);
-
-   /* For now we use util_gen_mipmap, but this has way too much overhead */
-   perf_debug_ctx(agx_context(pctx), "Unoptimized mipmap generation");
-
-   return util_gen_mipmap(pctx, prsrc, format, base_level, last_level,
-                          first_layer, last_layer, PIPE_TEX_FILTER_LINEAR);
-}
-
 /*
  * clear/copy
  */
@@ -1501,7 +1480,6 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->clear = agx_clear;
    pctx->resource_copy_region = util_resource_copy_region;
    pctx->blit = agx_blit;
-   pctx->generate_mipmap = agx_generate_mipmap;
    pctx->flush_resource = agx_flush_resource;
 
    pctx->buffer_map = u_transfer_helper_transfer_map;
@@ -1607,7 +1585,6 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_OCCLUSION_QUERY:
    case PIPE_CAP_QUERY_TIMESTAMP:
    case PIPE_CAP_QUERY_TIME_ELAPSED:
-   case PIPE_CAP_GENERATE_MIPMAP:
    case PIPE_CAP_PRIMITIVE_RESTART:
    case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
    case PIPE_CAP_ANISOTROPIC_FILTER:
