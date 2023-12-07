@@ -3889,6 +3889,348 @@ tc_call_draw_multi(struct pipe_context *pipe, void *call, uint64_t *last)
 #define DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX \
    offsetof(struct pipe_draw_info, index)
 
+/* Single draw with drawid_offset == 0. */
+static void
+tc_draw_single(struct pipe_context *_pipe, const struct pipe_draw_info *info,
+               unsigned drawid_offset,
+               const struct pipe_draw_indirect_info *indirect,
+               const struct pipe_draw_start_count_bias *draws,
+               unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct tc_draw_single *p =
+      tc_add_call(tc, TC_CALL_draw_single, tc_draw_single);
+
+   if (info->index_size) {
+      if (!info->take_index_buffer_ownership) {
+         tc_set_resource_reference(&p->info.index.resource,
+                                   info->index.resource);
+      }
+      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
+   }
+   memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   p->info.min_index = draws[0].start;
+   p->info.max_index = draws[0].count;
+   p->index_bias = draws[0].index_bias;
+   simplify_draw_info(&p->info);
+}
+
+/* Single draw with drawid_offset > 0. */
+static void
+tc_draw_single_draw_id(struct pipe_context *_pipe,
+                       const struct pipe_draw_info *info,
+                       unsigned drawid_offset,
+                       const struct pipe_draw_indirect_info *indirect,
+                       const struct pipe_draw_start_count_bias *draws,
+                       unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct tc_draw_single *p =
+      &tc_add_call(tc, TC_CALL_draw_single_drawid, tc_draw_single_drawid)->base;
+
+   if (info->index_size) {
+      if (!info->take_index_buffer_ownership) {
+         tc_set_resource_reference(&p->info.index.resource,
+                                   info->index.resource);
+      }
+      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
+   }
+   ((struct tc_draw_single_drawid*)p)->drawid_offset = drawid_offset;
+   memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   p->info.min_index = draws[0].start;
+   p->info.max_index = draws[0].count;
+   p->index_bias = draws[0].index_bias;
+   simplify_draw_info(&p->info);
+}
+
+/* Single draw with user indices and drawid_offset == 0. */
+static void
+tc_draw_user_indices_single(struct pipe_context *_pipe,
+                            const struct pipe_draw_info *info,
+                            unsigned drawid_offset,
+                            const struct pipe_draw_indirect_info *indirect,
+                            const struct pipe_draw_start_count_bias *draws,
+                            unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   unsigned index_size = info->index_size;
+   unsigned size = draws[0].count * index_size;
+   struct pipe_resource *buffer = NULL;
+   unsigned offset;
+
+   if (!size)
+      return;
+
+   /* This must be done before adding draw_vbo, because it could generate
+    * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
+    * to the driver if it was done afterwards.
+    */
+   u_upload_data(tc->base.stream_uploader, 0, size, 4,
+                 (uint8_t*)info->index.user + draws[0].start * index_size,
+                 &offset, &buffer);
+   if (unlikely(!buffer))
+      return;
+
+   struct tc_draw_single *p =
+      tc_add_call(tc, TC_CALL_draw_single, tc_draw_single);
+   memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
+   p->info.index.resource = buffer;
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   p->info.min_index = offset >> util_logbase2(index_size);
+   p->info.max_index = draws[0].count;
+   p->index_bias = draws[0].index_bias;
+   simplify_draw_info(&p->info);
+}
+
+/* Single draw with user indices and drawid_offset > 0. */
+static void
+tc_draw_user_indices_single_draw_id(struct pipe_context *_pipe,
+                                    const struct pipe_draw_info *info,
+                                    unsigned drawid_offset,
+                                    const struct pipe_draw_indirect_info *indirect,
+                                    const struct pipe_draw_start_count_bias *draws,
+                                    unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   unsigned index_size = info->index_size;
+   unsigned size = draws[0].count * index_size;
+   struct pipe_resource *buffer = NULL;
+   unsigned offset;
+
+   if (!size)
+      return;
+
+   /* This must be done before adding draw_vbo, because it could generate
+    * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
+    * to the driver if it was done afterwards.
+    */
+   u_upload_data(tc->base.stream_uploader, 0, size, 4,
+                 (uint8_t*)info->index.user + draws[0].start * index_size,
+                 &offset, &buffer);
+   if (unlikely(!buffer))
+      return;
+
+   struct tc_draw_single *p =
+      &tc_add_call(tc, TC_CALL_draw_single_drawid, tc_draw_single_drawid)->base;
+   memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
+   p->info.index.resource = buffer;
+   ((struct tc_draw_single_drawid*)p)->drawid_offset = drawid_offset;
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   p->info.min_index = offset >> util_logbase2(index_size);
+   p->info.max_index = draws[0].count;
+   p->index_bias = draws[0].index_bias;
+   simplify_draw_info(&p->info);
+}
+
+#define DRAW_OVERHEAD_BYTES sizeof(struct tc_draw_multi)
+#define ONE_DRAW_SLOT_BYTES sizeof(((struct tc_draw_multi*)NULL)->slot[0])
+
+#define SLOTS_FOR_ONE_DRAW \
+   DIV_ROUND_UP(DRAW_OVERHEAD_BYTES + ONE_DRAW_SLOT_BYTES, \
+                sizeof(struct tc_call_base))
+
+static void
+tc_draw_multi(struct pipe_context *_pipe, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count_bias *draws,
+              unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   int total_offset = 0;
+   bool take_index_buffer_ownership = info->take_index_buffer_ownership;
+
+   while (num_draws) {
+      struct tc_batch *next = &tc->batch_slots[tc->next];
+
+      int nb_slots_left = TC_SLOTS_PER_BATCH - next->num_total_slots;
+      /* If there isn't enough place for one draw, try to fill the next one */
+      if (nb_slots_left < SLOTS_FOR_ONE_DRAW)
+         nb_slots_left = TC_SLOTS_PER_BATCH;
+      const int size_left_bytes = nb_slots_left * sizeof(struct tc_call_base);
+
+      /* How many draws can we fit in the current batch */
+      const int dr = MIN2(num_draws, (size_left_bytes - DRAW_OVERHEAD_BYTES) /
+                          ONE_DRAW_SLOT_BYTES);
+
+      /* Non-indexed call or indexed with a real index buffer. */
+      struct tc_draw_multi *p =
+         tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
+                                dr);
+      if (info->index_size) {
+         if (!take_index_buffer_ownership) {
+            tc_set_resource_reference(&p->info.index.resource,
+                                      info->index.resource);
+         }
+         tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
+      }
+      take_index_buffer_ownership = false;
+      memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
+      p->num_draws = dr;
+      memcpy(p->slot, &draws[total_offset], sizeof(draws[0]) * dr);
+      num_draws -= dr;
+
+      total_offset += dr;
+   }
+}
+
+static void
+tc_draw_user_indices_multi(struct pipe_context *_pipe,
+                           const struct pipe_draw_info *info,
+                           unsigned drawid_offset,
+                           const struct pipe_draw_indirect_info *indirect,
+                           const struct pipe_draw_start_count_bias *draws,
+                           unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct pipe_resource *buffer = NULL;
+   unsigned buffer_offset, total_count = 0;
+   unsigned index_size_shift = util_logbase2(info->index_size);
+   uint8_t *ptr = NULL;
+
+   /* Get the total count. */
+   for (unsigned i = 0; i < num_draws; i++)
+      total_count += draws[i].count;
+
+   if (!total_count)
+      return;
+
+   /* Allocate space for all index buffers.
+    *
+    * This must be done before adding draw_vbo, because it could generate
+    * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
+    * to the driver if it was done afterwards.
+    */
+   u_upload_alloc(tc->base.stream_uploader, 0,
+                  total_count << index_size_shift, 4,
+                  &buffer_offset, &buffer, (void**)&ptr);
+   if (unlikely(!buffer))
+      return;
+
+   int total_offset = 0;
+   unsigned offset = 0;
+   while (num_draws) {
+      struct tc_batch *next = &tc->batch_slots[tc->next];
+
+      int nb_slots_left = TC_SLOTS_PER_BATCH - next->num_total_slots;
+      /* If there isn't enough place for one draw, try to fill the next one */
+      if (nb_slots_left < SLOTS_FOR_ONE_DRAW)
+         nb_slots_left = TC_SLOTS_PER_BATCH;
+      const int size_left_bytes = nb_slots_left * sizeof(struct tc_call_base);
+
+      /* How many draws can we fit in the current batch */
+      const int dr = MIN2(num_draws, (size_left_bytes - DRAW_OVERHEAD_BYTES) /
+                          ONE_DRAW_SLOT_BYTES);
+
+      struct tc_draw_multi *p =
+         tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
+                                dr);
+      memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
+
+      if (total_offset == 0)
+         /* the first slot inherits the reference from u_upload_alloc() */
+         p->info.index.resource = buffer;
+      else
+         /* all following slots need a new reference */
+         tc_set_resource_reference(&p->info.index.resource, buffer);
+
+      p->num_draws = dr;
+
+      /* Upload index buffers. */
+      for (unsigned i = 0; i < dr; i++) {
+         unsigned count = draws[i + total_offset].count;
+
+         if (!count) {
+            p->slot[i].start = 0;
+            p->slot[i].count = 0;
+            p->slot[i].index_bias = 0;
+            continue;
+         }
+
+         unsigned size = count << index_size_shift;
+         memcpy(ptr + offset,
+                (uint8_t*)info->index.user +
+                (draws[i + total_offset].start << index_size_shift), size);
+         p->slot[i].start = (buffer_offset + offset) >> index_size_shift;
+         p->slot[i].count = count;
+         p->slot[i].index_bias = draws[i + total_offset].index_bias;
+         offset += size;
+      }
+
+      total_offset += dr;
+      num_draws -= dr;
+   }
+}
+
+static void
+tc_draw_indirect(struct pipe_context *_pipe, const struct pipe_draw_info *info,
+                 unsigned drawid_offset,
+                 const struct pipe_draw_indirect_info *indirect,
+                 const struct pipe_draw_start_count_bias *draws,
+                 unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   assert(!info->has_user_indices);
+   assert(num_draws == 1);
+
+   struct tc_draw_indirect *p =
+      tc_add_call(tc, TC_CALL_draw_indirect, tc_draw_indirect);
+   struct tc_buffer_list *next = &tc->buffer_lists[tc->next_buf_list];
+
+   if (info->index_size) {
+      if (!info->take_index_buffer_ownership) {
+         tc_set_resource_reference(&p->info.index.resource,
+                                   info->index.resource);
+      }
+      tc_add_to_buffer_list(tc, next, info->index.resource);
+   }
+   memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
+
+   tc_set_resource_reference(&p->indirect.buffer, indirect->buffer);
+   tc_set_resource_reference(&p->indirect.indirect_draw_count,
+                             indirect->indirect_draw_count);
+   p->indirect.count_from_stream_output = NULL;
+   pipe_so_target_reference(&p->indirect.count_from_stream_output,
+                            indirect->count_from_stream_output);
+
+   if (indirect->buffer)
+      tc_add_to_buffer_list(tc, next, indirect->buffer);
+   if (indirect->indirect_draw_count)
+      tc_add_to_buffer_list(tc, next, indirect->indirect_draw_count);
+   if (indirect->count_from_stream_output)
+      tc_add_to_buffer_list(tc, next, indirect->count_from_stream_output->buffer);
+
+   memcpy(&p->indirect, indirect, sizeof(*indirect));
+   p->draw.start = draws[0].start;
+}
+
+/* Dispatch table for tc_draw_vbo:
+ *
+ * Indexed by:
+ *    [is_indirect * 8 + index_size_and_has_user_indices * 4 +
+ *     is_multi_draw * 2 + non_zero_draw_id]
+ */
+static pipe_draw_func draw_funcs[16] = {
+   tc_draw_single,
+   tc_draw_single_draw_id,
+   tc_draw_multi,
+   tc_draw_multi,
+   tc_draw_user_indices_single,
+   tc_draw_user_indices_single_draw_id,
+   tc_draw_user_indices_multi,
+   tc_draw_user_indices_multi,
+   tc_draw_indirect,
+   tc_draw_indirect,
+   tc_draw_indirect,
+   tc_draw_indirect,
+   tc_draw_indirect,
+   tc_draw_indirect,
+   tc_draw_indirect,
+   tc_draw_indirect,
+};
+
 void
 tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             unsigned drawid_offset,
@@ -3900,228 +4242,14 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
                  sizeof(intptr_t) == offsetof(struct pipe_draw_info, min_index));
 
    struct threaded_context *tc = threaded_context(_pipe);
-   unsigned index_size = info->index_size;
-   bool has_user_indices = info->has_user_indices;
    if (tc->options.parse_renderpass_info)
       tc_parse_draw(tc);
 
-   if (unlikely(indirect)) {
-      assert(!has_user_indices);
-      assert(num_draws == 1);
-
-      struct tc_draw_indirect *p =
-         tc_add_call(tc, TC_CALL_draw_indirect, tc_draw_indirect);
-      struct tc_buffer_list *next = &tc->buffer_lists[tc->next_buf_list];
-
-      if (index_size) {
-         if (!info->take_index_buffer_ownership) {
-            tc_set_resource_reference(&p->info.index.resource,
-                                      info->index.resource);
-         }
-         tc_add_to_buffer_list(tc, next, info->index.resource);
-      }
-      memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
-
-      tc_set_resource_reference(&p->indirect.buffer, indirect->buffer);
-      tc_set_resource_reference(&p->indirect.indirect_draw_count,
-                                indirect->indirect_draw_count);
-      p->indirect.count_from_stream_output = NULL;
-      pipe_so_target_reference(&p->indirect.count_from_stream_output,
-                               indirect->count_from_stream_output);
-
-      if (indirect->buffer)
-         tc_add_to_buffer_list(tc, next, indirect->buffer);
-      if (indirect->indirect_draw_count)
-         tc_add_to_buffer_list(tc, next, indirect->indirect_draw_count);
-      if (indirect->count_from_stream_output)
-         tc_add_to_buffer_list(tc, next, indirect->count_from_stream_output->buffer);
-
-      memcpy(&p->indirect, indirect, sizeof(*indirect));
-      p->draw.start = draws[0].start;
-
-      /* This must be after tc_add_call, which can flush the batch. */
-      if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
-         tc_add_all_gfx_bindings_to_buffer_list(tc);
-      return;
-   }
-
-   if (num_draws == 1) {
-      /* Single draw. */
-      if (index_size && has_user_indices) {
-         unsigned size = draws[0].count * index_size;
-         struct pipe_resource *buffer = NULL;
-         unsigned offset;
-
-         if (!size)
-            return;
-
-         /* This must be done before adding draw_vbo, because it could generate
-          * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
-          * to the driver if it was done afterwards.
-          */
-         u_upload_data(tc->base.stream_uploader, 0, size, 4,
-                       (uint8_t*)info->index.user + draws[0].start * index_size,
-                       &offset, &buffer);
-         if (unlikely(!buffer))
-            return;
-
-         struct tc_draw_single *p = drawid_offset > 0 ?
-            &tc_add_call(tc, TC_CALL_draw_single_drawid, tc_draw_single_drawid)->base :
-            tc_add_call(tc, TC_CALL_draw_single, tc_draw_single);
-         memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
-         p->info.index.resource = buffer;
-         if (drawid_offset > 0)
-            ((struct tc_draw_single_drawid*)p)->drawid_offset = drawid_offset;
-         /* u_threaded_context stores start/count in min/max_index for single draws. */
-         p->info.min_index = offset >> util_logbase2(index_size);
-         p->info.max_index = draws[0].count;
-         p->index_bias = draws[0].index_bias;
-         simplify_draw_info(&p->info);
-      } else {
-         /* Non-indexed call or indexed with a real index buffer. */
-         struct tc_draw_single *p = drawid_offset > 0 ?
-            &tc_add_call(tc, TC_CALL_draw_single_drawid, tc_draw_single_drawid)->base :
-            tc_add_call(tc, TC_CALL_draw_single, tc_draw_single);
-         if (index_size) {
-            if (!info->take_index_buffer_ownership) {
-               tc_set_resource_reference(&p->info.index.resource,
-                                         info->index.resource);
-            }
-            tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
-         }
-         if (drawid_offset > 0)
-            ((struct tc_draw_single_drawid*)p)->drawid_offset = drawid_offset;
-         memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
-         /* u_threaded_context stores start/count in min/max_index for single draws. */
-         p->info.min_index = draws[0].start;
-         p->info.max_index = draws[0].count;
-         p->index_bias = draws[0].index_bias;
-         simplify_draw_info(&p->info);
-      }
-
-      /* This must be after tc_add_call, which can flush the batch. */
-      if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
-         tc_add_all_gfx_bindings_to_buffer_list(tc);
-      return;
-   }
-
-   const int draw_overhead_bytes = sizeof(struct tc_draw_multi);
-   const int one_draw_slot_bytes = sizeof(((struct tc_draw_multi*)NULL)->slot[0]);
-   const int slots_for_one_draw = DIV_ROUND_UP(draw_overhead_bytes + one_draw_slot_bytes,
-                                               sizeof(struct tc_call_base));
-   /* Multi draw. */
-   if (index_size && has_user_indices) {
-      struct pipe_resource *buffer = NULL;
-      unsigned buffer_offset, total_count = 0;
-      unsigned index_size_shift = util_logbase2(index_size);
-      uint8_t *ptr = NULL;
-
-      /* Get the total count. */
-      for (unsigned i = 0; i < num_draws; i++)
-         total_count += draws[i].count;
-
-      if (!total_count)
-         return;
-
-      /* Allocate space for all index buffers.
-       *
-       * This must be done before adding draw_vbo, because it could generate
-       * e.g. transfer_unmap and flush partially-uninitialized draw_vbo
-       * to the driver if it was done afterwards.
-       */
-      u_upload_alloc(tc->base.stream_uploader, 0,
-                     total_count << index_size_shift, 4,
-                     &buffer_offset, &buffer, (void**)&ptr);
-      if (unlikely(!buffer))
-         return;
-
-      int total_offset = 0;
-      unsigned offset = 0;
-      while (num_draws) {
-         struct tc_batch *next = &tc->batch_slots[tc->next];
-
-         int nb_slots_left = TC_SLOTS_PER_BATCH - next->num_total_slots;
-         /* If there isn't enough place for one draw, try to fill the next one */
-         if (nb_slots_left < slots_for_one_draw)
-            nb_slots_left = TC_SLOTS_PER_BATCH;
-         const int size_left_bytes = nb_slots_left * sizeof(struct tc_call_base);
-
-         /* How many draws can we fit in the current batch */
-         const int dr = MIN2(num_draws, (size_left_bytes - draw_overhead_bytes) / one_draw_slot_bytes);
-
-         struct tc_draw_multi *p =
-            tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
-                                   dr);
-         memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
-
-         if (total_offset == 0)
-            /* the first slot inherits the reference from u_upload_alloc() */
-            p->info.index.resource = buffer;
-         else
-            /* all following slots need a new reference */
-            tc_set_resource_reference(&p->info.index.resource, buffer);
-
-         p->num_draws = dr;
-
-         /* Upload index buffers. */
-         for (unsigned i = 0; i < dr; i++) {
-            unsigned count = draws[i + total_offset].count;
-
-            if (!count) {
-               p->slot[i].start = 0;
-               p->slot[i].count = 0;
-               p->slot[i].index_bias = 0;
-               continue;
-            }
-
-            unsigned size = count << index_size_shift;
-            memcpy(ptr + offset,
-                   (uint8_t*)info->index.user +
-                   (draws[i + total_offset].start << index_size_shift), size);
-            p->slot[i].start = (buffer_offset + offset) >> index_size_shift;
-            p->slot[i].count = count;
-            p->slot[i].index_bias = draws[i + total_offset].index_bias;
-            offset += size;
-         }
-
-         total_offset += dr;
-         num_draws -= dr;
-      }
-   } else {
-      int total_offset = 0;
-      bool take_index_buffer_ownership = info->take_index_buffer_ownership;
-      while (num_draws) {
-         struct tc_batch *next = &tc->batch_slots[tc->next];
-
-         int nb_slots_left = TC_SLOTS_PER_BATCH - next->num_total_slots;
-         /* If there isn't enough place for one draw, try to fill the next one */
-         if (nb_slots_left < slots_for_one_draw)
-            nb_slots_left = TC_SLOTS_PER_BATCH;
-         const int size_left_bytes = nb_slots_left * sizeof(struct tc_call_base);
-
-         /* How many draws can we fit in the current batch */
-         const int dr = MIN2(num_draws, (size_left_bytes - draw_overhead_bytes) / one_draw_slot_bytes);
-
-         /* Non-indexed call or indexed with a real index buffer. */
-         struct tc_draw_multi *p =
-            tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
-                                   dr);
-         if (index_size) {
-            if (!take_index_buffer_ownership) {
-               tc_set_resource_reference(&p->info.index.resource,
-                                         info->index.resource);
-            }
-            tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
-         }
-         take_index_buffer_ownership = false;
-         memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
-         p->num_draws = dr;
-         memcpy(p->slot, &draws[total_offset], sizeof(draws[0]) * dr);
-         num_draws -= dr;
-
-         total_offset += dr;
-      }
-   }
+   /* Use a function table to call the desired variant of draw_vbo. */
+   unsigned index = (indirect != NULL) * 8 +
+                    (info->index_size && info->has_user_indices) * 4 +
+                    (num_draws > 1) * 2 + (drawid_offset != 0);
+   draw_funcs[index](_pipe, info, drawid_offset, indirect, draws, num_draws);
 
    /* This must be after tc_add_*call, which can flush the batch. */
    if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
