@@ -14,7 +14,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const TMP_FILE: &str = "/tmp/nvfuzz";
-const SM: &str = "SM50";
 
 fn find_cuda() -> std::io::Result<PathBuf> {
     let paths = fs::read_dir("/usr/local")?;
@@ -55,43 +54,50 @@ fn find_cuda() -> std::io::Result<PathBuf> {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let range: Vec<&str> = args[1].split("..").collect();
+    let sm: u8 = {
+        let sm_str = &args[1];
+        assert!(sm_str.starts_with("SM"));
+        sm_str[2..].parse().unwrap()
+    };
+    let range: Vec<&str> = args[2].split("..").collect();
     let range: Range<usize> = Range {
         start: range[0].parse().unwrap(),
         end: range[1].parse().unwrap(),
     };
 
-    let mut instr: [u32; 8] = [
-        u32::from_str_radix(&args[2], 16).unwrap(),
-        u32::from_str_radix(&args[3], 16).unwrap(),
-        u32::from_str_radix(&args[4], 16).unwrap(),
-        u32::from_str_radix(&args[5], 16).unwrap(),
-        u32::from_str_radix(&args[6], 16).unwrap(),
-        u32::from_str_radix(&args[7], 16).unwrap(),
-        u32::from_str_radix(&args[8], 16).unwrap(),
-        u32::from_str_radix(&args[9], 16).unwrap(),
-    ];
+    let dw_count = if sm >= 70 {
+        4
+    } else if sm >= 50 {
+        8
+    } else {
+        panic!("Unknown shader model");
+    };
+
+    let mut instr = Vec::new();
+    for i in 0..dw_count {
+        instr.push(u32::from_str_radix(&args[3 + i], 16).unwrap());
+    }
 
     let cuda_path = find_cuda().expect("Failed to find CUDA");
 
     for bits in 0..(1_u64 << range.len()) {
-        BitMutView::new(&mut instr).set_field(range.clone(), bits);
+        BitMutView::new(&mut instr[..]).set_field(range.clone(), bits);
 
         print!("With {:#x} in {}..{}:", bits, range.start, range.end);
-        for dw in instr {
+        for dw in &instr {
             print!(" {:#x}", dw);
         }
         print!("\n");
 
         let mut data = Vec::new();
-        for dw in instr {
+        for dw in &instr {
             data.extend(dw.to_le_bytes());
         }
         std::fs::write(TMP_FILE, data).expect("Failed to write file");
 
         let out = Command::new(cuda_path.as_path())
             .arg("-b")
-            .arg(SM)
+            .arg(format!("SM{sm}"))
             .arg(TMP_FILE)
             .output()
             .expect("failed to execute process");
