@@ -150,13 +150,16 @@ radv_sdma_get_chunked_copy_info(const struct radv_device *const device, const st
 
 struct radv_sdma_surf
 radv_sdma_get_buf_surf(const struct radv_buffer *const buffer, const struct radv_image *const image,
-                       const VkBufferImageCopy2 *const region)
+                       const VkBufferImageCopy2 *const region, const VkImageAspectFlags aspect_mask)
 {
+   assert(util_bitcount(aspect_mask) == 1);
+
    const unsigned pitch = (region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width);
    const unsigned slice_pitch =
       (region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height) * pitch;
 
-   const struct radeon_surf *surf = &image->planes[0].surface;
+   const unsigned plane_idx = radv_plane_from_aspect(region->imageSubresource.aspectMask);
+   const struct radeon_surf *surf = &image->planes[plane_idx].surface;
    const struct radv_sdma_surf info = {
       .va = radv_buffer_get_va(buffer->bo) + buffer->offset + region->bufferOffset,
       .pitch = pitch,
@@ -172,21 +175,22 @@ radv_sdma_get_buf_surf(const struct radv_buffer *const buffer, const struct radv
 
 static uint32_t
 radv_sdma_get_metadata_config(const struct radv_device *const device, const struct radv_image *const image,
-                              const struct radeon_surf *const surf, const VkImageSubresourceLayers subresource)
+                              const struct radeon_surf *const surf, const VkImageSubresourceLayers subresource,
+                              const VkImageAspectFlags aspect_mask)
 {
    if (!device->physical_device->rad_info.sdma_supports_compression ||
        !(radv_dcc_enabled(image, subresource.mipLevel) || radv_image_has_htile(image))) {
       return 0;
    }
 
-   const VkFormat format = vk_format_get_aspect_format(image->vk.format, subresource.aspectMask);
+   const VkFormat format = vk_format_get_aspect_format(image->vk.format, aspect_mask);
    const struct util_format_description *desc = vk_format_description(format);
 
    const uint32_t data_format =
       ac_get_cb_format(device->physical_device->rad_info.gfx_level, vk_format_to_pipe_format(format));
    const uint32_t alpha_is_on_msb = vi_alpha_is_on_msb(device, format);
    const uint32_t number_type = radv_translate_buffer_numformat(desc, vk_format_get_first_non_void_channel(format));
-   const uint32_t surface_type = radv_sdma_surface_type_from_aspect_mask(subresource.aspectMask);
+   const uint32_t surface_type = radv_sdma_surface_type_from_aspect_mask(aspect_mask);
    const uint32_t max_comp_block_size = surf->u.gfx9.color.dcc.max_compressed_block_size;
    const uint32_t max_uncomp_block_size = radv_get_dcc_max_uncompressed_block_size(device, image);
    const uint32_t pipe_aligned = surf->u.gfx9.color.dcc.pipe_aligned;
@@ -236,15 +240,20 @@ radv_sdma_get_tiled_header_dword(const struct radv_device *const device, const s
 
 struct radv_sdma_surf
 radv_sdma_get_surf(const struct radv_device *const device, const struct radv_image *const image,
-                   const VkImageSubresourceLayers subresource, const VkOffset3D offset)
+                   const VkImageSubresourceLayers subresource, const VkOffset3D offset,
+                   const VkImageAspectFlags aspect_mask)
 {
-   const struct radv_image_binding *binding = &image->bindings[0];
-   const struct radeon_surf *const surf = &image->planes[0].surface;
+   assert(util_bitcount(aspect_mask) == 1);
+
+   const unsigned plane_idx = radv_plane_from_aspect(aspect_mask);
+   const unsigned binding_idx = image->disjoint ? plane_idx : 0;
+   const struct radv_image_binding *binding = &image->bindings[binding_idx];
+   const struct radeon_surf *const surf = &image->planes[plane_idx].surface;
    struct radv_sdma_surf info = {
       .extent =
          {
-            .width = vk_format_get_plane_width(image->vk.format, 0, image->vk.extent.width),
-            .height = vk_format_get_plane_height(image->vk.format, 0, image->vk.extent.height),
+            .width = vk_format_get_plane_width(image->vk.format, plane_idx, image->vk.extent.width),
+            .height = vk_format_get_plane_height(image->vk.format, plane_idx, image->vk.extent.height),
             .depth = image->vk.image_type == VK_IMAGE_TYPE_3D ? image->vk.extent.depth : image->vk.array_layers,
          },
       .offset =
@@ -275,7 +284,7 @@ radv_sdma_get_surf(const struct radv_device *const device, const struct radv_ima
       if (device->physical_device->rad_info.sdma_supports_compression &&
           (radv_dcc_enabled(image, subresource.mipLevel) || radv_image_has_htile(image))) {
          info.meta_va = binding->bo->va + binding->offset + surf->meta_offset;
-         info.meta_config = radv_sdma_get_metadata_config(device, image, surf, subresource);
+         info.meta_config = radv_sdma_get_metadata_config(device, image, surf, subresource, aspect_mask);
       }
    }
 

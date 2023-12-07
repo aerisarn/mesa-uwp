@@ -67,9 +67,11 @@ radv_sdma_get_copy_extent(const struct radv_image *const image, const VkImageSub
 
 struct radv_sdma_surf radv_sdma_get_buf_surf(const struct radv_buffer *const buffer,
                                              const struct radv_image *const image,
-                                             const VkBufferImageCopy2 *const region);
+                                             const VkBufferImageCopy2 *const region,
+                                             const VkImageAspectFlags aspect_mask);
 struct radv_sdma_surf radv_sdma_get_surf(const struct radv_device *const device, const struct radv_image *const image,
-                                         const VkImageSubresourceLayers subresource, const VkOffset3D offset);
+                                         const VkImageSubresourceLayers subresource, const VkOffset3D offset,
+                                         const VkImageAspectFlags aspect_mask);
 void radv_sdma_copy_buffer_image(const struct radv_device *device, struct radeon_cmdbuf *cs,
                                  const struct radv_sdma_surf *buf, const struct radv_sdma_surf *img,
                                  const VkExtent3D extent, bool to_image);

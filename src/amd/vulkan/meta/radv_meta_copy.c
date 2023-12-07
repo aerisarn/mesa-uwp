@@ -99,8 +99,10 @@ transfer_copy_buffer_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffe
    radv_cs_add_buffer(device->ws, cs, image->bindings[0].bo);
    radv_cs_add_buffer(device->ws, cs, buffer->bo);
 
-   struct radv_sdma_surf buf = radv_sdma_get_buf_surf(buffer, image, region);
-   const struct radv_sdma_surf img = radv_sdma_get_surf(device, image, region->imageSubresource, region->imageOffset);
+   const VkImageAspectFlags aspect_mask = region->imageSubresource.aspectMask;
+   struct radv_sdma_surf buf = radv_sdma_get_buf_surf(buffer, image, region, aspect_mask);
+   const struct radv_sdma_surf img =
+      radv_sdma_get_surf(device, image, region->imageSubresource, region->imageOffset, aspect_mask);
    const VkExtent3D extent = radv_sdma_get_copy_extent(image, region->imageSubresource, region->imageExtent);
 
    if (radv_sdma_use_unaligned_buffer_image_copy(device, &buf, &img, extent)) {
