@@ -646,6 +646,7 @@ enum pipe_conservative_raster_mode
 #define PIPE_IMAGE_ACCESS_COHERENT           (1 << 2)
 #define PIPE_IMAGE_ACCESS_VOLATILE           (1 << 3)
 #define PIPE_IMAGE_ACCESS_TEX2D_FROM_BUFFER  (1 << 4)
+#define PIPE_IMAGE_ACCESS_DRIVER_INTERNAL    (1 << 5)
 
 /**
  * Implementation capabilities/limits which are queried through
