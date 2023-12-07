@@ -671,6 +671,7 @@ impl<'a> ShaderFromNir<'a> {
                     src_type: ty,
                     dst_type: ty,
                     rnd_mode,
+                    ftz: self.float_ctl[ty].ftz,
                 });
                 dst
             }

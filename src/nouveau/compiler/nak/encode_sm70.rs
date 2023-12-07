@@ -928,7 +928,7 @@ impl SM70Instr {
         }
 
         self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
-        self.set_bit(80, false); // TODO: FMZ
+        self.set_bit(80, op.ftz);
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
     }

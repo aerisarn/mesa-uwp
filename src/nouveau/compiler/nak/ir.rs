@@ -3077,6 +3077,7 @@ pub struct OpFRnd {
     pub dst_type: FloatType,
     pub src_type: FloatType,
     pub rnd_mode: FRndMode,
+    pub ftz: bool,
 }
 
 impl SrcsAsSlice for OpFRnd {
@@ -3100,9 +3101,10 @@ impl SrcsAsSlice for OpFRnd {
 
 impl DisplayOp for OpFRnd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ftz = if self.ftz { ".ftz" } else { "" };
         write!(
             f,
-            "frnd{}{}{} {}",
+            "frnd{}{}{}{ftz} {}",
             self.dst_type, self.src_type, self.rnd_mode, self.src,
         )
     }
