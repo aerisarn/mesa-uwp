@@ -1649,37 +1649,6 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
    info.max_index = end;
    draw.count = count;
 
-   /* Need to give special consideration to rendering a range of
-    * indices starting somewhere above zero.  Typically the
-    * application is issuing multiple DrawRangeElements() to draw
-    * successive primitives layed out linearly in the vertex arrays.
-    * Unless the vertex arrays are all in a VBO (or locked as with
-    * CVA), the OpenGL semantics imply that we need to re-read or
-    * re-upload the vertex data on each draw call.
-    *
-    * In the case of hardware tnl, we want to avoid starting the
-    * upload at zero, as it will mean every draw call uploads an
-    * increasing amount of not-used vertex data.  Worse - in the
-    * software tnl module, all those vertices might be transformed and
-    * lit but never rendered.
-    *
-    * If we just upload or transform the vertices in start..end,
-    * however, the indices will be incorrect.
-    *
-    * At this level, we don't know exactly what the requirements of
-    * the backend are going to be, though it will likely boil down to
-    * either:
-    *
-    * 1) Do nothing, everything is in a VBO and is processed once
-    *       only.
-    *
-    * 2) Adjust the indices and vertex arrays so that start becomes
-    *    zero.
-    *
-    * Rather than doing anything here, I'll provide a helper function
-    * for the latter case elsewhere.
-    */
-
    ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
