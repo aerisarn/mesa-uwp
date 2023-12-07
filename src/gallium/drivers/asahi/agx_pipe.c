@@ -754,8 +754,14 @@ static void
 agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
                     unsigned level,
                     unsigned usage, /* a combination of PIPE_MAP_x */
-                    const struct pipe_box *box)
+                    const struct pipe_box *box, bool staging_blit)
 {
+   /* GPU access does not require explicit syncs, as the batch tracking logic
+    * will ensure correct ordering automatically.
+    */
+   if (staging_blit)
+      return;
+
    /* Upgrade DISCARD_RANGE to WHOLE_RESOURCE if the whole resource is
     * being mapped.
     */
@@ -782,10 +788,10 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
     */
    assert(!(usage & PIPE_MAP_UNSYNCHRONIZED));
 
-   /* Both writing and reading need writers synced */
-   agx_sync_writer(ctx, rsrc, "Unsynchronized transfer");
+   /* Reading or writing from the CPU requires syncing writers. */
+   agx_sync_writer(ctx, rsrc, "Unsynchronized CPU transfer");
 
-   /* Additionally, writing needs readers synced */
+   /* Additionally, writing needs readers synced. */
    if (!(usage & PIPE_MAP_WRITE))
       return;
 
@@ -948,7 +954,13 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
    if (level >= rsrc->layout.levels)
       return NULL;
 
-   agx_prepare_for_map(ctx, rsrc, level, usage, box);
+   /* For compression, we use a staging blit as we do not implement AGX
+    * compression in software. In some cases, we could use this path for
+    * twiddled too, but we don't have a use case for that yet.
+    */
+   bool staging_blit = ail_is_level_compressed(&rsrc->layout, level);
+
+   agx_prepare_for_map(ctx, rsrc, level, usage, box, staging_blit);
 
    /* Track the written buffer range */
    if (resource->target == PIPE_BUFFER) {
@@ -969,11 +981,7 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
    pipe_resource_reference(&transfer->base.resource, resource);
    *out_transfer = &transfer->base;
 
-   /* For compression, we use a staging blit as we do not implement AGX
-    * compression in software. In some cases, we could use this path for
-    * twiddled too, but we don't have a use case for that yet.
-    */
-   if (ail_is_level_compressed(&rsrc->layout, level)) {
+   if (staging_blit) {
       /* Should never happen for buffers, and it's not safe */
       assert(resource->target != PIPE_BUFFER);
 
