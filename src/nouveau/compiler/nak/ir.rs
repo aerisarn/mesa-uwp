@@ -2187,10 +2187,8 @@ pub struct OpFAdd {
 
 impl DisplayOp for OpFAdd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fadd")?;
-        if self.saturate {
-            write!(f, ".sat")?;
-        }
+        let sat = if self.saturate { ".sat" } else { "" };
+        write!(f, "fadd{sat}")?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }
@@ -2218,10 +2216,8 @@ pub struct OpFFma {
 
 impl DisplayOp for OpFFma {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ffma")?;
-        if self.saturate {
-            write!(f, ".sat")?;
-        }
+        let sat = if self.saturate { ".sat" } else { "" };
+        write!(f, "ffma{sat}")?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }
@@ -2254,8 +2250,8 @@ impl DisplayOp for OpFMnMx {
         let ftz = if self.ftz { ".ftz" } else { "" };
         write!(
             f,
-            "fmnmx{} {} {} {}",
-            ftz, self.srcs[0], self.srcs[1], self.min
+            "fmnmx{ftz} {} {} {}",
+            self.srcs[0], self.srcs[1], self.min
         )
     }
 }
@@ -2277,10 +2273,8 @@ pub struct OpFMul {
 
 impl DisplayOp for OpFMul {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fmul")?;
-        if self.saturate {
-            write!(f, ".sat")?;
-        }
+        let sat = if self.saturate { ".sat" } else { "" };
+        write!(f, "fmul{sat}")?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }
@@ -2471,10 +2465,8 @@ pub struct OpDAdd {
 
 impl DisplayOp for OpDAdd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "dadd")?;
-        if self.saturate {
-            write!(f, ".sat")?;
-        }
+        let sat = if self.saturate { ".sat" } else { "" };
+        write!(f, "dadd{sat}")?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }
@@ -3025,8 +3017,8 @@ impl DisplayOp for OpF2I {
         let ftz = if self.ftz { ".ftz" } else { "" };
         write!(
             f,
-            "f2i{}{}{}{} {}",
-            self.dst_type, self.src_type, self.rnd_mode, ftz, self.src,
+            "f2i{}{}{}{ftz} {}",
+            self.dst_type, self.src_type, self.rnd_mode, self.src,
         )
     }
 }
