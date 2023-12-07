@@ -139,11 +139,6 @@ st_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
-      return;
-
    cso_draw_vbo(st->cso_context, info, drawid_offset, NULL, draws, num_draws);
 }
 
@@ -155,11 +150,6 @@ st_draw_gallium_multimode(struct gl_context *ctx,
                           unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
-
-   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
-      return;
 
    unsigned i, first;
    struct cso_context *cso = st->cso_context;
@@ -473,11 +463,6 @@ st_hw_select_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
-      return;
-
    if (!st_draw_hw_select_prepare_common(ctx) ||
        !st_draw_hw_select_prepare_mode(ctx, info))
       return;
@@ -493,11 +478,6 @@ st_hw_select_draw_gallium_multimode(struct gl_context *ctx,
                                     unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
-
-   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-
-   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
-      return;
 
    if (!st_draw_hw_select_prepare_common(ctx))
       return;

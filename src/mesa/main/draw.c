@@ -1198,6 +1198,8 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    draw.start = start;
    draw.count = count;
 
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
    ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
@@ -1503,6 +1505,8 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
       draw[i].count = count[i];
    }
 
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
    ctx->Driver.DrawGallium(ctx, &info, 0, draw, primcount);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
@@ -1649,6 +1653,11 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
    info.min_index = start;
    info.max_index = end;
    draw.count = count;
+
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
+   if (!st_prepare_indexed_draw(ctx, &info, &draw, 1))
+      return;
 
    ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
 
@@ -2030,6 +2039,11 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
          }
       }
 
+      st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
+      if (!st_prepare_indexed_draw(ctx, &info, draw, primcount))
+         return;
+
       ctx->Driver.DrawGallium(ctx, &info, 0, draw, primcount);
    } else {
       /* draw[i].start would overflow. Draw one at a time. */
@@ -2048,6 +2062,11 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
          draw.start = 0;
          draw.index_bias = basevertex ? basevertex[i] : 0;
          draw.count = count[i];
+
+         st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
+         if (!st_prepare_indexed_draw(ctx, &info, &draw, 1))
+            return;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
       }
@@ -2373,6 +2392,8 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
          draw.start = cmd->first;
          draw.count = cmd->count;
 
+         st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
          ptr += stride;
       }
@@ -2483,6 +2504,11 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
          draw.start = cmd->firstIndex;
          draw.count = cmd->count;
          draw.index_bias = cmd->baseVertex;
+
+         st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
+         if (!st_prepare_indexed_draw(ctx, &info, &draw, 1))
+            return;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
          ptr += stride;

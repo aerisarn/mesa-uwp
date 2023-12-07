@@ -114,16 +114,6 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    if (!draw)
       return;
 
-   st_flush_bitmap_cache(st);
-   st_invalidate_readpix_cache(st);
-
-   st_validate_state(st, ST_PIPELINE_RENDER_STATE_MASK);
-
-   if (info->index_size && info->has_user_indices && !info->index_bounds_valid) {
-      vbo_get_minmax_indices_gallium(ctx, info, draws, num_draws);
-      info->index_bounds_valid = true;
-   }
-
    /* must get these after state validation! */
    struct st_common_variant_key key;
    /* We have to use memcpy to make sure that all bits are copied. */

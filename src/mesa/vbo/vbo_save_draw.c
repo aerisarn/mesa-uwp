@@ -38,6 +38,7 @@
 #include "main/state.h"
 #include "main/varray.h"
 #include "util/bitscan.h"
+#include "state_tracker/st_draw.h"
 
 #include "vbo_private.h"
 
@@ -349,6 +350,8 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
    assert(ctx->NewState == 0);
 
    struct pipe_draw_info *info = (struct pipe_draw_info *) &node->cold->info;
+
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    if (node->modes) {
       ctx->Driver.DrawGalliumMultiMode(ctx, info,
