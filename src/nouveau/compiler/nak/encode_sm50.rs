@@ -722,7 +722,7 @@ impl SM50Instr {
             src_type: op.src_type,
             dst_type: op.dst_type,
             rnd_mode: op.rnd_mode,
-            ftz: false,
+            ftz: op.ftz,
             high: false,
         });
     }
@@ -834,7 +834,7 @@ impl SM50Instr {
         self.set_field(10..12, (op.src_type.bits() / 8).ilog2());
         self.set_bit(12, op.dst_type.is_signed());
         self.set_rnd_mode(39..41, op.rnd_mode);
-        self.set_bit(44, false); /* FTZ */
+        self.set_bit(44, op.ftz);
         self.set_bit(47, false); // .CC
     }
 
@@ -1358,14 +1358,12 @@ impl SM50Instr {
     }
 
     fn encode_fadd(&mut self, op: &OpFAdd) {
-        let ftz = false; /* TODO: FTZ */
-        let _dnz = false; /* TODO: DNZ */
         if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
             self.set_opcode(0x0800);
             self.set_dst(op.dst);
             self.set_reg_fmod_src(8..16, 54, 56, op.srcs[0]);
             self.set_src_imm32(20..52, imm32);
-            self.set_bit(55, ftz);
+            self.set_bit(55, op.ftz);
         } else {
             match &op.srcs[1].src_ref {
                 SrcRef::Zero | SrcRef::Reg(_) => {
@@ -1388,6 +1386,7 @@ impl SM50Instr {
             self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
 
             self.set_rnd_mode(39..41, op.rnd_mode);
+            self.set_bit(44, op.ftz);
             self.set_bit(50, op.saturate);
         }
     }
@@ -1415,7 +1414,7 @@ impl SM50Instr {
         self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
         self.set_dst(op.dst);
         self.set_pred_src(39..42, 42, op.min);
-        self.set_bit(44, false); /* TODO: FMZ */
+        self.set_bit(44, op.ftz);
     }
 
     fn encode_fmul(&mut self, op: &OpFMul) {
@@ -1425,8 +1424,9 @@ impl SM50Instr {
         if let Some(imm32) = op.srcs[1].as_imm_not_f20() {
             self.set_opcode(0x1e00);
 
+            self.set_bit(53, op.ftz);
+            self.set_bit(54, op.dnz);
             self.set_bit(55, op.saturate);
-            self.set_field(53..55, false); /* TODO: FMZ */
 
             self.set_src_imm32(20..52, imm32);
             self.set_bit(
@@ -1452,8 +1452,8 @@ impl SM50Instr {
 
             self.set_rnd_mode(39..41, op.rnd_mode);
             self.set_field(41..44, 0x0_u8); /* TODO: PDIV */
-            self.set_bit(44, false); /* TODO: FTZ */
-            self.set_bit(45, false); /* TODO: DNZ */
+            self.set_bit(44, op.ftz);
+            self.set_bit(45, op.dnz);
             self.set_bit(
                 48,
                 op.srcs[0].src_mod.has_fneg() ^ op.srcs[1].src_mod.has_fneg(),
@@ -1502,8 +1502,8 @@ impl SM50Instr {
         self.set_bit(50, op.saturate);
         self.set_rnd_mode(51..53, op.rnd_mode);
 
-        self.set_bit(53, false); /* TODO: FTZ */
-        self.set_bit(54, false); /* TODO: DNZ */
+        self.set_bit(53, op.ftz);
+        self.set_bit(54, op.dnz);
     }
 
     fn set_float_cmp_op(&mut self, range: Range<usize>, op: FloatCmpOp) {
@@ -1553,7 +1553,7 @@ impl SM50Instr {
         self.set_pred_src(39..42, 42, SrcRef::True.into());
         self.set_float_cmp_op(48..52, op.cmp_op);
         self.set_bit(52, true); /* bool float */
-        self.set_bit(55, false); /* TODO: Denorm mode */
+        self.set_bit(55, op.ftz);
         self.set_dst(op.dst);
     }
 
@@ -1580,7 +1580,7 @@ impl SM50Instr {
         self.set_pred_dst(0..3, Dst::None); /* dst1 */
         self.set_pred_src(39..42, 42, op.accum);
         self.set_pred_set_op(45..47, op.set_op);
-        self.set_bit(47, false); /* TODO: Denorm mode */
+        self.set_bit(47, op.ftz);
         self.set_float_cmp_op(48..52, op.cmp_op);
         self.set_reg_fmod_src(8..16, 7, 43, op.srcs[0]);
     }
