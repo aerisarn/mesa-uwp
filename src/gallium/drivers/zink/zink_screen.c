@@ -1151,7 +1151,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
           * with what we need for GL, so we can still force a conformant value here
           */
          if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA ||
-             screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS)
+             screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS ||
+             (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_VENUS
+              && screen->info.props.vendorID == 0x8086))
             return 32;
          max = screen->info.props.limits.maxFragmentInputComponents / 4;
          break;
