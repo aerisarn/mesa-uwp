@@ -945,6 +945,12 @@ bool agx_any_batch_uses_resource(struct agx_context *ctx,
  */
 #define AGX_COMPUTE_BATCH_WIDTH 0xFFFF
 
+static inline bool
+agx_batch_is_compute(struct agx_batch *batch)
+{
+   return batch->key.width == AGX_COMPUTE_BATCH_WIDTH;
+}
+
 struct agx_batch *agx_get_batch(struct agx_context *ctx);
 struct agx_batch *agx_get_compute_batch(struct agx_context *ctx);
 void agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch);

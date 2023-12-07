@@ -2981,7 +2981,7 @@ agx_batch_init_state(struct agx_batch *batch)
    if (batch->initialized)
       return;
 
-   if (batch->key.width == AGX_COMPUTE_BATCH_WIDTH) {
+   if (agx_batch_is_compute(batch)) {
       batch->initialized = true;
       return;
    }

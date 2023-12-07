@@ -114,7 +114,7 @@ agx_batch_init(struct agx_context *ctx,
              batch->bo_list.word_count * sizeof(BITSET_WORD));
    }
 
-   if (batch->key.width == AGX_COMPUTE_BATCH_WIDTH) {
+   if (agx_batch_is_compute(batch)) {
       batch->cdm = agx_encoder_allocate(batch, dev);
       memset(&batch->vdm, 0, sizeof(batch->vdm));
    } else {
