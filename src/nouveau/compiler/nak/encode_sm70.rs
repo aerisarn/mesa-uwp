@@ -502,7 +502,7 @@ impl SM70Instr {
             ALUSrc::None,
         );
         self.set_float_cmp_op(76..80, op.cmp_op);
-        self.set_bit(80, false); /* TODO: Denorm mode */
+        self.set_bit(80, op.ftz);
         self.set_field(87..90, 0x7_u8); /* TODO: src predicate */
     }
 
@@ -529,7 +529,7 @@ impl SM70Instr {
 
         self.set_pred_set_op(74..76, op.set_op);
         self.set_float_cmp_op(76..80, op.cmp_op);
-        self.set_bit(80, false); /* TODO: Denorm mode */
+        self.set_bit(80, op.ftz);
 
         self.set_pred_dst(81..84, op.dst);
         self.set_pred_dst(84..87, Dst::None); /* dst1 */

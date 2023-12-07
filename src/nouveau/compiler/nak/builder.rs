@@ -200,6 +200,7 @@ pub trait SSABuilder: Builder {
             dst: dst.into(),
             cmp_op: cmp_op,
             srcs: [x, y],
+            ftz: false,
         });
         dst
     }
@@ -212,6 +213,7 @@ pub trait SSABuilder: Builder {
             cmp_op: cmp_op,
             srcs: [x, y],
             accum: SrcRef::True.into(),
+            ftz: false,
         });
         dst
     }

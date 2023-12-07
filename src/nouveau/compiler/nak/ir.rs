@@ -2296,11 +2296,18 @@ pub struct OpFSet {
 
     #[src_type(F32)]
     pub srcs: [Src; 2],
+
+    pub ftz: bool,
 }
 
 impl DisplayOp for OpFSet {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fset{} {} {}", self.cmp_op, self.srcs[0], self.srcs[1])
+        let ftz = if self.ftz { ".ftz" } else { "" };
+        write!(
+            f,
+            "fset{}{ftz} {} {}",
+            self.cmp_op, self.srcs[0], self.srcs[1]
+        )
     }
 }
 impl_display_for_op!(OpFSet);
@@ -2318,11 +2325,14 @@ pub struct OpFSetP {
 
     #[src_type(Pred)]
     pub accum: Src,
+
+    pub ftz: bool,
 }
 
 impl DisplayOp for OpFSetP {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "fsetp{}", self.cmp_op)?;
+        let ftz = if self.ftz { ".ftz" } else { "" };
+        write!(f, "fsetp{}{ftz}", self.cmp_op)?;
         if !self.set_op.is_trivial(&self.accum) {
             write!(f, "{}", self.set_op)?;
         }

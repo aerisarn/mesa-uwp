@@ -679,7 +679,28 @@ impl<'a> ShaderFromNir<'a> {
                 let tmp = b.fmul(srcs[0], frac_1_2pi.into());
                 b.mufu(MuFuOp::Cos, tmp.into())
             }
-            nir_op_feq => b.fsetp(FloatCmpOp::OrdEq, srcs[0], srcs[1]),
+            nir_op_feq | nir_op_fge | nir_op_flt | nir_op_fneu => {
+                let src_type =
+                    FloatType::from_bits(alu.get_src(0).bit_size().into());
+                let cmp_op = match alu.op {
+                    nir_op_feq => FloatCmpOp::OrdEq,
+                    nir_op_fge => FloatCmpOp::OrdGe,
+                    nir_op_flt => FloatCmpOp::OrdLt,
+                    nir_op_fneu => FloatCmpOp::UnordNe,
+                    _ => panic!("Usupported float comparison"),
+                };
+
+                let dst = b.alloc_ssa(RegFile::Pred, 1);
+                b.push_op(OpFSetP {
+                    dst: dst.into(),
+                    set_op: PredSetOp::And,
+                    cmp_op: cmp_op,
+                    srcs: [srcs[0], srcs[1]],
+                    accum: SrcRef::True.into(),
+                    ftz: self.float_ctl[src_type].ftz,
+                });
+                dst
+            }
             nir_op_fexp2 => b.mufu(MuFuOp::Exp2, srcs[0]),
             nir_op_ffma => {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
@@ -695,17 +716,9 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(ffma);
                 dst
             }
-            nir_op_fge => {
-                assert!(alu.get_src(0).bit_size() == 32);
-                b.fsetp(FloatCmpOp::OrdGe, srcs[0], srcs[1])
-            }
             nir_op_flog2 => {
                 assert!(alu.def.bit_size() == 32);
                 b.mufu(MuFuOp::Log2, srcs[0])
-            }
-            nir_op_flt => {
-                assert!(alu.get_src(0).bit_size() == 32);
-                b.fsetp(FloatCmpOp::OrdLt, srcs[0], srcs[1])
             }
             nir_op_fmax | nir_op_fmin => {
                 assert!(alu.def.bit_size() == 32);
@@ -732,7 +745,6 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(fmul);
                 dst
             }
-            nir_op_fneu => b.fsetp(FloatCmpOp::UnordNe, srcs[0], srcs[1]),
             nir_op_fquantize2f16 => {
                 let tmp = b.alloc_ssa(RegFile::GPR, 1);
                 b.push_op(OpF2F {
