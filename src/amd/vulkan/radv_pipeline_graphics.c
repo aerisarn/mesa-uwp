@@ -1933,14 +1933,10 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    if (radv_pipeline_needs_ps_epilog(pipeline, lib_flags))
       key.ps.has_epilog = true;
 
-   /* Disable MRT compaction when it's not possible to know both the written color outputs and the
-    * color blend attachments.
+   /* Disable MRT compaction when a PS epilog is needed because we don't know the fragment output
+    * interface.
     */
-   bool disable_mrt_compaction =
-      key.ps.has_epilog || ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
-                            !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT));
-
-   key.ps.epilog = radv_pipeline_generate_ps_epilog_key(device, state, disable_mrt_compaction);
+   key.ps.epilog = radv_pipeline_generate_ps_epilog_key(device, state, key.ps.has_epilog);
 
    if (device->physical_device->rad_info.gfx_level >= GFX11) {
       /* On GFX11, alpha to coverage is exported via MRTZ when depth/stencil/samplemask are also
