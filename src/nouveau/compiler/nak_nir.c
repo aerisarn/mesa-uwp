@@ -539,6 +539,7 @@ nak_xfb_from_nir(const struct nir_xfb_info *nir_xfb)
       nak_xfb.stride[b] = nir_xfb->buffers[b].stride;
       nak_xfb.stream[b] = nir_xfb->buffer_to_stream[b];
    }
+   memset(nak_xfb.attr_index, 0xff, sizeof(nak_xfb.attr_index)); /* = skip */
 
    for (unsigned o = 0; o < nir_xfb->output_count; o++) {
       const nir_xfb_output_info *out = &nir_xfb->outputs[o];
