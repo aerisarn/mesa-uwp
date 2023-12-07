@@ -2766,8 +2766,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index, struct r
       cb_color_info &= C_028C70_COMPRESSION;
    }
 
-   if (radv_image_is_tc_compat_cmask(image) &&
-       (radv_is_fmask_decompress_pipeline(cmd_buffer) || radv_is_dcc_decompress_pipeline(cmd_buffer))) {
+   if (radv_image_is_tc_compat_cmask(image) && radv_is_dcc_decompress_pipeline(cmd_buffer)) {
       /* If this bit is set, the FMASK decompression operation
        * doesn't occur (DCC_COMPRESS also implies FMASK_DECOMPRESS).
        */

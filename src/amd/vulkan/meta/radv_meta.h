@@ -227,20 +227,6 @@ void radv_meta_decode_astc(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                            const VkImageSubresourceLayers *subresource, VkOffset3D offset, VkExtent3D extent);
 
 /**
- * Return whether the bound pipeline is the FMASK decompress pass.
- */
-static inline bool
-radv_is_fmask_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
-{
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-
-   if (!pipeline)
-      return false;
-
-   return pipeline->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS;
-}
-
-/**
  * Return whether the bound pipeline is the DCC decompress pass.
  */
 static inline bool
