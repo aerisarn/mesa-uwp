@@ -3693,12 +3693,6 @@ out_of_memory:
    tc->flushing = false;
 }
 
-struct tc_draw_single {
-   struct tc_call_base base;
-   unsigned index_bias;
-   struct pipe_draw_info info;
-};
-
 struct tc_draw_single_drawid {
    struct tc_draw_single base;
    unsigned drawid_offset;
@@ -4254,6 +4248,28 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
    /* This must be after tc_add_*call, which can flush the batch. */
    if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
       tc_add_all_gfx_bindings_to_buffer_list(tc);
+}
+
+struct tc_draw_single *
+tc_add_draw_single_call(struct pipe_context *_pipe,
+                        struct pipe_resource *index_bo)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+
+   if (tc->options.parse_renderpass_info)
+      tc_parse_draw(tc);
+
+   struct tc_draw_single *p =
+      tc_add_call(tc, TC_CALL_draw_single, tc_draw_single);
+
+   if (index_bo)
+      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], index_bo);
+
+   /* This must be after tc_add_*call, which can flush the batch. */
+   if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+      tc_add_all_gfx_bindings_to_buffer_list(tc);
+
+   return p;
 }
 
 struct tc_draw_vstate_single {
