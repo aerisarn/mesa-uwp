@@ -37,8 +37,10 @@
  *
  * TODO: vpe-utils also use this value. Need to be reviewed further.
  */
-#define VPE_BUILD_BUFS_SIZE	 1000000
 #define VPE_FENCE_TIMEOUT_NS 1000000000
+
+#define VPE_BUFFERS_NUM      6
+#define VPE_EMBBUF_SIZE      20000
 
 /* For Hooking VPE as a decoder instance */
 struct vpe_video_processor {
@@ -50,6 +52,10 @@ struct vpe_video_processor {
 
     struct rvid_buffer cmd_buffer;
     struct rvid_buffer emb_buffer;
+
+    uint8_t bufs_num;
+    uint8_t cur_buf;
+    struct rvid_buffer *emb_buffers;
 
     struct pipe_fence_handle *process_fence;
 

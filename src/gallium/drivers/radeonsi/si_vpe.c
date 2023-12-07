@@ -173,6 +173,14 @@ si_vpe_get_tf_str(enum vpe_transfer_function tf)
    }
 }
 
+/* cycle to the next set of buffers */
+static void
+next_buffer(struct vpe_video_processor *vpeproc)
+{
+   ++vpeproc->cur_buf;
+   vpeproc->cur_buf %= vpeproc->bufs_num;
+}
+
 static enum vpe_status
 si_vpe_populate_init_data(struct si_context *sctx, struct vpe_init_data* params, uint8_t log_level)
 {
@@ -619,6 +627,7 @@ static void
 si_vpe_processor_destroy(struct pipe_video_codec *codec)
 {
    struct vpe_video_processor *vpeproc = (struct vpe_video_processor *)codec;
+   unsigned int i;
    assert(codec);
 
    if (vpeproc->process_fence) {
@@ -634,6 +643,14 @@ si_vpe_processor_destroy(struct pipe_video_codec *codec)
       vpe_destroy(&vpeproc->vpe_handle);
    if (vpeproc->vpe_build_param)
       FREE(vpeproc->vpe_build_param);
+   if (vpeproc->emb_buffers) {
+      for (i = 0; i < vpeproc->bufs_num; i++) {
+         if (vpeproc->emb_buffers[i].res)
+            si_vid_destroy_buffer(&vpeproc->emb_buffers[i]);
+      }
+      FREE(vpeproc->emb_buffers);
+   }
+   vpeproc->bufs_num = 0;
 
    SIVPE_DBG(vpeproc->log_level, "Success\n");
    FREE(vpeproc);
@@ -684,6 +701,8 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    struct vpe_build_param *build_param = vpeproc->vpe_build_param;
    struct pipe_surface **src_surfaces;
    struct vpe_bufs_req bufs_required;
+   struct rvid_buffer *emb_buf;
+   uint64_t *vpe_ptr;
 
    assert(codec);
    assert(process_properties);
@@ -782,19 +801,22 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    build_param->hdr_metadata.max_content     = 1;
    build_param->hdr_metadata.avg_content     = 1;
 
-   uint64_t *vpe_ptr;
+
+   /* Setup CmdBuf and EmbBuf address adn size information */
    vpe_ptr = (uint64_t *)vpeproc->cs.current.buf;
    vpeproc->vpe_build_bufs->cmd_buf.cpu_va = (uintptr_t)vpe_ptr;
    vpeproc->vpe_build_bufs->cmd_buf.gpu_va = 0;
    vpeproc->vpe_build_bufs->cmd_buf.size = vpeproc->cs.current.max_dw;
    vpeproc->vpe_build_bufs->cmd_buf.tmz = false;
 
-   vpe_ptr = (uint64_t *)vpeproc->ws->buffer_map(vpeproc->ws, vpeproc->emb_buffer.res->buf,
+   emb_buf = &vpeproc->emb_buffers[vpeproc->cur_buf];
+   vpe_ptr = (uint64_t *)vpeproc->ws->buffer_map(vpeproc->ws, emb_buf->res->buf,
                                                  &vpeproc->cs, PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
    vpeproc->vpe_build_bufs->emb_buf.cpu_va = (uintptr_t)vpe_ptr;
-   vpeproc->vpe_build_bufs->emb_buf.gpu_va = vpeproc->ws->buffer_get_virtual_address(vpeproc->emb_buffer.res->buf);
-   vpeproc->vpe_build_bufs->emb_buf.size = VPE_BUILD_BUFS_SIZE;
+   vpeproc->vpe_build_bufs->emb_buf.gpu_va = vpeproc->ws->buffer_get_virtual_address(emb_buf->res->buf);
+   vpeproc->vpe_build_bufs->emb_buf.size = VPE_EMBBUF_SIZE;
    vpeproc->vpe_build_bufs->emb_buf.tmz = false;
+
 
    if (vpeproc->log_level >= SI_VPE_LOG_LEVEL_DEBUG) {
       SIVPE_DBG(vpeproc->log_level, "src surface format(%d) rect (%d, %d, %d, %d)\n",
@@ -890,17 +912,19 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
       SIVPE_ERR("Cmdbuf size wrong\n");
       goto fail;
    }
-   if (vpeproc->vpe_build_bufs->emb_buf.size == 0 || vpeproc->vpe_build_bufs->emb_buf.size == VPE_BUILD_BUFS_SIZE) {
+   if (vpeproc->vpe_build_bufs->emb_buf.size == 0 || vpeproc->vpe_build_bufs->emb_buf.size == VPE_EMBBUF_SIZE) {
       SIVPE_ERR("Embbuf size wrong\n");
       goto fail;
    }
+   SIVPE_INFO(vpeproc->log_level, "Used buf size: %" PRIu64 ", %" PRIu64 "\n",
+              vpeproc->vpe_build_bufs->cmd_buf.size, vpeproc->vpe_build_bufs->emb_buf.size);
 
    /* Have to tell Command Submission context the command length wrote by libvpe */
    vpeproc->cs.current.cdw += (vpeproc->vpe_build_bufs->cmd_buf.size / 4);
 
    /* Add embbuf into bo_handle list */
-   vpeproc->ws->buffer_unmap(vpeproc->ws, vpeproc->emb_buffer.res->buf);
-   vpeproc->ws->cs_add_buffer(&vpeproc->cs, vpeproc->emb_buffer.res->buf, RADEON_USAGE_READ | RADEON_USAGE_SYNCHRONIZED, RADEON_DOMAIN_GTT);
+   vpeproc->ws->buffer_unmap(vpeproc->ws, emb_buf->res->buf);
+   vpeproc->ws->cs_add_buffer(&vpeproc->cs, emb_buf->res->buf, RADEON_USAGE_READ | RADEON_USAGE_SYNCHRONIZED, RADEON_DOMAIN_GTT);
 
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->src_surfaces, RADEON_USAGE_READ);
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->dst_surfaces, RADEON_USAGE_WRITE);
@@ -910,7 +934,7 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    return;
 
 fail:
-   vpeproc->ws->buffer_unmap(vpeproc->ws, vpeproc->emb_buffer.res->buf);
+   vpeproc->ws->buffer_unmap(vpeproc->ws, emb_buf->res->buf);
    FREE(build_param->streams);
    SIVPE_ERR("Failed\n");
    return;
@@ -926,6 +950,7 @@ si_vpe_processor_end_frame(struct pipe_video_codec *codec,
    assert(codec);
 
    vpeproc->ws->cs_flush(&vpeproc->cs, PIPE_FLUSH_ASYNC, &process_fence);
+   next_buffer(vpeproc);
 
    if (picture->fence && process_fence) {
       *picture->fence = process_fence;
@@ -970,6 +995,7 @@ si_vpe_create_processor(struct pipe_context *context, const struct pipe_video_co
    struct vpe_video_processor *vpeproc;
    struct vpe_init_data *init_data;
    const char *str = getenv("AMDGPU_SIVPE_LOG_LEVEL");
+   unsigned int i;
 
    vpeproc = CALLOC_STRUCT(vpe_video_processor);
    if (!vpeproc) {
@@ -1027,18 +1053,24 @@ si_vpe_create_processor(struct pipe_context *context, const struct pipe_video_co
       SIVPE_ERR("Get command submission context failed.\n");
       goto fail;
    }
-   vpeproc->vpe_build_bufs->cmd_buf.size = vpeproc->cs.current.max_dw;
 
-   /* Creste Vpblit Descriptor buffer.
-    * This buffer will store plane config / VPEP config commands
+   /* Allocate Vpblit Descriptor buffers
+    * Descriptor buffer is used to store plane config and VPEP commands
     */
-   if (!si_vid_create_buffer(vpeproc->screen, &vpeproc->emb_buffer, VPE_BUILD_BUFS_SIZE,
-                                PIPE_USAGE_DEFAULT)) {
-      SIVPE_ERR("Allocate VPE emb buffers failed.\n");
+   vpeproc->bufs_num = VPE_BUFFERS_NUM;
+   vpeproc->cur_buf = 0;
+   vpeproc->emb_buffers = (struct rvid_buffer *)CALLOC(vpeproc->bufs_num, sizeof(struct rvid_buffer));
+   if (!vpeproc->emb_buffers) {
+      SIVPE_ERR("Allocate command buffer list failed\n");
       goto fail;
    }
-   si_vid_clear_buffer(context, &vpeproc->emb_buffer);
-   vpeproc->vpe_build_bufs->emb_buf.size = VPE_BUILD_BUFS_SIZE;
+   for (i = 0; i < vpeproc->bufs_num; i++) {
+      if (!si_vid_create_buffer(vpeproc->screen, &vpeproc->emb_buffers[i], VPE_EMBBUF_SIZE, PIPE_USAGE_DEFAULT)) {
+          SIVPE_ERR("Can't allocated emb_buf buffers.\n");
+          goto fail;
+      }
+      si_vid_clear_buffer(context, &vpeproc->emb_buffers[i]);
+   }
 
    /* Create VPE parameters structure */
    vpeproc->vpe_build_param = CALLOC_STRUCT(vpe_build_param);
