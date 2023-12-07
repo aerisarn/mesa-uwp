@@ -4408,10 +4408,16 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
             batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] & BITFIELD64_MASK(32);
       }
    } else {
+      uint32_t size[3];
+      for (unsigned d = 0; d < 3; ++d) {
+         size[d] = ((info->grid[d] - 1) * info->block[d]) +
+                   (info->last_block[d] ?: info->block[d]);
+      }
+
       agx_push(out, CDM_GLOBAL_SIZE, cfg) {
-         cfg.x = info->grid[0] * info->block[0];
-         cfg.y = info->grid[1] * info->block[1];
-         cfg.z = info->grid[2] * info->block[2];
+         cfg.x = size[0];
+         cfg.y = size[1];
+         cfg.z = size[2];
       }
    }
 
