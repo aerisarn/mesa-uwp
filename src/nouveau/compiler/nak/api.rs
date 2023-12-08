@@ -105,6 +105,18 @@ fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     op.lower_usub_sat = dev.sm < 70;
     op.lower_iadd_sat = true; // TODO
     op.use_interpolated_input_intrinsics = true;
+    op.lower_doubles_options = nir_lower_drcp
+        | nir_lower_dsqrt
+        | nir_lower_drsq
+        | nir_lower_dtrunc
+        | nir_lower_dfloor
+        | nir_lower_dceil
+        | nir_lower_dfract
+        | nir_lower_dround_even
+        | nir_lower_dsat;
+    if dev.sm >= 70 {
+        op.lower_doubles_options |= nir_lower_dminmax;
+    }
     op.lower_int64_options = !(nir_lower_icmp64
         | nir_lower_iadd64
         | nir_lower_ineg64
