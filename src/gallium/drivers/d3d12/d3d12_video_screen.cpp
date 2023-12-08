@@ -198,6 +198,18 @@ d3d12_video_encode_max_supported_level_for_profile(const D3D12_VIDEO_ENCODER_COD
                                                    D3D12_VIDEO_ENCODER_LEVEL_SETTING &maxLvl,
                                                    ID3D12VideoDevice3 *pD3D12VideoDevice)
 {
+   D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC capCodecData = {};
+   capCodecData.NodeIndex = 0;
+   capCodecData.Codec = argCodec;
+   capCodecData.IsSupported = false;
+
+   if ((FAILED(pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC,
+                                                     &capCodecData,
+                                                     sizeof(capCodecData))))
+                                                     || !capCodecData.IsSupported) {
+      return false;
+   }
+
    D3D12_FEATURE_DATA_VIDEO_ENCODER_PROFILE_LEVEL capLevelData = {};
    capLevelData.NodeIndex = 0;
    capLevelData.Codec = argCodec;
