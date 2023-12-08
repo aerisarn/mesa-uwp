@@ -204,7 +204,7 @@ impl CopyPropPass {
             // source modifiers as needed when propagating the high bits.
             let lo_entry_or_none = self.get_copy(&src_ssa[0]);
             if let Some(lo_entry) = lo_entry_or_none {
-                if !lo_entry.src.src_mod.is_none() {
+                if lo_entry.src.src_mod.is_none() {
                     if let SrcRef::SSA(lo_entry_ssa) = lo_entry.src.src_ref {
                         src_ssa[0] = lo_entry_ssa[0];
                         continue;
@@ -218,21 +218,19 @@ impl CopyPropPass {
                     || hi_entry.src_type == SrcType::F64
                 {
                     if let SrcRef::SSA(hi_entry_ssa) = hi_entry.src.src_ref {
-                        src_ssa[0] = hi_entry_ssa[0];
+                        src_ssa[1] = hi_entry_ssa[0];
                         src.src_mod = hi_entry.src.src_mod.modify(src.src_mod);
                         continue;
                     }
                 }
             }
 
-            let lo_entry = match lo_entry_or_none {
-                Some(e) => e,
-                None => return,
+            let Some(lo_entry) = lo_entry_or_none else {
+                return;
             };
 
-            let hi_entry = match hi_entry_or_none {
-                Some(e) => e,
-                None => return,
+            let Some(hi_entry) = hi_entry_or_none else {
+                return;
             };
 
             if !lo_entry.src.src_mod.is_none() {
@@ -322,9 +320,9 @@ impl CopyPropPass {
             Op::DAdd(add) => {
                 let dst = add.dst.as_ssa().unwrap();
                 if !add.saturate {
-                    if add.srcs[0].is_zero() {
+                    if add.srcs[0].is_fneg_zero(SrcType::F64) {
                         self.add_fp64_copy(dst, add.srcs[1]);
-                    } else if add.srcs[1].is_zero() {
+                    } else if add.srcs[1].is_fneg_zero(SrcType::F64) {
                         self.add_fp64_copy(dst, add.srcs[0]);
                     }
                 }
