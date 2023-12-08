@@ -519,6 +519,11 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_b2f32 => {
                 b.sel(srcs[0].bnot(), 0.0_f32.into(), 1.0_f32.into())
             }
+            nir_op_b2f64 => {
+                let lo = b.copy(0.into());
+                let hi = b.sel(srcs[0].bnot(), 0.into(), 0x3ff00000.into());
+                [lo[0], hi[0]].into()
+            }
             nir_op_bcsel => b.sel(srcs[0], srcs[1], srcs[2]),
             nir_op_bit_count => {
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
