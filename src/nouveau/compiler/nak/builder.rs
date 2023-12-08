@@ -130,7 +130,7 @@ pub trait SSABuilder: Builder {
                 high: 0.into(),
                 shift: shift,
                 right: false,
-                wrap: false,
+                wrap: true,
                 data_type: IntType::I32,
                 dst_high: false,
             });
@@ -139,7 +139,7 @@ pub trait SSABuilder: Builder {
                 dst: dst.into(),
                 src: x,
                 shift: shift,
-                wrap: false,
+                wrap: true,
             });
         }
         dst
@@ -154,7 +154,7 @@ pub trait SSABuilder: Builder {
                 high: x,
                 shift: shift,
                 right: true,
-                wrap: false,
+                wrap: true,
                 data_type: if signed { IntType::I32 } else { IntType::U32 },
                 dst_high: true,
             });
@@ -163,7 +163,7 @@ pub trait SSABuilder: Builder {
                 dst: dst.into(),
                 src: x,
                 shift: shift,
-                wrap: false,
+                wrap: true,
                 signed,
             });
         }
