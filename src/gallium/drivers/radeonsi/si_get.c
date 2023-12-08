@@ -829,6 +829,17 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          else
             return 0;
 
+      case PIPE_VIDEO_CAP_ENC_ROI:
+         if (sscreen->info.vcn_ip_version >= VCN_1_0_0) {
+            union pipe_enc_cap_roi attrib;
+            attrib.bits.num_roi_regions = PIPE_ENC_ROI_REGION_NUM_MAX;
+            attrib.bits.roi_rc_priority_support = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.roi_rc_qp_delta_support = PIPE_ENC_FEATURE_SUPPORTED;
+            return attrib.value;
+         }
+         else
+            return 0;
+
       default:
          return 0;
       }
