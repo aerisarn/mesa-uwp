@@ -72,7 +72,7 @@ fs_visitor::interp_reg(const fs_builder &bld, unsigned location,
  * generate_code() time.
  */
 fs_reg
-fs_visitor::per_primitive_reg(int location, unsigned comp)
+fs_visitor::per_primitive_reg(const fs_builder &bld, int location, unsigned comp)
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    assert(BITFIELD64_BIT(location) & nir->info.per_primitive_inputs);

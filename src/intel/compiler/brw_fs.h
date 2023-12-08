@@ -332,7 +332,8 @@ public:
 
    fs_reg interp_reg(const brw::fs_builder &bld, unsigned location,
                      unsigned channel, unsigned comp);
-   fs_reg per_primitive_reg(int location, unsigned comp);
+   fs_reg per_primitive_reg(const brw::fs_builder &bld,
+                            int location, unsigned comp);
 
    virtual void dump_instruction_to_file(const backend_instruction *inst, FILE *file) const;
    virtual void dump_instructions_to_file(FILE *file) const;
