@@ -211,12 +211,8 @@ ubo_deref_to_cbuf(nir_deref_instr *deref,
    uint64_t offset = 0;
    uint64_t range = glsl_get_explicit_size(deref->type, false);
    bool offset_valid = true;
-   while (true) {
+   while (deref->deref_type != nir_deref_type_cast) {
       nir_deref_instr *parent = nir_deref_instr_parent(deref);
-      if (parent == NULL) {
-         assert(deref->deref_type == nir_deref_type_cast);
-         break;
-      }
 
       switch (deref->deref_type) {
       case nir_deref_type_var:
@@ -225,9 +221,6 @@ ubo_deref_to_cbuf(nir_deref_instr *deref,
       case nir_deref_type_array:
       case nir_deref_type_array_wildcard: {
          uint32_t stride = nir_deref_instr_array_stride(deref);
-         if (range > stride)
-            offset_valid = false;
-
          if (deref->deref_type == nir_deref_type_array &&
              nir_src_is_const(deref->arr.index)) {
             offset += nir_src_as_uint(deref->arr.index) * stride;
@@ -242,17 +235,14 @@ ubo_deref_to_cbuf(nir_deref_instr *deref,
           * anyway, even with variable pointers.
           */
          offset_valid = false;
+         unreachable("Variable pointers aren't allowed on UBOs");
          break;
 
-      case nir_deref_type_struct:
+      case nir_deref_type_struct: {
          offset += glsl_get_struct_field_offset(parent->type,
                                                 deref->strct.index);
          break;
-
-      case nir_deref_type_cast:
-         /* nir_explicit_io_address_from_deref() can't handle casts */
-         offset_valid = false;
-         break;
+      }
 
       default:
          unreachable("Unknown deref type");
@@ -453,6 +443,67 @@ build_cbuf_map(nir_shader *nir, struct lower_descriptors_ctx *ctx)
    ctx->cbufs = NULL;
 }
 
+static int
+get_mapped_cbuf_idx(const struct nvk_cbuf *key,
+                    const struct lower_descriptors_ctx *ctx)
+{
+   if (ctx->cbuf_map == NULL)
+      return -1;
+
+   for (uint32_t c = 0; c < ctx->cbuf_map->cbuf_count; c++) {
+      if (cbufs_equal(&ctx->cbuf_map->cbufs[c], key)) {
+         return c;
+      }
+   }
+
+   return -1;
+}
+
+static bool
+lower_load_ubo_intrin(nir_builder *b, nir_intrinsic_instr *load, void *_ctx)
+{
+   const struct lower_descriptors_ctx *ctx = _ctx;
+
+   if (load->intrinsic != nir_intrinsic_load_deref)
+      return false;
+
+   nir_deref_instr *deref = nir_src_as_deref(load->src[0]);
+   if (!nir_deref_mode_is(deref, nir_var_mem_ubo))
+      return false;
+
+   uint64_t offset, end;
+   UNUSED uint64_t start;
+   UNUSED nir_intrinsic_instr *res_index;
+   struct nvk_cbuf cbuf_key =
+      ubo_deref_to_cbuf(deref, &res_index, &offset, &start, &end, ctx);
+
+   if (cbuf_key.type == NVK_CBUF_TYPE_INVALID)
+      return false;
+
+   if (end > NVK_MAX_CBUF_SIZE)
+      return false;
+
+   int cbuf_idx = get_mapped_cbuf_idx(&cbuf_key, ctx);
+   if (cbuf_idx < 0)
+      return false;
+
+   b->cursor = nir_before_instr(&load->instr);
+
+   nir_deref_path path;
+   nir_deref_path_init(&path, deref, NULL);
+
+   nir_def *addr = nir_imm_ivec2(b, cbuf_idx, offset);
+   nir_address_format addr_format = nir_address_format_32bit_index_offset;
+   for (nir_deref_instr **p = &path.path[1]; *p != NULL; p++)
+      addr = nir_explicit_io_address_from_deref(b, *p, addr, addr_format);
+
+   nir_deref_path_finish(&path);
+
+   nir_lower_explicit_io_instr(b, load, addr, addr_format);
+
+   return true;
+}
+
 static nir_def *
 load_descriptor_set_addr(nir_builder *b, uint32_t set,
                          UNUSED const struct lower_descriptors_ctx *ctx)
@@ -529,12 +580,27 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
       unsigned desc_align_offset = binding_layout->offset + offset_B;
       desc_align_offset %= desc_align_mul;
 
-      nir_def *set_addr = load_descriptor_set_addr(b, set, ctx);
-      nir_def *desc =
-         nir_load_global_constant_offset(b, num_components, bit_size,
-                                         set_addr, desc_ubo_offset,
-                                         .align_mul = desc_align_mul,
-                                         .align_offset = desc_align_offset);
+      const struct nvk_cbuf cbuf_key = {
+         .type = NVK_CBUF_TYPE_DESC_SET,
+         .desc_set = set,
+      };
+      int cbuf_idx = get_mapped_cbuf_idx(&cbuf_key, ctx);
+
+      nir_def *desc;
+      if (cbuf_idx >= 0) {
+         desc = nir_load_ubo(b, num_components, bit_size,
+                             nir_imm_int(b, cbuf_idx),
+                             desc_ubo_offset,
+                             .align_mul = desc_align_mul,
+                             .align_offset = desc_align_offset,
+                             .range = ~0);
+      } else {
+         nir_def *set_addr = load_descriptor_set_addr(b, set, ctx);
+         desc = nir_load_global_constant_offset(b, num_components, bit_size,
+                                                set_addr, desc_ubo_offset,
+                                                .align_mul = desc_align_mul,
+                                                .align_offset = desc_align_offset);
+      }
       if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
           binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
          /* We know a priori that the the .w compnent (offset) is zero */
@@ -1083,21 +1149,32 @@ nvk_nir_lower_descriptors(nir_shader *nir,
       .ubo_addr_format = nvk_buffer_addr_format(rs->uniform_buffers),
    };
 
-   /* We run in three passes:
+   /* We run in four passes:
     *
     *  1. Find ranges of UBOs that we can promote to bound UBOs.  Nothing is
     *     actually lowered in this pass.  It's just analysis.
     *
-    *  2. Attempt to lower everything with direct descriptors.  This may fail
+    *  2. Try to lower UBO loads to cbufs based on the map we just created.
+    *     We need to do this before the main lowering pass because it relies
+    *     on the original descriptor load intrinsics.
+    *
+    *  3. Attempt to lower everything with direct descriptors.  This may fail
     *     to lower some SSBO intrinsics when variable pointers are used.
     *
-    *  3. Clean up any SSBO intrinsics which are left and lower them to
+    *  4. Clean up any SSBO intrinsics which are left and lower them to
     *     slightly less efficient but variable- pointers-correct versions.
     */
 
+   bool pass_lower_ubo = false;
    if (cbuf_map_out != NULL) {
       ctx.cbuf_map = cbuf_map_out;
       build_cbuf_map(nir, &ctx);
+
+      pass_lower_ubo =
+         nir_shader_intrinsics_pass(nir, lower_load_ubo_intrin,
+                                    nir_metadata_block_index |
+                                    nir_metadata_dominance,
+                                    (void *)&ctx);
    }
 
    bool pass_lower_descriptors =
@@ -1110,5 +1187,5 @@ nvk_nir_lower_descriptors(nir_shader *nir,
                                    nir_metadata_block_index |
                                    nir_metadata_dominance,
                                    (void *)&ctx);
-   return pass_lower_descriptors || pass_lower_ssbo;
+   return pass_lower_ubo || pass_lower_descriptors || pass_lower_ssbo;
 }
