@@ -3293,7 +3293,8 @@ fs_visitor::eliminate_find_live_channel()
    bool progress = false;
    unsigned depth = 0;
 
-   if (!brw_stage_has_packed_dispatch(devinfo, stage, stage_prog_data)) {
+   if (!brw_stage_has_packed_dispatch(devinfo, stage, max_polygons,
+                                      stage_prog_data)) {
       /* The optimization below assumes that channel zero is live on thread
        * dispatch, which may not be the case if the fixed function dispatches
        * threads sparsely.
@@ -5625,7 +5626,8 @@ fs_visitor::lower_find_live_channel()
       return false;
 
    bool packed_dispatch =
-      brw_stage_has_packed_dispatch(devinfo, stage, stage_prog_data);
+      brw_stage_has_packed_dispatch(devinfo, stage, max_polygons,
+                                    stage_prog_data);
    bool vmask =
       stage == MESA_SHADER_FRAGMENT &&
       brw_wm_prog_data(stage_prog_data)->uses_vmask;
@@ -8232,13 +8234,15 @@ brw_compile_bs(const struct brw_compiler *compiler,
 static UNUSED void
 brw_fs_test_dispatch_packing(const fs_builder &bld)
 {
-   const gl_shader_stage stage = bld.shader->stage;
+   const fs_visitor *shader = static_cast<const fs_visitor *>(bld.shader);
+   const gl_shader_stage stage = shader->stage;
    const bool uses_vmask =
       stage == MESA_SHADER_FRAGMENT &&
-      brw_wm_prog_data(bld.shader->stage_prog_data)->uses_vmask;
+      brw_wm_prog_data(shader->stage_prog_data)->uses_vmask;
 
-   if (brw_stage_has_packed_dispatch(bld.shader->devinfo, stage,
-                                     bld.shader->stage_prog_data)) {
+   if (brw_stage_has_packed_dispatch(shader->devinfo, stage,
+                                     shader->max_polygons,
+                                     shader->stage_prog_data)) {
       const fs_builder ubld = bld.exec_all().group(1, 0);
       const fs_reg tmp = component(bld.vgrf(BRW_REGISTER_TYPE_UD), 0);
       const fs_reg mask = uses_vmask ? brw_vmask_reg() : brw_dmask_reg();

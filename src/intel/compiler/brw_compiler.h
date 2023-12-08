@@ -2190,7 +2190,7 @@ brw_cs_get_dispatch_info(const struct intel_device_info *devinfo,
  */
 static inline bool
 brw_stage_has_packed_dispatch(ASSERTED const struct intel_device_info *devinfo,
-                              gl_shader_stage stage,
+                              gl_shader_stage stage, unsigned max_polygons,
                               const struct brw_stage_prog_data *prog_data)
 {
    /* The code below makes assumptions about the hardware's thread dispatch
@@ -2214,7 +2214,8 @@ brw_stage_has_packed_dispatch(ASSERTED const struct intel_device_info *devinfo,
          (const struct brw_wm_prog_data *)prog_data;
       return devinfo->verx10 < 125 &&
              !wm_prog_data->persample_dispatch &&
-             wm_prog_data->uses_vmask;
+             wm_prog_data->uses_vmask &&
+             max_polygons < 2;
    }
    case MESA_SHADER_COMPUTE:
       /* Compute shaders will be spawned with either a fully enabled dispatch
