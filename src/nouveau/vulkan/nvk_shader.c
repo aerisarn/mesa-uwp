@@ -297,7 +297,8 @@ void
 nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
               bool is_multiview,
-              const struct vk_pipeline_layout *layout)
+              const struct vk_pipeline_layout *layout,
+              struct nvk_shader *shader)
 {
    struct nvk_physical_device *pdev = nvk_device_physical(dev);
 
@@ -348,7 +349,24 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
     */
    assert(dev->pdev->info.cls_eng3d >= MAXWELL_A || !nir_has_image_var(nir));
 
-   NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout, NULL);
+   struct nvk_cbuf_map *cbuf_map = NULL;
+   if (use_nak(pdev, nir->info.stage) && 0) {
+      cbuf_map = &shader->cbuf_map;
+   } else {
+      /* Codegen sometimes puts stuff in cbuf 1 and adds 1 to our cbuf indices
+       * so we can't really rely on it for lowering to cbufs and instead place
+       * the root descriptors in both cbuf 0 and cbuf 1.
+       */
+      shader->cbuf_map = (struct nvk_cbuf_map) {
+         .cbuf_count = 2,
+         .cbufs = {
+            { .type = NVK_CBUF_TYPE_ROOT_DESC },
+            { .type = NVK_CBUF_TYPE_ROOT_DESC },
+         }
+      };
+   }
+
+   NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout, cbuf_map);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
             nir_address_format_64bit_global);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,

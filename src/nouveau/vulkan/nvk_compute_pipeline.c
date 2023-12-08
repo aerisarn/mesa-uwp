@@ -184,20 +184,20 @@ nvk_compute_pipeline_create(struct nvk_device *dev,
    if (result != VK_SUCCESS)
       goto fail;
 
-   nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout);
+   struct nvk_shader *shader = &pipeline->base.shaders[MESA_SHADER_COMPUTE];
+
+   nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout, shader);
 
    result = nvk_compile_nir(pdev, nir, pipeline_flags, &robustness, NULL,
-                            &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+                            shader);
    ralloc_free(nir);
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = nvk_shader_upload(dev,
-                              &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+   result = nvk_shader_upload(dev, shader);
    if (result != VK_SUCCESS)
       goto fail;
 
-   struct nvk_shader *shader = &pipeline->base.shaders[MESA_SHADER_COMPUTE];
    if (pdev->info.cls_compute >= AMPERE_COMPUTE_A)
       nvc6c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
    else if (pdev->info.cls_compute >= VOLTA_COMPUTE_A)

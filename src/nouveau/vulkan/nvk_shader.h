@@ -47,6 +47,7 @@ struct nvk_cbuf_map {
 
 struct nvk_shader {
    struct nak_shader_info info;
+   struct nvk_cbuf_map cbuf_map;
 
    struct nak_shader_bin *nak;
    const void *code_ptr;
@@ -107,7 +108,8 @@ void
 nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
               bool is_multiview,
-              const struct vk_pipeline_layout *layout);
+              const struct vk_pipeline_layout *layout,
+              struct nvk_shader *shader);
 
 VkResult
 nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
