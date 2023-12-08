@@ -577,7 +577,7 @@ impl<'a> ShaderFromNir<'a> {
                 let src_type = FloatType::from_bits(src_bits.into());
                 let dst_type = FloatType::from_bits(dst_bits.into());
 
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                let dst = b.alloc_ssa(RegFile::GPR, dst_bits.div_ceil(32));
                 b.push_op(OpF2F {
                     dst: dst.into(),
                     src: srcs[0],
