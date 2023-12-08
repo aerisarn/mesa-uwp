@@ -57,7 +57,7 @@ static inline bool
 _mesa_matrix_is_identity(const float *m)
 {
    const uint32_t *u = (const uint32_t *)m;
-   const float one = IEEE_ONE;
+   const uint32_t one = IEEE_ONE;
 
    /* This is faster than memcmp with static identity matrix. Instead of
     * comparing every non-diagonal element against zero, OR them and compare
