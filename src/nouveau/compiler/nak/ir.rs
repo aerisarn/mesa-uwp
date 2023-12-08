@@ -2471,14 +2471,12 @@ pub struct OpDAdd {
     #[src_type(F64)]
     pub srcs: [Src; 2],
 
-    pub saturate: bool,
     pub rnd_mode: FRndMode,
 }
 
 impl DisplayOp for OpDAdd {
     fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sat = if self.saturate { ".sat" } else { "" };
-        write!(f, "dadd{sat}")?;
+        write!(f, "dadd")?;
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, "{}", self.rnd_mode)?;
         }

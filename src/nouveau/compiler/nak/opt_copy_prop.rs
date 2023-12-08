@@ -319,12 +319,10 @@ impl CopyPropPass {
             }
             Op::DAdd(add) => {
                 let dst = add.dst.as_ssa().unwrap();
-                if !add.saturate {
-                    if add.srcs[0].is_fneg_zero(SrcType::F64) {
-                        self.add_fp64_copy(dst, add.srcs[1]);
-                    } else if add.srcs[1].is_fneg_zero(SrcType::F64) {
-                        self.add_fp64_copy(dst, add.srcs[0]);
-                    }
+                if add.srcs[0].is_fneg_zero(SrcType::F64) {
+                    self.add_fp64_copy(dst, add.srcs[1]);
+                } else if add.srcs[1].is_fneg_zero(SrcType::F64) {
+                    self.add_fp64_copy(dst, add.srcs[0]);
                 }
             }
             Op::Lop3(lop) => {
