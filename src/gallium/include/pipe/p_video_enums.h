@@ -157,6 +157,10 @@ enum pipe_video_cap
       crop and partial decode support
    */
    PIPE_VIDEO_CAP_ROI_CROP_DEC = 48,
+   /*
+    * Encoding Region Of Interest feature
+    */
+   PIPE_VIDEO_CAP_ENC_ROI = 49,
 };
 
 enum pipe_video_h264_enc_dbk_filter_mode_flags

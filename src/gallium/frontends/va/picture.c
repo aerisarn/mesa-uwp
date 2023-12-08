@@ -719,6 +719,56 @@ handleVAEncMiscParameterTypeRIR(vlVaContext *context, VAEncMiscParameterBuffer *
 }
 
 static VAStatus
+handleVAEncMiscParameterTypeROI(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAStatus status = VA_STATUS_SUCCESS;
+   struct pipe_enc_roi *proi= NULL;
+   switch (u_reduce_video_profile(context->templat.profile)) {
+      case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+         proi = &context->desc.h264enc.roi;
+         break;
+      case PIPE_VIDEO_FORMAT_HEVC:
+         proi = &context->desc.h265enc.roi;
+         break;
+#if VA_CHECK_VERSION(1, 16, 0)
+      case PIPE_VIDEO_FORMAT_AV1:
+         proi = &context->desc.av1enc.roi;
+         break;
+#endif
+      default:
+         break;
+   };
+
+   if (proi) {
+      VAEncMiscParameterBufferROI *roi = (VAEncMiscParameterBufferROI *)misc->data;
+      /* do not support priority type, and the maximum region is 32  */
+      if ((roi->num_roi > 0 && roi->roi_flags.bits.roi_value_is_qp_delta == 0)
+           || roi->num_roi > PIPE_ENC_ROI_REGION_NUM_MAX)
+         status = VA_STATUS_ERROR_FLAG_NOT_SUPPORTED;
+      else {
+         uint32_t i;
+         VAEncROI *src = roi->roi;
+
+         proi->num = roi->num_roi;
+         for (i = 0; i < roi->num_roi; i++) {
+            proi->region[i].valid = true;
+            proi->region[i].x = src->roi_rectangle.x;
+            proi->region[i].y = src->roi_rectangle.y;
+            proi->region[i].width = src->roi_rectangle.width;
+            proi->region[i].height = src->roi_rectangle.height;
+            proi->region[i].qp_value = (int32_t)CLAMP(src->roi_value, roi->min_delta_qp, roi->max_delta_qp);
+            src++;
+         }
+
+         for (; i < PIPE_ENC_ROI_REGION_NUM_MAX; i++)
+            proi->region[i].valid = false;
+      }
+   }
+
+   return status;
+}
+
+static VAStatus
 handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 {
    VAStatus vaStatus = VA_STATUS_SUCCESS;
@@ -756,6 +806,10 @@ handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 
    case VAEncMiscParameterTypeMaxSliceSize:
       vaStatus = handleVAEncMiscParameterTypeMaxSliceSize(context, misc);
+      break;
+
+   case VAEncMiscParameterTypeROI:
+      vaStatus = handleVAEncMiscParameterTypeROI(context, misc);
       break;
 
    default:

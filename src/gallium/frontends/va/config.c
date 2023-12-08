@@ -544,6 +544,17 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                value = ir_support;
          } break;
 
+         case VAConfigAttribEncROI:
+         {
+            int roi_support = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                             PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                             PIPE_VIDEO_CAP_ENC_ROI);
+            if (roi_support <= 0)
+               value = VA_ATTRIB_NOT_SUPPORTED;
+            else
+               value = roi_support;
+         } break;
+
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;
