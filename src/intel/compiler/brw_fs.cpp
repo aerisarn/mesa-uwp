@@ -5238,6 +5238,9 @@ emit_unzip(const fs_builder &lbld, fs_inst *inst, unsigned i)
 static inline bool
 needs_dst_copy(const fs_builder &lbld, const fs_inst *inst)
 {
+   if (inst->dst.is_null())
+      return false;
+
    /* If the instruction writes more than one component we'll have to shuffle
     * the results of multiple lowered instructions in order to make sure that
     * they end up arranged correctly in the original destination region.
