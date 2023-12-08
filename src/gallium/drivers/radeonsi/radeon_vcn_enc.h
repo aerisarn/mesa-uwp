@@ -172,6 +172,7 @@ struct radeon_enc_pic {
    rvcn_enc_stats_t enc_statistics;
    rvcn_enc_input_format_t enc_input_format;
    rvcn_enc_output_format_t enc_output_format;
+   rvcn_enc_qp_map_t enc_qp_map;
 };
 
 struct radeon_encoder {
@@ -206,6 +207,7 @@ struct radeon_encoder {
    void (*rc_per_pic)(struct radeon_encoder *enc);
    void (*encode_params)(struct radeon_encoder *enc);
    void (*encode_params_codec_spec)(struct radeon_encoder *enc);
+   void (*qp_map)(struct radeon_encoder *enc);
    void (*op_init)(struct radeon_encoder *enc);
    void (*op_close)(struct radeon_encoder *enc);
    void (*op_enc)(struct radeon_encoder *enc);
@@ -242,6 +244,7 @@ struct radeon_encoder {
    struct rvid_buffer *fb;
    struct rvid_buffer *dpb;
    struct rvid_buffer *cdf;
+   struct rvid_buffer *roi;
    struct radeon_enc_pic enc_pic;
    struct pb_buffer *stats;
    rvcn_enc_cmd_t cmd;
@@ -260,6 +263,7 @@ struct radeon_encoder {
    bool emulation_prevention;
    bool need_feedback;
    unsigned dpb_size;
+   unsigned roi_size;
    rvcn_enc_picture_info_t dpb_info[RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES];
    unsigned max_ltr_idx;
 

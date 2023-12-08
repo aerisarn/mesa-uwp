@@ -63,12 +63,25 @@ static uint32_t radeon_vcn_per_frame_frac(uint32_t bitrate, uint32_t den, uint32
    return (uint32_t)((remainder << 32) / num);
 }
 
+/* block length for av1 and hevc is the same, 64, for avc 16 */
+static uint32_t radeon_vcn_enc_blocks_in_frame(struct radeon_encoder *enc,
+                                           uint32_t *width_in_block,
+                                           uint32_t *height_in_block)
+{
+   bool is_h264 = u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC;
+   uint32_t block_length = is_h264 ? PIPE_H264_MB_SIZE : PIPE_H265_ENC_CTB_SIZE;
+
+   *width_in_block  = PIPE_ALIGN_IN_BLOCK_SIZE(enc->base.width,  block_length);
+   *height_in_block = PIPE_ALIGN_IN_BLOCK_SIZE(enc->base.height, block_length);
+
+   return block_length;
+}
+
 static void radeon_vcn_enc_get_intra_refresh_param(struct radeon_encoder *enc,
                                                    bool need_filter_overlap,
                                                    struct pipe_enc_intra_refresh *intra_refresh)
 {
-   bool is_h264;
-   uint32_t block_length, width_in_block, height_in_block;
+   uint32_t width_in_block, height_in_block;
 
    enc->enc_pic.intra_refresh.intra_refresh_mode = RENCODE_INTRA_REFRESH_MODE_NONE;
    /* some exceptions where intra-refresh is disabled:
@@ -82,11 +95,7 @@ static void radeon_vcn_enc_get_intra_refresh_param(struct radeon_encoder *enc,
       return;
    }
 
-   is_h264 = u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC;
-   /* hevc and av1 are sharing the same alignment size 64 */
-   block_length = is_h264 ? PIPE_H264_MB_SIZE : PIPE_H265_ENC_CTB_SIZE;
-   width_in_block  = PIPE_ALIGN_IN_BLOCK_SIZE(enc->base.width,  block_length);
-   height_in_block = PIPE_ALIGN_IN_BLOCK_SIZE(enc->base.height, block_length);
+   radeon_vcn_enc_blocks_in_frame(enc, &width_in_block, &height_in_block);
 
    switch(intra_refresh->mode) {
       case INTRA_REFRESH_MODE_UNIT_ROWS:
@@ -118,6 +127,62 @@ static void radeon_vcn_enc_get_intra_refresh_param(struct radeon_encoder *enc,
       enc->enc_pic.intra_refresh.region_size = 0;
       enc->enc_pic.intra_refresh.offset = 0;
       enc->enc_pic.need_sequence_header = 0;
+   }
+}
+
+static void radeon_vcn_enc_get_roi_param(struct radeon_encoder *enc,
+                                         struct pipe_enc_roi *roi)
+{
+   bool is_av1 = u_reduce_video_profile(enc->base.profile)
+                             == PIPE_VIDEO_FORMAT_AV1;
+   if (!roi->num)
+      enc->enc_pic.enc_qp_map.qp_map_type = RENCODE_QP_MAP_TYPE_NONE;
+   else {
+      uint32_t width_in_block, height_in_block;
+      uint32_t block_length;
+      int32_t i, j, pa_format = 0;
+
+      /* rate control is using a different qp map type */
+      if (enc->enc_pic.rc_session_init.rate_control_method) {
+         enc->enc_pic.enc_qp_map.qp_map_type = RENCODE_QP_MAP_TYPE_MAP_PA;
+         pa_format = 1;
+      }
+      else
+         enc->enc_pic.enc_qp_map.qp_map_type = RENCODE_QP_MAP_TYPE_DELTA;
+
+      block_length = radeon_vcn_enc_blocks_in_frame(enc, &width_in_block, &height_in_block);
+
+      for (i = RENCODE_QP_MAP_MAX_REGIONS; i >= roi->num; i--)
+         enc->enc_pic.enc_qp_map.map[i].is_valid = false;
+
+      /* reverse the map sequence */
+      for (j = 0; i >= 0; i--, j++) {
+         struct rvcn_enc_qp_map_region *map = &enc->enc_pic.enc_qp_map.map[j];
+         struct pipe_enc_region_in_roi *region = &roi->region[i];
+
+         map->is_valid = region->valid;
+         if (region->valid) {
+            int32_t av1_qi_value;
+            /* mapped av1 qi into the legacy qp range by dividing by 5 and
+             * rounding up in any rate control mode.
+             */
+            if (is_av1 && pa_format) {
+               if (region->qp_value > 0)
+                  av1_qi_value = (region->qp_value + 2) / 5;
+               else if (region->qp_value < 0)
+                  av1_qi_value = (region->qp_value - 2) / 5;
+               else
+                  av1_qi_value = region->qp_value;
+               map->qp_delta = av1_qi_value;
+            } else
+               map->qp_delta = region->qp_value;
+
+            map->x_in_unit = CLAMP((region->x / block_length), 0, width_in_block - 1);
+            map->y_in_unit = CLAMP((region->y / block_length), 0, height_in_block - 1);
+            map->width_in_unit = CLAMP((region->width / block_length), 0, width_in_block);
+            map->height_in_unit = CLAMP((region->height / block_length), 0, width_in_block);
+         }
+      }
    }
 }
 
@@ -368,6 +433,7 @@ static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
 
    use_filter = enc->enc_pic.h264_deblock.disable_deblocking_filter_idc != 1;
    radeon_vcn_enc_get_intra_refresh_param(enc, use_filter, &pic->intra_refresh);
+   radeon_vcn_enc_get_roi_param(enc, &pic->roi);
 }
 
 static void radeon_vcn_enc_hevc_get_cropping_param(struct radeon_encoder *enc,
@@ -582,6 +648,7 @@ static void radeon_vcn_enc_hevc_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_get_intra_refresh_param(enc,
                                         !(enc->enc_pic.hevc_deblock.deblocking_filter_disabled),
                                          &pic->intra_refresh);
+   radeon_vcn_enc_get_roi_param(enc, &pic->roi);
 }
 
 static void radeon_vcn_enc_av1_get_spec_misc_param(struct radeon_encoder *enc,
@@ -729,6 +796,7 @@ static void radeon_vcn_enc_av1_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_get_intra_refresh_param(enc,
                                          true,
                                          &pic->intra_refresh);
+   radeon_vcn_enc_get_roi_param(enc, &pic->roi);
 }
 
 static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_picture_desc *picture)
@@ -904,6 +972,70 @@ static int setup_dpb(struct radeon_encoder *enc)
    return offset;
 }
 
+/* each block (MB/CTB/SB) has one QP/QI value */
+static uint32_t roi_buffer_size(struct radeon_encoder *enc)
+{
+   uint32_t width_in_block, height_in_block;
+
+   radeon_vcn_enc_blocks_in_frame(enc, &width_in_block, &height_in_block);
+
+   return width_in_block * height_in_block * sizeof(uint32_t);
+}
+
+static void arrange_qp_map(uint32_t *start,
+                           struct rvcn_enc_qp_map_region *map,
+                           uint32_t width_in_block,
+                           uint32_t height_in_block)
+{
+   uint32_t i, j;
+   uint32_t offset;
+   uint32_t num_in_x = MIN2(map->x_in_unit + map->width_in_unit, width_in_block)
+                      - map->x_in_unit;
+   uint32_t num_in_y = MIN2(map->y_in_unit + map->height_in_unit, height_in_block)
+                      - map->y_in_unit;;
+
+   for (j = 0; j < num_in_y; j++) {
+      for (i = 0; i < num_in_x; i++) {
+         offset = map->x_in_unit + i + (map->y_in_unit + j) * width_in_block;
+         *(start + offset) = (int32_t)map->qp_delta;
+      }
+   }
+}
+
+/* Arrange roi map values according to the input regions.
+ * The arrangment will consider the lower sequence region
+ * higher priority and that could overlap the higher sequence
+ * map region. */
+static int generate_roi_map(struct radeon_encoder *enc)
+{
+   uint32_t width_in_block, height_in_block;
+   uint32_t i;
+   uint32_t *p_roi = NULL;
+
+   radeon_vcn_enc_blocks_in_frame(enc, &width_in_block, &height_in_block);
+
+   assert (enc->roi_size >= width_in_block * height_in_block);
+   p_roi = (uint32_t *)enc->ws->buffer_map(enc->ws,
+                               enc->roi->res->buf,
+                              &enc->cs,
+                               PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
+   if (!p_roi)
+      goto error;
+
+   memset(p_roi, 0, width_in_block * height_in_block * sizeof(uint32_t));
+
+   for (i = 0; i < ARRAY_SIZE(enc->enc_pic.enc_qp_map.map); i++) {
+      struct rvcn_enc_qp_map_region *map = &enc->enc_pic.enc_qp_map.map[i];
+      if (map->is_valid)
+         arrange_qp_map(p_roi, map, width_in_block, height_in_block);
+   }
+
+   enc->ws->buffer_unmap(enc->ws, enc->roi->res->buf);
+   return 0;
+error:
+   return -1;
+}
+
 static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
                                    struct pipe_video_buffer *source,
                                    struct pipe_picture_desc *picture)
@@ -951,6 +1083,23 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
       }
    }
 
+   /* qp map buffer could be created here, and release at the end */
+   if (enc->enc_pic.enc_qp_map.qp_map_type != RENCODE_QP_MAP_TYPE_NONE) {
+      if (!enc->roi) {
+         enc->roi = CALLOC_STRUCT(rvid_buffer);
+         enc->roi_size = roi_buffer_size(enc);
+         if (!enc->roi || !enc->roi_size ||
+             !si_vid_create_buffer(enc->screen, enc->roi, enc->roi_size, PIPE_USAGE_DYNAMIC)) {
+            RVID_ERR("Can't create ROI buffer.\n");
+            goto error;
+         }
+      }
+      if(generate_roi_map(enc)) {
+         RVID_ERR("Can't form roi map.\n");
+         goto error;
+      }
+   }
+
    if (source->buffer_format == PIPE_FORMAT_NV12 ||
        source->buffer_format == PIPE_FORMAT_P010 ||
        source->buffer_format == PIPE_FORMAT_P016) {
@@ -989,6 +1138,7 @@ error:
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->dpb);
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->si);
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->cdf);
+   RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->roi);
 }
 
 static void radeon_enc_encode_bitstream(struct pipe_video_codec *encoder,
@@ -1047,6 +1197,7 @@ static void radeon_enc_destroy(struct pipe_video_codec *encoder)
 
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->dpb);
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->cdf);
+   RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->roi);
    enc->ws->cs_destroy(&enc->cs);
    if (enc->ectx)
       enc->ectx->destroy(enc->ectx);
@@ -1070,8 +1221,7 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder, void *feed
       enc->ws->buffer_unmap(enc->ws, fb->res->buf);
    }
 
-   si_vid_destroy_buffer(fb);
-   FREE(fb);
+   RADEON_ENC_DESTROY_VIDEO_BUFFER(fb);
 }
 
 static void radeon_enc_destroy_fence(struct pipe_video_codec *encoder,
