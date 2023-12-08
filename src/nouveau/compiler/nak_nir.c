@@ -543,7 +543,8 @@ nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
    nir_foreach_variable_with_modes(var, nir, modes)
       var->data.driver_location = nak_varying_attr_addr(var->data.location);
 
-   OPT(nir, nir_lower_io, modes, type_size_vec4_bytes, 0);
+   OPT(nir, nir_lower_io, modes, type_size_vec4_bytes,
+       nir_lower_io_lower_64bit_to_32);
 
    return progress;
 }
