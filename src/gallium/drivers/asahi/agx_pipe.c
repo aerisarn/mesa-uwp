@@ -1177,23 +1177,14 @@ transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
 
    int level;
    BITSET_FOREACH_SET(level, rsrc->data_valid, PIPE_MAX_TEXTURE_LEVELS) {
-      /* Blit each valid level */
-      struct pipe_blit_info blit = {0};
-
+      /* Copy each valid level */
+      struct pipe_box box;
       u_box_3d(0, 0, 0, u_minify(rsrc->layout.width_px, level),
                u_minify(rsrc->layout.height_px, level),
-               util_num_layers(&rsrc->base, level), &blit.dst.box);
-      blit.src.box = blit.dst.box;
+               util_num_layers(&rsrc->base, level), &box);
 
-      blit.dst.resource = &new_res->base;
-      blit.dst.format = rsrc->base.format;
-      blit.dst.level = level;
-      blit.src.resource = &rsrc->base;
-      blit.src.format = rsrc->base.format;
-      blit.src.level = level;
-      blit.mask = util_format_get_mask(blit.src.format);
-      blit.filter = PIPE_TEX_FILTER_NEAREST;
-      agx_blit(pctx, &blit);
+      agx_resource_copy_region(pctx, &new_res->base, level, 0, 0, 0,
+                               &rsrc->base, level, &box);
    }
 
    /* Flush the blits out, to make sure the old resource is no longer used */
