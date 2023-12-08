@@ -633,8 +633,8 @@ util_memcpy_cpu_to_le32(void * restrict dest, const void * restrict src, size_t 
 #if defined(ALIGN)
 #undef ALIGN
 #endif
-static inline uintptr_t
-ALIGN(uintptr_t value, int32_t alignment)
+static inline uint32_t
+ALIGN(uint32_t value, uint32_t alignment)
 {
    assert(util_is_power_of_two_nonzero(alignment));
    return ALIGN_POT(value, alignment);
