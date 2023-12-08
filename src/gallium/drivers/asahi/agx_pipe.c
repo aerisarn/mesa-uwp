@@ -830,10 +830,11 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
 /*
  * Return a colour-renderable format compatible with a depth/stencil format, to
  * be used as an interchange format for depth/stencil blits. For
- * non-depth/stencil formats, returns the format itself.
+ * non-depth/stencil formats, returns the format itself, except when that format
+ * would not round-trip so we return a compatible roundtrippable format.
  */
 static enum pipe_format
-agx_staging_color_format_for_zs(enum pipe_format format)
+agx_staging_format(enum pipe_format format)
 {
    switch (format) {
    case PIPE_FORMAT_Z16_UNORM:
@@ -851,7 +852,8 @@ agx_staging_color_format_for_zs(enum pipe_format format)
       assert(!util_format_is_depth_or_stencil(format) &&
              "no other depth/stencil formats allowed for staging");
 
-      return format;
+      /* However, snorm does not round trip, so don't use that for staging */
+      return util_format_snorm_to_sint(format);
    }
 }
 
@@ -890,7 +892,7 @@ agx_alloc_staging(struct pipe_screen *screen, struct agx_resource *rsc,
    tmpl.last_level = 0;
 
    /* Linear is incompatible with depth/stencil, so we convert */
-   tmpl.format = agx_staging_color_format_for_zs(rsc->layout.format);
+   tmpl.format = agx_staging_format(rsc->layout.format);
    tmpl.bind =
       PIPE_BIND_LINEAR | PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW;
 
@@ -908,8 +910,7 @@ agx_blit_from_staging(struct pipe_context *pctx, struct agx_transfer *trans)
    struct pipe_blit_info blit = {0};
 
    blit.dst.resource = dst;
-   blit.dst.format =
-      agx_staging_color_format_for_zs(agx_resource(dst)->layout.format);
+   blit.dst.format = agx_staging_format(agx_resource(dst)->layout.format);
    blit.dst.level = trans->base.level;
    blit.dst.box = trans->base.box;
    blit.src.resource = trans->staging.rsrc;
@@ -929,8 +930,7 @@ agx_blit_to_staging(struct pipe_context *pctx, struct agx_transfer *trans)
    struct pipe_blit_info blit = {0};
 
    blit.src.resource = src;
-   blit.src.format =
-      agx_staging_color_format_for_zs(agx_resource(src)->layout.format);
+   blit.src.format = agx_staging_format(agx_resource(src)->layout.format);
    blit.src.level = trans->base.level;
    blit.src.box = trans->base.box;
    blit.dst.resource = trans->staging.rsrc;
