@@ -42,28 +42,6 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
    *size = comp_size * length, *align = comp_size;
 }
 
-static inline enum pipe_shader_type
-pipe_shader_type_from_mesa(gl_shader_stage stage)
-{
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      return PIPE_SHADER_VERTEX;
-   case MESA_SHADER_TESS_CTRL:
-      return PIPE_SHADER_TESS_CTRL;
-   case MESA_SHADER_TESS_EVAL:
-      return PIPE_SHADER_TESS_EVAL;
-   case MESA_SHADER_GEOMETRY:
-      return PIPE_SHADER_GEOMETRY;
-   case MESA_SHADER_FRAGMENT:
-      return PIPE_SHADER_FRAGMENT;
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_KERNEL:
-      return PIPE_SHADER_COMPUTE;
-   default:
-      unreachable("bad shader stage");
-   }
-}
-
 VkShaderStageFlags
 nvk_nak_stages(const struct nv_device_info *info)
 {
