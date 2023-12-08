@@ -261,6 +261,7 @@ const nir_lower_subgroups_options si_nir_subgroups_options = {
    .ballot_components = 1,
    .lower_to_scalar = true,
    .lower_subgroup_masks = true,
+   .lower_relative_shuffle = true,
    .lower_vote_trivial = false,
    .lower_vote_eq = true,
    .lower_vote_bool_eq = true,
