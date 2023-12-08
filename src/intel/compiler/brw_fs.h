@@ -476,7 +476,8 @@ public:
    int generate_code(const cfg_t *cfg, int dispatch_width,
                      struct shader_stats shader_stats,
                      const brw::performance &perf,
-                     struct brw_compile_stats *stats);
+                     struct brw_compile_stats *stats,
+                     unsigned max_polygons = 0);
    void add_const_data(void *data, unsigned size);
    void add_resume_sbt(unsigned num_resume_shaders, uint64_t *sbt);
    const unsigned *get_assembly();

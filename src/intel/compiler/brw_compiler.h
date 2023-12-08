@@ -1819,6 +1819,7 @@ DEFINE_PROG_DATA_DOWNCAST(sf,    true)
 
 struct brw_compile_stats {
    uint32_t dispatch_width; /**< 0 for vec4 */
+   uint32_t max_polygons;
    uint32_t max_dispatch_width;
    uint32_t instructions;
    uint32_t sends;

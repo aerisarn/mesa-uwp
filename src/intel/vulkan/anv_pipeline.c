@@ -4176,10 +4176,16 @@ VkResult anv_GetPipelineExecutablePropertiesKHR(
 
          unsigned simd_width = exe->stats.dispatch_width;
          if (stage == MESA_SHADER_FRAGMENT) {
-            WRITE_STR(props->name, "%s%d %s",
-                      simd_width ? "SIMD" : "vec",
-                      simd_width ? simd_width : 4,
-                      _mesa_shader_stage_to_string(stage));
+            if (exe->stats.max_polygons > 1)
+               WRITE_STR(props->name, "SIMD%dx%d %s",
+                         exe->stats.max_polygons,
+                         simd_width / exe->stats.max_polygons,
+                         _mesa_shader_stage_to_string(stage));
+            else
+               WRITE_STR(props->name, "%s%d %s",
+                         simd_width ? "SIMD" : "vec",
+                         simd_width ? simd_width : 4,
+                         _mesa_shader_stage_to_string(stage));
          } else {
             WRITE_STR(props->name, "%s", _mesa_shader_stage_to_string(stage));
          }

@@ -1610,7 +1610,8 @@ int
 fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                             struct shader_stats shader_stats,
                             const brw::performance &perf,
-                            struct brw_compile_stats *stats)
+                            struct brw_compile_stats *stats,
+                            unsigned max_polygons)
 {
    /* align to 64 byte boundary. */
    brw_realign(p, 64);
@@ -2439,6 +2440,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                         before_size, after_size);
    if (stats) {
       stats->dispatch_width = dispatch_width;
+      stats->max_polygons = max_polygons;
       stats->max_dispatch_width = dispatch_width;
       stats->instructions = before_size / 16 - nop_count;
       stats->sends = send_count;
