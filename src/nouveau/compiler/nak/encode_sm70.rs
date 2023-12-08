@@ -329,52 +329,45 @@ impl SM70Instr {
 
         self.set_alu_reg_src(24..32, 73, 72, &src0);
 
-        let form = match &src1 {
-            ALUSrc::Reg(reg1) => {
-                match &src2 {
-                    ALUSrc::None => {
+        let form = match &src2 {
+            ALUSrc::None | ALUSrc::Reg(_) => {
+                self.set_alu_reg_src(64..72, 74, 75, &src2);
+                match &src1 {
+                    ALUSrc::None => 1_u8, // form
+                    ALUSrc::Reg(reg1) => {
                         self.set_alu_reg(32..40, 62, 63, reg1);
                         1_u8 // form
                     }
-                    ALUSrc::Reg(reg2) => {
-                        self.set_alu_reg(32..40, 62, 63, reg1);
-                        self.set_alu_reg(64..72, 74, 75, reg2);
-                        1_u8 // form
-                    }
-                    ALUSrc::UReg(reg2) => {
-                        self.set_alu_ureg(32..40, 62, 63, reg2);
-                        self.set_alu_reg(64..72, 74, 75, reg1);
-                        7_u8 // form
+                    ALUSrc::UReg(reg1) => {
+                        self.set_alu_ureg(32..40, 62, 63, reg1);
+                        6_u8 // form
                     }
                     ALUSrc::Imm32(imm) => {
                         self.set_src_imm(32..64, &imm);
-                        self.set_alu_reg(64..72, 74, 75, reg1);
-                        2_u8 // form
+                        4_u8 // form
                     }
                     ALUSrc::CBuf(cb) => {
-                        // TODO set_src_cx
                         self.set_alu_cb(38..59, 62, 63, cb);
-                        self.set_alu_reg(64..72, 74, 75, reg1);
-                        3_u8 // form
+                        5_u8 // form
                     }
                 }
             }
-            ALUSrc::UReg(reg1) => {
-                self.set_alu_ureg(32..40, 62, 63, reg1);
-                self.set_alu_reg_src(64..72, 74, 75, &src2);
-                6_u8 // form
+            ALUSrc::UReg(reg2) => {
+                self.set_alu_ureg(32..40, 62, 63, reg2);
+                self.set_alu_reg_src(64..72, 74, 75, &src1);
+                7_u8 // form
             }
             ALUSrc::Imm32(imm) => {
                 self.set_src_imm(32..64, &imm);
-                self.set_alu_reg_src(64..72, 74, 75, &src2);
-                4_u8 // form
+                self.set_alu_reg_src(64..72, 74, 75, &src1);
+                2_u8 // form
             }
             ALUSrc::CBuf(cb) => {
+                // TODO set_src_cx
                 self.set_alu_cb(38..59, 62, 63, cb);
-                self.set_alu_reg_src(64..72, 74, 75, &src2);
-                5_u8 // form
+                self.set_alu_reg_src(64..72, 74, 75, &src1);
+                3_u8 // form
             }
-            _ => panic!("Invalid instruction form"),
         };
 
         self.set_field(0..9, opcode);
