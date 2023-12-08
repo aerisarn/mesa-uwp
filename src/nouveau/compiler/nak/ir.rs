@@ -2487,6 +2487,80 @@ impl_display_for_op!(OpDAdd);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpDMul {
+    pub dst: Dst,
+
+    #[src_type(F64)]
+    pub srcs: [Src; 2],
+
+    pub rnd_mode: FRndMode,
+}
+
+impl DisplayOp for OpDMul {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "dmul")?;
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, "{}", self.rnd_mode)?;
+        }
+        write!(f, " {} {}", self.srcs[0], self.srcs[1],)
+    }
+}
+impl_display_for_op!(OpDMul);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpDFma {
+    pub dst: Dst,
+
+    #[src_type(F64)]
+    pub srcs: [Src; 3],
+
+    pub rnd_mode: FRndMode,
+}
+
+impl DisplayOp for OpDFma {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "dfma")?;
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, "{}", self.rnd_mode)?;
+        }
+        write!(f, " {} {} {}", self.srcs[0], self.srcs[1], self.srcs[2])
+    }
+}
+impl_display_for_op!(OpDFma);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpDSetP {
+    pub dst: Dst,
+
+    pub set_op: PredSetOp,
+    pub cmp_op: FloatCmpOp,
+
+    #[src_type(F64)]
+    pub srcs: [Src; 2],
+
+    #[src_type(Pred)]
+    pub accum: Src,
+}
+
+impl DisplayOp for OpDSetP {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "dsetp{}", self.cmp_op)?;
+        if !self.set_op.is_trivial(&self.accum) {
+            write!(f, "{}", self.set_op)?;
+        }
+        write!(f, " {} {}", self.srcs[0], self.srcs[1])?;
+        if !self.set_op.is_trivial(&self.accum) {
+            write!(f, " {}", self.accum)?;
+        }
+        Ok(())
+    }
+}
+impl_display_for_op!(OpDSetP);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBrev {
     pub dst: Dst,
 
@@ -4623,6 +4697,9 @@ pub enum Op {
     FSetP(OpFSetP),
     FSwzAdd(OpFSwzAdd),
     DAdd(OpDAdd),
+    DFma(OpDFma),
+    DMul(OpDMul),
+    DSetP(OpDSetP),
     Brev(OpBrev),
     Flo(OpFlo),
     IAbs(OpIAbs),
@@ -5060,7 +5137,7 @@ impl Instr {
             Op::MuFu(_) => false,
 
             // Double-precision float ALU
-            Op::DAdd(_) => false,
+            Op::DAdd(_) | Op::DFma(_) | Op::DMul(_) | Op::DSetP(_) => false,
 
             // Integer ALU
             Op::Brev(_) | Op::Flo(_) | Op::PopC(_) => false,

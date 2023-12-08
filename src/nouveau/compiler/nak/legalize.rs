@@ -325,7 +325,26 @@ fn legalize_sm70_instr(
         Op::DAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F64);
+        }
+        Op::DFma(op) => {
+            let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
+            swap_srcs_if_not_reg(src0, src1);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F64);
+            copy_alu_src_if_both_not_reg(b, src1, src2, SrcType::F64);
+        }
+        Op::DMul(op) => {
+            let [ref mut src0, ref mut src1] = op.srcs;
+            swap_srcs_if_not_reg(src0, src1);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F64);
+        }
+        Op::DSetP(op) => {
+            let [ref mut src0, ref mut src1] = op.srcs;
+            if !src_is_reg(src0) && src_is_reg(src1) {
+                std::mem::swap(src0, src1);
+                op.cmp_op = op.cmp_op.flip();
+            }
+            copy_alu_src_if_not_reg(b, src0, SrcType::F64);
         }
         Op::Brev(_) | Op::Flo(_) | Op::IAbs(_) | Op::INeg(_) => (),
         Op::IAdd3(op) => {

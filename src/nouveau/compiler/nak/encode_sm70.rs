@@ -579,6 +579,67 @@ impl SM70Instr {
         );
     }
 
+    fn encode_dadd(&mut self, op: &OpDAdd) {
+        self.encode_alu(
+            0x029,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.srcs[1]),
+        );
+        self.set_rnd_mode(78..80, op.rnd_mode);
+    }
+
+    fn encode_dfma(&mut self, op: &OpDFma) {
+        self.encode_alu(
+            0x02b,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
+        );
+        self.set_rnd_mode(78..80, op.rnd_mode);
+    }
+
+    fn encode_dmul(&mut self, op: &OpDMul) {
+        self.encode_alu(
+            0x028,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::None,
+        );
+        self.set_rnd_mode(78..80, op.rnd_mode);
+    }
+
+    fn encode_dsetp(&mut self, op: &OpDSetP) {
+        if op.srcs[1].src_ref.as_reg().is_some() {
+            self.encode_alu(
+                0x02a,
+                None,
+                ALUSrc::from_src(&op.srcs[0]),
+                ALUSrc::from_src(&op.srcs[1]),
+                ALUSrc::None,
+            );
+        } else {
+            self.encode_alu(
+                0x02a,
+                None,
+                ALUSrc::from_src(&op.srcs[0]),
+                ALUSrc::None,
+                ALUSrc::from_src(&op.srcs[1]),
+            );
+        }
+
+        self.set_pred_set_op(74..76, op.set_op);
+        self.set_float_cmp_op(76..80, op.cmp_op);
+
+        self.set_pred_dst(81..84, op.dst);
+        self.set_pred_dst(84..87, Dst::None); /* dst1 */
+
+        self.set_pred_src(87..90, 90, op.accum);
+    }
+
     fn encode_brev(&mut self, op: &OpBrev) {
         self.encode_alu(
             0x101,
@@ -1925,6 +1986,10 @@ impl SM70Instr {
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::FSwzAdd(op) => si.encode_fswzadd(&op),
+            Op::DAdd(op) => si.encode_dadd(&op),
+            Op::DFma(op) => si.encode_dfma(&op),
+            Op::DMul(op) => si.encode_dmul(&op),
+            Op::DSetP(op) => si.encode_dsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::Brev(op) => si.encode_brev(&op),
             Op::Flo(op) => si.encode_flo(&op),
