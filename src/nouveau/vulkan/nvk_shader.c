@@ -348,7 +348,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
     */
    assert(dev->pdev->info.cls_eng3d >= MAXWELL_A || !nir_has_image_var(nir));
 
-   NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout);
+   NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout, NULL);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
             nir_address_format_64bit_global);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,

@@ -25,6 +25,26 @@ struct vk_shader_module;
 #define TU102_SHADER_HEADER_SIZE (32 * 4)
 #define NVC0_MAX_SHADER_HEADER_SIZE TU102_SHADER_HEADER_SIZE
 
+enum PACKED nvk_cbuf_type {
+   NVK_CBUF_TYPE_INVALID = 0,
+   NVK_CBUF_TYPE_ROOT_DESC,
+   NVK_CBUF_TYPE_DESC_SET,
+   NVK_CBUF_TYPE_DYNAMIC_UBO,
+   NVK_CBUF_TYPE_UBO_DESC,
+};
+
+struct nvk_cbuf {
+   enum nvk_cbuf_type type;
+   uint8_t desc_set;
+   uint8_t dynamic_idx;
+   uint32_t desc_offset;
+};
+
+struct nvk_cbuf_map {
+   uint32_t cbuf_count;
+   struct nvk_cbuf cbufs[16];
+};
+
 struct nvk_shader {
    struct nak_shader_info info;
 
@@ -73,7 +93,8 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
 bool
 nvk_nir_lower_descriptors(nir_shader *nir,
                           const struct vk_pipeline_robustness_state *rs,
-                          const struct vk_pipeline_layout *layout);
+                          const struct vk_pipeline_layout *layout,
+                          struct nvk_cbuf_map *cbuf_map_out);
 
 VkResult
 nvk_shader_stage_to_nir(struct nvk_device *dev,
