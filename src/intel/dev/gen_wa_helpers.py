@@ -249,8 +249,9 @@ def partial_gens(wa_def):
 
         # eliminate each platform specifically indicated by the WA, to see if
         # are left over.
-        for platform in bug["mesa_platforms"]:
-            wa_required_for_completeness.remove(platform)
+        for platform, desc in bug["mesa_platforms"].items():
+            if desc["steppings"] == "all":
+                wa_required_for_completeness.remove(platform)
 
         # if any platform remains in the required set, then this wa *partially*
         # applies to one of the gfxvers.

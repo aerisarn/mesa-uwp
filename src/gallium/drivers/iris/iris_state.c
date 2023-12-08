@@ -8118,7 +8118,7 @@ genX(emit_3dprimitive_was)(struct iris_batch *batch,
    UNUSED const struct intel_device_info *devinfo = batch->screen->devinfo;
    UNUSED const struct iris_context *ice = batch->ice;
 
-#if INTEL_NEEDS_WA_22014412737 || INTEL_NEEDS_WA_16014538804
+#if INTEL_WA_22014412737_GFX_VER || INTEL_WA_16014538804_GFX_VER
    if (intel_needs_workaround(devinfo, 22014412737) &&
        (point_or_line_list(primitive_type) || indirect ||
         (vertex_count == 1 || vertex_count == 2))) {

@@ -3813,7 +3813,7 @@ genX(CmdExecuteCommands)(
                                 "Secondary cmd buffer not tracked in VF cache");
    }
 
-#if INTEL_NEEDS_WA_16014538804
+#if INTEL_WA_16014538804_GFX_VER
    if (anv_cmd_buffer_is_render_queue(container) &&
        intel_needs_workaround(device->info, 16014538804))
       anv_batch_emit(&container->batch, GENX(PIPE_CONTROL), pc);
@@ -8601,7 +8601,7 @@ genX(batch_emit_post_3dprimitive_was)(struct anv_batch *batch,
                                       uint32_t primitive_topology,
                                       uint32_t vertex_count)
 {
-#if INTEL_NEEDS_WA_22014412737 || INTEL_NEEDS_WA_16014538804
+#if INTEL_WA_22014412737_GFX_VER || INTEL_WA_16014538804_GFX_VER
    if (intel_needs_workaround(device->info, 22014412737) &&
        (primitive_topology == _3DPRIM_POINTLIST ||
         primitive_topology == _3DPRIM_LINELIST ||
