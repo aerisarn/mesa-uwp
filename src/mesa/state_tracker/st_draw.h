@@ -73,6 +73,13 @@ pointer_to_offset(const void *ptr)
    return (unsigned) (((GLsizeiptr) ptr) & 0xffffffffUL);
 }
 
+void
+st_prepare_draw(struct gl_context *ctx, uint64_t state_mask);
+
+bool
+st_prepare_indexed_draw(struct gl_context *ctx, struct pipe_draw_info *info,
+                        const struct pipe_draw_start_count_bias *draws,
+                        unsigned num_draws);
 
 bool
 st_draw_quad(struct st_context *st,

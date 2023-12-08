@@ -73,9 +73,11 @@ static_assert(GL_QUADS == MESA_PRIM_QUADS, "enum mismatch");
 static_assert(GL_TRIANGLE_STRIP_ADJACENCY == MESA_PRIM_TRIANGLE_STRIP_ADJACENCY, "enum mismatch");
 static_assert(GL_PATCHES == MESA_PRIM_PATCHES, "enum mismatch");
 
-static inline void
-prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask)
+void
+st_prepare_draw(struct gl_context *ctx, uint64_t state_mask)
 {
+   struct st_context *st = ctx->st;
+
    /* Mesa core state should have been validated already */
    assert(ctx->NewState == 0x0);
 
@@ -109,14 +111,13 @@ prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask)
    }
 }
 
-static bool ALWAYS_INLINE
-prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
-                     struct st_context *st,
-                     struct gl_context *ctx,
-                     struct pipe_draw_info *info,
-                     const struct pipe_draw_start_count_bias *draws,
-                     unsigned num_draws)
+bool
+st_prepare_indexed_draw(struct gl_context *ctx, struct pipe_draw_info *info,
+                        const struct pipe_draw_start_count_bias *draws,
+                        unsigned num_draws)
 {
+   struct st_context *st = ctx->st;
+
    /* Get index bounds for user buffers. */
    if (info->index_size && !info->index_bounds_valid &&
        st->draw_needs_minmax_index) {
@@ -138,9 +139,9 @@ st_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
+   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
       return;
 
    cso_draw_vbo(st->cso_context, info, drawid_offset, NULL, draws, num_draws);
@@ -155,9 +156,9 @@ st_draw_gallium_multimode(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
+   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
       return;
 
    unsigned i, first;
@@ -212,7 +213,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       return;
 
    assert(stride);
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
@@ -308,7 +309,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_start_count_bias draw = {0};
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
@@ -335,7 +336,7 @@ st_draw_gallium_vertex_state(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS);
 
    struct pipe_context *pipe = st->pipe;
    uint32_t velem_mask = ctx->VertexProgram._Current->info.inputs_read;
@@ -499,9 +500,9 @@ st_hw_select_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
+   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
       return;
 
    if (!st_draw_hw_select_prepare_common(ctx) ||
@@ -520,9 +521,9 @@ st_hw_select_draw_gallium_multimode(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
+   st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
+   if (!st_prepare_indexed_draw(ctx, info, draws, num_draws))
       return;
 
    if (!st_draw_hw_select_prepare_common(ctx))
