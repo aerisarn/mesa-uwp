@@ -2190,13 +2190,22 @@ impl<'a> ShaderFromNir<'a> {
                 let size_B =
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
                 let idx = srcs[0];
+
                 let (off, off_imm) = self.get_io_addr_offset(&srcs[1], 16);
+                let (off, off_imm) =
+                    if let Ok(off_imm_u16) = u16::try_from(off_imm) {
+                        (off, off_imm_u16)
+                    } else {
+                        (self.get_src(&srcs[1]), 0)
+                    };
+
                 let dst = b.alloc_ssa(RegFile::GPR, size_B.div_ceil(4));
 
                 if let Some(idx_imm) = idx.as_uint() {
+                    let idx_imm: u8 = idx_imm.try_into().unwrap();
                     let cb = CBufRef {
-                        buf: CBuf::Binding(idx_imm.try_into().unwrap()),
-                        offset: off_imm.try_into().unwrap(),
+                        buf: CBuf::Binding(idx_imm),
+                        offset: off_imm,
                     };
                     if off.is_zero() {
                         for (i, comp) in dst.iter().enumerate() {
