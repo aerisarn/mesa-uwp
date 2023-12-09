@@ -130,6 +130,9 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       free(dw);
    }
 
+   if (dev->pdev->info.cls_eng3d >= TURING_A)
+      P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+
    /* Enable FP hepler invocation memory loads
     *
     * For generations with firmware support for our `SET_PRIV_REG` mme method
@@ -2318,8 +2321,7 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
-      P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT));
       P_INLINE_DATA(p, begin);
       uint64_t draw_addr = nvk_buffer_address(buffer, offset);
@@ -2433,8 +2435,7 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
-      P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT));
       P_INLINE_DATA(p, begin);
       uint64_t draw_addr = nvk_buffer_address(buffer, offset);
@@ -2528,8 +2529,7 @@ nvk_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
-   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT_COUNT));
    P_INLINE_DATA(p, begin);
    uint64_t draw_addr = nvk_buffer_address(buffer, offset);
@@ -2605,8 +2605,7 @@ nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
-   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT_COUNT));
    P_INLINE_DATA(p, begin);
    uint64_t draw_addr = nvk_buffer_address(buffer, offset);
@@ -2724,10 +2723,9 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
                                               counterBufferOffset);
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
-      P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
 
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
       P_INLINE_DATA(p, begin);
@@ -2832,8 +2830,7 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       uint64_t cb_addr = nvk_buffer_address(buffer, offset);
 
       if (nvk_cmd_buffer_device(cmd)->pdev->info.cls_eng3d >= TURING_A) {
-         struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
-         P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
          /* The STREAM_OUT_BUFFER_LOAD_WRITE_POINTER registers are 8 dword stride */
          P_INLINE_DATA(p, cb_idx * 8);
