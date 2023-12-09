@@ -40,7 +40,6 @@
 struct pb_cache_entry
 {
    struct list_head head;
-   struct pb_buffer_lean *buffer; /**< Pointer to the structure this is part of. */
    unsigned start_ms; /**< Cached start time */
    unsigned bucket_index;
 };
@@ -62,6 +61,7 @@ struct pb_cache
    unsigned num_buffers;
    unsigned bypass_usage;
    float size_factor;
+   unsigned offsetof_pb_cache_entry; /* offsetof(driver_bo, pb_cache_entry) */
 
    void (*destroy_buffer)(void *winsys, struct pb_buffer_lean *buf);
    bool (*can_reclaim)(void *winsys, struct pb_buffer_lean *buf);
@@ -77,7 +77,7 @@ void pb_cache_init_entry(struct pb_cache *mgr, struct pb_cache_entry *entry,
 void pb_cache_init(struct pb_cache *mgr, unsigned num_heaps,
                    unsigned usecs, float size_factor,
                    unsigned bypass_usage, uint64_t maximum_cache_size,
-                   void *winsys,
+                   unsigned offsetof_pb_cache_entry, void *winsys,
                    void (*destroy_buffer)(void *winsys, struct pb_buffer_lean *buf),
                    bool (*can_reclaim)(void *winsys, struct pb_buffer_lean *buf));
 void pb_cache_deinit(struct pb_cache *mgr);

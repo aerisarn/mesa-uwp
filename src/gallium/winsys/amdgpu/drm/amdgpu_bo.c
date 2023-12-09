@@ -1432,10 +1432,6 @@ no_slab:
              memset((uint8_t*)new_bo + orig_size, 0, new_size - orig_size);
              bo = new_bo;
              bo->type = AMDGPU_BO_REAL_REUSABLE_SLAB;
-
-             /* Re-set pointers after realloc. */
-             struct amdgpu_bo_real_reusable *real_bo = get_real_bo_reusable(bo);
-             real_bo->cache_entry.buffer = &bo->base.base;
           }
           return &bo->base;
        }

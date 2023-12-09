@@ -1301,7 +1301,7 @@ zink_bo_init(struct zink_screen *screen)
    /* Create managers. */
    pb_cache_init(&screen->pb.bo_cache, screen->info.mem_props.memoryTypeCount,
                  500000, 2.0f, 0,
-                 total_mem / 8, screen,
+                 total_mem / 8, offsetof(struct zink_bo, cache_entry), screen,
                  (void*)bo_destroy, (void*)bo_can_reclaim);
 
    unsigned min_slab_order = MIN_SLAB_ORDER;  /* 256 bytes */

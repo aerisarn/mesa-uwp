@@ -53,13 +53,19 @@ time_get_ms(struct pb_cache *mgr)
    return os_time_get() / 1000 - mgr->msecs_base_time;
 }
 
+static struct pb_buffer_lean *
+get_buffer(struct pb_cache *mgr, struct pb_cache_entry *entry)
+{
+   return (struct pb_buffer_lean*)((char*)entry - mgr->offsetof_pb_cache_entry);
+}
+
 /**
  * Actually destroy the buffer.
  */
 static void
 destroy_buffer_locked(struct pb_cache *mgr, struct pb_cache_entry *entry)
 {
-   struct pb_buffer_lean *buf = entry->buffer;
+   struct pb_buffer_lean *buf = get_buffer(mgr, entry);
 
    assert(!pipe_is_referenced(&buf->reference));
    if (list_is_linked(&entry->head)) {
@@ -105,7 +111,7 @@ void
 pb_cache_add_buffer(struct pb_cache *mgr, struct pb_cache_entry *entry)
 {
    struct list_head *cache = &mgr->buckets[entry->bucket_index];
-   struct pb_buffer_lean *buf = entry->buffer;
+   struct pb_buffer_lean *buf = get_buffer(mgr, entry);
    unsigned i;
 
    simple_mtx_lock(&mgr->mutex);
@@ -139,7 +145,7 @@ static int
 pb_cache_is_buffer_compat(struct pb_cache *mgr, struct pb_cache_entry *entry,
                           pb_size size, unsigned alignment, unsigned usage)
 {
-   struct pb_buffer_lean *buf = entry->buffer;
+   struct pb_buffer_lean *buf = get_buffer(mgr, entry);
 
    if (!pb_check_usage(usage, buf->usage))
       return 0;
@@ -223,7 +229,7 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
 
    /* found a compatible buffer, return it */
    if (entry) {
-      struct pb_buffer_lean *buf = entry->buffer;
+      struct pb_buffer_lean *buf = get_buffer(mgr, entry);
 
       mgr->cache_size -= buf->size;
       list_del(&entry->head);
@@ -274,7 +280,6 @@ pb_cache_init_entry(struct pb_cache *mgr, struct pb_cache_entry *entry,
    assert(bucket_index < mgr->num_heaps);
 
    memset(entry, 0, sizeof(*entry));
-   entry->buffer = buf;
    entry->bucket_index = bucket_index;
 }
 
@@ -293,6 +298,7 @@ pb_cache_init_entry(struct pb_cache *mgr, struct pb_cache_entry *entry,
  *                      buffer allocation requests are rejected.
  * @param maximum_cache_size  Maximum size of all unused buffers the cache can
  *                            hold.
+ * @param offsetof_pb_cache_entry  offsetof(driver_bo, pb_cache_entry)
  * @param destroy_buffer  Function that destroys a buffer for good.
  * @param can_reclaim     Whether a buffer can be reclaimed (e.g. is not busy)
  */
@@ -300,7 +306,7 @@ void
 pb_cache_init(struct pb_cache *mgr, unsigned num_heaps,
               unsigned usecs, float size_factor,
               unsigned bypass_usage, uint64_t maximum_cache_size,
-              void *winsys,
+              unsigned offsetof_pb_cache_entry, void *winsys,
               void (*destroy_buffer)(void *winsys, struct pb_buffer_lean *buf),
               bool (*can_reclaim)(void *winsys, struct pb_buffer_lean *buf))
 {
@@ -323,6 +329,7 @@ pb_cache_init(struct pb_cache *mgr, unsigned num_heaps,
    mgr->num_buffers = 0;
    mgr->bypass_usage = bypass_usage;
    mgr->size_factor = size_factor;
+   mgr->offsetof_pb_cache_entry = offsetof_pb_cache_entry;
    mgr->destroy_buffer = destroy_buffer;
    mgr->can_reclaim = can_reclaim;
 }

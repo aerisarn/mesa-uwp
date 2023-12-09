@@ -307,7 +307,8 @@ pb_cache_manager_create(struct pb_manager *provider,
    mgr->base.flush = pb_cache_manager_flush;
    mgr->provider = provider;
    pb_cache_init(&mgr->cache, 1, usecs, size_factor, bypass_usage,
-                 maximum_cache_size, NULL,
+                 maximum_cache_size,
+                 offsetof(struct pb_cache_buffer, cache_entry), NULL,
                  _pb_cache_buffer_destroy,
                  pb_cache_can_reclaim_buffer);
    return &mgr->base;
