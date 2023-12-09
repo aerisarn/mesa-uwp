@@ -113,7 +113,7 @@ struct amdgpu_cs_context {
 #define BUFFER_HASHLIST_SIZE 32768
 
 struct amdgpu_cs {
-   struct amdgpu_ib main; /* must be first because this is inherited */
+   struct amdgpu_ib main_ib; /* must be first because this is inherited */
    struct amdgpu_winsys *ws;
    struct amdgpu_ctx *ctx;
 
