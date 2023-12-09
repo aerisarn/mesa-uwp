@@ -900,10 +900,10 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
       return false;
    }
 
-   radeon_bo_reference(&ws->dummy_ws.base, &main_ib->big_ib_buffer, pb);
+   radeon_bo_reference(&ws->dummy_ws.base, &main_ib->big_buffer, pb);
    radeon_bo_reference(&ws->dummy_ws.base, &pb, NULL);
 
-   main_ib->ib_mapped = mapped;
+   main_ib->big_buffer_cpu_ptr = mapped;
    main_ib->used_ib_space = 0;
 
    return true;
@@ -941,27 +941,27 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
    rcs->current.buf = NULL;
 
    /* Allocate a new buffer for IBs if the current buffer is all used. */
-   if (!main_ib->big_ib_buffer ||
-       main_ib->used_ib_space + ib_size > main_ib->big_ib_buffer->size) {
+   if (!main_ib->big_buffer ||
+       main_ib->used_ib_space + ib_size > main_ib->big_buffer->size) {
       if (!amdgpu_ib_new_buffer(ws, main_ib, cs))
          return false;
    }
 
-   chunk_ib->va_start = amdgpu_winsys_bo(main_ib->big_ib_buffer)->va + main_ib->used_ib_space;
+   chunk_ib->va_start = amdgpu_winsys_bo(main_ib->big_buffer)->va + main_ib->used_ib_space;
    chunk_ib->ib_bytes = 0;
    /* ib_bytes is in dwords and the conversion to bytes will be done before
     * the CS ioctl. */
    main_ib->ptr_ib_size = &chunk_ib->ib_bytes;
    main_ib->is_chained_ib = false;
 
-   amdgpu_cs_add_buffer(rcs, main_ib->big_ib_buffer,
+   amdgpu_cs_add_buffer(rcs, main_ib->big_buffer,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
 
-   rcs->current.buf = (uint32_t*)(main_ib->ib_mapped + main_ib->used_ib_space);
+   rcs->current.buf = (uint32_t*)(main_ib->big_buffer_cpu_ptr + main_ib->used_ib_space);
 
    cs->csc->ib_main_addr = rcs->current.buf;
 
-   ib_size = main_ib->big_ib_buffer->size - main_ib->used_ib_space;
+   ib_size = main_ib->big_buffer->size - main_ib->used_ib_space;
    rcs->current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs);
    rcs->gpu_address = chunk_ib->va_start;
    return true;
@@ -1265,7 +1265,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
       return false;
 
    assert(main_ib->used_ib_space == 0);
-   uint64_t va = amdgpu_winsys_bo(main_ib->big_ib_buffer)->va;
+   uint64_t va = amdgpu_winsys_bo(main_ib->big_buffer)->va;
 
    /* This space was originally reserved. */
    rcs->current.max_dw += cs_epilog_dw;
@@ -1294,11 +1294,11 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    rcs->prev_dw += rcs->current.cdw;
    rcs->current.cdw = 0;
 
-   rcs->current.buf = (uint32_t*)(main_ib->ib_mapped + main_ib->used_ib_space);
-   rcs->current.max_dw = main_ib->big_ib_buffer->size / 4 - cs_epilog_dw;
+   rcs->current.buf = (uint32_t*)(main_ib->big_buffer_cpu_ptr + main_ib->used_ib_space);
+   rcs->current.max_dw = main_ib->big_buffer->size / 4 - cs_epilog_dw;
    rcs->gpu_address = va;
 
-   amdgpu_cs_add_buffer(rcs, main_ib->big_ib_buffer,
+   amdgpu_cs_add_buffer(rcs, main_ib->big_buffer,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
 
    return true;
@@ -1955,7 +1955,7 @@ static void amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
    util_queue_fence_destroy(&cs->flush_completed);
    p_atomic_dec(&cs->ws->num_cs);
    radeon_bo_reference(&cs->ws->dummy_ws.base, &cs->preamble_ib_bo, NULL);
-   radeon_bo_reference(&cs->ws->dummy_ws.base, &cs->main_ib.big_ib_buffer, NULL);
+   radeon_bo_reference(&cs->ws->dummy_ws.base, &cs->main_ib.big_buffer, NULL);
    FREE(rcs->prev);
    amdgpu_destroy_cs_context(cs->ws, &cs->csc1);
    amdgpu_destroy_cs_context(cs->ws, &cs->csc2);

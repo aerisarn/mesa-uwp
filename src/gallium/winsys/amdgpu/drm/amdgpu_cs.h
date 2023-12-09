@@ -48,8 +48,8 @@ enum ib_type {
 
 struct amdgpu_ib {
    /* A buffer out of which new IBs are allocated. */
-   struct pb_buffer        *big_ib_buffer;
-   uint8_t                 *ib_mapped;
+   struct pb_buffer        *big_buffer;
+   uint8_t                 *big_buffer_cpu_ptr;
    unsigned                used_ib_space;
 
    /* The maximum seen size from cs_check_space. If the driver does
