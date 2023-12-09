@@ -98,7 +98,8 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
          pipe_resource_reference(&ctx->stage[shader].images[i].resource, NULL);
       }
 
-      ctx->stage[shader].image_mask &= ~(((1ull << count) - 1) << start_slot);
+      ctx->stage[shader].image_mask &=
+         ~BITFIELD64_MASK(count + unbind_num_trailing_slots) << start_slot;
       return;
    }
 
