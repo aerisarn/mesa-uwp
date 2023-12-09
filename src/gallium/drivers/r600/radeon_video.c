@@ -209,10 +209,10 @@ void rvid_join_surfaces(struct r600_common_context *rctx,
 		if (!buffers[i] || !*buffers[i])
 			continue;
 
-		pb_reference(buffers[i], pb);
+		radeon_bo_reference(rctx->ws, buffers[i], pb);
 	}
 
-	pb_reference(&pb, NULL);
+	radeon_bo_reference(rctx->ws, &pb, NULL);
 }
 
 int rvid_get_video_param(struct pipe_screen *screen,

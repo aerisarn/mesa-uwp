@@ -1109,7 +1109,7 @@ r300_texture_create_object(struct r300_screen *rscreen,
 fail:
     FREE(tex);
     if (buffer)
-        pb_reference(&buffer, NULL);
+        radeon_bo_reference(rscreen->rws, &buffer, NULL);
     return NULL;
 }
 

@@ -405,7 +405,7 @@ static void r600_reallocate_texture_inplace(struct r600_common_context *rctx,
 
 	/* Replace the structure fields of rtex. */
 	rtex->resource.b.b.bind = templ.bind;
-	pb_reference(&rtex->resource.buf, new_tex->resource.buf);
+	radeon_bo_reference(rctx->ws, &rtex->resource.buf, new_tex->resource.buf);
 	rtex->resource.gpu_address = new_tex->resource.gpu_address;
 	rtex->resource.vram_usage = new_tex->resource.vram_usage;
 	rtex->resource.gart_usage = new_tex->resource.gart_usage;
@@ -576,6 +576,7 @@ static bool r600_texture_get_handle(struct pipe_screen* screen,
 
 void r600_texture_destroy(struct pipe_screen *screen, struct pipe_resource *ptex)
 {
+	struct r600_common_screen *rscreen = (struct r600_common_screen*)screen;
 	struct r600_texture *rtex = (struct r600_texture*)ptex;
 	struct r600_resource *resource = &rtex->resource;
 
@@ -585,7 +586,7 @@ void r600_texture_destroy(struct pipe_screen *screen, struct pipe_resource *ptex
 	if (rtex->cmask_buffer != &rtex->resource) {
 	    r600_resource_reference(&rtex->cmask_buffer, NULL);
 	}
-	pb_reference(&resource->buf, NULL);
+	radeon_bo_reference(rscreen->ws, &resource->buf, NULL);
 	FREE(rtex);
 }
 
@@ -1802,9 +1803,10 @@ static void
 r600_memobj_destroy(struct pipe_screen *screen,
 		    struct pipe_memory_object *_memobj)
 {
+	struct r600_common_screen *rscreen = (struct r600_common_screen*)screen;
 	struct r600_memory_object *memobj = (struct r600_memory_object *)_memobj;
 
-	pb_reference(&memobj->buf, NULL);
+	radeon_bo_reference(rscreen->ws, &memobj->buf, NULL);
 	free(memobj);
 }
 
@@ -1870,7 +1872,7 @@ r600_texture_from_memobj(struct pipe_screen *screen,
 	/* r600_texture_create_object doesn't increment refcount of
 	 * memobj->buf, so increment it here.
 	 */
-	pb_reference(&buf, memobj->buf);
+	radeon_bo_reference(rscreen->ws, &buf, memobj->buf);
 
 	rtex->resource.b.is_shared = true;
 	rtex->resource.external_usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;

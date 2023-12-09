@@ -188,7 +188,7 @@ bool r600_alloc_resource(struct r600_common_screen *rscreen,
 	else
 		res->gpu_address = 0;
 
-	pb_reference(&old_buf, NULL);
+	radeon_bo_reference(rscreen->ws, &old_buf, NULL);
 
 	util_range_set_empty(&res->valid_buffer_range);
 
@@ -203,12 +203,13 @@ bool r600_alloc_resource(struct r600_common_screen *rscreen,
 
 void r600_buffer_destroy(struct pipe_screen *screen, struct pipe_resource *buf)
 {
+	struct r600_screen *rscreen = (struct r600_screen*)screen;
 	struct r600_resource *rbuffer = r600_resource(buf);
 
 	threaded_resource_deinit(buf);
 	util_range_destroy(&rbuffer->valid_buffer_range);
 	pipe_resource_reference((struct pipe_resource**)&rbuffer->immed_buffer, NULL);
-	pb_reference(&rbuffer->buf, NULL);
+	radeon_bo_reference(rscreen->b.ws, &rbuffer->buf, NULL);
 	FREE(rbuffer);
 }
 
@@ -251,7 +252,7 @@ void r600_replace_buffer_storage(struct pipe_context *ctx,
 	struct r600_resource *rsrc = r600_resource(src);
 	uint64_t old_gpu_address = rdst->gpu_address;
 
-	pb_reference(&rdst->buf, rsrc->buf);
+	radeon_bo_reference(rctx->ws, &rdst->buf, rsrc->buf);
 	rdst->gpu_address = rsrc->gpu_address;
 	rdst->b.b.bind = rsrc->b.b.bind;
 	rdst->flags = rsrc->flags;

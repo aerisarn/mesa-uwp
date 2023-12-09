@@ -48,7 +48,7 @@ static bool radeon_real_bo_is_busy(struct radeon_bo *bo)
                               &args, sizeof(args)) != 0;
 }
 
-static bool radeon_bo_is_busy(struct radeon_bo *bo)
+static bool radeon_bo_is_busy(struct radeon_winsys *rws, struct radeon_bo *bo)
 {
    unsigned num_idle;
    bool busy = false;
@@ -62,7 +62,7 @@ static bool radeon_bo_is_busy(struct radeon_bo *bo)
          busy = true;
          break;
       }
-      radeon_ws_bo_reference(&bo->u.slab.fences[num_idle], NULL);
+      radeon_ws_bo_reference(rws, &bo->u.slab.fences[num_idle], NULL);
    }
    memmove(&bo->u.slab.fences[0], &bo->u.slab.fences[num_idle],
          (bo->u.slab.num_fences - num_idle) * sizeof(bo->u.slab.fences[0]));
@@ -81,7 +81,7 @@ static void radeon_real_bo_wait_idle(struct radeon_bo *bo)
                           &args, sizeof(args)) == -EBUSY);
 }
 
-static void radeon_bo_wait_idle(struct radeon_bo *bo)
+static void radeon_bo_wait_idle(struct radeon_winsys *rws, struct radeon_bo *bo)
 {
    if (bo->handle) {
       radeon_real_bo_wait_idle(bo);
@@ -89,7 +89,7 @@ static void radeon_bo_wait_idle(struct radeon_bo *bo)
       mtx_lock(&bo->rws->bo_fence_lock);
       while (bo->u.slab.num_fences) {
          struct radeon_bo *fence = NULL;
-         radeon_ws_bo_reference(&fence, bo->u.slab.fences[0]);
+         radeon_ws_bo_reference(rws, &fence, bo->u.slab.fences[0]);
          mtx_unlock(&bo->rws->bo_fence_lock);
 
          /* Wait without holding the fence lock. */
@@ -97,12 +97,12 @@ static void radeon_bo_wait_idle(struct radeon_bo *bo)
 
          mtx_lock(&bo->rws->bo_fence_lock);
          if (bo->u.slab.num_fences && fence == bo->u.slab.fences[0]) {
-            radeon_ws_bo_reference(&bo->u.slab.fences[0], NULL);
+            radeon_ws_bo_reference(rws, &bo->u.slab.fences[0], NULL);
             memmove(&bo->u.slab.fences[0], &bo->u.slab.fences[1],
                   (bo->u.slab.num_fences - 1) * sizeof(bo->u.slab.fences[0]));
             bo->u.slab.num_fences--;
          }
-         radeon_ws_bo_reference(&fence, NULL);
+         radeon_ws_bo_reference(rws, &fence, NULL);
       }
       mtx_unlock(&bo->rws->bo_fence_lock);
    }
@@ -117,7 +117,7 @@ static bool radeon_bo_wait(struct radeon_winsys *rws,
 
    /* No timeout. Just query. */
    if (timeout == 0)
-      return !bo->num_active_ioctls && !radeon_bo_is_busy(bo);
+      return !bo->num_active_ioctls && !radeon_bo_is_busy(rws, bo);
 
    abs_timeout = os_time_get_absolute_timeout(timeout);
 
@@ -127,12 +127,12 @@ static bool radeon_bo_wait(struct radeon_winsys *rws,
 
    /* Infinite timeout. */
    if (abs_timeout == OS_TIMEOUT_INFINITE) {
-      radeon_bo_wait_idle(bo);
+      radeon_bo_wait_idle(rws, bo);
       return true;
    }
 
    /* Other timeouts need to be emulated with a loop. */
-   while (radeon_bo_is_busy(bo)) {
+   while (radeon_bo_is_busy(rws, bo)) {
       if (os_time_get_nano() >= abs_timeout)
          return false;
       os_time_sleep(10);
@@ -704,7 +704,7 @@ static struct radeon_bo *radeon_create_bo(struct radeon_drm_winsys *rws,
                _mesa_hash_table_u64_search(rws->bo_vas, va.offset);
 
          mtx_unlock(&rws->bo_handles_mutex);
-         pb_reference(&b, &old_bo->base);
+         radeon_bo_reference(&rws->base, &b, &old_bo->base);
          return radeon_bo(b);
       }
 
@@ -804,7 +804,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
    return &slab->base;
 
 fail_buffer:
-   radeon_ws_bo_reference(&slab->buffer, NULL);
+   radeon_ws_bo_reference(&ws->base, &slab->buffer, NULL);
 fail:
    FREE(slab);
    return NULL;
@@ -812,17 +812,18 @@ fail:
 
 void radeon_bo_slab_free(void *priv, struct pb_slab *pslab)
 {
+   struct radeon_winsys *rws = (struct radeon_winsys *)priv;
    struct radeon_slab *slab = (struct radeon_slab *)pslab;
 
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       struct radeon_bo *bo = &slab->entries[i];
       for (unsigned j = 0; j < bo->u.slab.num_fences; ++j)
-         radeon_ws_bo_reference(&bo->u.slab.fences[j], NULL);
+         radeon_ws_bo_reference(rws, &bo->u.slab.fences[j], NULL);
       FREE(bo->u.slab.fences);
    }
 
    FREE(slab->entries);
-   radeon_ws_bo_reference(&slab->buffer, NULL);
+   radeon_ws_bo_reference(rws, &slab->buffer, NULL);
    FREE(slab);
 }
 
@@ -1153,7 +1154,7 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
                _mesa_hash_table_u64_search(ws->bo_vas, va.offset);
 
          mtx_unlock(&ws->bo_handles_mutex);
-         pb_reference(&b, &old_bo->base);
+         radeon_bo_reference(rws, &b, &old_bo->base);
          return b;
       }
 
@@ -1284,7 +1285,7 @@ done:
                _mesa_hash_table_u64_search(ws->bo_vas, va.offset);
 
          mtx_unlock(&ws->bo_handles_mutex);
-         pb_reference(&b, &old_bo->base);
+         radeon_bo_reference(rws, &b, &old_bo->base);
          return b;
       }
 
