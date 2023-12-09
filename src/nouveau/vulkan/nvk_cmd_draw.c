@@ -2894,8 +2894,6 @@ nvk_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
    bool inverted = pConditionalRenderingBegin->flags &
       VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
 
-   nvk_flush_descriptors(cmd);
-
    if (addr & 0x3f || buffer->is_local) {
       uint64_t tmp_addr;
       VkResult result = nvk_cmd_buffer_cond_render_alloc(cmd, &tmp_addr);
