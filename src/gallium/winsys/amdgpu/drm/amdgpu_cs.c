@@ -634,14 +634,14 @@ amdgpu_lookup_or_add_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_b
 static struct amdgpu_cs_buffer *
 amdgpu_lookup_or_add_slab_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
 {
-   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_SLAB];
+   struct amdgpu_buffer_list *list = &cs->buffer_lists[AMDGPU_BO_SLAB_ENTRY];
    struct amdgpu_cs_buffer *buffer = amdgpu_lookup_buffer(cs, bo, list);
 
    if (buffer)
       return buffer;
 
    struct amdgpu_cs_buffer *real_buffer =
-      amdgpu_lookup_or_add_buffer(cs, &get_slab_bo(bo)->real->b, AMDGPU_BO_REAL);
+      amdgpu_lookup_or_add_buffer(cs, &get_slab_entry_bo(bo)->real->b, AMDGPU_BO_REAL);
    if (!real_buffer)
       return NULL;
 
@@ -671,7 +671,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
        (usage & cs->last_added_bo_usage) == usage)
       return 0;
 
-   if (bo->type == AMDGPU_BO_SLAB) {
+   if (bo->type == AMDGPU_BO_SLAB_ENTRY) {
       buffer = amdgpu_lookup_or_add_slab_buffer(cs, bo);
       if (!buffer)
          return 0;
@@ -1619,9 +1619,9 @@ cleanup:
    for (i = 0; i < initial_num_real_buffers; i++)
       p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].bo->num_active_ioctls);
 
-   unsigned num_slab_buffers = cs->buffer_lists[AMDGPU_BO_SLAB].num_buffers;
+   unsigned num_slab_buffers = cs->buffer_lists[AMDGPU_BO_SLAB_ENTRY].num_buffers;
    for (i = 0; i < num_slab_buffers; i++)
-      p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_SLAB].buffers[i].bo->num_active_ioctls);
+      p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_SLAB_ENTRY].buffers[i].bo->num_active_ioctls);
 
    unsigned num_sparse_buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
    for (i = 0; i < num_sparse_buffers; i++)

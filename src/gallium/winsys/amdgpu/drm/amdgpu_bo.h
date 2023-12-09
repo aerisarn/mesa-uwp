@@ -36,7 +36,7 @@ struct amdgpu_sparse_commitment {
 };
 
 enum amdgpu_bo_type {
-   AMDGPU_BO_SLAB,
+   AMDGPU_BO_SLAB_ENTRY,
    AMDGPU_BO_SPARSE,
    AMDGPU_BO_REAL, /* only REAL enums can be present after this */
    AMDGPU_BO_REAL_REUSABLE,
@@ -118,7 +118,7 @@ struct amdgpu_bo_sparse {
 /* Suballocated buffer using the slab allocator. This BO is only 1 piece of a larger buffer
  * called slab, which is a buffer that's divided into smaller equal-sized buffers.
  */
-struct amdgpu_bo_slab {
+struct amdgpu_bo_slab_entry {
    struct amdgpu_winsys_bo b;
    struct amdgpu_bo_real *real;
    struct pb_slab_entry entry;
@@ -127,7 +127,7 @@ struct amdgpu_bo_slab {
 struct amdgpu_slab {
    struct pb_slab base;
    struct amdgpu_winsys_bo *buffer;
-   struct amdgpu_bo_slab *entries;
+   struct amdgpu_bo_slab_entry *entries;
 };
 
 static inline bool is_real_bo(struct amdgpu_winsys_bo *bo)
@@ -153,10 +153,10 @@ static struct amdgpu_bo_sparse *get_sparse_bo(struct amdgpu_winsys_bo *bo)
    return (struct amdgpu_bo_sparse*)bo;
 }
 
-static struct amdgpu_bo_slab *get_slab_bo(struct amdgpu_winsys_bo *bo)
+static struct amdgpu_bo_slab_entry *get_slab_entry_bo(struct amdgpu_winsys_bo *bo)
 {
-   assert(bo->type == AMDGPU_BO_SLAB);
-   return (struct amdgpu_bo_slab*)bo;
+   assert(bo->type == AMDGPU_BO_SLAB_ENTRY);
+   return (struct amdgpu_bo_slab_entry*)bo;
 }
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);
