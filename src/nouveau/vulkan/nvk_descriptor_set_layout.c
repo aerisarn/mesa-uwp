@@ -57,7 +57,7 @@ nvk_descriptor_stride_align_for_type(const struct nvk_physical_device *pdev,
 
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
       *stride = 1; /* Array size is bytes */
-      *align = NVK_MIN_UBO_ALIGNMENT;
+      *align = nvk_min_cbuf_alignment(&pdev->info);
       break;
 
    case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:

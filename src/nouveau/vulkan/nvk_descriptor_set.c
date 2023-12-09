@@ -379,6 +379,7 @@ nvk_CreateDescriptorPool(VkDevice _device,
                          VkDescriptorPool *pDescriptorPool)
 {
    VK_FROM_HANDLE(nvk_device, dev, _device);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nvk_descriptor_pool *pool;
    uint64_t size = sizeof(struct nvk_descriptor_pool);
    uint64_t bo_size = 0;
@@ -423,7 +424,7 @@ nvk_CreateDescriptorPool(VkDevice _device,
     * conservative here.)  Allocate enough extra space that we can chop it
     * into maxSets pieces and align each one of them to 32B.
     */
-   bo_size += NVK_MIN_UBO_ALIGNMENT * pCreateInfo->maxSets;
+   bo_size += nvk_min_cbuf_alignment(&pdev->info) * pCreateInfo->maxSets;
 
    uint64_t entries_size = sizeof(struct nvk_descriptor_pool_entry) *
                            pCreateInfo->maxSets;
@@ -462,6 +463,7 @@ nvk_descriptor_set_create(struct nvk_device *dev,
                           uint32_t variable_count,
                           struct nvk_descriptor_set **out_set)
 {
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nvk_descriptor_set *set;
 
    uint32_t mem_size = sizeof(struct nvk_descriptor_set) +
@@ -484,6 +486,8 @@ nvk_descriptor_set_create(struct nvk_device *dev,
       set->size += stride * variable_count;
    }
 
+   set->size = align64(set->size, nvk_min_cbuf_alignment(&pdev->info));
+
    if (set->size > 0) {
       if (pool->current_offset + set->size > pool->size)
          return VK_ERROR_OUT_OF_POOL_MEMORY;
@@ -492,10 +496,11 @@ nvk_descriptor_set_create(struct nvk_device *dev,
       set->addr = pool->bo->offset + pool->current_offset;
    }
 
+   assert(pool->current_offset % nvk_min_cbuf_alignment(&pdev->info) == 0);
    pool->entries[pool->entry_count].offset = pool->current_offset;
    pool->entries[pool->entry_count].size = set->size;
    pool->entries[pool->entry_count].set = set;
-   pool->current_offset += ALIGN(set->size, NVK_MIN_UBO_ALIGNMENT);
+   pool->current_offset += set->size;
    pool->entry_count++;
 
    vk_descriptor_set_layout_ref(&layout->vk);

@@ -17,7 +17,7 @@ nvk_get_buffer_alignment(UNUSED const struct nv_device_info *info,
    uint32_t alignment = 16;
 
    if (usage_flags & VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR)
-      alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
+      alignment = MAX2(alignment, nvk_min_cbuf_alignment(info));
 
    if (usage_flags & VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR)
       alignment = MAX2(alignment, NVK_MIN_SSBO_ALIGNMENT);

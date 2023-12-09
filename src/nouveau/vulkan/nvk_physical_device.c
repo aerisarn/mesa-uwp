@@ -485,6 +485,12 @@ nvk_get_device_features(const struct nv_device_info *info,
    };
 }
 
+uint32_t
+nvk_min_cbuf_alignment(const struct nv_device_info *info)
+{
+   return 256;
+}
+
 static void
 nvk_get_device_properties(const struct nvk_instance *instance,
                           const struct nv_device_info *info,
@@ -747,7 +753,7 @@ nvk_get_device_properties(const struct nvk_instance *instance,
 
       /* VK_EXT_robustness2 */
       .robustStorageBufferAccessSizeAlignment = NVK_SSBO_BOUNDS_CHECK_ALIGNMENT,
-      .robustUniformBufferAccessSizeAlignment = NVK_MIN_UBO_ALIGNMENT,
+      .robustUniformBufferAccessSizeAlignment = nvk_min_cbuf_alignment(info),
 
       /* VK_EXT_sample_locations */
       .sampleLocationSampleCounts = sample_counts,

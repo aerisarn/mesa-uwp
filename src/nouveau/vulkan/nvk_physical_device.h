@@ -40,6 +40,8 @@ struct nvk_physical_device {
    const struct vk_sync_type *sync_types[2];
 };
 
+uint32_t nvk_min_cbuf_alignment(const struct nv_device_info *info);
+
 VK_DEFINE_HANDLE_CASTS(nvk_physical_device,
    vk.base,
    VkPhysicalDevice,
