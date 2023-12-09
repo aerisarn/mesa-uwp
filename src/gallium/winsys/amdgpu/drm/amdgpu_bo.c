@@ -421,12 +421,6 @@ void amdgpu_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *buf)
    amdgpu_bo_cpu_unmap(real->bo);
 }
 
-static const struct pb_vtbl amdgpu_winsys_bo_vtbl = {
-   /* Cast to void* because one of the function parameters is a struct pointer instead of void*. */
-   (void*)amdgpu_bo_destroy_or_cache
-   /* other functions are never called */
-};
-
 static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys *ws, struct amdgpu_bo_real *bo)
 {
 #if DEBUG
@@ -583,7 +577,6 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    bo->b.base.alignment_log2 = util_logbase2(alignment);
    bo->b.base.usage = flags;
    bo->b.base.size = size;
-   bo->b.base.vtbl = &amdgpu_winsys_bo_vtbl;
    bo->b.va = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    bo->bo = buf_handle;
@@ -660,12 +653,6 @@ static void amdgpu_bo_slab_destroy(struct radeon_winsys *rws, struct pb_buffer *
 
    pb_slab_free(slabs, &bo->entry);
 }
-
-static const struct pb_vtbl amdgpu_winsys_bo_slab_vtbl = {
-   /* Cast to void* because one of the function parameters is a struct pointer instead of void*. */
-   (void*)amdgpu_bo_slab_destroy
-   /* other functions are never called */
-};
 
 /* Return the power of two size of a slab entry matching the input size. */
 static unsigned get_slab_pot_entry_size(struct amdgpu_winsys *ws, unsigned size)
@@ -760,7 +747,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
       bo->b.base.placement = domains;
       bo->b.base.alignment_log2 = util_logbase2(get_slab_entry_alignment(ws, entry_size));
       bo->b.base.size = entry_size;
-      bo->b.base.vtbl = &amdgpu_winsys_bo_slab_vtbl;
       bo->b.type = AMDGPU_BO_SLAB_ENTRY;
       bo->b.va = slab->buffer->va + i * entry_size;
       bo->b.unique_id = base_id + i;
@@ -1069,12 +1055,6 @@ static void amdgpu_bo_sparse_destroy(struct radeon_winsys *rws, struct pb_buffer
    FREE(bo);
 }
 
-static const struct pb_vtbl amdgpu_winsys_bo_sparse_vtbl = {
-   /* Cast to void* because one of the function parameters is a struct pointer instead of void*. */
-   (void*)amdgpu_bo_sparse_destroy
-   /* other functions are never called */
-};
-
 static struct pb_buffer *
 amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
                         enum radeon_bo_domain domain,
@@ -1102,7 +1082,6 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    bo->b.base.alignment_log2 = util_logbase2(RADEON_SPARSE_PAGE_SIZE);
    bo->b.base.usage = flags;
    bo->b.base.size = size;
-   bo->b.base.vtbl = &amdgpu_winsys_bo_sparse_vtbl;
    bo->b.unique_id =  __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    bo->b.type = AMDGPU_BO_SPARSE;
 
@@ -1581,7 +1560,6 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
 				info.phys_alignment : ws->info.gart_page_size);
    bo->b.base.usage = flags;
    bo->b.base.size = result.alloc_size;
-   bo->b.base.vtbl = &amdgpu_winsys_bo_vtbl;
    bo->b.type = AMDGPU_BO_REAL;
    bo->b.va = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
@@ -1736,7 +1714,6 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     bo->b.base.placement = RADEON_DOMAIN_GTT;
     bo->b.base.alignment_log2 = 0;
     bo->b.base.size = size;
-    bo->b.base.vtbl = &amdgpu_winsys_bo_vtbl;
     bo->b.type = AMDGPU_BO_REAL;
     bo->b.va = va;
     bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
@@ -1783,6 +1760,18 @@ static uint64_t amdgpu_bo_get_va(struct pb_buffer *buf)
    return ((struct amdgpu_winsys_bo*)buf)->va;
 }
 
+static void amdgpu_buffer_destroy(struct radeon_winsys *ws, struct pb_buffer *buf)
+{
+   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buf);
+
+   if (bo->type == AMDGPU_BO_SLAB_ENTRY)
+      amdgpu_bo_slab_destroy(ws, buf);
+   else if (bo->type == AMDGPU_BO_SPARSE)
+      amdgpu_bo_sparse_destroy(ws, buf);
+   else
+      amdgpu_bo_destroy_or_cache(ws, buf);
+}
+
 void amdgpu_bo_init_functions(struct amdgpu_screen_winsys *ws)
 {
    ws->base.buffer_set_metadata = amdgpu_buffer_set_metadata;
@@ -1791,6 +1780,7 @@ void amdgpu_bo_init_functions(struct amdgpu_screen_winsys *ws)
    ws->base.buffer_unmap = amdgpu_bo_unmap;
    ws->base.buffer_wait = amdgpu_bo_wait;
    ws->base.buffer_create = amdgpu_buffer_create;
+   ws->base.buffer_destroy = amdgpu_buffer_destroy;
    ws->base.buffer_from_handle = amdgpu_bo_from_handle;
    ws->base.buffer_from_ptr = amdgpu_bo_from_ptr;
    ws->base.buffer_is_user_ptr = amdgpu_bo_is_user_ptr;

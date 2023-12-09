@@ -1070,6 +1070,11 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
    return &bo->base;
 }
 
+static void radeon_winsys_bo_destroy(struct radeon_winsys *ws, struct pb_buffer *buf)
+{
+   buf->vtbl->destroy(ws, buf);
+}
+
 static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
                                                    void *pointer, uint64_t size,
                                                    enum radeon_bo_flag flags)
@@ -1375,6 +1380,7 @@ void radeon_drm_bo_init_functions(struct radeon_drm_winsys *ws)
    ws->base.buffer_unmap = radeon_bo_unmap;
    ws->base.buffer_wait = radeon_bo_wait;
    ws->base.buffer_create = radeon_winsys_bo_create;
+   ws->base.buffer_destroy = radeon_winsys_bo_destroy;
    ws->base.buffer_from_handle = radeon_winsys_bo_from_handle;
    ws->base.buffer_from_ptr = radeon_winsys_bo_from_ptr;
    ws->base.buffer_is_user_ptr = radeon_winsys_bo_is_user_ptr;

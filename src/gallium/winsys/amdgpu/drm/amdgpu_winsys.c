@@ -438,7 +438,10 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       }
       aws->info.drm_major = drm_major;
       aws->info.drm_minor = drm_minor;
-      aws->dummy_ws.aws = aws; /* only the pointer is used */
+
+      /* Only aws and buffer functions are used. */
+      aws->dummy_ws.aws = aws;
+      amdgpu_bo_init_functions(&aws->dummy_ws);
 
       if (!do_winsys_init(aws, config, fd))
          goto fail_alloc;
