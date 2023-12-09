@@ -384,9 +384,41 @@ radv_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer, const VkCopyImageToBuf
 }
 
 static void
+transfer_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image, VkImageLayout src_image_layout,
+                    struct radv_image *dst_image, VkImageLayout dst_image_layout, const VkImageCopy2 *region)
+{
+   const struct radv_device *device = cmd_buffer->device;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   unsigned int dst_aspect_mask_remaining = region->dstSubresource.aspectMask;
+
+   u_foreach_bit (b, region->srcSubresource.aspectMask) {
+      const VkImageAspectFlags src_aspect_mask = BITFIELD_BIT(b);
+      const VkImageAspectFlags dst_aspect_mask = BITFIELD_BIT(u_bit_scan(&dst_aspect_mask_remaining));
+      const unsigned src_binding_idx = src_image->disjoint ? radv_plane_from_aspect(src_aspect_mask) : 0;
+      const unsigned dst_binding_idx = dst_image->disjoint ? radv_plane_from_aspect(dst_aspect_mask) : 0;
+
+      radv_cs_add_buffer(device->ws, cs, src_image->bindings[src_binding_idx].bo);
+      radv_cs_add_buffer(device->ws, cs, dst_image->bindings[dst_binding_idx].bo);
+
+      const struct radv_sdma_surf src =
+         radv_sdma_get_surf(device, src_image, region->srcSubresource, region->srcOffset, src_aspect_mask);
+      const struct radv_sdma_surf dst =
+         radv_sdma_get_surf(device, dst_image, region->dstSubresource, region->dstOffset, dst_aspect_mask);
+      const VkExtent3D extent = radv_sdma_get_copy_extent(src_image, region->srcSubresource, region->extent);
+
+      radv_sdma_copy_image(device, cs, &src, &dst, extent);
+   }
+}
+
+static void
 copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image, VkImageLayout src_image_layout,
            struct radv_image *dst_image, VkImageLayout dst_image_layout, const VkImageCopy2 *region)
 {
+   if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
+      transfer_copy_image(cmd_buffer, src_image, src_image_layout, dst_image, dst_image_layout, region);
+      return;
+   }
+
    struct radv_meta_saved_state saved_state;
    bool cs;
 

@@ -81,6 +81,8 @@ void radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, str
                                            const struct radv_sdma_surf *buf, const struct radv_sdma_surf *img_in,
                                            const VkExtent3D copy_extent, struct radeon_winsys_bo *temp_bo,
                                            bool to_image);
+void radv_sdma_copy_image(const struct radv_device *device, struct radeon_cmdbuf *cs, const struct radv_sdma_surf *src,
+                          const struct radv_sdma_surf *dst, const VkExtent3D extent);
 void radv_sdma_copy_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va, uint64_t dst_va,
                            uint64_t size);
 void radv_sdma_fill_buffer(const struct radv_device *device, struct radeon_cmdbuf *cs, const uint64_t va,
