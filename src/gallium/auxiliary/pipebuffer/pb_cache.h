@@ -42,7 +42,7 @@ struct pb_cache_entry
    struct list_head head;
    struct pb_buffer *buffer; /**< Pointer to the structure this is part of. */
    struct pb_cache *mgr;
-   int64_t start; /**< Cached start time */
+   unsigned start_ms; /**< Cached start time */
    unsigned bucket_index;
 };
 
@@ -58,7 +58,8 @@ struct pb_cache
    uint64_t cache_size;
    uint64_t max_cache_size;
    unsigned num_heaps;
-   unsigned usecs;
+   unsigned msecs;
+   int64_t msecs_base_time;
    unsigned num_buffers;
    unsigned bypass_usage;
    float size_factor;

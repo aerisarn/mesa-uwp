@@ -30,6 +30,28 @@
 #include "util/u_memory.h"
 #include "util/os_time.h"
 
+/*
+ * Helper function for detecting time outs, taking in account overflow.
+ *
+ * Returns true if the current time has elapsed beyond the specified interval.
+ */
+static inline bool
+time_timeout_ms(unsigned start, unsigned interval, unsigned curr)
+{
+   unsigned end = start + interval;
+
+   if (start <= end)
+      return !(start <= curr && curr < end);
+   else
+      return !((start <= curr) || (curr < end));
+}
+
+static unsigned
+time_get_ms(struct pb_cache *mgr)
+{
+   /* Return the time relative to msecs_base_time. */
+   return os_time_get() / 1000 - mgr->msecs_base_time;
+}
 
 /**
  * Actually destroy the buffer.
@@ -55,7 +77,7 @@ destroy_buffer_locked(struct pb_cache_entry *entry)
  */
 static void
 release_expired_buffers_locked(struct list_head *cache,
-                               int64_t current_time)
+                               unsigned current_time_ms)
 {
    struct list_head *curr, *next;
    struct pb_cache_entry *entry;
@@ -65,8 +87,8 @@ release_expired_buffers_locked(struct list_head *cache,
    while (curr != cache) {
       entry = list_entry(curr, struct pb_cache_entry, head);
 
-      if (!os_time_timeout(entry->start, entry->start + entry->mgr->usecs,
-                           current_time))
+      if (!time_timeout_ms(entry->start_ms, entry->mgr->msecs,
+                           current_time_ms))
          break;
 
       destroy_buffer_locked(entry);
@@ -91,10 +113,10 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
    simple_mtx_lock(&mgr->mutex);
    assert(!pipe_is_referenced(&buf->reference));
 
-   int64_t current_time = os_time_get();
+   unsigned current_time_ms = time_get_ms(mgr);
 
    for (i = 0; i < mgr->num_heaps; i++)
-      release_expired_buffers_locked(&mgr->buckets[i], current_time);
+      release_expired_buffers_locked(&mgr->buckets[i], current_time_ms);
 
    /* Directly release any buffer that exceeds the limit. */
    if (mgr->cache_size + buf->size > mgr->max_cache_size) {
@@ -103,7 +125,7 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
       return;
    }
 
-   entry->start = os_time_get();
+   entry->start_ms = time_get_ms(mgr);
    list_addtail(&entry->head, cache);
    ++mgr->num_buffers;
    mgr->cache_size += buf->size;
@@ -151,7 +173,6 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
    struct pb_cache_entry *entry;
    struct pb_cache_entry *cur_entry;
    struct list_head *cur, *next;
-   int64_t now;
    int ret = 0;
 
    assert(bucket_index < mgr->num_heaps);
@@ -164,15 +185,14 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
    next = cur->next;
 
    /* search in the expired buffers, freeing them in the process */
-   now = os_time_get();
+   unsigned now = time_get_ms(mgr);
    while (cur != cache) {
       cur_entry = list_entry(cur, struct pb_cache_entry, head);
 
       if (!entry && (ret = pb_cache_is_buffer_compat(cur_entry, size,
                                                      alignment, usage)) > 0)
          entry = cur_entry;
-      else if (os_time_timeout(cur_entry->start,
-                               cur_entry->start + mgr->usecs, now))
+      else if (time_timeout_ms(cur_entry->start_ms, mgr->msecs, now))
          destroy_buffer_locked(cur_entry);
       else
          /* This buffer (and all hereafter) are still hot in cache */
@@ -302,7 +322,8 @@ pb_cache_init(struct pb_cache *mgr, unsigned num_heaps,
    mgr->cache_size = 0;
    mgr->max_cache_size = maximum_cache_size;
    mgr->num_heaps = num_heaps;
-   mgr->usecs = usecs;
+   mgr->msecs = usecs / 1000;
+   mgr->msecs_base_time = os_time_get() / 1000;
    mgr->num_buffers = 0;
    mgr->bypass_usage = bypass_usage;
    mgr->size_factor = size_factor;
