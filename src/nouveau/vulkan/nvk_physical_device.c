@@ -721,9 +721,9 @@ nvk_get_device_properties(const struct nvk_instance *instance,
          = info->cls_eng3d >= VOLTA_A,
       .integerDotProduct4x8BitPackedMixedSignednessAccelerated
          = info->cls_eng3d >= VOLTA_A,
-      .storageTexelBufferOffsetAlignmentBytes = 16,
+      .storageTexelBufferOffsetAlignmentBytes = NVK_MIN_TEXEL_BUFFER_ALIGNMENT,
       .storageTexelBufferOffsetSingleTexelAlignment = true,
-      .uniformTexelBufferOffsetAlignmentBytes = 16,
+      .uniformTexelBufferOffsetAlignmentBytes = NVK_MIN_TEXEL_BUFFER_ALIGNMENT,
       .uniformTexelBufferOffsetSingleTexelAlignment = true,
       .maxBufferSize = NVK_MAX_BUFFER_SIZE,
 

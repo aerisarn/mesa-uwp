@@ -24,7 +24,7 @@ nvk_get_buffer_alignment(UNUSED const struct nv_device_info *info,
 
    if (usage_flags & (VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
                       VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR))
-      alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
+      alignment = MAX2(alignment, NVK_MIN_TEXEL_BUFFER_ALIGNMENT);
 
    if (create_flags & (VK_BUFFER_CREATE_SPARSE_BINDING_BIT |
                        VK_BUFFER_CREATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT))
