@@ -292,7 +292,7 @@ impl SM50Instr {
         match &op.srcs[1].src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x38a0);
-                self.set_src_imm_i20(20..40, 56, *imm32);
+                self.set_src_imm_i20(20..39, 56, *imm32);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ca0);
@@ -659,7 +659,7 @@ impl SM50Instr {
         match &op.src.src_ref {
             SrcRef::Imm32(imm) => {
                 self.set_opcode(0x38b8);
-                self.set_src_imm_i20(20..40, 56, *imm);
+                self.set_src_imm_i20(20..39, 56, *imm);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5cb8);
@@ -690,7 +690,7 @@ impl SM50Instr {
         match &op.src.src_ref {
             SrcRef::Imm32(imm) => {
                 self.set_opcode(0x38a8);
-                self.set_src_imm_i20(20..40, 56, *imm);
+                self.set_src_imm_i20(20..39, 56, *imm);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ca8);
@@ -742,7 +742,7 @@ impl SM50Instr {
             SrcRef::Reg(_) => match &op.srcs[1].src_ref {
                 SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3400);
-                    self.set_src_imm_i20(20..40, 56, *imm);
+                    self.set_src_imm_i20(20..39, 56, *imm);
                 }
                 SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x5a00);
@@ -1339,7 +1339,7 @@ impl SM50Instr {
         match &op.src.src_ref {
             SrcRef::Imm32(imm) => {
                 self.set_opcode(0x3808);
-                self.set_src_imm_i20(20..40, 56, *imm);
+                self.set_src_imm_i20(20..39, 56, *imm);
             }
             SrcRef::Reg(_) => {
                 self.set_opcode(0x5c08);
@@ -1372,7 +1372,7 @@ impl SM50Instr {
                 }
                 SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3858);
-                    self.set_src_imm_f20(20..40, 56, *imm);
+                    self.set_src_imm_f20(20..39, 56, *imm);
                     assert!(op.srcs[1].src_mod.is_none());
                 }
                 SrcRef::CBuf(_) => {
@@ -1398,7 +1398,7 @@ impl SM50Instr {
         match &op.srcs[1].src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x3860);
-                self.set_src_imm_f20(20..40, 56, *imm32);
+                self.set_src_imm_f20(20..39, 56, *imm32);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5c60);
@@ -1437,7 +1437,7 @@ impl SM50Instr {
             match &op.srcs[1].src_ref {
                 SrcRef::Imm32(imm32) => {
                     self.set_opcode(0x3868);
-                    self.set_src_imm_f20(20..40, 56, *imm32);
+                    self.set_src_imm_f20(20..39, 56, *imm32);
                 }
                 SrcRef::Zero | SrcRef::Reg(_) => {
                     self.set_opcode(0x5c68);
@@ -1536,7 +1536,7 @@ impl SM50Instr {
         match &op.srcs[1].src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x3000);
-                self.set_src_imm_f20(20..40, 56, *imm32);
+                self.set_src_imm_f20(20..39, 56, *imm32);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5800);
@@ -1563,7 +1563,7 @@ impl SM50Instr {
         match &op.srcs[1].src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x36b0);
-                self.set_src_imm_f20(20..40, 56, *imm32);
+                self.set_src_imm_f20(20..39, 56, *imm32);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5bb0);
@@ -1625,7 +1625,7 @@ impl SM50Instr {
         match &op.src.src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x38e0);
-                self.set_src_imm_i20(20..40, 56, *imm32);
+                self.set_src_imm_i20(20..39, 56, *imm32);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5ce0);
@@ -1673,7 +1673,7 @@ impl SM50Instr {
                 }
                 SrcRef::Imm32(imm) => {
                     self.set_opcode(0x3810);
-                    self.set_src_imm_i20(20..40, 56, *imm);
+                    self.set_src_imm_i20(20..39, 56, *imm);
                 }
                 SrcRef::CBuf(_) => {
                     self.set_opcode(0x4c10);
@@ -1698,7 +1698,7 @@ impl SM50Instr {
         match &op.sel.src_ref {
             SrcRef::Imm32(imm) => {
                 self.set_opcode(0x36c0);
-                self.set_src_imm_i20(20..40, 56, *imm);
+                self.set_src_imm_i20(20..39, 56, *imm);
             }
             SrcRef::Zero | SrcRef::Reg(_) => {
                 self.set_opcode(0x5bc0);
