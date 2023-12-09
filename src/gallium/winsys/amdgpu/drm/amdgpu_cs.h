@@ -48,7 +48,7 @@ enum ib_type {
 
 struct amdgpu_ib {
    /* A buffer out of which new IBs are allocated. */
-   struct pb_buffer        *big_buffer;
+   struct pb_buffer_lean   *big_buffer;
    uint8_t                 *big_buffer_cpu_ptr;
    uint64_t                gpu_address;
    unsigned                used_ib_space;
@@ -145,7 +145,7 @@ struct amdgpu_cs {
 
    struct util_queue_fence flush_completed;
    struct pipe_fence_handle *next_fence;
-   struct pb_buffer *preamble_ib_bo;
+   struct pb_buffer_lean *preamble_ib_bo;
 
    struct drm_amdgpu_cs_chunk_cp_gfx_shadow mcbp_fw_shadow_chunk;
 };

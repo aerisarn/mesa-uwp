@@ -103,7 +103,7 @@ static void set_reg(struct ruvd_decoder *dec, unsigned reg, uint32_t val)
 }
 
 /* send a command to the VCPU through the GPCOM registers */
-static void send_cmd(struct ruvd_decoder *dec, unsigned cmd, struct pb_buffer *buf, uint32_t off,
+static void send_cmd(struct ruvd_decoder *dec, unsigned cmd, struct pb_buffer_lean *buf, uint32_t off,
                      unsigned usage, enum radeon_bo_domain domain)
 {
    int reloc_idx;
@@ -226,35 +226,35 @@ static unsigned calc_ctx_size_h264_perf(struct ruvd_decoder *dec)
 
    if (!dec->use_legacy) {
       unsigned fs_in_mb = width_in_mb * height_in_mb;
-      unsigned num_dpb_buffer;
+      unsigned num_dpb_buffer_lean;
       switch (dec->base.level) {
       case 30:
-         num_dpb_buffer = 8100 / fs_in_mb;
+         num_dpb_buffer_lean = 8100 / fs_in_mb;
          break;
       case 31:
-         num_dpb_buffer = 18000 / fs_in_mb;
+         num_dpb_buffer_lean = 18000 / fs_in_mb;
          break;
       case 32:
-         num_dpb_buffer = 20480 / fs_in_mb;
+         num_dpb_buffer_lean = 20480 / fs_in_mb;
          break;
       case 41:
-         num_dpb_buffer = 32768 / fs_in_mb;
+         num_dpb_buffer_lean = 32768 / fs_in_mb;
          break;
       case 42:
-         num_dpb_buffer = 34816 / fs_in_mb;
+         num_dpb_buffer_lean = 34816 / fs_in_mb;
          break;
       case 50:
-         num_dpb_buffer = 110400 / fs_in_mb;
+         num_dpb_buffer_lean = 110400 / fs_in_mb;
          break;
       case 51:
-         num_dpb_buffer = 184320 / fs_in_mb;
+         num_dpb_buffer_lean = 184320 / fs_in_mb;
          break;
       default:
-         num_dpb_buffer = 184320 / fs_in_mb;
+         num_dpb_buffer_lean = 184320 / fs_in_mb;
          break;
       }
-      num_dpb_buffer++;
-      max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer), max_references);
+      num_dpb_buffer_lean++;
+      max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer_lean), max_references);
       ctx_size = max_references * align(width_in_mb * height_in_mb * 192, 256);
    } else {
       // the firmware seems to always assume a minimum of ref frames
@@ -351,38 +351,38 @@ static unsigned calc_dpb_size(struct ruvd_decoder *dec)
    case PIPE_VIDEO_FORMAT_MPEG4_AVC: {
       if (!dec->use_legacy) {
          unsigned fs_in_mb = width_in_mb * height_in_mb;
-         unsigned alignment = 64, num_dpb_buffer;
+         unsigned alignment = 64, num_dpb_buffer_lean;
 
          if (dec->stream_type == RUVD_CODEC_H264_PERF)
             alignment = 256;
          switch (dec->base.level) {
          case 30:
-            num_dpb_buffer = 8100 / fs_in_mb;
+            num_dpb_buffer_lean = 8100 / fs_in_mb;
             break;
          case 31:
-            num_dpb_buffer = 18000 / fs_in_mb;
+            num_dpb_buffer_lean = 18000 / fs_in_mb;
             break;
          case 32:
-            num_dpb_buffer = 20480 / fs_in_mb;
+            num_dpb_buffer_lean = 20480 / fs_in_mb;
             break;
          case 41:
-            num_dpb_buffer = 32768 / fs_in_mb;
+            num_dpb_buffer_lean = 32768 / fs_in_mb;
             break;
          case 42:
-            num_dpb_buffer = 34816 / fs_in_mb;
+            num_dpb_buffer_lean = 34816 / fs_in_mb;
             break;
          case 50:
-            num_dpb_buffer = 110400 / fs_in_mb;
+            num_dpb_buffer_lean = 110400 / fs_in_mb;
             break;
          case 51:
-            num_dpb_buffer = 184320 / fs_in_mb;
+            num_dpb_buffer_lean = 184320 / fs_in_mb;
             break;
          default:
-            num_dpb_buffer = 184320 / fs_in_mb;
+            num_dpb_buffer_lean = 184320 / fs_in_mb;
             break;
          }
-         num_dpb_buffer++;
-         max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer), max_references);
+         num_dpb_buffer_lean++;
+         max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer_lean), max_references);
          dpb_size = image_size * max_references;
          if ((dec->stream_type != RUVD_CODEC_H264_PERF) ||
              (((struct si_screen *)dec->screen)->info.family < CHIP_POLARIS10)) {
@@ -1046,7 +1046,7 @@ static void ruvd_decode_bitstream(struct pipe_video_codec *decoder,
       struct rvid_buffer *buf = &dec->bs_buffers[dec->cur_buffer];
       unsigned new_size = dec->bs_size + sizes[i];
 
-      if (new_size > buf->res->buf->base.size) {
+      if (new_size > buf->res->buf->size) {
          dec->ws->buffer_unmap(dec->ws, buf->res->buf);
          if (!si_vid_resize_buffer(dec->screen, &dec->cs, buf, new_size, NULL)) {
             RVID_ERR("Can't resize bitstream buffer!");
@@ -1074,7 +1074,7 @@ static void ruvd_end_frame(struct pipe_video_codec *decoder, struct pipe_video_b
                            struct pipe_picture_desc *picture)
 {
    struct ruvd_decoder *dec = (struct ruvd_decoder *)decoder;
-   struct pb_buffer *dt;
+   struct pb_buffer_lean *dt;
    struct rvid_buffer *msg_fb_it_buf, *bs_buf;
    unsigned bs_size;
 
@@ -1110,13 +1110,13 @@ static void ruvd_end_frame(struct pipe_video_codec *decoder, struct pipe_video_b
    }
 
    if (dec->dpb.res)
-      dec->msg->body.decode.dpb_size = dec->dpb.res->buf->base.size;
+      dec->msg->body.decode.dpb_size = dec->dpb.res->buf->size;
    dec->msg->body.decode.bsd_size = bs_size;
    dec->msg->body.decode.db_pitch = align(dec->base.width, get_db_pitch_alignment(dec));
 
    if (dec->stream_type == RUVD_CODEC_H264_PERF &&
        ((struct si_screen *)dec->screen)->info.family >= CHIP_POLARIS10)
-      dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->base.size;
+      dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->size;
 
    dt = dec->set_dtb(dec->msg, (struct vl_video_buffer *)target);
    if (((struct si_screen *)dec->screen)->info.family >= CHIP_STONEY)
@@ -1144,7 +1144,7 @@ static void ruvd_end_frame(struct pipe_video_codec *decoder, struct pipe_video_b
       }
 
       if (dec->ctx.res)
-         dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->base.size;
+         dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->size;
       break;
 
    case PIPE_VIDEO_FORMAT_VC1:

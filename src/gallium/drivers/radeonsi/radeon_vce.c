@@ -528,7 +528,7 @@ bool si_vce_is_fw_version_supported(struct si_screen *sscreen)
 /**
  * Add the buffer as relocation to the current command submission
  */
-void si_vce_add_buffer(struct rvce_encoder *enc, struct pb_buffer *buf, unsigned usage,
+void si_vce_add_buffer(struct rvce_encoder *enc, struct pb_buffer_lean *buf, unsigned usage,
                        enum radeon_bo_domain domain, signed offset)
 {
    int reloc_idx;

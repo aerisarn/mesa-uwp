@@ -950,7 +950,7 @@ static bool r300_render_allocate_vertices(struct vbuf_render* render,
 
     DBG(r300, DBG_DRAW, "r300: render_allocate_vertices (size: %d)\n", size);
 
-    if (!r300->vbo || size + r300->draw_vbo_offset > r300->vbo->base.size) {
+    if (!r300->vbo || size + r300->draw_vbo_offset > r300->vbo->size) {
 	radeon_bo_reference(r300->rws, &r300->vbo, NULL);
         r300->vbo = NULL;
         r300render->vbo_ptr = NULL;
@@ -1056,7 +1056,7 @@ static void r300_render_draw_elements(struct vbuf_render* render,
 {
     struct r300_render* r300render = r300_render(render);
     struct r300_context* r300 = r300render->r300;
-    unsigned max_index = (r300->vbo->base.size - r300->draw_vbo_offset) /
+    unsigned max_index = (r300->vbo->size - r300->draw_vbo_offset) /
                          (r300render->r300->vertex_info.size * 4) - 1;
     struct pipe_resource *index_buffer = NULL;
     unsigned index_buffer_offset;

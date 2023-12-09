@@ -79,7 +79,7 @@ static void encode(struct rvce_encoder *enc)
 
    if (enc->dual_pipe) {
       unsigned aux_offset =
-         enc->cpb.res->buf->base.size - RVCE_MAX_AUX_BUFFER_NUM * RVCE_MAX_BITSTREAM_OUTPUT_ROW_SIZE * 2;
+         enc->cpb.res->buf->size - RVCE_MAX_AUX_BUFFER_NUM * RVCE_MAX_BITSTREAM_OUTPUT_ROW_SIZE * 2;
       RVCE_BEGIN(0x05000002); // auxiliary buffer
       for (i = 0; i < 8; ++i) {
          RVCE_CS(aux_offset);

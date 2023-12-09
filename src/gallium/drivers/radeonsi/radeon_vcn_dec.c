@@ -1912,9 +1912,9 @@ static unsigned rvcn_dec_dynamic_dpb_t2_message(struct radeon_decoder *dec, rvcn
    return 0;
 }
 
-static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
-                                                 struct pipe_video_buffer *target,
-                                                 struct pipe_picture_desc *picture)
+static struct pb_buffer_lean *rvcn_dec_message_decode(struct radeon_decoder *dec,
+                                                      struct pipe_video_buffer *target,
+                                                      struct pipe_picture_desc *picture)
 {
    DECRYPT_PARAMETERS *decrypt = (DECRYPT_PARAMETERS *)picture->decrypt_key;
    bool encrypted = picture->protected_playback;
@@ -2164,14 +2164,14 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    luma   = (struct si_texture *)((struct vl_video_buffer *)out_surf)->resources[0];
    chroma = (struct si_texture *)((struct vl_video_buffer *)out_surf)->resources[1];
 
-   decode->dpb_size = (dec->dpb_type != DPB_DYNAMIC_TIER_2) ? dec->dpb.res->buf->base.size : 0;
+   decode->dpb_size = (dec->dpb_type != DPB_DYNAMIC_TIER_2) ? dec->dpb.res->buf->size : 0;
 
    /* When texture being created, the bo will be created with total size of planes,
     * and all planes point to the same buffer */
-   assert(si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->base.size ==
-      si_resource(((struct vl_video_buffer *)out_surf)->resources[1])->buf->base.size);
+   assert(si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->size ==
+      si_resource(((struct vl_video_buffer *)out_surf)->resources[1])->buf->size);
 
-   decode->dt_size = si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->base.size;
+   decode->dt_size = si_resource(((struct vl_video_buffer *)out_surf)->resources[0])->buf->size;
 
    decode->sct_size = 0;
    decode->sc_coeff_size = 0;
@@ -2364,7 +2364,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    }
 
    if (dec->ctx.res)
-      decode->hw_ctxt_size = dec->ctx.res->buf->base.size;
+      decode->hw_ctxt_size = dec->ctx.res->buf->size;
 
    if (dec->dpb_type == DPB_DYNAMIC_TIER_2)
       if (rvcn_dec_dynamic_dpb_t2_message(dec, decode, dynamic_dpb_t2, encrypted))
@@ -2418,7 +2418,7 @@ static void set_reg(struct radeon_decoder *dec, unsigned reg, uint32_t val)
 }
 
 /* send a command to the VCPU through the GPCOM registers */
-static void send_cmd(struct radeon_decoder *dec, unsigned cmd, struct pb_buffer *buf, uint32_t off,
+static void send_cmd(struct radeon_decoder *dec, unsigned cmd, struct pb_buffer_lean *buf, uint32_t off,
                      unsigned usage, enum radeon_bo_domain domain)
 {
    uint64_t addr;
@@ -2586,35 +2586,35 @@ static unsigned calc_ctx_size_h264_perf(struct radeon_decoder *dec)
    height_in_mb = align(height / VL_MACROBLOCK_HEIGHT, 2);
 
    unsigned fs_in_mb = width_in_mb * height_in_mb;
-   unsigned num_dpb_buffer;
+   unsigned num_dpb_buffer_lean;
    switch (dec->base.level) {
    case 30:
-      num_dpb_buffer = 8100 / fs_in_mb;
+      num_dpb_buffer_lean = 8100 / fs_in_mb;
       break;
    case 31:
-      num_dpb_buffer = 18000 / fs_in_mb;
+      num_dpb_buffer_lean = 18000 / fs_in_mb;
       break;
    case 32:
-      num_dpb_buffer = 20480 / fs_in_mb;
+      num_dpb_buffer_lean = 20480 / fs_in_mb;
       break;
    case 41:
-      num_dpb_buffer = 32768 / fs_in_mb;
+      num_dpb_buffer_lean = 32768 / fs_in_mb;
       break;
    case 42:
-      num_dpb_buffer = 34816 / fs_in_mb;
+      num_dpb_buffer_lean = 34816 / fs_in_mb;
       break;
    case 50:
-      num_dpb_buffer = 110400 / fs_in_mb;
+      num_dpb_buffer_lean = 110400 / fs_in_mb;
       break;
    case 51:
-      num_dpb_buffer = 184320 / fs_in_mb;
+      num_dpb_buffer_lean = 184320 / fs_in_mb;
       break;
    default:
-      num_dpb_buffer = 184320 / fs_in_mb;
+      num_dpb_buffer_lean = 184320 / fs_in_mb;
       break;
    }
-   num_dpb_buffer++;
-   max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer), max_references);
+   num_dpb_buffer_lean++;
+   max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer_lean), max_references);
    ctx_size = max_references * align(width_in_mb * height_in_mb * 192, 256);
 
    return ctx_size;
@@ -2644,36 +2644,36 @@ static unsigned calc_dpb_size(struct radeon_decoder *dec)
    switch (u_reduce_video_profile(dec->base.profile)) {
    case PIPE_VIDEO_FORMAT_MPEG4_AVC: {
       unsigned fs_in_mb = width_in_mb * height_in_mb;
-      unsigned num_dpb_buffer;
+      unsigned num_dpb_buffer_lean;
 
       switch (dec->base.level) {
       case 30:
-         num_dpb_buffer = 8100 / fs_in_mb;
+         num_dpb_buffer_lean = 8100 / fs_in_mb;
          break;
       case 31:
-         num_dpb_buffer = 18000 / fs_in_mb;
+         num_dpb_buffer_lean = 18000 / fs_in_mb;
          break;
       case 32:
-         num_dpb_buffer = 20480 / fs_in_mb;
+         num_dpb_buffer_lean = 20480 / fs_in_mb;
          break;
       case 41:
-         num_dpb_buffer = 32768 / fs_in_mb;
+         num_dpb_buffer_lean = 32768 / fs_in_mb;
          break;
       case 42:
-         num_dpb_buffer = 34816 / fs_in_mb;
+         num_dpb_buffer_lean = 34816 / fs_in_mb;
          break;
       case 50:
-         num_dpb_buffer = 110400 / fs_in_mb;
+         num_dpb_buffer_lean = 110400 / fs_in_mb;
          break;
       case 51:
-         num_dpb_buffer = 184320 / fs_in_mb;
+         num_dpb_buffer_lean = 184320 / fs_in_mb;
          break;
       default:
-         num_dpb_buffer = 184320 / fs_in_mb;
+         num_dpb_buffer_lean = 184320 / fs_in_mb;
          break;
       }
-      num_dpb_buffer++;
-      max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer), max_references);
+      num_dpb_buffer_lean++;
+      max_references = MAX2(MIN2(NUM_H264_REFS, num_dpb_buffer_lean), max_references);
       dpb_size = image_size * max_references;
       break;
    }
@@ -2882,7 +2882,7 @@ static void radeon_dec_decode_bitstream(struct pipe_video_codec *decoder,
 
    struct rvid_buffer *buf = &dec->bs_buffers[dec->cur_buffer];
 
-   if (total_bs_size > buf->res->buf->base.size) {
+   if (total_bs_size > buf->res->buf->size) {
       dec->ws->buffer_unmap(dec->ws, buf->res->buf);
       dec->bs_ptr = NULL;
       if (!si_vid_resize_buffer(dec->screen, &dec->cs, buf, total_bs_size, NULL)) {
@@ -2911,7 +2911,7 @@ static void radeon_dec_decode_bitstream(struct pipe_video_codec *decoder,
 void send_cmd_dec(struct radeon_decoder *dec, struct pipe_video_buffer *target,
                   struct pipe_picture_desc *picture)
 {
-   struct pb_buffer *dt;
+   struct pb_buffer_lean *dt;
    struct rvid_buffer *msg_fb_it_probs_buf, *bs_buf;
 
    msg_fb_it_probs_buf = &dec->msg_fb_it_probs_buffers[dec->cur_buffer];

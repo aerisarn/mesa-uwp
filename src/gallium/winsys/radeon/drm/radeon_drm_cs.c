@@ -373,7 +373,7 @@ static int radeon_lookup_or_add_slab_buffer(struct radeon_drm_cs *cs,
 }
 
 static unsigned radeon_drm_cs_add_buffer(struct radeon_cmdbuf *rcs,
-                                         struct pb_buffer *buf,
+                                         struct pb_buffer_lean *buf,
                                          unsigned usage,
                                          enum radeon_bo_domain domains)
 {
@@ -415,15 +415,15 @@ static unsigned radeon_drm_cs_add_buffer(struct radeon_cmdbuf *rcs,
    cs->csc->relocs_bo[index].u.real.priority_usage |= priority;
 
    if (added_domains & RADEON_DOMAIN_VRAM)
-      rcs->used_vram_kb += bo->base.base.size / 1024;
+      rcs->used_vram_kb += bo->base.size / 1024;
    else if (added_domains & RADEON_DOMAIN_GTT)
-      rcs->used_gart_kb += bo->base.base.size / 1024;
+      rcs->used_gart_kb += bo->base.size / 1024;
 
    return index;
 }
 
 static int radeon_drm_cs_lookup_buffer(struct radeon_cmdbuf *rcs,
-                                       struct pb_buffer *buf)
+                                       struct pb_buffer_lean *buf)
 {
    struct radeon_drm_cs *cs = radeon_drm_cs(rcs);
 
@@ -483,7 +483,7 @@ static unsigned radeon_drm_cs_get_buffer_list(struct radeon_cmdbuf *rcs,
 
    if (list) {
       for (i = 0; i < cs->csc->num_relocs; i++) {
-         list[i].bo_size = cs->csc->relocs_bo[i].bo->base.base.size;
+         list[i].bo_size = cs->csc->relocs_bo[i].bo->base.size;
          list[i].vm_address = cs->csc->relocs_bo[i].bo->va;
          list[i].priority_usage = cs->csc->relocs_bo[i].u.real.priority_usage;
       }
@@ -766,7 +766,7 @@ static void radeon_drm_cs_destroy(struct radeon_cmdbuf *rcs)
 }
 
 static bool radeon_bo_is_referenced(struct radeon_cmdbuf *rcs,
-                                    struct pb_buffer *_buf,
+                                    struct pb_buffer_lean *_buf,
                                     unsigned usage)
 {
    struct radeon_drm_cs *cs = radeon_drm_cs(rcs);
@@ -796,7 +796,7 @@ static bool radeon_bo_is_referenced(struct radeon_cmdbuf *rcs,
 static struct pipe_fence_handle *radeon_cs_create_fence(struct radeon_cmdbuf *rcs)
 {
    struct radeon_drm_cs *cs = radeon_drm_cs(rcs);
-   struct pb_buffer *fence;
+   struct pb_buffer_lean *fence;
 
    /* Create a fence, which is a dummy BO. */
    fence = cs->ws->base.buffer_create(&cs->ws->base, 1, 1,
@@ -816,7 +816,7 @@ static bool radeon_fence_wait(struct radeon_winsys *ws,
                               struct pipe_fence_handle *fence,
                               uint64_t timeout)
 {
-   return ws->buffer_wait(ws, (struct pb_buffer*)fence, timeout,
+   return ws->buffer_wait(ws, (struct pb_buffer_lean*)fence, timeout,
                           RADEON_USAGE_READWRITE);
 }
 
@@ -824,7 +824,7 @@ static void radeon_fence_reference(struct radeon_winsys *ws,
                                    struct pipe_fence_handle **dst,
                                    struct pipe_fence_handle *src)
 {
-   radeon_bo_reference(ws, (struct pb_buffer**)dst, (struct pb_buffer*)src);
+   radeon_bo_reference(ws, (struct pb_buffer_lean**)dst, (struct pb_buffer_lean*)src);
 }
 
 static struct pipe_fence_handle *radeon_drm_cs_get_next_fence(struct radeon_cmdbuf *rcs)

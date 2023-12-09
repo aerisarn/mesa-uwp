@@ -34,7 +34,7 @@
 #include <stdio.h>
 
 bool r600_rings_is_buffer_referenced(struct r600_common_context *ctx,
-				     struct pb_buffer *buf,
+				     struct pb_buffer_lean *buf,
 				     unsigned usage)
 {
 	if (ctx->ws->cs_is_buffer_referenced(&ctx->gfx.cs, buf, usage)) {
@@ -166,7 +166,7 @@ void r600_init_resource_fields(struct r600_common_screen *rscreen,
 bool r600_alloc_resource(struct r600_common_screen *rscreen,
 			 struct r600_resource *res)
 {
-	struct pb_buffer *old_buf, *new_buf;
+	struct pb_buffer_lean *old_buf, *new_buf;
 
 	/* Allocate a new resource. */
 	new_buf = rscreen->ws->buffer_create(rscreen->ws, res->bo_size,
@@ -195,8 +195,8 @@ bool r600_alloc_resource(struct r600_common_screen *rscreen,
 	/* Print debug information. */
 	if (rscreen->debug_flags & DBG_VM && res->b.b.target == PIPE_BUFFER) {
 		fprintf(stderr, "VM start=0x%"PRIX64"  end=0x%"PRIX64" | Buffer %"PRIu64" bytes\n",
-			res->gpu_address, res->gpu_address + res->buf->base.size,
-			res->buf->base.size);
+			res->gpu_address, res->gpu_address + res->buf->size,
+			res->buf->size);
 	}
 	return true;
 }

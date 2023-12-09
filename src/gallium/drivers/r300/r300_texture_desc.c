@@ -606,17 +606,17 @@ void r300_texture_desc_init(struct r300_screen *rscreen,
     r300_setup_miptree(rscreen, tex, true);
     /* If the required buffer size is larger than the given max size,
      * try again without the alignment for the CBZB clear. */
-    if (tex->buf && tex->tex.size_in_bytes > tex->buf->base.size) {
+    if (tex->buf && tex->tex.size_in_bytes > tex->buf->size) {
         r300_setup_miptree(rscreen, tex, false);
 
         /* Make sure the buffer we got is large enough. */
-        if (tex->tex.size_in_bytes > tex->buf->base.size) {
+        if (tex->tex.size_in_bytes > tex->buf->size) {
             fprintf(stderr,
                 "r300: I got a pre-allocated buffer to use it as a texture "
                 "storage, but the buffer is too small. I'll use the buffer "
                 "anyway, because I can't crash here, but it's dangerous. "
                 "This can be a DDX bug. Got: %"PRIu64"B, Need: %uB, Info:\n",
-                tex->buf->base.size, tex->tex.size_in_bytes);
+                tex->buf->size, tex->tex.size_in_bytes);
             r300_tex_print_info(tex, "texture_desc_init");
             /* Oops, what now. Apps will break if we fail this,
              * so just pretend everything's okay. */

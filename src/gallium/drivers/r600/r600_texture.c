@@ -897,7 +897,7 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 static struct r600_texture *
 r600_texture_create_object(struct pipe_screen *screen,
 			   const struct pipe_resource *base,
-			   struct pb_buffer *buf,
+			   struct pb_buffer_lean *buf,
 			   struct radeon_surf *surface)
 {
 	struct r600_texture *rtex;
@@ -973,13 +973,13 @@ r600_texture_create_object(struct pipe_screen *screen,
 	} else {
 		resource->buf = buf;
 		resource->gpu_address = rscreen->ws->buffer_get_virtual_address(resource->buf);
-		resource->bo_size = buf->base.size;
-		resource->bo_alignment = 1 << buf->base.alignment_log2;
+		resource->bo_size = buf->size;
+		resource->bo_alignment = 1 << buf->alignment_log2;
 		resource->domains = rscreen->ws->buffer_get_initial_domain(resource->buf);
 		if (resource->domains & RADEON_DOMAIN_VRAM)
-			resource->vram_usage = buf->base.size;
+			resource->vram_usage = buf->size;
 		else if (resource->domains & RADEON_DOMAIN_GTT)
-			resource->gart_usage = buf->base.size;
+			resource->gart_usage = buf->size;
 	}
 
 	if (rtex->cmask.size) {
@@ -1004,7 +1004,7 @@ r600_texture_create_object(struct pipe_screen *screen,
 	if (rscreen->debug_flags & DBG_VM) {
 		fprintf(stderr, "VM start=0x%"PRIX64"  end=0x%"PRIX64" | Texture %ix%ix%i, %i levels, %i samples, %s\n",
 			rtex->resource.gpu_address,
-			rtex->resource.gpu_address + rtex->resource.buf->base.size,
+			rtex->resource.gpu_address + rtex->resource.buf->size,
 			base->width0, base->height0, util_num_layers(base, 0), base->last_level+1,
 			base->nr_samples ? base->nr_samples : 1, util_format_short_name(base->format));
 	}
@@ -1107,7 +1107,7 @@ static struct pipe_resource *r600_texture_from_handle(struct pipe_screen *screen
                                                       unsigned usage)
 {
 	struct r600_common_screen *rscreen = (struct r600_common_screen*)screen;
-	struct pb_buffer *buf = NULL;
+	struct pb_buffer_lean *buf = NULL;
 	enum radeon_surf_mode array_mode;
 	struct radeon_surf surface = {};
 	int r;
@@ -1486,7 +1486,7 @@ void r600_texture_transfer_unmap(struct pipe_context *ctx,
 	}
 
 	if (rtransfer->staging) {
-		rctx->num_alloc_tex_transfer_bytes += rtransfer->staging->buf->base.size;
+		rctx->num_alloc_tex_transfer_bytes += rtransfer->staging->buf->size;
 		r600_resource_reference(&rtransfer->staging, NULL);
 	}
 
@@ -1778,7 +1778,7 @@ r600_memobj_from_handle(struct pipe_screen *screen,
 {
 	struct r600_common_screen *rscreen = (struct r600_common_screen*)screen;
 	struct r600_memory_object *memobj = CALLOC_STRUCT(r600_memory_object);
-	struct pb_buffer *buf = NULL;
+	struct pb_buffer_lean *buf = NULL;
 
 	if (!memobj)
 		return NULL;
@@ -1824,7 +1824,7 @@ r600_texture_from_memobj(struct pipe_screen *screen,
 	struct radeon_bo_metadata metadata = {};
 	enum radeon_surf_mode array_mode;
 	bool is_scanout;
-	struct pb_buffer *buf = NULL;
+	struct pb_buffer_lean *buf = NULL;
 
 	if (memobj->b.dedicated) {
 		rscreen->ws->buffer_get_metadata(rscreen->ws, memobj->buf, &metadata, NULL);

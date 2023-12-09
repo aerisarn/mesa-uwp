@@ -949,7 +949,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
                                                    const struct pipe_resource *base,
                                                    const struct radeon_surf *surface,
                                                    const struct si_texture *plane0,
-                                                   struct pb_buffer *imported_buf,
+                                                   struct pb_buffer_lean *imported_buf,
                                                    uint64_t offset, unsigned pitch_in_bytes,
                                                    uint64_t alloc_size, unsigned alignment)
 {
@@ -1007,8 +1007,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    } else {
       resource->buf = imported_buf;
       resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
-      resource->bo_size = imported_buf->base.size;
-      resource->bo_alignment_log2 = imported_buf->base.alignment_log2;
+      resource->bo_size = imported_buf->size;
+      resource->bo_alignment_log2 = imported_buf->alignment_log2;
       resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
       if (sscreen->ws->buffer_get_flags)
          resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
@@ -1018,7 +1018,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       fprintf(stderr,
               "VM start=0x%" PRIX64 "  end=0x%" PRIX64
               " | Texture %ix%ix%i, %i levels, %i samples, %s | Flags: ",
-              tex->buffer.gpu_address, tex->buffer.gpu_address + tex->buffer.buf->base.size,
+              tex->buffer.gpu_address, tex->buffer.gpu_address + tex->buffer.buf->size,
               base->width0, base->height0, util_num_layers(base, 0), base->last_level + 1,
               base->nr_samples ? base->nr_samples : 1, util_format_short_name(base->format));
       si_res_print_flags(tex->buffer.flags);
@@ -1580,7 +1580,7 @@ static bool si_texture_is_aux_plane(const struct pipe_resource *resource)
 
 static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *sscreen,
                                                            const struct pipe_resource *templ,
-                                                           struct pb_buffer *buf, unsigned stride,
+                                                           struct pb_buffer_lean *buf, unsigned stride,
                                                            uint64_t offset, uint64_t modifier,
                                                            unsigned usage, bool dedicated)
 {
@@ -1681,7 +1681,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
    }
 
    if (ac_surface_get_plane_offset(sscreen->info.gfx_level, &tex->surface, 0, 0) +
-        tex->surface.total_size > buf->base.size) {
+        tex->surface.total_size > buf->size) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }
@@ -1705,7 +1705,7 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
                                                     struct winsys_handle *whandle, unsigned usage)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
-   struct pb_buffer *buf = NULL;
+   struct pb_buffer_lean *buf = NULL;
 
    buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle,
                                          sscreen->info.max_alignment,
@@ -2025,7 +2025,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
       si_copy_from_staging_texture(ctx, stransfer);
 
    if (stransfer->staging) {
-      sctx->num_alloc_tex_transfer_bytes += stransfer->staging->buf->base.size;
+      sctx->num_alloc_tex_transfer_bytes += stransfer->staging->buf->size;
       si_resource_reference(&stransfer->staging, NULL);
    }
 
@@ -2262,7 +2262,7 @@ si_memobj_from_handle(struct pipe_screen *screen, struct winsys_handle *whandle,
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct si_memory_object *memobj = CALLOC_STRUCT(si_memory_object);
-   struct pb_buffer *buf = NULL;
+   struct pb_buffer_lean *buf = NULL;
 
    if (!memobj)
       return NULL;
@@ -2312,7 +2312,7 @@ static struct pipe_resource *si_resource_from_memobj(struct pipe_screen *screen,
    /* si_texture_from_winsys_buffer doesn't increment refcount of
     * memobj->buf, so increment it here.
     */
-   struct pb_buffer *buf = NULL;
+   struct pb_buffer_lean *buf = NULL;
    radeon_bo_reference(sscreen->ws, &buf, memobj->buf);
    return res;
 }

@@ -12,7 +12,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
+bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer_lean *buf,
                                 unsigned usage)
 {
    return sctx->ws->cs_is_buffer_referenced(&sctx->gfx_cs, buf, usage);
@@ -144,7 +144,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
 
 bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
 {
-   struct pb_buffer *old_buf, *new_buf;
+   struct pb_buffer_lean *old_buf, *new_buf;
 
    /* Allocate a new resource. */
    new_buf = sscreen->ws->buffer_create(sscreen->ws, res->bo_size, 1 << res->bo_alignment_log2,
@@ -179,7 +179,7 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
    /* Print debug information. */
    if (sscreen->debug_flags & DBG(VM) && res->b.b.target == PIPE_BUFFER) {
       fprintf(stderr, "VM start=0x%" PRIX64 "  end=0x%" PRIX64 " | Buffer %" PRIu64 " bytes | Flags: ",
-              res->gpu_address, res->gpu_address + res->buf->base.size, res->buf->base.size);
+              res->gpu_address, res->gpu_address + res->buf->size, res->buf->size);
       si_res_print_flags(res->flags);
       fprintf(stderr, "\n");
    }
@@ -640,10 +640,10 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
 
 struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
                                                    const struct pipe_resource *templ,
-                                                   struct pb_buffer *imported_buf,
+                                                   struct pb_buffer_lean *imported_buf,
                                                    uint64_t offset)
 {
-   if (offset + templ->width0 > imported_buf->base.size)
+   if (offset + templ->width0 > imported_buf->size)
       return NULL;
 
    struct si_screen *sscreen = (struct si_screen *)screen;
@@ -679,8 +679,8 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
          res->b.b.usage = PIPE_USAGE_STAGING;
    }
 
-   si_init_resource_fields(sscreen, res, imported_buf->base.size,
-                           1 << imported_buf->base.alignment_log2);
+   si_init_resource_fields(sscreen, res, imported_buf->size,
+                           1 << imported_buf->alignment_log2);
 
    res->b.is_shared = true;
    res->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);

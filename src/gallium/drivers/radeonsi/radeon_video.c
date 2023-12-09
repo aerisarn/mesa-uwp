@@ -73,7 +73,7 @@ bool si_vid_resize_buffer(struct pipe_screen *screen, struct radeon_cmdbuf *cs,
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct radeon_winsys *ws = sscreen->ws;
-   unsigned bytes = MIN2(new_buf->res->buf->base.size, new_size);
+   unsigned bytes = MIN2(new_buf->res->buf->size, new_size);
    struct rvid_buffer old_buf = *new_buf;
    void *src = NULL, *dst = NULL;
 

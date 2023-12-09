@@ -13,7 +13,7 @@
 #include "pipebuffer/pb_slab.h"
 
 struct radeon_bo {
-   struct pb_buffer base;
+   struct pb_buffer_lean base;
    union {
       struct {
          struct pb_cache_entry cache_entry;
@@ -70,7 +70,7 @@ static inline void
 radeon_ws_bo_reference(struct radeon_winsys *rws, struct radeon_bo **dst,
                        struct radeon_bo *src)
 {
-   radeon_bo_reference(rws, (struct pb_buffer**)dst, (struct pb_buffer*)src);
+   radeon_bo_reference(rws, (struct pb_buffer_lean**)dst, (struct pb_buffer_lean*)src);
 }
 
 void *radeon_bo_do_map(struct radeon_bo *bo);

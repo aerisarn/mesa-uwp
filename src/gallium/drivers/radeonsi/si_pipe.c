@@ -1087,7 +1087,7 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
 {
    struct radeon_winsys *ws = sctx->ws;
    struct radeon_cmdbuf cs[8];
-   struct pb_buffer *gds_bo[ARRAY_SIZE(cs)];
+   struct pb_buffer_lean *gds_bo[ARRAY_SIZE(cs)];
 
    for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
       ws->cs_create(&cs[i], sctx->ctx, AMD_IP_COMPUTE, NULL, NULL);
