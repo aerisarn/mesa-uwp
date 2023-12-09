@@ -63,7 +63,6 @@ struct amdgpu_ib {
    unsigned                max_ib_size_dw;
    uint32_t                *ptr_ib_size;
    bool                    ptr_ib_size_inside_ib;
-   enum ib_type            ib_type;
 };
 
 struct amdgpu_fence_list {
@@ -212,7 +211,7 @@ static inline struct amdgpu_cs *
 amdgpu_cs(struct radeon_cmdbuf *rcs)
 {
    struct amdgpu_cs *cs = (struct amdgpu_cs*)rcs->priv;
-   assert(!cs || cs->main.ib_type == IB_MAIN);
+   assert(cs);
    return cs;
 }
 

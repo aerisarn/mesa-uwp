@@ -918,7 +918,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
     * and there is less waiting for buffers and fences. Proof:
     *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
     */
-   struct drm_amdgpu_cs_chunk_ib *info = &cs->csc->ib[ib->ib_type];
+   struct drm_amdgpu_cs_chunk_ib *info = &cs->csc->ib[IB_MAIN];
    /* This is the minimum size of a contiguous IB. */
    unsigned ib_size = 4 * 1024 * 4;
 
@@ -959,8 +959,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 
    rcs->current.buf = (uint32_t*)(ib->ib_mapped + ib->used_ib_space);
 
-   if (ib->ib_type == IB_MAIN)
-      cs->csc->ib_main_addr = rcs->current.buf;
+   cs->csc->ib_main_addr = rcs->current.buf;
 
    ib_size = ib->big_ib_buffer->size - ib->used_ib_space;
    rcs->current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs);
@@ -1129,8 +1128,6 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    fence_info.handle = cs->ctx->user_fence_bo;
    fence_info.offset = cs->ip_type * 4;
    amdgpu_cs_chunk_fence_info_to_data(&fence_info, (void*)&cs->fence_chunk);
-
-   cs->main.ib_type = IB_MAIN;
 
    if (!amdgpu_init_cs_context(ctx->ws, &cs->csc1, ip_type)) {
       FREE(cs);
