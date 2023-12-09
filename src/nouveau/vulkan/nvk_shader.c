@@ -80,18 +80,20 @@ use_nak(const struct nvk_physical_device *pdev, gl_shader_stage stage)
 uint64_t
 nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev)
 {
+   bool no_cbufs = pdev->debug_flags & NVK_DEBUG_NO_CBUF;
    uint64_t prog_debug = nvk_cg_get_prog_debug();
    uint64_t prog_optimize = nvk_cg_get_prog_optimize();
    uint64_t nak_stages = nvk_nak_stages(&pdev->info);
    uint64_t nak_flags = nak_debug_flags(pdev->nak);
 
    assert(prog_debug <= UINT8_MAX);
-   assert(prog_optimize <= UINT8_MAX);
+   assert(prog_optimize < 16);
    assert(nak_stages <= UINT32_MAX);
    assert(nak_flags <= UINT16_MAX);
 
    return prog_debug
       | (prog_optimize << 8)
+      | ((uint64_t)no_cbufs << 12)
       | (nak_stages << 16)
       | (nak_flags << 48);
 }
@@ -350,7 +352,8 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    assert(dev->pdev->info.cls_eng3d >= MAXWELL_A || !nir_has_image_var(nir));
 
    struct nvk_cbuf_map *cbuf_map = NULL;
-   if (use_nak(pdev, nir->info.stage) && 0) {
+   if (use_nak(pdev, nir->info.stage) &&
+       !(pdev->debug_flags & NVK_DEBUG_NO_CBUF)) {
       cbuf_map = &shader->cbuf_map;
    } else {
       /* Codegen sometimes puts stuff in cbuf 1 and adds 1 to our cbuf indices

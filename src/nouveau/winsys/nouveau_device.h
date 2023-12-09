@@ -34,6 +34,12 @@ enum nvk_debug {
    /* Dump VM bind/unbinds
     */
    NVK_DEBUG_VM = 1ull << 3,
+
+   /* Disable most cbufs
+    *
+    * Root descriptors still end up in a cbuf
+    */
+   NVK_DEBUG_NO_CBUF = 1ull << 5,
 };
 
 struct nouveau_ws_device {
