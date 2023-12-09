@@ -390,6 +390,11 @@ _mesa_glthread_finish(struct gl_context *ctx)
    }
 
    if (glthread->used) {
+      /* Mark the end of the batch, but don't increment "used". */
+      struct marshal_cmd_base *last =
+         (struct marshal_cmd_base *)&next->buffer[glthread->used];
+      last->cmd_id = NUM_DISPATCH_CMD;
+
       p_atomic_add(&glthread->stats.num_direct_items, glthread->used);
       next->used = glthread->used;
       glthread->used = 0;
