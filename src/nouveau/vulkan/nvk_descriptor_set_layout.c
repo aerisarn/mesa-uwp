@@ -97,12 +97,12 @@ nvk_descriptor_get_type_list(VkDescriptorType type,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateDescriptorSetLayout(VkDevice _device,
+nvk_CreateDescriptorSetLayout(VkDevice device,
                               const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
                               const VkAllocationCallbacks *pAllocator,
                               VkDescriptorSetLayout *pSetLayout)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
 
    uint32_t num_bindings = 0;
    uint32_t immutable_sampler_count = 0;
@@ -132,8 +132,8 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
    VK_MULTIALLOC_DECL(&ma, struct nvk_sampler *, samplers,
                       immutable_sampler_count);
 
-   if (!vk_descriptor_set_layout_multizalloc(&device->vk, &ma))
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   if (!vk_descriptor_set_layout_multizalloc(&dev->vk, &ma))
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    layout->binding_count = num_bindings;
 
@@ -280,7 +280,7 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
+nvk_GetDescriptorSetLayoutSupport(VkDevice device,
                                   const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
                                   VkDescriptorSetLayoutSupport *pSupport)
 {
