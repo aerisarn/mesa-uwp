@@ -641,7 +641,7 @@ amdgpu_lookup_or_add_slab_buffer(struct amdgpu_cs_context *cs, struct amdgpu_win
       return buffer;
 
    struct amdgpu_cs_buffer *real_buffer =
-      amdgpu_lookup_or_add_buffer(cs, &get_slab_entry_bo(bo)->real->b, AMDGPU_BO_REAL);
+      amdgpu_lookup_or_add_buffer(cs, &get_slab_entry_real_bo(bo)->b, AMDGPU_BO_REAL);
    if (!real_buffer)
       return NULL;
 

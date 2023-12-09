@@ -121,7 +121,6 @@ struct amdgpu_bo_sparse {
  */
 struct amdgpu_bo_slab_entry {
    struct amdgpu_winsys_bo b;
-   struct amdgpu_bo_real *real;
    struct pb_slab_entry entry;
 };
 
@@ -166,6 +165,12 @@ static struct amdgpu_bo_slab_entry *get_slab_entry_bo(struct amdgpu_winsys_bo *b
 static inline struct amdgpu_bo_real_reusable_slab *get_bo_from_slab(struct pb_slab *slab)
 {
    return container_of(slab, struct amdgpu_bo_real_reusable_slab, slab);
+}
+
+static struct amdgpu_bo_real *get_slab_entry_real_bo(struct amdgpu_winsys_bo *bo)
+{
+   assert(bo->type == AMDGPU_BO_SLAB_ENTRY);
+   return &get_bo_from_slab(((struct amdgpu_bo_slab_entry*)bo)->entry.slab)->b.b;
 }
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);

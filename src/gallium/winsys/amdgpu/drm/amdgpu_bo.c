@@ -359,7 +359,7 @@ void *amdgpu_bo_map(struct radeon_winsys *rws,
    if (is_real_bo(bo)) {
       real = get_real_bo(bo);
    } else {
-      real = get_slab_entry_bo(bo)->real;
+      real = get_slab_entry_real_bo(bo);
       offset = bo->va - real->b.va;
    }
 
@@ -399,7 +399,7 @@ void amdgpu_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *buf)
 
    assert(bo->type != AMDGPU_BO_SPARSE);
 
-   real = is_real_bo(bo) ? get_real_bo(bo) : get_slab_entry_bo(bo)->real;
+   real = is_real_bo(bo) ? get_real_bo(bo) : get_slab_entry_real_bo(bo);
 
    if (real->is_user_ptr)
       return;
@@ -736,8 +736,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
       bo->b.type = AMDGPU_BO_SLAB_ENTRY;
       bo->b.va = slab_bo->b.b.b.va + i * entry_size;
       bo->b.unique_id = base_id + i;
-
-      bo->real = &slab_bo->b.b;
 
       bo->entry.slab = &slab_bo->slab;
       list_addtail(&bo->entry.head, &slab_bo->slab.free);
