@@ -229,9 +229,7 @@ static void amdgpu_bo_destroy_or_cache(struct radeon_winsys *rws, struct pb_buff
 
 static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
 {
-   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++)
-      pb_slabs_reclaim(&ws->bo_slabs[i]);
-
+   pb_slabs_reclaim(&ws->bo_slabs);
    pb_cache_release_all_buffers(&ws->bo_cache);
 }
 
@@ -615,25 +613,11 @@ bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
    return amdgpu_bo_can_reclaim(priv, &bo->b.base);
 }
 
-static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size)
-{
-   /* Find the correct slab allocator for the given size. */
-   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
-      struct pb_slabs *slabs = &ws->bo_slabs[i];
-
-      if (size <= 1 << (slabs->min_order + slabs->num_orders - 1))
-         return slabs;
-   }
-
-   assert(0);
-   return NULL;
-}
-
 static unsigned get_slab_wasted_size(struct amdgpu_winsys *ws, struct amdgpu_bo_slab_entry *bo)
 {
    assert(bo->b.base.size <= bo->entry.slab->entry_size);
    assert(bo->b.base.size < (1 << bo->b.base.alignment_log2) ||
-          bo->b.base.size < 1 << ws->bo_slabs[0].min_order ||
+          bo->b.base.size < 1 << ws->bo_slabs.min_order ||
           bo->b.base.size > bo->entry.slab->entry_size / 2);
    return bo->entry.slab->entry_size - bo->b.base.size;
 }
@@ -642,23 +626,20 @@ static void amdgpu_bo_slab_destroy(struct radeon_winsys *rws, struct pb_buffer *
 {
    struct amdgpu_winsys *ws = amdgpu_winsys(rws);
    struct amdgpu_bo_slab_entry *bo = get_slab_entry_bo(amdgpu_winsys_bo(_buf));
-   struct pb_slabs *slabs;
-
-   slabs = get_slabs(ws, bo->b.base.size);
 
    if (bo->b.base.placement & RADEON_DOMAIN_VRAM)
       ws->slab_wasted_vram -= get_slab_wasted_size(ws, bo);
    else
       ws->slab_wasted_gtt -= get_slab_wasted_size(ws, bo);
 
-   pb_slab_free(slabs, &bo->entry);
+   pb_slab_free(&ws->bo_slabs, &bo->entry);
 }
 
 /* Return the power of two size of a slab entry matching the input size. */
 static unsigned get_slab_pot_entry_size(struct amdgpu_winsys *ws, unsigned size)
 {
    unsigned entry_size = util_next_power_of_two(size);
-   unsigned min_entry_size = 1 << ws->bo_slabs[0].min_order;
+   unsigned min_entry_size = 1 << ws->bo_slabs.min_order;
 
    return MAX2(entry_size, min_entry_size);
 }
@@ -682,44 +663,37 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    enum radeon_bo_domain domains = radeon_domain_from_heap(heap);
    enum radeon_bo_flag flags = radeon_flags_from_heap(heap);
    uint32_t base_id;
-   unsigned slab_size = 0;
 
    if (!slab)
       return NULL;
 
    /* Determine the slab buffer size. */
-   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
-      unsigned max_entry_size = 1 << (ws->bo_slabs[i].min_order + ws->bo_slabs[i].num_orders - 1);
+   unsigned max_entry_size = 1 << (ws->bo_slabs.min_order + ws->bo_slabs.num_orders - 1);
 
-      if (entry_size <= max_entry_size) {
-         /* The slab size is twice the size of the largest possible entry. */
-         slab_size = max_entry_size * 2;
+   assert(entry_size <= max_entry_size);
 
-         if (!util_is_power_of_two_nonzero(entry_size)) {
-            assert(util_is_power_of_two_nonzero(entry_size * 4 / 3));
+   /* The slab size is twice the size of the largest possible entry. */
+   unsigned slab_size = max_entry_size * 2;
 
-            /* If the entry size is 3/4 of a power of two, we would waste space and not gain
-             * anything if we allocated only twice the power of two for the backing buffer:
-             *   2 * 3/4 = 1.5 usable with buffer size 2
-             *
-             * Allocating 5 times the entry size leads us to the next power of two and results
-             * in a much better memory utilization:
-             *   5 * 3/4 = 3.75 usable with buffer size 4
-             */
-            if (entry_size * 5 > slab_size)
-               slab_size = util_next_power_of_two(entry_size * 5);
-         }
+   if (!util_is_power_of_two_nonzero(entry_size)) {
+      assert(util_is_power_of_two_nonzero(entry_size * 4 / 3));
 
-         /* The largest slab should have the same size as the PTE fragment
-          * size to get faster address translation.
-          */
-         if (i == NUM_SLAB_ALLOCATORS - 1 &&
-             slab_size < ws->info.pte_fragment_size)
-            slab_size = ws->info.pte_fragment_size;
-         break;
-      }
+      /* If the entry size is 3/4 of a power of two, we would waste space and not gain
+       * anything if we allocated only twice the power of two for the backing buffer:
+       *   2 * 3/4 = 1.5 usable with buffer size 2
+       *
+       * Allocating 5 times the entry size leads us to the next power of two and results
+       * in a much better memory utilization:
+       *   5 * 3/4 = 3.75 usable with buffer size 4
+       */
+      if (entry_size * 5 > slab_size)
+         slab_size = util_next_power_of_two(entry_size * 5);
    }
-   assert(slab_size != 0);
+
+   /* The largest slab should have the same size as the PTE fragment
+    * size to get faster address translation.
+    */
+   slab_size = MAX2(slab_size, ws->info.pte_fragment_size);
 
    slab->buffer = amdgpu_winsys_bo(amdgpu_bo_create(ws,
                                                     slab_size, slab_size,
@@ -727,6 +701,7 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    if (!slab->buffer)
       goto fail;
 
+   /* We can get a buffer from pb_cache that is slightly larger. */
    slab_size = slab->buffer->base.size;
 
    slab->base.num_entries = slab_size / entry_size;
@@ -751,13 +726,9 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
       bo->b.va = slab->buffer->va + i * entry_size;
       bo->b.unique_id = base_id + i;
 
-      if (is_real_bo(slab->buffer)) {
-         /* The slab is not suballocated. */
-         bo->real = get_real_bo(slab->buffer);
-      } else {
-         /* The slab is allocated out of a bigger slab. */
-         bo->real = get_slab_entry_bo(slab->buffer)->real;
-      }
+      /* The slab is not suballocated. */
+      assert(is_real_bo(slab->buffer));
+      bo->real = get_real_bo(slab->buffer);
 
       bo->entry.slab = &slab->base;
       list_addtail(&bo->entry.head, &slab->base.free);
@@ -1358,8 +1329,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       return amdgpu_bo_sparse_create(ws, size, domain, flags);
    }
 
-   struct pb_slabs *last_slab = &ws->bo_slabs[NUM_SLAB_ALLOCATORS - 1];
-   unsigned max_slab_entry_size = 1 << (last_slab->min_order + last_slab->num_orders - 1);
+   unsigned max_slab_entry_size = 1 << (ws->bo_slabs.min_order + ws->bo_slabs.num_orders - 1);
    int heap = radeon_get_heap_index(domain, flags);
 
    /* Sub-allocate small buffers from slabs. */
@@ -1387,13 +1357,12 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
          }
       }
 
-      struct pb_slabs *slabs = get_slabs(ws, alloc_size);
-      entry = pb_slab_alloc(slabs, alloc_size, heap);
+      entry = pb_slab_alloc(&ws->bo_slabs, alloc_size, heap);
       if (!entry) {
          /* Clean up buffer managers and try again. */
          amdgpu_clean_up_buffer_managers(ws);
 
-         entry = pb_slab_alloc(slabs, alloc_size, heap);
+         entry = pb_slab_alloc(&ws->bo_slabs, alloc_size, heap);
       }
       if (!entry)
          return NULL;

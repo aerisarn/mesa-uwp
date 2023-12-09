@@ -17,8 +17,6 @@
 
 struct amdgpu_cs;
 
-#define NUM_SLAB_ALLOCATORS 3
-
 /* DRM file descriptors, file descriptions and buffer sharing.
  *
  * amdgpu_device_initialize first argument is a file descriptor (fd)
@@ -70,11 +68,7 @@ struct amdgpu_winsys {
    int fd;
 
    struct pb_cache bo_cache;
-
-   /* Each slab buffer can only contain suballocations of equal sizes, so we
-    * need to layer the allocators, so that we don't waste too much memory.
-    */
-   struct pb_slabs bo_slabs[NUM_SLAB_ALLOCATORS];
+   struct pb_slabs bo_slabs;  /* Slab allocator. */
 
    amdgpu_device_handle dev;
 
