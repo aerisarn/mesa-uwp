@@ -729,10 +729,12 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    slab_bo->slab.num_free = slab_bo->slab.num_entries;
    slab_bo->slab.group_index = group_index;
    slab_bo->slab.entry_size = entry_size;
-   slab_bo->entries = CALLOC(slab_bo->slab.num_entries, sizeof(*slab_bo->entries));
+   slab_bo->entries = os_malloc_aligned(slab_bo->slab.num_entries * sizeof(*slab_bo->entries),
+                                        CACHE_LINE_SIZE);
    if (!slab_bo->entries)
       goto fail;
 
+   memset(slab_bo->entries, 0, slab_bo->slab.num_entries * sizeof(*slab_bo->entries));
    list_inithead(&slab_bo->slab.free);
 
    base_id = __sync_fetch_and_add(&ws->next_bo_unique_id, slab_bo->slab.num_entries);
@@ -778,7 +780,7 @@ void amdgpu_bo_slab_free(struct amdgpu_winsys *ws, struct pb_slab *slab)
    for (unsigned i = 0; i < bo->slab.num_entries; ++i)
       amdgpu_bo_remove_fences(&bo->entries[i].b);
 
-   FREE(bo->entries);
+   os_free_aligned(bo->entries);
    amdgpu_winsys_bo_reference(ws, (struct amdgpu_winsys_bo**)&bo, NULL);
 }
 
