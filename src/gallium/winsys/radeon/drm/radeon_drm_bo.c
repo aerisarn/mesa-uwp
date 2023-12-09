@@ -596,11 +596,6 @@ static void radeon_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *_buf)
    mtx_unlock(&bo->u.real.map_mutex);
 }
 
-static const struct pb_vtbl radeon_bo_vtbl = {
-   radeon_bo_destroy_or_cache
-   /* other functions are never called */
-};
-
 static struct radeon_bo *radeon_create_bo(struct radeon_drm_winsys *rws,
                                           unsigned size, unsigned alignment,
                                           unsigned initial_domains,
@@ -654,7 +649,6 @@ static struct radeon_bo *radeon_create_bo(struct radeon_drm_winsys *rws,
    bo->base.base.alignment_log2 = util_logbase2(alignment);
    bo->base.base.usage = 0;
    bo->base.base.size = size;
-   bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = rws;
    bo->handle = args.handle;
    bo->va = 0;
@@ -747,11 +741,6 @@ static void radeon_bo_slab_destroy(void *winsys, struct pb_buffer *_buf)
    pb_slab_free(&bo->rws->bo_slabs, &bo->u.slab.entry);
 }
 
-static const struct pb_vtbl radeon_winsys_bo_slab_vtbl = {
-   radeon_bo_slab_destroy
-   /* other functions are never called */
-};
-
 struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
                                      unsigned entry_size,
                                      unsigned group_index)
@@ -791,7 +780,6 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
       bo->base.base.alignment_log2 = util_logbase2(entry_size);
       bo->base.base.usage = slab->buffer->base.base.usage;
       bo->base.base.size = entry_size;
-      bo->base.vtbl = &radeon_winsys_bo_slab_vtbl;
       bo->rws = ws;
       bo->va = slab->buffer->va + i * entry_size;
       bo->initial_domain = domains;
@@ -1074,7 +1062,12 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
 
 static void radeon_winsys_bo_destroy(struct radeon_winsys *ws, struct pb_buffer *buf)
 {
-   buf->vtbl->destroy(ws, buf);
+   struct radeon_bo *bo = radeon_bo(buf);
+
+   if (bo->handle)
+      radeon_bo_destroy_or_cache(ws, buf);
+   else
+      radeon_bo_slab_destroy(ws, buf);
 }
 
 static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
@@ -1117,7 +1110,6 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
    bo->handle = args.handle;
    bo->base.base.alignment_log2 = 0;
    bo->base.base.size = size;
-   bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = ws;
    bo->user_ptr = pointer;
    bo->va = 0;
@@ -1246,7 +1238,6 @@ static struct pb_buffer *radeon_winsys_bo_from_handle(struct radeon_winsys *rws,
    pipe_reference_init(&bo->base.base.reference, 1);
    bo->base.base.alignment_log2 = 0;
    bo->base.base.size = (unsigned) size;
-   bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = ws;
    bo->va = 0;
    bo->hash = __sync_fetch_and_add(&ws->next_bo_hash, 1);
