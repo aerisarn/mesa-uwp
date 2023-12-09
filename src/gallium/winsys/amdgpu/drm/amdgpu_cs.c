@@ -954,7 +954,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
    main_ib->ptr_ib_size = &chunk_ib->ib_bytes;
    main_ib->ptr_ib_size_inside_ib = false;
 
-   amdgpu_cs_add_buffer(cs->main_ib.rcs, main_ib->big_ib_buffer,
+   amdgpu_cs_add_buffer(rcs, main_ib->big_ib_buffer,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
 
    rcs->current.buf = (uint32_t*)(main_ib->ib_mapped + main_ib->used_ib_space);
@@ -1153,7 +1153,6 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    cs->csc1.ws = ctx->ws;
    cs->csc2.ws = ctx->ws;
 
-   cs->main_ib.rcs = rcs;
    rcs->priv = cs;
 
    if (!amdgpu_get_new_ib(ctx->ws, rcs, &cs->main_ib, cs)) {
@@ -1299,7 +1298,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    rcs->current.max_dw = main_ib->big_ib_buffer->size / 4 - cs_epilog_dw;
    rcs->gpu_address = va;
 
-   amdgpu_cs_add_buffer(cs->main_ib.rcs, main_ib->big_ib_buffer,
+   amdgpu_cs_add_buffer(rcs, main_ib->big_ib_buffer,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
 
    return true;

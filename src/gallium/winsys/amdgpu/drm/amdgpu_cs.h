@@ -47,8 +47,6 @@ enum ib_type {
 };
 
 struct amdgpu_ib {
-   struct radeon_cmdbuf *rcs; /* pointer to the driver-owned data */
-
    /* A buffer out of which new IBs are allocated. */
    struct pb_buffer        *big_ib_buffer;
    uint8_t                 *ib_mapped;
