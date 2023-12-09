@@ -755,6 +755,7 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    radeon_bo_reference(&ws->dummy_ws.base, &main_ib->big_buffer, pb);
    radeon_bo_reference(&ws->dummy_ws.base, &pb, NULL);
 
+   main_ib->gpu_address = amdgpu_bo_get_va(main_ib->big_buffer);
    main_ib->big_buffer_cpu_ptr = mapped;
    main_ib->used_ib_space = 0;
 
@@ -799,7 +800,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
          return false;
    }
 
-   chunk_ib->va_start = amdgpu_winsys_bo(main_ib->big_buffer)->va + main_ib->used_ib_space;
+   chunk_ib->va_start = main_ib->gpu_address + main_ib->used_ib_space;
    chunk_ib->ib_bytes = 0;
    /* ib_bytes is in dwords and the conversion to bytes will be done before
     * the CS ioctl. */
@@ -1052,7 +1053,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    amdgpu_bo_unmap(&ws->dummy_ws.base, preamble_bo);
 
    for (unsigned i = 0; i < 2; i++) {
-      csc[i]->chunk_ib[IB_PREAMBLE].va_start = amdgpu_winsys_bo(preamble_bo)->va;
+      csc[i]->chunk_ib[IB_PREAMBLE].va_start = amdgpu_bo_get_va(preamble_bo);
       csc[i]->chunk_ib[IB_PREAMBLE].ib_bytes = preamble_num_dw * 4;
 
       csc[i]->chunk_ib[IB_MAIN].flags |= AMDGPU_IB_FLAG_PREEMPT;
@@ -1115,7 +1116,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
       return false;
 
    assert(main_ib->used_ib_space == 0);
-   uint64_t va = amdgpu_winsys_bo(main_ib->big_buffer)->va;
+   uint64_t va = main_ib->gpu_address;
 
    /* This space was originally reserved. */
    rcs->current.max_dw += cs_epilog_dw;
@@ -1163,7 +1164,7 @@ static unsigned amdgpu_cs_get_buffer_list(struct radeon_cmdbuf *rcs,
     if (list) {
         for (unsigned i = 0; i < num_real_buffers; i++) {
             list[i].bo_size = real_buffers->buffers[i].bo->base.size;
-            list[i].vm_address = real_buffers->buffers[i].bo->va;
+            list[i].vm_address = get_real_bo(real_buffers->buffers[i].bo)->gpu_address;
             list[i].priority_usage = real_buffers->buffers[i].usage;
         }
     }

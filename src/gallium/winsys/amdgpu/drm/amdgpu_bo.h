@@ -52,7 +52,6 @@ struct amdgpu_winsys_bo {
    enum amdgpu_bo_type type;
 
    uint32_t unique_id;
-   uint64_t va;
 
    /* how many command streams, which are being emitted in a separate
     * thread, is this bo referenced in? */
@@ -75,6 +74,7 @@ struct amdgpu_bo_real {
 
    amdgpu_bo_handle bo;
    amdgpu_va_handle va_handle;
+   uint64_t gpu_address;
    void *cpu_ptr; /* for user_ptr and permanent maps */
    int map_count;
    uint32_t kms_handle;
@@ -105,6 +105,7 @@ struct amdgpu_bo_real_reusable {
 struct amdgpu_bo_sparse {
    struct amdgpu_winsys_bo b;
    amdgpu_va_handle va_handle;
+   uint64_t gpu_address;
 
    uint32_t num_va_pages;
    uint32_t num_backing_pages;
@@ -191,6 +192,7 @@ bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry);
 struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size,
                                      unsigned group_index);
 void amdgpu_bo_slab_free(struct amdgpu_winsys *ws, struct pb_slab *slab);
+uint64_t amdgpu_bo_get_va(struct pb_buffer *buf);
 
 static inline
 struct amdgpu_winsys_bo *amdgpu_winsys_bo(struct pb_buffer *bo)
