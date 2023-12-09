@@ -401,8 +401,9 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          P_IMMD(p, NV9097, SET_PIPELINE_PROGRAM(idx), addr);
       }
 
-      P_IMMD(p, NV9097, SET_PIPELINE_REGISTER_COUNT(idx),
-             shader->info.num_gprs);
+      P_MTHD(p, NVC397, SET_PIPELINE_REGISTER_COUNT(idx));
+      P_NVC397_SET_PIPELINE_REGISTER_COUNT(p, idx, shader->info.num_gprs);
+      P_NVC397_SET_PIPELINE_BINDING(p, idx, stage);
 
       switch (stage) {
       case MESA_SHADER_VERTEX:

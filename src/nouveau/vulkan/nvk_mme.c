@@ -7,6 +7,7 @@
 #include "nvk_private.h"
 
 static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
+   [NVK_MME_BIND_CBUF_DESC]              = nvk_mme_bind_cbuf_desc,
    [NVK_MME_CLEAR]                       = nvk_mme_clear,
    [NVK_MME_DRAW]                        = nvk_mme_draw,
    [NVK_MME_DRAW_INDEXED]                = nvk_mme_draw_indexed,

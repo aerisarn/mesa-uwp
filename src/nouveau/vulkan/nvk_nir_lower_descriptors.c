@@ -435,6 +435,12 @@ build_cbuf_map(nir_shader *nir, struct lower_descriptors_ctx *ctx)
       if (mapped_cbuf_count >= max_cbuf_bindings)
          break;
 
+      /* We can't support indirect cbufs in compute yet */
+      if ((nir->info.stage == MESA_SHADER_COMPUTE ||
+           nir->info.stage == MESA_SHADER_KERNEL) &&
+          cbufs[i].key.type == NVK_CBUF_TYPE_UBO_DESC)
+         continue;
+
       ctx->cbuf_map->cbufs[mapped_cbuf_count++] = cbufs[i].key;
    }
    ctx->cbuf_map->cbuf_count = mapped_cbuf_count;

@@ -454,13 +454,17 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                               const VkCommandBufferBeginInfo *pBeginInfo)
 {
    if (cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 3);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
       P_MTHD(p, NV9097, INVALIDATE_SAMPLER_CACHE_NO_WFI);
       P_NV9097_INVALIDATE_SAMPLER_CACHE_NO_WFI(p, {
          .lines = LINES_ALL,
       });
       P_NV9097_INVALIDATE_TEXTURE_HEADER_CACHE_NO_WFI(p, {
          .lines = LINES_ALL,
+      });
+
+      P_IMMD(p, NVA097, INVALIDATE_SHADER_CACHES_NO_WFI, {
+         .constant = CONSTANT_TRUE,
       });
    }
 
@@ -1649,9 +1653,71 @@ nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
    vk_dynamic_graphics_state_clear_dirty(dyn);
 }
 
+void
+nvk_mme_bind_cbuf_desc(struct mme_builder *b)
+{
+   /* First 4 bits are group, later bits are slot */
+   struct mme_value group_slot = mme_load(b);
+
+   if (b->devinfo->cls_eng3d >= TURING_A) {
+      struct mme_value64 addr = mme_load_addr64(b);
+      mme_tu104_read_fifoed(b, addr, mme_imm(3));
+   }
+
+   /* Load the descriptor */
+   struct mme_value addr_lo = mme_load(b);
+   struct mme_value addr_hi = mme_load(b);
+   struct mme_value size = mme_load(b);
+
+   struct mme_value cb = mme_alloc_reg(b);
+   mme_if(b, ieq, size, mme_zero()) {
+      /* Bottim bit is the valid bit, 8:4 are shader slot */
+      mme_merge_to(b, cb, mme_zero(), group_slot, 4, 5, 4);
+   }
+
+   mme_if(b, ine, size, mme_zero()) {
+      uint32_t alignment = nvk_min_cbuf_alignment(b->devinfo);
+      mme_add_to(b, size, size, mme_imm(alignment - 1));
+      mme_and_to(b, size, size, mme_imm(~(alignment - 1)));
+
+      /* size = max(size, NVK_MAX_CBUF_SIZE) */
+      assert(util_is_power_of_two_nonzero(NVK_MAX_CBUF_SIZE));
+      struct mme_value is_large =
+         mme_and(b, size, mme_imm(~(NVK_MAX_CBUF_SIZE - 1)));
+      mme_if(b, ine, is_large, mme_zero()) {
+         mme_mov_to(b, size, mme_imm(NVK_MAX_CBUF_SIZE));
+      }
+
+      mme_mthd(b, NV9097_SET_CONSTANT_BUFFER_SELECTOR_A);
+      mme_emit(b, size);
+      mme_emit(b, addr_hi);
+      mme_emit(b, addr_lo);
+
+      /* Bottim bit is the valid bit, 8:4 are shader slot */
+      mme_merge_to(b, cb, mme_imm(1), group_slot, 4, 5, 4);
+   }
+
+   mme_free_reg(b, addr_hi);
+   mme_free_reg(b, addr_lo);
+   mme_free_reg(b, size);
+
+   /* The group comes in the bottom 4 bits in group_slot and we need to
+    * combine it with the method.  However, unlike most array methods with a
+    * stride if 1 dword, BIND_GROUP_CONSTANT_BUFFER has a stride of 32B or 8
+    * dwords.  This means we need to also shift by 3.
+    */
+   struct mme_value group = mme_merge(b, mme_imm(0), group_slot, 3, 4, 0);
+   mme_mthd_arr(b, NV9097_BIND_GROUP_CONSTANT_BUFFER(0), group);
+   mme_emit(b, cb);
+}
+
 static void
 nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 {
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+   const uint32_t min_cbuf_alignment = nvk_min_cbuf_alignment(&pdev->info);
+   const struct nvk_graphics_pipeline *pipeline = cmd->state.gfx.pipeline;
    struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
    VkResult result;
 
@@ -1662,10 +1728,12 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
     * 0x100 aligned.
     */
    STATIC_ASSERT((sizeof(desc->root) & 0xff) == 0);
+   assert(sizeof(desc->root) % min_cbuf_alignment == 0);
 
    void *root_desc_map;
    uint64_t root_desc_addr;
-   result = nvk_cmd_buffer_upload_alloc(cmd, sizeof(desc->root), 0x100,
+   result = nvk_cmd_buffer_upload_alloc(cmd, sizeof(desc->root),
+                                        min_cbuf_alignment,
                                         &root_desc_addr, &root_desc_map);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
@@ -1675,22 +1743,92 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    desc->root.root_desc_addr = root_desc_addr;
    memcpy(root_desc_map, &desc->root, sizeof(desc->root));
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 24);
+   uint32_t root_cbuf_count = 0;
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      const struct nvk_shader *shader = &pipeline->base.shaders[stage];
+      if (shader->code_size == 0)
+         continue;
 
+      uint32_t group = stage;
+
+      for (uint32_t c = 0; c < shader->cbuf_map.cbuf_count; c++) {
+         const struct nvk_cbuf *cbuf = &shader->cbuf_map.cbufs[c];
+
+         /* We bind these at the very end */
+         if (cbuf->type == NVK_CBUF_TYPE_ROOT_DESC) {
+            root_cbuf_count++;
+            continue;
+         }
+
+         struct nvk_buffer_address ba;
+         if (nvk_cmd_buffer_get_cbuf_descriptor(cmd, desc, cbuf, &ba)) {
+            assert(ba.base_addr % min_cbuf_alignment == 0);
+            ba.size = align(ba.size, min_cbuf_alignment);
+            ba.size = MIN2(ba.size, NVK_MAX_CBUF_SIZE);
+
+            struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+
+            if (ba.size > 0) {
+               P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
+               P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, ba.size);
+               P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, ba.base_addr >> 32);
+               P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, ba.base_addr);
+            }
+
+            P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(group), {
+               .valid = ba.size > 0,
+               .shader_slot = c,
+            });
+         } else {
+            uint64_t desc_addr =
+               nvk_cmd_buffer_get_cbuf_descriptor_addr(cmd, desc, cbuf);
+
+            if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
+               struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+
+               P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_BIND_CBUF_DESC));
+               P_INLINE_DATA(p, group | (c << 4));
+               P_INLINE_DATA(p, desc_addr >> 32);
+               P_INLINE_DATA(p, desc_addr);
+            } else {
+               struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
+
+               P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_BIND_CBUF_DESC));
+               P_INLINE_DATA(p, group | (c << 4));
+
+               nv_push_update_count(p, 3);
+               nvk_cmd_buffer_push_indirect(cmd, desc_addr, 3);
+            }
+         }
+      }
+   }
+
+   /* We bind all root descriptors last so that CONSTANT_BUFFER_SELECTOR is
+    * always left pointing at the root descriptor table.  This way draw
+    * parameters and similar MME root table updates always hit the root
+    * descriptor table and not some random UBO.
+    */
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 4 + 2 * root_cbuf_count);
    P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, sizeof(desc->root));
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, root_desc_addr >> 32);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_desc_addr);
 
-   for (uint32_t i = 0; i < 5; i++) {
-      P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(i), {
-         .valid = VALID_TRUE,
-         .shader_slot = 0,
-      });
-      P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(i), {
-         .valid = VALID_TRUE,
-         .shader_slot = 1,
-      });
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      const struct nvk_shader *shader = &pipeline->base.shaders[stage];
+      if (shader->code_size == 0)
+         continue;
+
+      uint32_t group = stage;
+
+      for (uint32_t c = 0; c < shader->cbuf_map.cbuf_count; c++) {
+         if (shader->cbuf_map.cbufs[c].type == NVK_CBUF_TYPE_ROOT_DESC) {
+            P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(group), {
+               .valid = VALID_TRUE,
+               .shader_slot = c,
+            });
+         }
+      }
    }
 }
 

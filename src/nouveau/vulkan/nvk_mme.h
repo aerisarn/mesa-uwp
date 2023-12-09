@@ -10,6 +10,7 @@
 struct nv_device_info;
 
 enum nvk_mme {
+   NVK_MME_BIND_CBUF_DESC,
    NVK_MME_CLEAR,
    NVK_MME_DRAW,
    NVK_MME_DRAW_INDEXED,
@@ -111,6 +112,7 @@ uint32_t *nvk_build_mme(const struct nv_device_info *devinfo,
 
 void nvk_test_build_all_mmes(const struct nv_device_info *devinfo);
 
+void nvk_mme_bind_cbuf_desc(struct mme_builder *b);
 void nvk_mme_clear(struct mme_builder *b);
 void nvk_mme_draw(struct mme_builder *b);
 void nvk_mme_draw_indexed(struct mme_builder *b);

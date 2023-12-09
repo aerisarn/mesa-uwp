@@ -705,6 +705,62 @@ nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
    }
 }
 
+bool
+nvk_cmd_buffer_get_cbuf_descriptor(struct nvk_cmd_buffer *cmd,
+                                   const struct nvk_descriptor_state *desc,
+                                   const struct nvk_cbuf *cbuf,
+                                   struct nvk_buffer_address *desc_out)
+{
+   switch (cbuf->type) {
+   case NVK_CBUF_TYPE_INVALID:
+      *desc_out = (struct nvk_buffer_address) { .size = 0 };
+      return true;
+
+   case NVK_CBUF_TYPE_ROOT_DESC:
+      unreachable("The caller should handle root descriptors");
+      return false;
+
+   case NVK_CBUF_TYPE_DESC_SET:
+      *desc_out = (struct nvk_buffer_address) {
+         .base_addr = desc->root.sets[cbuf->desc_set],
+         .size = desc->set_sizes[cbuf->desc_set],
+      };
+      return true;
+
+   case NVK_CBUF_TYPE_DYNAMIC_UBO:
+      *desc_out = desc->root.dynamic_buffers[cbuf->dynamic_idx];
+      return true;
+
+   case NVK_CBUF_TYPE_UBO_DESC: {
+      if (desc->sets[cbuf->desc_set] != NULL)
+         return false;
+
+      struct nvk_push_descriptor_set *push = desc->push[cbuf->desc_set];
+      if (push == NULL)
+         return false;
+
+      assert(cbuf->desc_offset < NVK_PUSH_DESCRIPTOR_SET_SIZE);
+      void *desc = &push->data[cbuf->desc_offset];
+      *desc_out = *(struct nvk_buffer_address *)desc;
+      return true;
+   }
+
+   default:
+      unreachable("Invalid cbuf type");
+   }
+}
+
+uint64_t
+nvk_cmd_buffer_get_cbuf_descriptor_addr(struct nvk_cmd_buffer *cmd,
+                                        const struct nvk_descriptor_state *desc,
+                                        const struct nvk_cbuf *cbuf)
+{
+   assert(cbuf->type == NVK_CBUF_TYPE_UBO_DESC);
+
+   assert(cbuf->desc_offset < desc->set_sizes[cbuf->desc_set]);
+   return desc->root.sets[cbuf->desc_set] + cbuf->desc_offset;
+}
+
 void
 nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
 {
