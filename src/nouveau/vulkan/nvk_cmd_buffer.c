@@ -159,13 +159,10 @@ nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
 }
 
 void
-nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
-                                    struct nvk_buffer *buffer,
-                                    uint64_t offset, uint64_t range)
+nvk_cmd_buffer_push_indirect(struct nvk_cmd_buffer *cmd,
+                             uint64_t addr, uint32_t range)
 {
    nvk_cmd_buffer_flush_push(cmd);
-
-   uint64_t addr = nvk_buffer_address(buffer, offset);
 
    struct nvk_cmd_push push = {
       .addr = addr,

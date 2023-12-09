@@ -2330,6 +2330,8 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    } else {
       const uint32_t max_draws_per_push =
          ((NV_PUSH_MAX_COUNT - 3) * 4) / stride;
+
+      uint64_t draw_addr = nvk_buffer_address(buffer, offset);
       while (drawCount) {
          const uint32_t count = MIN2(drawCount, max_draws_per_push);
 
@@ -2341,9 +2343,9 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 
          uint64_t range = count * (uint64_t)stride;
          nv_push_update_count(p, range / 4);
-         nvk_cmd_buffer_push_indirect_buffer(cmd, buffer, offset, range);
+         nvk_cmd_buffer_push_indirect(cmd, draw_addr, range);
 
-         offset += range;
+         draw_addr += range;
          drawCount -= count;
       }
    }
@@ -2443,6 +2445,8 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    } else {
       const uint32_t max_draws_per_push =
          ((NV_PUSH_MAX_COUNT - 3) * 4) / stride;
+
+      uint64_t draw_addr = nvk_buffer_address(buffer, offset);
       while (drawCount) {
          const uint32_t count = MIN2(drawCount, max_draws_per_push);
 
@@ -2454,9 +2458,9 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
 
          uint64_t range = count * (uint64_t)stride;
          nv_push_update_count(p, range / 4);
-         nvk_cmd_buffer_push_indirect_buffer(cmd, buffer, offset, range);
+         nvk_cmd_buffer_push_indirect(cmd, draw_addr, range);
 
-         offset += range;
+         draw_addr += range;
          drawCount -= count;
       }
    }
@@ -2716,6 +2720,9 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
+   uint64_t counter_addr = nvk_buffer_address(counter_buffer,
+                                              counterBufferOffset);
+
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
       struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
@@ -2726,8 +2733,6 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       P_INLINE_DATA(p, begin);
       P_INLINE_DATA(p, instanceCount);
       P_INLINE_DATA(p, firstInstance);
-      uint64_t counter_addr = nvk_buffer_address(counter_buffer,
-            counterBufferOffset);
       P_INLINE_DATA(p, counter_addr >> 32);
       P_INLINE_DATA(p, counter_addr);
    } else {
@@ -2740,8 +2745,7 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       P_INLINE_DATA(p, instanceCount);
       P_INLINE_DATA(p, firstInstance);
       nv_push_update_count(p, 1);
-      nvk_cmd_buffer_push_indirect_buffer(cmd, counter_buffer,
-            counterBufferOffset, 4);
+      nvk_cmd_buffer_push_indirect(cmd, counter_addr, 4);
    }
 }
 
@@ -2840,7 +2844,7 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
          P_INLINE_DATA(p, cb_idx);
          nv_push_update_count(p, 1);
-         nvk_cmd_buffer_push_indirect_buffer(cmd, buffer, offset, 4);
+         nvk_cmd_buffer_push_indirect(cmd, cb_addr, 4);
       }
    }
 }

@@ -192,10 +192,8 @@ nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
 }
 
 void
-nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
-                                    struct nvk_buffer *buffer,
-                                    uint64_t offset,
-                                    uint64_t dw_count);
+nvk_cmd_buffer_push_indirect(struct nvk_cmd_buffer *cmd,
+                             uint64_t addr, uint32_t dw_count);
 
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                                    const VkCommandBufferBeginInfo *pBeginInfo);
