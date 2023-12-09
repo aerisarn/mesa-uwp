@@ -350,7 +350,7 @@ static void rvce_destroy_fence(struct pipe_video_codec *encoder,
 {
    struct rvce_encoder *enc = (struct rvce_encoder *)encoder;
 
-   enc->ws->fence_reference(&fence, NULL);
+   enc->ws->fence_reference(enc->ws, &fence, NULL);
 }
 
 /**

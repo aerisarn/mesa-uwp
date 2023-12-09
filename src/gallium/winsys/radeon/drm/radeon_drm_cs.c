@@ -47,7 +47,8 @@
 #define RELOC_DWORDS (sizeof(struct drm_radeon_cs_reloc) / sizeof(uint32_t))
 
 static struct pipe_fence_handle *radeon_cs_create_fence(struct radeon_cmdbuf *rcs);
-static void radeon_fence_reference(struct pipe_fence_handle **dst,
+static void radeon_fence_reference(struct radeon_winsys *ws,
+                                   struct pipe_fence_handle **dst,
                                    struct pipe_fence_handle *src);
 
 static struct radeon_winsys_ctx *radeon_drm_ctx_create(struct radeon_winsys *ws,
@@ -636,7 +637,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
 
       if (fence) {
          if (pfence)
-            radeon_fence_reference(pfence, fence);
+            radeon_fence_reference(&cs->ws->base, pfence, fence);
 
          mtx_lock(&cs->ws->bo_fence_lock);
          for (unsigned i = 0; i < cs->csc->num_slab_buffers; ++i) {
@@ -646,10 +647,10 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
          }
          mtx_unlock(&cs->ws->bo_fence_lock);
 
-         radeon_fence_reference(&fence, NULL);
+         radeon_fence_reference(&cs->ws->base, &fence, NULL);
       }
    } else {
-      radeon_fence_reference(&cs->next_fence, NULL);
+      radeon_fence_reference(&cs->ws->base, &cs->next_fence, NULL);
    }
 
    radeon_drm_cs_sync_flush(rcs);
@@ -756,7 +757,7 @@ static void radeon_drm_cs_destroy(struct radeon_cmdbuf *rcs)
    p_atomic_dec(&cs->ws->num_cs);
    radeon_destroy_cs_context(&cs->csc1);
    radeon_destroy_cs_context(&cs->csc2);
-   radeon_fence_reference(&cs->next_fence, NULL);
+   radeon_fence_reference(&cs->ws->base, &cs->next_fence, NULL);
    FREE(cs);
 }
 
@@ -815,7 +816,8 @@ static bool radeon_fence_wait(struct radeon_winsys *ws,
                           RADEON_USAGE_READWRITE);
 }
 
-static void radeon_fence_reference(struct pipe_fence_handle **dst,
+static void radeon_fence_reference(struct radeon_winsys *ws,
+                                   struct pipe_fence_handle **dst,
                                    struct pipe_fence_handle *src)
 {
    pb_reference((struct pb_buffer**)dst, (struct pb_buffer*)src);
@@ -827,7 +829,7 @@ static struct pipe_fence_handle *radeon_drm_cs_get_next_fence(struct radeon_cmdb
    struct pipe_fence_handle *fence = NULL;
 
    if (cs->next_fence) {
-      radeon_fence_reference(&fence, cs->next_fence);
+      radeon_fence_reference(&cs->ws->base, &fence, cs->next_fence);
       return fence;
    }
 
@@ -835,7 +837,7 @@ static struct pipe_fence_handle *radeon_drm_cs_get_next_fence(struct radeon_cmdb
    if (!fence)
       return NULL;
 
-   radeon_fence_reference(&cs->next_fence, fence);
+   radeon_fence_reference(&cs->ws->base, &cs->next_fence, fence);
    return fence;
 }
 

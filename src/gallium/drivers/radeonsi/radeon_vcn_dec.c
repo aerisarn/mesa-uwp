@@ -2781,10 +2781,10 @@ static void radeon_dec_destroy(struct pipe_video_codec *decoder)
       send_msg_buf(dec);
       flush(dec, 0, &dec->destroy_fence);
       dec->ws->fence_wait(dec->ws, dec->destroy_fence, PIPE_DEFAULT_DECODER_FEEDBACK_TIMEOUT_NS);
-      dec->ws->fence_reference(&dec->destroy_fence, NULL);
+      dec->ws->fence_reference(dec->ws, &dec->destroy_fence, NULL);
    }
 
-   dec->ws->fence_reference(&dec->prev_fence, NULL);
+   dec->ws->fence_reference(dec->ws, &dec->prev_fence, NULL);
    dec->ws->cs_destroy(&dec->cs);
 
    if (dec->stream_type == RDECODE_CODEC_JPEG) {
@@ -2964,7 +2964,7 @@ static void radeon_dec_end_frame(struct pipe_video_codec *decoder, struct pipe_v
    dec->send_cmd(dec, target, picture);
    flush(dec, PIPE_FLUSH_ASYNC, picture->fence);
    if (picture->fence)
-      dec->ws->fence_reference(&dec->prev_fence, *picture->fence);
+      dec->ws->fence_reference(dec->ws, &dec->prev_fence, *picture->fence);
    next_buffer(dec);
 }
 
@@ -3017,7 +3017,7 @@ static void radeon_dec_destroy_fence(struct pipe_video_codec *decoder,
 {
    struct radeon_decoder *dec = (struct radeon_decoder *)decoder;
 
-   dec->ws->fence_reference(&fence, NULL);
+   dec->ws->fence_reference(dec->ws, &fence, NULL);
 }
 
 /**

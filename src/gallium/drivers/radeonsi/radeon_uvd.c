@@ -92,7 +92,7 @@ static void ruvd_dec_destroy_fence(struct pipe_video_codec *decoder,
 {
    struct ruvd_decoder *dec = (struct ruvd_decoder *)decoder;
 
-   dec->ws->fence_reference(&fence, NULL);
+   dec->ws->fence_reference(dec->ws, &fence, NULL);
 }
 
 /* add a new set register command to the IB */

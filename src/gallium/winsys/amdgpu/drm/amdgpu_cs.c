@@ -1803,6 +1803,13 @@ static void amdgpu_cs_set_mcbp_reg_shadowing_va(struct radeon_cmdbuf *rcs,uint64
    cs->mcbp_fw_shadow_chunk.flags = AMDGPU_CS_CHUNK_CP_GFX_SHADOW_FLAGS_INIT_SHADOW;
 }
 
+static void amdgpu_winsys_fence_reference(struct radeon_winsys *rws,
+                                          struct pipe_fence_handle **dst,
+                                          struct pipe_fence_handle *src)
+{
+   amdgpu_fence_reference(dst, src);
+}
+
 void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws)
 {
    ws->base.ctx_create = amdgpu_ctx_create;
@@ -1824,7 +1831,7 @@ void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws)
    ws->base.cs_add_syncobj_signal = amdgpu_cs_add_syncobj_signal;
    ws->base.cs_get_ip_type = amdgpu_cs_get_ip_type;
    ws->base.fence_wait = amdgpu_fence_wait_rel_timeout;
-   ws->base.fence_reference = amdgpu_fence_reference;
+   ws->base.fence_reference = amdgpu_winsys_fence_reference;
    ws->base.fence_import_syncobj = amdgpu_fence_import_syncobj;
    ws->base.fence_import_sync_file = amdgpu_fence_import_sync_file;
    ws->base.fence_export_sync_file = amdgpu_fence_export_sync_file;

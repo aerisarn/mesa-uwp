@@ -697,7 +697,8 @@ struct radeon_winsys {
    /**
     * Reference counting for fences.
     */
-   void (*fence_reference)(struct pipe_fence_handle **dst, struct pipe_fence_handle *src);
+   void (*fence_reference)(struct radeon_winsys *ws, struct pipe_fence_handle **dst,
+                           struct pipe_fence_handle *src);
 
    /**
     * Create a new fence object corresponding to the given syncobj fd.

@@ -351,7 +351,7 @@ static void si_destroy_context(struct pipe_context *context)
 
    u_suballocator_destroy(&sctx->allocator_zeroed_memory);
 
-   sctx->ws->fence_reference(&sctx->last_gfx_fence, NULL);
+   sctx->ws->fence_reference(sctx->ws, &sctx->last_gfx_fence, NULL);
    si_resource_reference(&sctx->eop_bug_scratch, NULL);
    si_resource_reference(&sctx->eop_bug_scratch_tmz, NULL);
    si_resource_reference(&sctx->shadowing.registers, NULL);
