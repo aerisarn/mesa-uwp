@@ -896,6 +896,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
    const struct nv_device_info info = ws_dev->info;
+   enum nvk_debug debug_flags = ws_dev->debug_flags;
    const bool has_vm_bind = ws_dev->has_vm_bind;
    const struct vk_sync_type syncobj_sync_type =
       vk_drm_syncobj_get_type(ws_dev->fd);
@@ -981,6 +982,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    pdev->render_dev = render_dev;
    pdev->info = info;
+   pdev->debug_flags = debug_flags;
 
    pdev->nak = nak_compiler_create(&pdev->info);
    if (pdev->nak == NULL) {

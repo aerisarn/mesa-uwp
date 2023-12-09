@@ -23,6 +23,7 @@ struct nvk_instance;
 struct nvk_physical_device {
    struct vk_physical_device vk;
    struct nv_device_info info;
+   enum nvk_debug debug_flags;
    dev_t render_dev;
    dev_t primary_dev;
    struct nak_compiler *nak;
