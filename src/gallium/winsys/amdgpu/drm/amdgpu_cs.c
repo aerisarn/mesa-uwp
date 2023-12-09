@@ -952,7 +952,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
    /* ib_bytes is in dwords and the conversion to bytes will be done before
     * the CS ioctl. */
    main_ib->ptr_ib_size = &chunk_ib->ib_bytes;
-   main_ib->ptr_ib_size_inside_ib = false;
+   main_ib->is_chained_ib = false;
 
    amdgpu_cs_add_buffer(rcs, main_ib->big_ib_buffer,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
@@ -969,7 +969,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 
 static void amdgpu_set_ib_size(struct radeon_cmdbuf *rcs, struct amdgpu_ib *ib)
 {
-   if (ib->ptr_ib_size_inside_ib) {
+   if (ib->is_chained_ib) {
       *ib->ptr_ib_size = rcs->current.cdw |
                          S_3F2_CHAIN(1) | S_3F2_VALID(1) |
                          S_3F2_PRE_ENA(((struct amdgpu_cs*)ib)->preamble_ib_bo != NULL);
@@ -1283,7 +1283,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
 
    amdgpu_set_ib_size(rcs, main_ib);
    main_ib->ptr_ib_size = new_ptr_ib_size;
-   main_ib->ptr_ib_size_inside_ib = true;
+   main_ib->is_chained_ib = true;
 
    /* Hook up the new chunk */
    rcs->prev[rcs->num_prev].buf = rcs->current.buf;

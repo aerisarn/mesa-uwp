@@ -59,8 +59,12 @@ struct amdgpu_ib {
    unsigned                max_check_space_size;
 
    unsigned                max_ib_size_dw;
+   /* ptr_ib_size initially points to cs->csc->chunk_ib->ib_bytes.
+    * If in amdgpu_cs_check_space() ib chaining is required, then ptr_ib_size will point
+    * to indirect buffer packet size field.
+    */
    uint32_t                *ptr_ib_size;
-   bool                    ptr_ib_size_inside_ib;
+   bool                    is_chained_ib;
 };
 
 struct amdgpu_fence_list {
