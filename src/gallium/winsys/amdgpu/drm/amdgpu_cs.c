@@ -1228,7 +1228,6 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
 
    assert(rcs->current.cdw <= rcs->current.max_dw);
 
-   /* 125% of the size for IB epilog. */
    unsigned requested_size_dw = rcs->prev_dw + rcs->current.cdw + dw;
 
    if (requested_size_dw > IB_MAX_SUBMIT_DWORDS)
@@ -1239,6 +1238,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
 
    unsigned cs_epilog_dw = amdgpu_cs_epilog_dws(cs);
    unsigned need_byte_size = (dw + cs_epilog_dw) * 4;
+   /* 125% of the size for IB epilog. */
    unsigned safe_byte_size = need_byte_size + need_byte_size / 4;
    main_ib->max_check_space_size = MAX2(main_ib->max_check_space_size, safe_byte_size);
    main_ib->max_ib_size_dw = MAX2(main_ib->max_ib_size_dw, requested_size_dw);
