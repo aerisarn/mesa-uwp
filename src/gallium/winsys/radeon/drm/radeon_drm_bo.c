@@ -403,12 +403,13 @@ void radeon_bo_destroy(void *winsys, struct pb_buffer_lean *_buf)
 
 static void radeon_bo_destroy_or_cache(void *winsys, struct pb_buffer *_buf)
 {
+   struct radeon_drm_winsys *rws = (struct radeon_drm_winsys *)winsys;
    struct radeon_bo *bo = radeon_bo(_buf);
 
    assert(bo->handle && "must not be called for slab entries");
 
    if (bo->u.real.use_reusable_pool)
-      pb_cache_add_buffer(&bo->u.real.cache_entry);
+      pb_cache_add_buffer(&rws->bo_cache, &bo->u.real.cache_entry);
    else
       radeon_bo_destroy(NULL, &_buf->base);
 }

@@ -232,7 +232,7 @@ bo_destroy_or_cache(struct zink_screen *screen, struct pb_buffer *pbuf)
    bo->writes.u = NULL;
 
    if (bo->u.real.use_reusable_pool)
-      pb_cache_add_buffer(bo->cache_entry);
+      pb_cache_add_buffer(&screen->pb.bo_cache, bo->cache_entry);
    else
       bo_destroy(screen, pbuf);
 }

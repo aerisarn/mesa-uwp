@@ -232,7 +232,7 @@ static void amdgpu_bo_destroy_or_cache(struct radeon_winsys *rws, struct pb_buff
    assert(is_real_bo(bo)); /* slab buffers have a separate vtbl */
 
    if (bo->type >= AMDGPU_BO_REAL_REUSABLE)
-      pb_cache_add_buffer(&((struct amdgpu_bo_real_reusable*)bo)->cache_entry);
+      pb_cache_add_buffer(&ws->bo_cache, &((struct amdgpu_bo_real_reusable*)bo)->cache_entry);
    else
       amdgpu_bo_destroy(ws, _buf);
 }

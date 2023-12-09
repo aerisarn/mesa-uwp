@@ -116,7 +116,7 @@ pb_cache_buffer_destroy(void *winsys, struct pb_buffer *_buf)
       return;
    }
 
-   pb_cache_add_buffer(&buf->cache_entry);
+   pb_cache_add_buffer(&mgr->cache, &buf->cache_entry);
 }
 
 

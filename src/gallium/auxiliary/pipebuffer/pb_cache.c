@@ -57,9 +57,8 @@ time_get_ms(struct pb_cache *mgr)
  * Actually destroy the buffer.
  */
 static void
-destroy_buffer_locked(struct pb_cache_entry *entry)
+destroy_buffer_locked(struct pb_cache *mgr, struct pb_cache_entry *entry)
 {
-   struct pb_cache *mgr = entry->mgr;
    struct pb_buffer_lean *buf = entry->buffer;
 
    assert(!pipe_is_referenced(&buf->reference));
@@ -76,7 +75,7 @@ destroy_buffer_locked(struct pb_cache_entry *entry)
  * Free as many cache buffers from the list head as possible.
  */
 static void
-release_expired_buffers_locked(struct list_head *cache,
+release_expired_buffers_locked(struct pb_cache *mgr, struct list_head *cache,
                                unsigned current_time_ms)
 {
    struct list_head *curr, *next;
@@ -87,11 +86,11 @@ release_expired_buffers_locked(struct list_head *cache,
    while (curr != cache) {
       entry = list_entry(curr, struct pb_cache_entry, head);
 
-      if (!time_timeout_ms(entry->start_ms, entry->mgr->msecs,
+      if (!time_timeout_ms(entry->start_ms, mgr->msecs,
                            current_time_ms))
          break;
 
-      destroy_buffer_locked(entry);
+      destroy_buffer_locked(mgr, entry);
 
       curr = next;
       next = curr->next;
@@ -103,9 +102,8 @@ release_expired_buffers_locked(struct list_head *cache,
  * being released.
  */
 void
-pb_cache_add_buffer(struct pb_cache_entry *entry)
+pb_cache_add_buffer(struct pb_cache *mgr, struct pb_cache_entry *entry)
 {
-   struct pb_cache *mgr = entry->mgr;
    struct list_head *cache = &mgr->buckets[entry->bucket_index];
    struct pb_buffer_lean *buf = entry->buffer;
    unsigned i;
@@ -116,7 +114,7 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
    unsigned current_time_ms = time_get_ms(mgr);
 
    for (i = 0; i < mgr->num_heaps; i++)
-      release_expired_buffers_locked(&mgr->buckets[i], current_time_ms);
+      release_expired_buffers_locked(mgr, &mgr->buckets[i], current_time_ms);
 
    /* Directly release any buffer that exceeds the limit. */
    if (mgr->cache_size + buf->size > mgr->max_cache_size) {
@@ -138,10 +136,9 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
  *        -1   if compatible and can't be reclaimed
  */
 static int
-pb_cache_is_buffer_compat(struct pb_cache_entry *entry,
+pb_cache_is_buffer_compat(struct pb_cache *mgr, struct pb_cache_entry *entry,
                           pb_size size, unsigned alignment, unsigned usage)
 {
-   struct pb_cache *mgr = entry->mgr;
    struct pb_buffer_lean *buf = entry->buffer;
 
    if (!pb_check_usage(usage, buf->usage))
@@ -189,11 +186,11 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
    while (cur != cache) {
       cur_entry = list_entry(cur, struct pb_cache_entry, head);
 
-      if (!entry && (ret = pb_cache_is_buffer_compat(cur_entry, size,
+      if (!entry && (ret = pb_cache_is_buffer_compat(mgr, cur_entry, size,
                                                      alignment, usage)) > 0)
          entry = cur_entry;
       else if (time_timeout_ms(cur_entry->start_ms, mgr->msecs, now))
-         destroy_buffer_locked(cur_entry);
+         destroy_buffer_locked(mgr, cur_entry);
       else
          /* This buffer (and all hereafter) are still hot in cache */
          break;
@@ -210,7 +207,7 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
    if (!entry && ret != -1) {
       while (cur != cache) {
          cur_entry = list_entry(cur, struct pb_cache_entry, head);
-         ret = pb_cache_is_buffer_compat(cur_entry, size, alignment, usage);
+         ret = pb_cache_is_buffer_compat(mgr, cur_entry, size, alignment, usage);
 
          if (ret > 0) {
             entry = cur_entry;
@@ -260,7 +257,7 @@ pb_cache_release_all_buffers(struct pb_cache *mgr)
       next = curr->next;
       while (curr != cache) {
          buf = list_entry(curr, struct pb_cache_entry, head);
-         destroy_buffer_locked(buf);
+         destroy_buffer_locked(mgr, buf);
          num_reclaims++;
          curr = next;
          next = curr->next;
@@ -278,7 +275,6 @@ pb_cache_init_entry(struct pb_cache *mgr, struct pb_cache_entry *entry,
 
    memset(entry, 0, sizeof(*entry));
    entry->buffer = buf;
-   entry->mgr = mgr;
    entry->bucket_index = bucket_index;
 }
 
