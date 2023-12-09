@@ -69,7 +69,6 @@ struct zink_sparse_commitment {
 
 struct zink_slab {
    struct pb_slab base;
-   unsigned entry_size;
    struct zink_bo *buffer;
    struct zink_bo *entries;
 };
@@ -174,7 +173,7 @@ bo_slab_free(struct zink_screen *screen, struct pb_slab *pslab)
    struct zink_slab *slab = zink_slab(pslab);
    ASSERTED unsigned slab_size = slab->buffer->base.size;
 
-   assert(slab->base.num_entries * slab->entry_size <= slab_size);
+   assert(slab->base.num_entries * slab->base.entry_size <= slab_size);
    FREE(slab->entries);
    zink_bo_unref(screen, slab->buffer);
    FREE(slab);
@@ -1244,7 +1243,6 @@ bo_slab_alloc(void *priv, unsigned mem_type_idx, unsigned entry_size, unsigned g
    slab->base.num_free = slab->base.num_entries;
    slab->base.group_index = group_index;
    slab->base.entry_size = entry_size;
-   slab->entry_size = entry_size;
    slab->entries = CALLOC(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
       goto fail_buffer;

@@ -179,8 +179,6 @@ struct iris_memregion {
 struct iris_slab {
    struct pb_slab base;
 
-   unsigned entry_size;
-
    /** The BO representing the entire slab */
    struct iris_bo *bo;
 
@@ -795,7 +793,6 @@ iris_slab_alloc(void *priv,
    slab->base.num_free = slab->base.num_entries;
    slab->base.group_index = group_index;
    slab->base.entry_size = entry_size;
-   slab->entry_size = entry_size;
    slab->entries = calloc(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
       goto fail_bo;

@@ -746,7 +746,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    slab->base.num_free = slab->base.num_entries;
    slab->base.group_index = group_index;
    slab->base.entry_size = entry_size;
-   slab->entry_size = entry_size;
    slab->entries = CALLOC(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
       goto fail_buffer;
@@ -799,11 +798,11 @@ void amdgpu_bo_slab_free(struct amdgpu_winsys *ws, struct pb_slab *pslab)
    struct amdgpu_slab *slab = amdgpu_slab(pslab);
    unsigned slab_size = slab->buffer->base.size;
 
-   assert(slab->base.num_entries * slab->entry_size <= slab_size);
+   assert(slab->base.num_entries * slab->base.entry_size <= slab_size);
    if (slab->buffer->base.placement & RADEON_DOMAIN_VRAM)
-      ws->slab_wasted_vram -= slab_size - slab->base.num_entries * slab->entry_size;
+      ws->slab_wasted_vram -= slab_size - slab->base.num_entries * slab->base.entry_size;
    else
-      ws->slab_wasted_gtt -= slab_size - slab->base.num_entries * slab->entry_size;
+      ws->slab_wasted_gtt -= slab_size - slab->base.num_entries * slab->base.entry_size;
 
    for (unsigned i = 0; i < slab->base.num_entries; ++i)
       amdgpu_bo_remove_fences(&slab->entries[i].b);
