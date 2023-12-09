@@ -445,7 +445,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 
       /* Create managers. */
       pb_cache_init(&aws->bo_cache, RADEON_NUM_HEAPS,
-                    500000, aws->check_vm ? 1.0f : 2.0f, 0,
+                    500000, aws->check_vm ? 1.0f : 1.5f, 0,
                     ((uint64_t)aws->info.vram_size_kb + aws->info.gart_size_kb) * 1024 / 8, aws,
                     /* Cast to void* because one of the function parameters
                      * is a struct pointer instead of void*. */
