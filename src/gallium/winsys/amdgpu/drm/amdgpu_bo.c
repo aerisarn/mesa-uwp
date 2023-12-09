@@ -638,11 +638,11 @@ static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size)
 
 static unsigned get_slab_wasted_size(struct amdgpu_winsys *ws, struct amdgpu_bo_slab *bo)
 {
-   assert(bo->b.base.size <= bo->entry.entry_size);
+   assert(bo->b.base.size <= bo->entry.slab->entry_size);
    assert(bo->b.base.size < (1 << bo->b.base.alignment_log2) ||
           bo->b.base.size < 1 << ws->bo_slabs[0].min_order ||
-          bo->b.base.size > bo->entry.entry_size / 2);
-   return bo->entry.entry_size - bo->b.base.size;
+          bo->b.base.size > bo->entry.slab->entry_size / 2);
+   return bo->entry.slab->entry_size - bo->b.base.size;
 }
 
 static void amdgpu_bo_slab_destroy(struct radeon_winsys *rws, struct pb_buffer *_buf)
@@ -744,6 +744,8 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
 
    slab->base.num_entries = slab_size / entry_size;
    slab->base.num_free = slab->base.num_entries;
+   slab->base.group_index = group_index;
+   slab->base.entry_size = entry_size;
    slab->entry_size = entry_size;
    slab->entries = CALLOC(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
@@ -773,8 +775,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
       }
 
       bo->entry.slab = &slab->base;
-      bo->entry.group_index = group_index;
-      bo->entry.entry_size = entry_size;
       list_addtail(&bo->entry.head, &slab->base.free);
    }
 

@@ -774,6 +774,8 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
 
    slab->base.num_entries = slab->buffer->base.size / entry_size;
    slab->base.num_free = slab->base.num_entries;
+   slab->base.group_index = group_index;
+   slab->base.entry_size = entry_size;
    slab->entries = CALLOC(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
       goto fail_buffer;
@@ -794,8 +796,6 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
       bo->initial_domain = domains;
       bo->hash = base_hash + i;
       bo->u.slab.entry.slab = &slab->base;
-      bo->u.slab.entry.group_index = group_index;
-      bo->u.slab.entry.entry_size = entry_size;
       bo->u.slab.real = slab->buffer;
 
       list_addtail(&bo->u.slab.entry.head, &slab->base.free);

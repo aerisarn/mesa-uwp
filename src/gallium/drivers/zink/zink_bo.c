@@ -1242,6 +1242,8 @@ bo_slab_alloc(void *priv, unsigned mem_type_idx, unsigned entry_size, unsigned g
 
    slab->base.num_entries = slab_size / entry_size;
    slab->base.num_free = slab->base.num_entries;
+   slab->base.group_index = group_index;
+   slab->base.entry_size = entry_size;
    slab->entry_size = entry_size;
    slab->entries = CALLOC(slab->base.num_entries, sizeof(*slab->entries));
    if (!slab->entries)
@@ -1260,8 +1262,6 @@ bo_slab_alloc(void *priv, unsigned mem_type_idx, unsigned entry_size, unsigned g
       bo->offset = slab->buffer->offset + i * entry_size;
       bo->unique_id = base_id + i;
       bo->u.slab.entry.slab = &slab->base;
-      bo->u.slab.entry.group_index = group_index;
-      bo->u.slab.entry.entry_size = entry_size;
 
       if (slab->buffer->mem) {
          /* The slab is not suballocated. */
