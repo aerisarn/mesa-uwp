@@ -65,6 +65,7 @@ struct nvk_root_descriptor_table {
 
 struct nvk_descriptor_state {
    struct nvk_root_descriptor_table root;
+   uint32_t set_sizes[NVK_MAX_SETS];
    struct nvk_descriptor_set *sets[NVK_MAX_SETS];
    uint32_t sets_dirty;
 
