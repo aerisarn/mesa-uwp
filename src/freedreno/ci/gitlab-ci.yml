@@ -181,12 +181,13 @@ a630_gl:
   extends:
     - .baremetal-deqp-test
     - .a630-test
-    - .google-freedreno-manual-rules
   parallel: 4
   variables:
     DEQP_SUITE: freedreno-a630
     HWCI_START_XORG: 1
     HWCI_START_WESTON: 1
+    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
+    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 a630_gles_asan:
   extends:
@@ -204,9 +205,12 @@ a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
-    - .google-turnip-manual-rules
+    - .google-turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk
+    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
+    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
+
 
 a630_vk_full:
   # We use a longer timeout (3 hour job) to keep the parallel down so that we
@@ -239,10 +243,12 @@ a630_piglit:
     - .baremetal-deqp-test
     - .a630-test
     # Note that piglit has GL+VK integration testing.
-    - .google-freedreno-turnip-manual-rules
+    - .google-freedreno-turnip-rules
   variables:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-piglit
+    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
+    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 a630-traces:
   extends:
