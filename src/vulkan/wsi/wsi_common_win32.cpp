@@ -112,6 +112,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL
 wsi_GetPhysicalDeviceWin32PresentationSupportKHR(VkPhysicalDevice physicalDevice,
                                                  uint32_t queueFamilyIndex)
 {
+   VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
+   struct wsi_device *wsi_device = pdevice->wsi_device;
    return wsi_device->queue_supports_blit & BITFIELD64_BIT(queueFamilyIndex);
 }
 
