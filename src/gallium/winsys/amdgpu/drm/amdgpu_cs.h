@@ -60,7 +60,7 @@ struct amdgpu_ib {
     */
    unsigned                max_check_space_size;
 
-   unsigned                max_ib_size;
+   unsigned                max_ib_size_dw;
    uint32_t                *ptr_ib_size;
    bool                    ptr_ib_size_inside_ib;
    enum ib_type            ib_type;
