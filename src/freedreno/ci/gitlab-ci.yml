@@ -181,6 +181,7 @@ a630_gl:
   extends:
     - .baremetal-deqp-test
     - .a630-test
+    - .google-freedreno-manual-rules
   parallel: 4
   variables:
     DEQP_SUITE: freedreno-a630
@@ -203,7 +204,7 @@ a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
-    - .google-turnip-rules
+    - .google-turnip-manual-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk
 
@@ -238,7 +239,7 @@ a630_piglit:
     - .baremetal-deqp-test
     - .a630-test
     # Note that piglit has GL+VK integration testing.
-    - .google-freedreno-turnip-rules
+    - .google-freedreno-turnip-manual-rules
   variables:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-piglit

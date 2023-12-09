@@ -131,6 +131,12 @@
     - !reference [.google-freedreno-rules, rules]
     - !reference [.google-turnip-rules, rules]
 
+.google-freedreno-turnip-manual-rules:
+  rules:
+    - !reference [.test, rules]
+    - !reference [.google-freedreno-manual-rules, rules]
+    - !reference [.google-turnip-manual-rules, rules]
+
 .collabora-freedreno-turnip-rules:
   rules:
     - !reference [.test, rules]
