@@ -41,7 +41,6 @@
 #include "util/u_math.h"
 
 #include "qpu/qpu_instr.h"
-#include "pipe/p_state.h"
 
 /**
  * Maximum number of outstanding TMU operations we can queue for execution.
