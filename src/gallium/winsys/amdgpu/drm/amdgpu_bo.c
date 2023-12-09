@@ -491,7 +491,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
          return NULL;
 
       bo = &new_bo->b;
-      pb_cache_init_entry(&ws->bo_cache, &new_bo->cache_entry, &bo->b.base, heap);
+      pb_cache_init_entry(&ws->bo_cache, &new_bo->cache_entry, &bo->b.base.base, heap);
       bo->b.type = slab_backing ? AMDGPU_BO_REAL_REUSABLE_SLAB : AMDGPU_BO_REAL_REUSABLE;
    } else {
       bo = CALLOC_STRUCT(amdgpu_bo_real);
@@ -1435,7 +1435,7 @@ no_slab:
 
              /* Re-set pointers after realloc. */
              struct amdgpu_bo_real_reusable *real_bo = get_real_bo_reusable(bo);
-             real_bo->cache_entry.buffer = &bo->base;
+             real_bo->cache_entry.buffer = &bo->base.base;
           }
           return &bo->base;
        }

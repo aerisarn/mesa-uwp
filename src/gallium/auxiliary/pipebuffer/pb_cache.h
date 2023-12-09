@@ -40,7 +40,7 @@
 struct pb_cache_entry
 {
    struct list_head head;
-   struct pb_buffer *buffer; /**< Pointer to the structure this is part of. */
+   struct pb_buffer_lean *buffer; /**< Pointer to the structure this is part of. */
    struct pb_cache *mgr;
    unsigned start_ms; /**< Cached start time */
    unsigned bucket_index;
@@ -64,23 +64,23 @@ struct pb_cache
    unsigned bypass_usage;
    float size_factor;
 
-   void (*destroy_buffer)(void *winsys, struct pb_buffer *buf);
-   bool (*can_reclaim)(void *winsys, struct pb_buffer *buf);
+   void (*destroy_buffer)(void *winsys, struct pb_buffer_lean *buf);
+   bool (*can_reclaim)(void *winsys, struct pb_buffer_lean *buf);
 };
 
 void pb_cache_add_buffer(struct pb_cache_entry *entry);
-struct pb_buffer *pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
+struct pb_buffer_lean *pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
                                           unsigned alignment, unsigned usage,
                                           unsigned bucket_index);
 unsigned pb_cache_release_all_buffers(struct pb_cache *mgr);
 void pb_cache_init_entry(struct pb_cache *mgr, struct pb_cache_entry *entry,
-                         struct pb_buffer *buf, unsigned bucket_index);
+                         struct pb_buffer_lean *buf, unsigned bucket_index);
 void pb_cache_init(struct pb_cache *mgr, unsigned num_heaps,
                    unsigned usecs, float size_factor,
                    unsigned bypass_usage, uint64_t maximum_cache_size,
                    void *winsys,
-                   void (*destroy_buffer)(void *winsys, struct pb_buffer *buf),
-                   bool (*can_reclaim)(void *winsys, struct pb_buffer *buf));
+                   void (*destroy_buffer)(void *winsys, struct pb_buffer_lean *buf),
+                   bool (*can_reclaim)(void *winsys, struct pb_buffer_lean *buf));
 void pb_cache_deinit(struct pb_cache *mgr);
 
 #endif

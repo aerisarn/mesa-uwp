@@ -94,9 +94,9 @@ pb_cache_manager_remove_buffer(struct pb_buffer *pb_buf)
  * Actually destroy the buffer.
  */
 static void
-_pb_cache_buffer_destroy(void *winsys, struct pb_buffer *pb_buf)
+_pb_cache_buffer_destroy(void *winsys, struct pb_buffer_lean *pb_buf)
 {
-   struct pb_cache_buffer *buf = pb_cache_buffer(pb_buf);
+   struct pb_cache_buffer *buf = pb_cache_buffer((struct pb_buffer*)pb_buf);
 
    assert(!pipe_is_referenced(&buf->base.base.reference));
    pb_reference(&buf->buffer, NULL);
@@ -178,9 +178,9 @@ pb_cache_buffer_vtbl = {
 
 
 static bool
-pb_cache_can_reclaim_buffer(void *winsys, struct pb_buffer *_buf)
+pb_cache_can_reclaim_buffer(void *winsys, struct pb_buffer_lean *_buf)
 {
-   struct pb_cache_buffer *buf = pb_cache_buffer(_buf);
+   struct pb_cache_buffer *buf = pb_cache_buffer((struct pb_buffer*)_buf);
 
    if (buf->mgr->provider->is_buffer_busy) {
       if (buf->mgr->provider->is_buffer_busy(buf->mgr->provider, buf->buffer))
@@ -244,7 +244,7 @@ pb_cache_manager_create_buffer(struct pb_manager *_mgr,
    
    buf->base.vtbl = &pb_cache_buffer_vtbl;
    buf->mgr = mgr;
-   pb_cache_init_entry(&mgr->cache, &buf->cache_entry, &buf->base, 0);
+   pb_cache_init_entry(&mgr->cache, &buf->cache_entry, &buf->base.base, 0);
    
    return &buf->base;
 }

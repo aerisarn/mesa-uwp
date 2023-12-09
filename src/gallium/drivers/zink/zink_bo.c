@@ -310,7 +310,7 @@ bo_create_internal(struct zink_screen *screen,
 
    if (init_pb_cache) {
       bo->u.real.use_reusable_pool = true;
-      pb_cache_init_entry(&screen->pb.bo_cache, bo->cache_entry, &bo->base, mem_type_idx);
+      pb_cache_init_entry(&screen->pb.bo_cache, bo->cache_entry, &bo->base.base, mem_type_idx);
    } else {
 #ifdef ZINK_USE_DMABUF
       list_inithead(&bo->u.real.exports);
