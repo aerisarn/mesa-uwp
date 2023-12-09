@@ -42,7 +42,7 @@ struct pb_cache_entry
    struct list_head head;
    struct pb_buffer *buffer; /**< Pointer to the structure this is part of. */
    struct pb_cache *mgr;
-   int64_t start, end; /**< Caching time interval */
+   int64_t start; /**< Cached start time */
    unsigned bucket_index;
 };
 

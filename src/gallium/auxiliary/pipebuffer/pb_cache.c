@@ -65,7 +65,8 @@ release_expired_buffers_locked(struct list_head *cache,
    while (curr != cache) {
       entry = list_entry(curr, struct pb_cache_entry, head);
 
-      if (!os_time_timeout(entry->start, entry->end, current_time))
+      if (!os_time_timeout(entry->start, entry->start + entry->mgr->usecs,
+                           current_time))
          break;
 
       destroy_buffer_locked(entry);
@@ -103,7 +104,6 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
    }
 
    entry->start = os_time_get();
-   entry->end = entry->start + mgr->usecs;
    list_addtail(&entry->head, cache);
    ++mgr->num_buffers;
    mgr->cache_size += buf->size;
@@ -171,7 +171,8 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
       if (!entry && (ret = pb_cache_is_buffer_compat(cur_entry, size,
                                                      alignment, usage)) > 0)
          entry = cur_entry;
-      else if (os_time_timeout(cur_entry->start, cur_entry->end, now))
+      else if (os_time_timeout(cur_entry->start,
+                               cur_entry->start + mgr->usecs, now))
          destroy_buffer_locked(cur_entry);
       else
          /* This buffer (and all hereafter) are still hot in cache */
