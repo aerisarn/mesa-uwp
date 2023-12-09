@@ -63,6 +63,7 @@ enum radeon_bo_flag
     * This guarantees that this buffer will never be moved to GTT.
     */
   RADEON_FLAG_DISCARDABLE = (1 << 10),
+  RADEON_FLAG_WINSYS_SLAB_BACKING = (1 << 11), /* only used by the winsys */
 };
 
 static inline void

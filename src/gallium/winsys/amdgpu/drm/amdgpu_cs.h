@@ -224,7 +224,7 @@ amdgpu_bo_is_referenced_by_cs(struct amdgpu_cs *cs,
 
 static inline unsigned get_buf_list_idx(struct amdgpu_winsys_bo *bo)
 {
-   /* AMDGPU_BO_REAL_REUSABLE maps to AMDGPU_BO_REAL. */
+   /* AMDGPU_BO_REAL_REUSABLE* maps to AMDGPU_BO_REAL. */
    static_assert(ARRAY_SIZE(((struct amdgpu_cs_context*)NULL)->buffer_lists) == NUM_BO_LIST_TYPES, "");
    return MIN2(bo->type, AMDGPU_BO_REAL);
 }

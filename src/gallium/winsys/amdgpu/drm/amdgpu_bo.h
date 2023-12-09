@@ -38,8 +38,9 @@ struct amdgpu_sparse_commitment {
 enum amdgpu_bo_type {
    AMDGPU_BO_SLAB_ENTRY,
    AMDGPU_BO_SPARSE,
-   AMDGPU_BO_REAL, /* only REAL enums can be present after this */
-   AMDGPU_BO_REAL_REUSABLE,
+   AMDGPU_BO_REAL,               /* only REAL enums can be present after this */
+   AMDGPU_BO_REAL_REUSABLE,      /* only REAL_REUSABLE enums can be present after this */
+   AMDGPU_BO_REAL_REUSABLE_SLAB,
 };
 
 /* Anything above REAL will use the BO list for REAL. */
@@ -124,9 +125,12 @@ struct amdgpu_bo_slab_entry {
    struct pb_slab_entry entry;
 };
 
-struct amdgpu_slab {
-   struct pb_slab base;
-   struct amdgpu_winsys_bo *buffer;
+/* The slab buffer, which is the big backing buffer out of which smaller BOs are suballocated and
+ * represented by amdgpu_bo_slab_entry. It's always a real and reusable buffer.
+ */
+struct amdgpu_bo_real_reusable_slab {
+   struct amdgpu_bo_real_reusable b;
+   struct pb_slab slab;
    struct amdgpu_bo_slab_entry *entries;
 };
 
@@ -143,7 +147,7 @@ static struct amdgpu_bo_real *get_real_bo(struct amdgpu_winsys_bo *bo)
 
 static struct amdgpu_bo_real_reusable *get_real_bo_reusable(struct amdgpu_winsys_bo *bo)
 {
-   assert(bo->type == AMDGPU_BO_REAL_REUSABLE);
+   assert(bo->type >= AMDGPU_BO_REAL_REUSABLE);
    return (struct amdgpu_bo_real_reusable*)bo;
 }
 
@@ -157,6 +161,11 @@ static struct amdgpu_bo_slab_entry *get_slab_entry_bo(struct amdgpu_winsys_bo *b
 {
    assert(bo->type == AMDGPU_BO_SLAB_ENTRY);
    return (struct amdgpu_bo_slab_entry*)bo;
+}
+
+static inline struct amdgpu_bo_real_reusable_slab *get_bo_from_slab(struct pb_slab *slab)
+{
+   return container_of(slab, struct amdgpu_bo_real_reusable_slab, slab);
 }
 
 bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);
@@ -182,12 +191,6 @@ static inline
 struct amdgpu_winsys_bo *amdgpu_winsys_bo(struct pb_buffer *bo)
 {
    return (struct amdgpu_winsys_bo *)bo;
-}
-
-static inline
-struct amdgpu_slab *amdgpu_slab(struct pb_slab *slab)
-{
-   return (struct amdgpu_slab *)slab;
 }
 
 static inline
