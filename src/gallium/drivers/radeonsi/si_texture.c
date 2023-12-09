@@ -1007,8 +1007,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    } else {
       resource->buf = imported_buf;
       resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
-      resource->bo_size = imported_buf->size;
-      resource->bo_alignment_log2 = imported_buf->alignment_log2;
+      resource->bo_size = imported_buf->base.size;
+      resource->bo_alignment_log2 = imported_buf->base.alignment_log2;
       resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
       if (sscreen->ws->buffer_get_flags)
          resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
@@ -1018,7 +1018,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       fprintf(stderr,
               "VM start=0x%" PRIX64 "  end=0x%" PRIX64
               " | Texture %ix%ix%i, %i levels, %i samples, %s | Flags: ",
-              tex->buffer.gpu_address, tex->buffer.gpu_address + tex->buffer.buf->size,
+              tex->buffer.gpu_address, tex->buffer.gpu_address + tex->buffer.buf->base.size,
               base->width0, base->height0, util_num_layers(base, 0), base->last_level + 1,
               base->nr_samples ? base->nr_samples : 1, util_format_short_name(base->format));
       si_res_print_flags(tex->buffer.flags);
@@ -1681,7 +1681,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
    }
 
    if (ac_surface_get_plane_offset(sscreen->info.gfx_level, &tex->surface, 0, 0) +
-        tex->surface.total_size > buf->size) {
+        tex->surface.total_size > buf->base.size) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }
@@ -2025,7 +2025,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
       si_copy_from_staging_texture(ctx, stransfer);
 
    if (stransfer->staging) {
-      sctx->num_alloc_tex_transfer_bytes += stransfer->staging->buf->size;
+      sctx->num_alloc_tex_transfer_bytes += stransfer->staging->buf->base.size;
       si_resource_reference(&stransfer->staging, NULL);
    }
 

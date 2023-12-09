@@ -179,7 +179,7 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
    /* Print debug information. */
    if (sscreen->debug_flags & DBG(VM) && res->b.b.target == PIPE_BUFFER) {
       fprintf(stderr, "VM start=0x%" PRIX64 "  end=0x%" PRIX64 " | Buffer %" PRIu64 " bytes | Flags: ",
-              res->gpu_address, res->gpu_address + res->buf->size, res->buf->size);
+              res->gpu_address, res->gpu_address + res->buf->base.size, res->buf->base.size);
       si_res_print_flags(res->flags);
       fprintf(stderr, "\n");
    }
@@ -643,7 +643,7 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
                                                    struct pb_buffer *imported_buf,
                                                    uint64_t offset)
 {
-   if (offset + templ->width0 > imported_buf->size)
+   if (offset + templ->width0 > imported_buf->base.size)
       return NULL;
 
    struct si_screen *sscreen = (struct si_screen *)screen;
@@ -679,8 +679,8 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
          res->b.b.usage = PIPE_USAGE_STAGING;
    }
 
-   si_init_resource_fields(sscreen, res, imported_buf->size,
-                           1 << imported_buf->alignment_log2);
+   si_init_resource_fields(sscreen, res, imported_buf->base.size,
+                           1 << imported_buf->base.alignment_log2);
 
    res->b.is_shared = true;
    res->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);

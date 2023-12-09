@@ -339,7 +339,7 @@ void radeon_bo_destroy(void *winsys, struct pb_buffer *_buf)
 
    mtx_lock(&rws->bo_handles_mutex);
    /* radeon_winsys_bo_from_handle might have revived the bo */
-   if (pipe_is_referenced(&bo->base.reference)) {
+   if (pipe_is_referenced(&bo->base.base.reference)) {
       mtx_unlock(&rws->bo_handles_mutex);
       return;
    }
@@ -351,7 +351,7 @@ void radeon_bo_destroy(void *winsys, struct pb_buffer *_buf)
    mtx_unlock(&rws->bo_handles_mutex);
 
    if (bo->u.real.ptr)
-      os_munmap(bo->u.real.ptr, bo->base.size);
+      os_munmap(bo->u.real.ptr, bo->base.base.size);
 
    if (rws->info.r600_has_virtual_memory) {
       if (rws->va_unmap_working) {
@@ -369,14 +369,14 @@ void radeon_bo_destroy(void *winsys, struct pb_buffer *_buf)
                                  sizeof(va)) != 0 &&
              va.operation == RADEON_VA_RESULT_ERROR) {
             fprintf(stderr, "radeon: Failed to deallocate virtual address for buffer:\n");
-            fprintf(stderr, "radeon:    size      : %"PRIu64" bytes\n", bo->base.size);
+            fprintf(stderr, "radeon:    size      : %"PRIu64" bytes\n", bo->base.base.size);
             fprintf(stderr, "radeon:    va        : 0x%"PRIx64"\n", bo->va);
          }
       }
 
       radeon_bomgr_free_va(&rws->info,
                            bo->va < rws->vm32.end ? &rws->vm32 : &rws->vm64,
-                           bo->va, bo->base.size);
+                           bo->va, bo->base.base.size);
    }
 
    /* Close object. */
@@ -386,15 +386,15 @@ void radeon_bo_destroy(void *winsys, struct pb_buffer *_buf)
    mtx_destroy(&bo->u.real.map_mutex);
 
    if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-      rws->allocated_vram -= align(bo->base.size, rws->info.gart_page_size);
+      rws->allocated_vram -= align(bo->base.base.size, rws->info.gart_page_size);
    else if (bo->initial_domain & RADEON_DOMAIN_GTT)
-      rws->allocated_gtt -= align(bo->base.size, rws->info.gart_page_size);
+      rws->allocated_gtt -= align(bo->base.base.size, rws->info.gart_page_size);
 
    if (bo->u.real.map_count >= 1) {
       if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-         bo->rws->mapped_vram -= bo->base.size;
+         bo->rws->mapped_vram -= bo->base.base.size;
       else
-         bo->rws->mapped_gtt -= bo->base.size;
+         bo->rws->mapped_gtt -= bo->base.base.size;
       bo->rws->num_mapped_buffers--;
    }
 
@@ -440,7 +440,7 @@ void *radeon_bo_do_map(struct radeon_bo *bo)
    }
    args.handle = bo->handle;
    args.offset = 0;
-   args.size = (uint64_t)bo->base.size;
+   args.size = (uint64_t)bo->base.base.size;
    if (drmCommandWriteRead(bo->rws->fd,
                            DRM_RADEON_GEM_MMAP,
                            &args,
@@ -469,9 +469,9 @@ void *radeon_bo_do_map(struct radeon_bo *bo)
    bo->u.real.map_count = 1;
 
    if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-      bo->rws->mapped_vram += bo->base.size;
+      bo->rws->mapped_vram += bo->base.base.size;
    else
-      bo->rws->mapped_gtt += bo->base.size;
+      bo->rws->mapped_gtt += bo->base.base.size;
    bo->rws->num_mapped_buffers++;
 
    mtx_unlock(&bo->u.real.map_mutex);
@@ -583,13 +583,13 @@ static void radeon_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *_buf)
       return; /* it's been mapped multiple times */
    }
 
-   os_munmap(bo->u.real.ptr, bo->base.size);
+   os_munmap(bo->u.real.ptr, bo->base.base.size);
    bo->u.real.ptr = NULL;
 
    if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-      bo->rws->mapped_vram -= bo->base.size;
+      bo->rws->mapped_vram -= bo->base.base.size;
    else
-      bo->rws->mapped_gtt -= bo->base.size;
+      bo->rws->mapped_gtt -= bo->base.base.size;
    bo->rws->num_mapped_buffers--;
 
    mtx_unlock(&bo->u.real.map_mutex);
@@ -649,10 +649,10 @@ static struct radeon_bo *radeon_create_bo(struct radeon_drm_winsys *rws,
    if (!bo)
       return NULL;
 
-   pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment_log2 = util_logbase2(alignment);
-   bo->base.usage = 0;
-   bo->base.size = size;
+   pipe_reference_init(&bo->base.base.reference, 1);
+   bo->base.base.alignment_log2 = util_logbase2(alignment);
+   bo->base.base.usage = 0;
+   bo->base.base.size = size;
    bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = rws;
    bo->handle = args.handle;
@@ -772,7 +772,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
 
    assert(slab->buffer->handle);
 
-   slab->base.num_entries = slab->buffer->base.size / entry_size;
+   slab->base.num_entries = slab->buffer->base.base.size / entry_size;
    slab->base.num_free = slab->base.num_entries;
    slab->base.group_index = group_index;
    slab->base.entry_size = entry_size;
@@ -787,9 +787,9 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       struct radeon_bo *bo = &slab->entries[i];
 
-      bo->base.alignment_log2 = util_logbase2(entry_size);
-      bo->base.usage = slab->buffer->base.usage;
-      bo->base.size = entry_size;
+      bo->base.base.alignment_log2 = util_logbase2(entry_size);
+      bo->base.base.usage = slab->buffer->base.base.usage;
+      bo->base.base.size = entry_size;
       bo->base.vtbl = &radeon_winsys_bo_slab_vtbl;
       bo->rws = ws;
       bo->va = slab->buffer->va + i * entry_size;
@@ -1024,7 +1024,7 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
 
       bo = container_of(entry, struct radeon_bo, u.slab.entry);
 
-      pipe_reference_init(&bo->base.reference, 1);
+      pipe_reference_init(&bo->base.base.reference, 1);
 
       return &bo->base;
    }
@@ -1112,10 +1112,10 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
    mtx_lock(&ws->bo_handles_mutex);
 
    /* Initialize it. */
-   pipe_reference_init(&bo->base.reference, 1);
+   pipe_reference_init(&bo->base.base.reference, 1);
    bo->handle = args.handle;
-   bo->base.alignment_log2 = 0;
-   bo->base.size = size;
+   bo->base.base.alignment_log2 = 0;
+   bo->base.base.size = size;
    bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = ws;
    bo->user_ptr = pointer;
@@ -1131,7 +1131,7 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
    if (ws->info.r600_has_virtual_memory) {
       struct drm_radeon_gem_va va;
 
-      bo->va = radeon_bomgr_find_va64(ws, bo->base.size, 1 << 20);
+      bo->va = radeon_bomgr_find_va64(ws, bo->base.base.size, 1 << 20);
 
       va.handle = bo->handle;
       va.operation = RADEON_VA_MAP;
@@ -1162,7 +1162,7 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
       mtx_unlock(&ws->bo_handles_mutex);
    }
 
-   ws->allocated_gtt += align(bo->base.size, ws->info.gart_page_size);
+   ws->allocated_gtt += align(bo->base.base.size, ws->info.gart_page_size);
 
    return (struct pb_buffer*)bo;
 }
@@ -1202,7 +1202,7 @@ static struct pb_buffer *radeon_winsys_bo_from_handle(struct radeon_winsys *rws,
 
    if (bo) {
       /* Increase the refcount. */
-      p_atomic_inc(&bo->base.reference.count);
+      p_atomic_inc(&bo->base.base.reference.count);
       goto done;
    }
 
@@ -1242,9 +1242,9 @@ static struct pb_buffer *radeon_winsys_bo_from_handle(struct radeon_winsys *rws,
    bo->handle = handle;
 
    /* Initialize it. */
-   pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment_log2 = 0;
-   bo->base.size = (unsigned) size;
+   pipe_reference_init(&bo->base.base.reference, 1);
+   bo->base.base.alignment_log2 = 0;
+   bo->base.base.size = (unsigned) size;
    bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = ws;
    bo->va = 0;
@@ -1262,7 +1262,7 @@ done:
    if (ws->info.r600_has_virtual_memory && !bo->va) {
       struct drm_radeon_gem_va va;
 
-      bo->va = radeon_bomgr_find_va64(ws, bo->base.size, vm_alignment);
+      bo->va = radeon_bomgr_find_va64(ws, bo->base.base.size, vm_alignment);
 
       va.handle = bo->handle;
       va.operation = RADEON_VA_MAP;
@@ -1296,9 +1296,9 @@ done:
    bo->initial_domain = radeon_bo_get_initial_domain((void*)bo);
 
    if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-      ws->allocated_vram += align(bo->base.size, ws->info.gart_page_size);
+      ws->allocated_vram += align(bo->base.base.size, ws->info.gart_page_size);
    else if (bo->initial_domain & RADEON_DOMAIN_GTT)
-      ws->allocated_gtt += align(bo->base.size, ws->info.gart_page_size);
+      ws->allocated_gtt += align(bo->base.base.size, ws->info.gart_page_size);
 
    return (struct pb_buffer*)bo;
 

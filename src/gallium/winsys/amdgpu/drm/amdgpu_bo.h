@@ -153,7 +153,7 @@ static struct amdgpu_bo_real_reusable *get_real_bo_reusable(struct amdgpu_winsys
 
 static struct amdgpu_bo_sparse *get_sparse_bo(struct amdgpu_winsys_bo *bo)
 {
-   assert(bo->type == AMDGPU_BO_SPARSE && bo->base.usage & RADEON_FLAG_SPARSE);
+   assert(bo->type == AMDGPU_BO_SPARSE && bo->base.base.usage & RADEON_FLAG_SPARSE);
    return (struct amdgpu_bo_sparse*)bo;
 }
 

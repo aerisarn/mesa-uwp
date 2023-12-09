@@ -973,13 +973,13 @@ r600_texture_create_object(struct pipe_screen *screen,
 	} else {
 		resource->buf = buf;
 		resource->gpu_address = rscreen->ws->buffer_get_virtual_address(resource->buf);
-		resource->bo_size = buf->size;
-		resource->bo_alignment = 1 << buf->alignment_log2;
+		resource->bo_size = buf->base.size;
+		resource->bo_alignment = 1 << buf->base.alignment_log2;
 		resource->domains = rscreen->ws->buffer_get_initial_domain(resource->buf);
 		if (resource->domains & RADEON_DOMAIN_VRAM)
-			resource->vram_usage = buf->size;
+			resource->vram_usage = buf->base.size;
 		else if (resource->domains & RADEON_DOMAIN_GTT)
-			resource->gart_usage = buf->size;
+			resource->gart_usage = buf->base.size;
 	}
 
 	if (rtex->cmask.size) {
@@ -1004,7 +1004,7 @@ r600_texture_create_object(struct pipe_screen *screen,
 	if (rscreen->debug_flags & DBG_VM) {
 		fprintf(stderr, "VM start=0x%"PRIX64"  end=0x%"PRIX64" | Texture %ix%ix%i, %i levels, %i samples, %s\n",
 			rtex->resource.gpu_address,
-			rtex->resource.gpu_address + rtex->resource.buf->size,
+			rtex->resource.gpu_address + rtex->resource.buf->base.size,
 			base->width0, base->height0, util_num_layers(base, 0), base->last_level+1,
 			base->nr_samples ? base->nr_samples : 1, util_format_short_name(base->format));
 	}
@@ -1486,7 +1486,7 @@ void r600_texture_transfer_unmap(struct pipe_context *ctx,
 	}
 
 	if (rtransfer->staging) {
-		rctx->num_alloc_tex_transfer_bytes += rtransfer->staging->buf->size;
+		rctx->num_alloc_tex_transfer_bytes += rtransfer->staging->buf->base.size;
 		r600_resource_reference(&rtransfer->staging, NULL);
 	}
 

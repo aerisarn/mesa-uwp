@@ -195,8 +195,8 @@ bool r600_alloc_resource(struct r600_common_screen *rscreen,
 	/* Print debug information. */
 	if (rscreen->debug_flags & DBG_VM && res->b.b.target == PIPE_BUFFER) {
 		fprintf(stderr, "VM start=0x%"PRIX64"  end=0x%"PRIX64" | Buffer %"PRIu64" bytes\n",
-			res->gpu_address, res->gpu_address + res->buf->size,
-			res->buf->size);
+			res->gpu_address, res->gpu_address + res->buf->base.size,
+			res->buf->base.size);
 	}
 	return true;
 }

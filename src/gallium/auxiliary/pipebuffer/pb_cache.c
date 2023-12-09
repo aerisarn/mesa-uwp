@@ -62,12 +62,12 @@ destroy_buffer_locked(struct pb_cache_entry *entry)
    struct pb_cache *mgr = entry->mgr;
    struct pb_buffer *buf = entry->buffer;
 
-   assert(!pipe_is_referenced(&buf->reference));
+   assert(!pipe_is_referenced(&buf->base.reference));
    if (list_is_linked(&entry->head)) {
       list_del(&entry->head);
       assert(mgr->num_buffers);
       --mgr->num_buffers;
-      mgr->cache_size -= buf->size;
+      mgr->cache_size -= buf->base.size;
    }
    mgr->destroy_buffer(mgr->winsys, buf);
 }
@@ -111,7 +111,7 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
    unsigned i;
 
    simple_mtx_lock(&mgr->mutex);
-   assert(!pipe_is_referenced(&buf->reference));
+   assert(!pipe_is_referenced(&buf->base.reference));
 
    unsigned current_time_ms = time_get_ms(mgr);
 
@@ -119,7 +119,7 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
       release_expired_buffers_locked(&mgr->buckets[i], current_time_ms);
 
    /* Directly release any buffer that exceeds the limit. */
-   if (mgr->cache_size + buf->size > mgr->max_cache_size) {
+   if (mgr->cache_size + buf->base.size > mgr->max_cache_size) {
       mgr->destroy_buffer(mgr->winsys, buf);
       simple_mtx_unlock(&mgr->mutex);
       return;
@@ -128,7 +128,7 @@ pb_cache_add_buffer(struct pb_cache_entry *entry)
    entry->start_ms = time_get_ms(mgr);
    list_addtail(&entry->head, cache);
    ++mgr->num_buffers;
-   mgr->cache_size += buf->size;
+   mgr->cache_size += buf->base.size;
    simple_mtx_unlock(&mgr->mutex);
 }
 
@@ -144,18 +144,18 @@ pb_cache_is_buffer_compat(struct pb_cache_entry *entry,
    struct pb_cache *mgr = entry->mgr;
    struct pb_buffer *buf = entry->buffer;
 
-   if (!pb_check_usage(usage, buf->usage))
+   if (!pb_check_usage(usage, buf->base.usage))
       return 0;
 
    /* be lenient with size */
-   if (buf->size < size ||
-       buf->size > (unsigned) (mgr->size_factor * size))
+   if (buf->base.size < size ||
+       buf->base.size > (unsigned) (mgr->size_factor * size))
       return 0;
 
    if (usage & mgr->bypass_usage)
       return 0;
 
-   if (!pb_check_alignment(alignment, 1u << buf->alignment_log2))
+   if (!pb_check_alignment(alignment, 1u << buf->base.alignment_log2))
       return 0;
 
    return mgr->can_reclaim(mgr->winsys, buf) ? 1 : -1;
@@ -228,12 +228,12 @@ pb_cache_reclaim_buffer(struct pb_cache *mgr, pb_size size,
    if (entry) {
       struct pb_buffer *buf = entry->buffer;
 
-      mgr->cache_size -= buf->size;
+      mgr->cache_size -= buf->base.size;
       list_del(&entry->head);
       --mgr->num_buffers;
       simple_mtx_unlock(&mgr->mutex);
       /* Increase refcount */
-      pipe_reference_init(&buf->reference, 1);
+      pipe_reference_init(&buf->base.reference, 1);
       return buf;
    }
 

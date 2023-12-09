@@ -795,7 +795,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 
    /* Allocate a new buffer for IBs if the current buffer is all used. */
    if (!main_ib->big_buffer ||
-       main_ib->used_ib_space + ib_size > main_ib->big_buffer->size) {
+       main_ib->used_ib_space + ib_size > main_ib->big_buffer->base.size) {
       if (!amdgpu_ib_new_buffer(ws, main_ib, cs))
          return false;
    }
@@ -814,7 +814,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 
    cs->csc->ib_main_addr = rcs->current.buf;
 
-   ib_size = main_ib->big_buffer->size - main_ib->used_ib_space;
+   ib_size = main_ib->big_buffer->base.size - main_ib->used_ib_space;
    rcs->current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs);
    return true;
 }
@@ -1146,7 +1146,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    rcs->current.cdw = 0;
 
    rcs->current.buf = (uint32_t*)(main_ib->big_buffer_cpu_ptr + main_ib->used_ib_space);
-   rcs->current.max_dw = main_ib->big_buffer->size / 4 - cs_epilog_dw;
+   rcs->current.max_dw = main_ib->big_buffer->base.size / 4 - cs_epilog_dw;
 
    amdgpu_cs_add_buffer(rcs, main_ib->big_buffer,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
@@ -1163,7 +1163,7 @@ static unsigned amdgpu_cs_get_buffer_list(struct radeon_cmdbuf *rcs,
 
     if (list) {
         for (unsigned i = 0; i < num_real_buffers; i++) {
-            list[i].bo_size = real_buffers->buffers[i].bo->base.size;
+            list[i].bo_size = real_buffers->buffers[i].bo->base.base.size;
             list[i].vm_address = get_real_bo(real_buffers->buffers[i].bo)->gpu_address;
             list[i].priority_usage = real_buffers->buffers[i].usage;
         }

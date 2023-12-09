@@ -415,9 +415,9 @@ static unsigned radeon_drm_cs_add_buffer(struct radeon_cmdbuf *rcs,
    cs->csc->relocs_bo[index].u.real.priority_usage |= priority;
 
    if (added_domains & RADEON_DOMAIN_VRAM)
-      rcs->used_vram_kb += bo->base.size / 1024;
+      rcs->used_vram_kb += bo->base.base.size / 1024;
    else if (added_domains & RADEON_DOMAIN_GTT)
-      rcs->used_gart_kb += bo->base.size / 1024;
+      rcs->used_gart_kb += bo->base.base.size / 1024;
 
    return index;
 }
@@ -483,7 +483,7 @@ static unsigned radeon_drm_cs_get_buffer_list(struct radeon_cmdbuf *rcs,
 
    if (list) {
       for (i = 0; i < cs->csc->num_relocs; i++) {
-         list[i].bo_size = cs->csc->relocs_bo[i].bo->base.size;
+         list[i].bo_size = cs->csc->relocs_bo[i].bo->base.base.size;
          list[i].vm_address = cs->csc->relocs_bo[i].bo->va;
          list[i].priority_usage = cs->csc->relocs_bo[i].u.real.priority_usage;
       }

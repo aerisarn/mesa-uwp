@@ -98,7 +98,7 @@ _pb_cache_buffer_destroy(void *winsys, struct pb_buffer *pb_buf)
 {
    struct pb_cache_buffer *buf = pb_cache_buffer(pb_buf);
 
-   assert(!pipe_is_referenced(&buf->base.reference));
+   assert(!pipe_is_referenced(&buf->base.base.reference));
    pb_reference(&buf->buffer, NULL);
    FREE(buf);
 }
@@ -233,14 +233,14 @@ pb_cache_manager_create_buffer(struct pb_manager *_mgr,
       return NULL;
    }
    
-   assert(pipe_is_referenced(&buf->buffer->reference));
-   assert(pb_check_alignment(desc->alignment, 1u << buf->buffer->alignment_log2));
-   assert(buf->buffer->size >= aligned_size);
+   assert(pipe_is_referenced(&buf->buffer->base.reference));
+   assert(pb_check_alignment(desc->alignment, 1u << buf->buffer->base.alignment_log2));
+   assert(buf->buffer->base.size >= aligned_size);
    
-   pipe_reference_init(&buf->base.reference, 1);
-   buf->base.alignment_log2 = buf->buffer->alignment_log2;
-   buf->base.usage = buf->buffer->usage;
-   buf->base.size = buf->buffer->size;
+   pipe_reference_init(&buf->base.base.reference, 1);
+   buf->base.base.alignment_log2 = buf->buffer->base.alignment_log2;
+   buf->base.base.usage = buf->buffer->base.usage;
+   buf->base.base.size = buf->buffer->base.size;
    
    buf->base.vtbl = &pb_cache_buffer_vtbl;
    buf->mgr = mgr;

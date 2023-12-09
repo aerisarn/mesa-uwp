@@ -770,8 +770,8 @@ void r300_emit_query_end(struct r300_context* r300)
     query->num_results += query->num_pipes;
 
     /* XXX grab all the results and reset the counter. */
-    if (query->num_results >= query->buf->size / 4 - 4) {
-        query->num_results = (query->buf->size / 4) / 2;
+    if (query->num_results >= query->buf->base.size / 4 - 4) {
+        query->num_results = (query->buf->base.size / 4) / 2;
         fprintf(stderr, "r300: Rewinding OQBO...\n");
     }
 }

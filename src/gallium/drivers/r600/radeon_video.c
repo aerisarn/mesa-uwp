@@ -90,7 +90,7 @@ bool rvid_resize_buffer(struct pipe_screen *screen, struct radeon_cmdbuf *cs,
 {
 	struct r600_common_screen *rscreen = (struct r600_common_screen *)screen;
 	struct radeon_winsys* ws = rscreen->ws;
-	unsigned bytes = MIN2(new_buf->res->buf->size, new_size);
+	unsigned bytes = MIN2(new_buf->res->buf->base.size, new_size);
 	struct rvid_buffer old_buf = *new_buf;
 	void *src = NULL, *dst = NULL;
 
@@ -132,7 +132,7 @@ void rvid_clear_buffer(struct pipe_context *context, struct rvid_buffer* buffer)
 	struct r600_common_context *rctx = (struct r600_common_context*)context;
 
 	rctx->dma_clear_buffer(context, &buffer->res->b.b, 0,
-			       buffer->res->buf->size, 0);
+			       buffer->res->buf->base.size, 0);
 	context->flush(context, NULL, 0);
 }
 
@@ -189,9 +189,9 @@ void rvid_join_surfaces(struct r600_common_context *rctx,
 		if (!buffers[i] || !*buffers[i])
 			continue;
 
-		size = align(size, 1 << (*buffers[i])->alignment_log2);
-		size += (*buffers[i])->size;
-		alignment = MAX2(alignment, 1 << (*buffers[i])->alignment_log2);
+		size = align(size, 1 << (*buffers[i])->base.alignment_log2);
+		size += (*buffers[i])->base.size;
+		alignment = MAX2(alignment, 1 << (*buffers[i])->base.alignment_log2);
 	}
 
 	if (!size)

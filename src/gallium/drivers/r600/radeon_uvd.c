@@ -887,7 +887,7 @@ static void ruvd_decode_bitstream(struct pipe_video_codec *decoder,
 		if (format == PIPE_VIDEO_FORMAT_JPEG)
 			new_size += 2; /* save for EOI */
 
-		if (new_size > buf->res->buf->size) {
+		if (new_size > buf->res->buf->base.size) {
 			dec->ws->buffer_unmap(dec->ws, buf->res->buf);
 			dec->bs_ptr = NULL;
 			if (!rvid_resize_buffer(dec->screen, &dec->cs, buf, new_size)) {
@@ -960,7 +960,7 @@ static void ruvd_end_frame(struct pipe_video_codec *decoder,
 	}
 
 	if (dec->dpb.res)
-		dec->msg->body.decode.dpb_size = dec->dpb.res->buf->size;
+		dec->msg->body.decode.dpb_size = dec->dpb.res->buf->base.size;
 	dec->msg->body.decode.bsd_size = bs_size;
 	dec->msg->body.decode.db_pitch = align(dec->base.width, get_db_pitch_alignment(dec));
 

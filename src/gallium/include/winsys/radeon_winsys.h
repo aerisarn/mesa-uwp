@@ -785,7 +785,7 @@ radeon_bo_reference(struct radeon_winsys *rws, struct pb_buffer **dst, struct pb
 {
    struct pb_buffer *old = *dst;
 
-   if (pipe_reference(&(*dst)->reference, &src->reference))
+   if (pipe_reference(&(*dst)->base.reference, &src->base.reference))
       rws->buffer_destroy(rws, old);
    *dst = src;
 }

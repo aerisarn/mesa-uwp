@@ -1046,7 +1046,7 @@ static void ruvd_decode_bitstream(struct pipe_video_codec *decoder,
       struct rvid_buffer *buf = &dec->bs_buffers[dec->cur_buffer];
       unsigned new_size = dec->bs_size + sizes[i];
 
-      if (new_size > buf->res->buf->size) {
+      if (new_size > buf->res->buf->base.size) {
          dec->ws->buffer_unmap(dec->ws, buf->res->buf);
          if (!si_vid_resize_buffer(dec->screen, &dec->cs, buf, new_size, NULL)) {
             RVID_ERR("Can't resize bitstream buffer!");
@@ -1110,13 +1110,13 @@ static void ruvd_end_frame(struct pipe_video_codec *decoder, struct pipe_video_b
    }
 
    if (dec->dpb.res)
-      dec->msg->body.decode.dpb_size = dec->dpb.res->buf->size;
+      dec->msg->body.decode.dpb_size = dec->dpb.res->buf->base.size;
    dec->msg->body.decode.bsd_size = bs_size;
    dec->msg->body.decode.db_pitch = align(dec->base.width, get_db_pitch_alignment(dec));
 
    if (dec->stream_type == RUVD_CODEC_H264_PERF &&
        ((struct si_screen *)dec->screen)->info.family >= CHIP_POLARIS10)
-      dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->size;
+      dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->base.size;
 
    dt = dec->set_dtb(dec->msg, (struct vl_video_buffer *)target);
    if (((struct si_screen *)dec->screen)->info.family >= CHIP_STONEY)
@@ -1144,7 +1144,7 @@ static void ruvd_end_frame(struct pipe_video_codec *decoder, struct pipe_video_b
       }
 
       if (dec->ctx.res)
-         dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->size;
+         dec->msg->body.decode.dpb_reserved = dec->ctx.res->buf->base.size;
       break;
 
    case PIPE_VIDEO_FORMAT_VC1:
