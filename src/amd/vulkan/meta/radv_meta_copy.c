@@ -406,7 +406,14 @@ transfer_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_i
          radv_sdma_get_surf(device, dst_image, region->dstSubresource, region->dstOffset, dst_aspect_mask);
       const VkExtent3D extent = radv_sdma_get_copy_extent(src_image, region->srcSubresource, region->extent);
 
-      radv_sdma_copy_image(device, cs, &src, &dst, extent);
+      if (radv_sdma_use_t2t_scanline_copy(device, &src, &dst, extent)) {
+         if (!alloc_transfer_temp_bo(cmd_buffer))
+            return;
+
+         radv_sdma_copy_image_t2t_scanline(device, cs, &src, &dst, extent, cmd_buffer->transfer.copy_temp);
+      } else {
+         radv_sdma_copy_image(device, cs, &src, &dst, extent);
+      }
    }
 }
 
