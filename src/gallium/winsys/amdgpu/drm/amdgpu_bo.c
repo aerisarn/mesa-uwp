@@ -678,7 +678,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    struct amdgpu_winsys *ws = priv;
    enum radeon_bo_domain domains = radeon_domain_from_heap(heap);
    enum radeon_bo_flag flags = radeon_flags_from_heap(heap);
-   uint32_t base_id;
 
    /* Determine the slab buffer size. */
    unsigned max_entry_size = 1 << (ws->bo_slabs.min_order + ws->bo_slabs.num_orders - 1);
@@ -737,8 +736,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
    memset(slab_bo->entries, 0, slab_bo->slab.num_entries * sizeof(*slab_bo->entries));
    list_inithead(&slab_bo->slab.free);
 
-   base_id = __sync_fetch_and_add(&ws->next_bo_unique_id, slab_bo->slab.num_entries);
-
    for (unsigned i = 0; i < slab_bo->slab.num_entries; ++i) {
       struct amdgpu_bo_slab_entry *bo = &slab_bo->entries[i];
 
@@ -746,7 +743,6 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap, unsigned entry_s
       bo->b.base.alignment_log2 = util_logbase2(get_slab_entry_alignment(ws, entry_size));
       bo->b.base.size = entry_size;
       bo->b.type = AMDGPU_BO_SLAB_ENTRY;
-      bo->b.unique_id = base_id + i;
 
       bo->entry.slab = &slab_bo->slab;
       list_addtail(&bo->entry.head, &slab_bo->slab.free);
@@ -1385,6 +1381,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       struct amdgpu_bo_slab_entry *slab_bo = container_of(entry, struct amdgpu_bo_slab_entry, entry);
       pipe_reference_init(&slab_bo->b.base.reference, 1);
       slab_bo->b.base.size = size;
+      slab_bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
       assert(alignment <= 1 << slab_bo->b.base.alignment_log2);
 
       if (domain & RADEON_DOMAIN_VRAM)

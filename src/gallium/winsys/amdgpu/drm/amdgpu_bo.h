@@ -51,6 +51,9 @@ struct amdgpu_winsys_bo {
    struct pb_buffer_lean base;
    enum amdgpu_bo_type type;
 
+   /* This is set when a buffer is returned by buffer_create(), not when the memory is allocated
+    * as part of slab BO.
+    */
    uint32_t unique_id;
 
    /* how many command streams, which are being emitted in a separate
