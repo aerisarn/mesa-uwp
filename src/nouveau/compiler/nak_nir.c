@@ -1208,7 +1208,9 @@ nak_postprocess_nir(nir_shader *nir,
 
    do {
       progress = false;
-      if (OPT(nir, nir_opt_algebraic_late)) {
+      OPT(nir, nir_opt_algebraic_late);
+      OPT(nir, nak_nir_lower_algebraic_late, nak);
+      if (progress) {
          OPT(nir, nir_opt_constant_folding);
          OPT(nir, nir_copy_prop);
          OPT(nir, nir_opt_dce);

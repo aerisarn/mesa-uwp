@@ -120,9 +120,20 @@ _libnak_rs = static_library(
   link_with: [_libbitview_rs, libnak_bindings_gen, _libnak_ir_proc_rs],
 )
 
+nak_nir_algebraic_c = custom_target(
+  'nak_nir_algebraic.c',
+  input : 'nak_nir_algebraic.py',
+  output : 'nak_nir_algebraic.c',
+  command : [
+    prog_python, '@INPUT@', '-p', dir_compiler_nir,
+  ],
+  capture : true,
+  depend_files : nir_algebraic_depends,
+)
+
 _libnak = static_library(
   'nak',
-  libnak_c_files,
+  [libnak_c_files, nak_nir_algebraic_c],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium],
   dependencies : libnak_deps,
   link_with : [_libnak_rs],
