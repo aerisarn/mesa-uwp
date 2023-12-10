@@ -1032,8 +1032,8 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
 
    /* Upload each scissor */
    for (unsigned i = 0; i < count; ++i) {
-      agx_get_scissor_extents(&vp[i], &ss[i], &batch->key, &minx[i], &miny[i],
-                              &maxx[i], &maxy[i]);
+      agx_get_scissor_extents(&vp[i], ss ? &ss[i] : NULL, &batch->key, &minx[i],
+                              &miny[i], &maxx[i], &maxy[i]);
       assert(maxx[i] >= minx[i] && maxy[i] >= miny[i]);
 
       float minz, maxz;
