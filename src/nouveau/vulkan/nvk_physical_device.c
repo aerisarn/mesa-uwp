@@ -578,14 +578,9 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       .viewportBoundsRange = { -65536, 65536 },
       .viewportSubPixelBits = 8,
       .minMemoryMapAlignment = 64,
-      .minTexelBufferOffsetAlignment =
-         nvk_get_buffer_alignment(info, VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
-                                        VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR,
-                                  0),
-      .minUniformBufferOffsetAlignment =
-         nvk_get_buffer_alignment(info, VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR, 0),
-      .minStorageBufferOffsetAlignment =
-         nvk_get_buffer_alignment(info, VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR, 0),
+      .minTexelBufferOffsetAlignment = NVK_MIN_TEXEL_BUFFER_ALIGNMENT,
+      .minUniformBufferOffsetAlignment = nvk_min_cbuf_alignment(info),
+      .minStorageBufferOffsetAlignment = NVK_MIN_SSBO_ALIGNMENT,
       .minTexelOffset = -8,
       .maxTexelOffset = 7,
       .minTexelGatherOffset = -32,
