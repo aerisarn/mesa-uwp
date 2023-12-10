@@ -149,7 +149,7 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I, unsigned srcs,
       bool float_src = is_float;
 
       /* fcmpsel takes first 2 as floats specially */
-      if (s < 2 && I->op == AGX_OPCODE_FCMPSEL)
+      if (s < 2 && (I->op == AGX_OPCODE_FCMPSEL || I->op == AGX_OPCODE_FCMP))
          float_src = true;
       if (I->op == AGX_OPCODE_ST_TILE && s == 0)
          continue;
@@ -340,7 +340,8 @@ agx_optimizer_forward(agx_context *ctx)
       agx_optimizer_copyprop(defs, I);
 
       /* Propagate fmov down */
-      if (info.is_float || I->op == AGX_OPCODE_FCMPSEL)
+      if (info.is_float || I->op == AGX_OPCODE_FCMPSEL ||
+          I->op == AGX_OPCODE_FCMP)
          agx_optimizer_fmov(defs, I);
 
       /* Inline immediates if we can. TODO: systematic */
