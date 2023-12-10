@@ -1661,7 +1661,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
    } else {
       draw.start = (uintptr_t)indices >> index_size_shift;
 
-      if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
+      if (ctx->pipe->draw_vbo == tc_draw_vbo) {
          /* Fast path for u_threaded_context to eliminate atomics. */
          info.index.resource = _mesa_get_bufferobj_reference(ctx, index_bo);
          info.take_index_buffer_ownership = true;
@@ -2016,7 +2016,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
    if (info.has_user_indices) {
       info.index.user = (void*)min_index_ptr;
    } else {
-      if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
+      if (ctx->pipe->draw_vbo == tc_draw_vbo) {
          /* Fast path for u_threaded_context to eliminate atomics. */
          info.index.resource = _mesa_get_bufferobj_reference(ctx, index_bo);
          info.take_index_buffer_ownership = true;
@@ -2069,6 +2069,8 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
       assert(info.has_user_indices);
       info.increment_draw_id = false;
 
+      st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
       for (int i = 0; i < primcount; i++) {
          struct pipe_draw_start_count_bias draw;
 
@@ -2082,8 +2084,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
          draw.index_bias = basevertex ? basevertex[i] : 0;
          draw.count = count[i];
 
-         st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-         if (!validate_index_bounds(ctx, &info, &draw, 1))
+         if (!draw.count || !validate_index_bounds(ctx, &info, &draw, 1))
             continue;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
@@ -2399,6 +2400,8 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
       info.index_bias_varies = false;
       /* Packed section end. */
 
+      st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
       const uint8_t *ptr = (const uint8_t *) indirect;
       for (unsigned i = 0; i < primcount; i++) {
          DrawArraysIndirectCommand *cmd = (DrawArraysIndirectCommand *) ptr;
@@ -2410,7 +2413,8 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
          draw.start = cmd->first;
          draw.count = cmd->count;
 
-         st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+         if (!draw.count)
+            continue;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
          ptr += stride;
@@ -2494,7 +2498,7 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
 
       struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
 
-      if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
+      if (ctx->pipe->draw_vbo == tc_draw_vbo) {
          /* Fast path for u_threaded_context to eliminate atomics. */
          info.index.resource = _mesa_get_bufferobj_reference(ctx, index_bo);
          info.take_index_buffer_ownership = true;
@@ -2511,6 +2515,8 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
       if (!info.index.resource)
          return;
 
+      st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
+
       const uint8_t *ptr = (const uint8_t *) indirect;
       for (unsigned i = 0; i < primcount; i++) {
          DrawElementsIndirectCommand *cmd = (DrawElementsIndirectCommand*)ptr;
@@ -2523,8 +2529,7 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
          draw.count = cmd->count;
          draw.index_bias = cmd->baseVertex;
 
-         st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-         if (!validate_index_bounds(ctx, &info, &draw, 1))
+         if (!draw.count || !validate_index_bounds(ctx, &info, &draw, 1))
             continue;
 
          ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
