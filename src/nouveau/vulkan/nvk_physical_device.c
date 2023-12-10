@@ -998,7 +998,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       pdev->mem_heaps[1].flags = 0;
       pdev->mem_types[1].heapIndex = 1;
       pdev->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                                         VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
    } else {
       pdev->mem_type_cnt = 1;
       pdev->mem_heap_cnt = 1;
