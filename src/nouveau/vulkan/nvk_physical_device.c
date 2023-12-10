@@ -895,7 +895,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (info.cls_eng3d < KEPLER_A)
       return VK_ERROR_INCOMPATIBLE_DRIVER;
 
-   if ((info.cls_eng3d < TURING_A || info.cls_eng3d > ADA_A) &&
+   if ((info.type != NV_DEVICE_TYPE_DIS ||
+        info.cls_eng3d < TURING_A || info.cls_eng3d > ADA_A) &&
        !debug_get_bool_option("NVK_I_WANT_A_BROKEN_VULKAN_DRIVER", false)) {
       return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                        "WARNING: NVK is not well-tested on %s, pass "
