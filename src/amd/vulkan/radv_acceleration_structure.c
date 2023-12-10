@@ -57,10 +57,6 @@ static const uint32_t ploc_spv[] = {
 #include "bvh/ploc_internal.spv.h"
 };
 
-static const uint32_t ploc_extended_spv[] = {
-#include "bvh/ploc_internal_extended.spv.h"
-};
-
 static const uint32_t copy_spv[] = {
 #include "bvh/copy.spv.h"
 };
@@ -87,7 +83,6 @@ enum internal_build_type {
 
 struct build_config {
    enum internal_build_type internal_type;
-   bool extended_sah;
    bool compact;
 };
 
@@ -128,11 +123,6 @@ build_config(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfo
       config.internal_type = INTERNAL_BUILD_TYPE_PLOC;
    else
       config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
-
-   /* 4^(lds stack entry count) assuming we push 1 node on average. */
-   uint32_t lds_spill_threshold = 1 << (8 * 2);
-   if (leaf_count < lds_spill_threshold)
-      config.extended_sah = true;
 
    if (build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)
       config.compact = true;
@@ -306,7 +296,6 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
    struct radv_meta_state *state = &device->meta_state;
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.copy_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.ploc_pipeline, &state->alloc);
-   radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.ploc_extended_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.lbvh_generate_ir_pipeline,
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.lbvh_main_pipeline, &state->alloc);
@@ -540,12 +529,6 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
 
    result = create_build_pipeline_spv(device, ploc_spv, sizeof(ploc_spv), sizeof(struct ploc_args),
                                       &device->meta_state.accel_struct_build.ploc_pipeline,
-                                      &device->meta_state.accel_struct_build.ploc_p_layout);
-   if (result != VK_SUCCESS)
-      goto exit;
-
-   result = create_build_pipeline_spv(device, ploc_extended_spv, sizeof(ploc_extended_spv), sizeof(struct ploc_args),
-                                      &device->meta_state.accel_struct_build.ploc_extended_pipeline,
                                       &device->meta_state.accel_struct_build.ploc_p_layout);
    if (result != VK_SUCCESS)
       goto exit;
@@ -1004,18 +987,14 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
 
 static void
 ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
-                    const VkAccelerationStructureBuildGeometryInfoKHR *pInfos, struct bvh_state *bvh_states,
-                    bool extended_sah)
+                    const VkAccelerationStructureBuildGeometryInfoKHR *pInfos, struct bvh_state *bvh_states)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        extended_sah ? cmd_buffer->device->meta_state.accel_struct_build.ploc_extended_pipeline
-                                     : cmd_buffer->device->meta_state.accel_struct_build.ploc_pipeline);
+                        cmd_buffer->device->meta_state.accel_struct_build.ploc_pipeline);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
       if (bvh_states[i].config.internal_type != INTERNAL_BUILD_TYPE_PLOC)
-         continue;
-      if (bvh_states[i].config.extended_sah != extended_sah)
          continue;
 
       uint32_t src_scratch_offset = bvh_states[i].scratch_offset;
@@ -1242,8 +1221,7 @@ radv_CmdBuildAccelerationStructuresKHR(VkCommandBuffer commandBuffer, uint32_t i
 
    lbvh_build_internal(commandBuffer, infoCount, pInfos, bvh_states, flush_bits);
 
-   ploc_build_internal(commandBuffer, infoCount, pInfos, bvh_states, false);
-   ploc_build_internal(commandBuffer, infoCount, pInfos, bvh_states, true);
+   ploc_build_internal(commandBuffer, infoCount, pInfos, bvh_states);
 
    cmd_buffer->state.flush_bits |= flush_bits;
 

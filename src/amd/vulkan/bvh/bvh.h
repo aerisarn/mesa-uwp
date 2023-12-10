@@ -107,8 +107,6 @@ struct radv_accel_struct_header {
 
 struct radv_ir_node {
    radv_aabb aabb;
-   /* Generic normalized cost of not merging this node. */
-   float cost;
 };
 
 #define RADV_UNKNOWN_BVH_OFFSET 0xFFFFFFFF

@@ -366,7 +366,6 @@ main(void)
    if (is_active) {
       REF(radv_ir_node) ir_node = INDEX(radv_ir_node, args.ir, primitive_id);
       DEREF(ir_node).aabb = bounds;
-      DEREF(ir_node).cost = 0.0;
    }
 
    uint32_t ir_offset = primitive_id * SIZEOF(radv_ir_node);
