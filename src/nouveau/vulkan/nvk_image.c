@@ -673,7 +673,7 @@ nvk_get_image_memory_requirements(struct nvk_device *dev,
                                   VkImageAspectFlags aspects,
                                   VkMemoryRequirements2 *pMemoryRequirements)
 {
-   uint32_t memory_types = (1 << dev->pdev->mem_type_cnt) - 1;
+   uint32_t memory_types = (1 << dev->pdev->mem_type_count) - 1;
 
    // TODO hope for the best?
 

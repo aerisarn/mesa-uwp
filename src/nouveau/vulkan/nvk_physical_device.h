@@ -33,8 +33,8 @@ struct nvk_physical_device {
    // TODO: add mapable VRAM heap if possible
    VkMemoryHeap mem_heaps[2];
    VkMemoryType mem_types[2];
-   uint8_t mem_heap_cnt;
-   uint8_t mem_type_cnt;
+   uint8_t mem_heap_count;
+   uint8_t mem_type_count;
 
    struct vk_sync_type syncobj_sync_type;
    const struct vk_sync_type *sync_types[2];

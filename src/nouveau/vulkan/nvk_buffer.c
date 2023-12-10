@@ -166,7 +166,7 @@ nvk_GetDeviceBufferMemoryRequirements(
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .size = align64(pInfo->pCreateInfo->size, alignment),
       .alignment = alignment,
-      .memoryTypeBits = BITFIELD_MASK(dev->pdev->mem_type_cnt),
+      .memoryTypeBits = BITFIELD_MASK(dev->pdev->mem_type_count),
    };
 
    vk_foreach_struct_const(ext, pMemoryRequirements->pNext) {

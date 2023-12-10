@@ -979,10 +979,6 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    nvk_physical_device_init_pipeline_cache(pdev);
 
-   pdev->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-   pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-   pdev->mem_types[0].heapIndex = 0;
-
    uint64_t sysmem_size_B = 0;
    if (!os_get_available_system_memory(&sysmem_size_B)) {
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
@@ -990,25 +986,38 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       goto fail_disk_cache;
    }
 
-   if (pdev->info.vram_size_B) {
-      pdev->mem_type_cnt = 2;
-      pdev->mem_heap_cnt = 2;
+   if (pdev->info.vram_size_B > 0) {
+      uint32_t vram_heap_idx = pdev->mem_heap_count++;
+      pdev->mem_heaps[vram_heap_idx] = (VkMemoryHeap) {
+         .size = pdev->info.vram_size_B,
+         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
+      };
 
-      pdev->mem_heaps[0].size = pdev->info.vram_size_B;
-      pdev->mem_heaps[1].size = sysmem_size_B;
-      pdev->mem_heaps[1].flags = 0;
-      pdev->mem_types[1].heapIndex = 1;
-      pdev->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                                         VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-   } else {
-      pdev->mem_type_cnt = 1;
-      pdev->mem_heap_cnt = 1;
-
-      pdev->mem_heaps[0].size = sysmem_size_B;
-      pdev->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      pdev->mem_types[pdev->mem_type_count++] = (VkMemoryType) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+         .heapIndex = vram_heap_idx,
+      };
    }
+
+   uint32_t sysmem_heap_idx = pdev->mem_heap_count++;
+   pdev->mem_heaps[sysmem_heap_idx] = (VkMemoryHeap) {
+      .size = sysmem_size_B,
+      /* If we don't have any VRAM (iGPU), claim sysmem as DEVICE_LOCAL */
+      .flags = pdev->info.vram_size_B == 0
+               ? VK_MEMORY_HEAP_DEVICE_LOCAL_BIT
+               : 0,
+   };
+
+   pdev->mem_types[pdev->mem_type_count++] = (VkMemoryType) {
+      /* TODO: What's the right thing to do here on Tegra? */
+      .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                       VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+      .heapIndex = sysmem_heap_idx,
+   };
+
+   assert(pdev->mem_heap_count <= ARRAY_SIZE(pdev->mem_heaps));
+   assert(pdev->mem_type_count <= ARRAY_SIZE(pdev->mem_types));
 
    unsigned st_idx = 0;
    pdev->syncobj_sync_type = syncobj_sync_type;
@@ -1055,13 +1064,13 @@ nvk_GetPhysicalDeviceMemoryProperties2(
 {
    VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
 
-   pMemoryProperties->memoryProperties.memoryHeapCount = pdev->mem_heap_cnt;
-   for (int i = 0; i < pdev->mem_heap_cnt; i++) {
+   pMemoryProperties->memoryProperties.memoryHeapCount = pdev->mem_heap_count;
+   for (int i = 0; i < pdev->mem_heap_count; i++) {
       pMemoryProperties->memoryProperties.memoryHeaps[i] = pdev->mem_heaps[i];
    }
 
-   pMemoryProperties->memoryProperties.memoryTypeCount = pdev->mem_type_cnt;
-   for (int i = 0; i < pdev->mem_type_cnt; i++) {
+   pMemoryProperties->memoryProperties.memoryTypeCount = pdev->mem_type_count;
+   for (int i = 0; i < pdev->mem_type_count; i++) {
       pMemoryProperties->memoryProperties.memoryTypes[i] = pdev->mem_types[i];
    }
 
