@@ -35,7 +35,8 @@ lower_tex_crawl(nir_builder *b, nir_instr *instr, UNUSED void *data)
    nir_tex_instr *tex = nir_instr_as_tex(instr);
    b->cursor = nir_before_instr(instr);
 
-   if (tex->op != nir_texop_txs && tex->op != nir_texop_texture_samples)
+   if (tex->op != nir_texop_txs && tex->op != nir_texop_texture_samples &&
+       tex->op != nir_texop_query_levels)
       return false;
 
    nir_def *ptr = texture_descriptor_ptr(b, tex);
@@ -55,6 +56,8 @@ lower_tex_crawl(nir_builder *b, nir_instr *instr, UNUSED void *data)
                     nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_2D),
                     nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE),
                     nir_imm_bool(b, tex->is_array));
+   } else if (tex->op == nir_texop_query_levels) {
+      res = libagx_texture_levels(b, ptr);
    } else {
       res = libagx_texture_samples(b, ptr);
    }
@@ -317,6 +320,7 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
    case nir_texop_tg4:
    case nir_texop_texture_samples:
    case nir_texop_samples_identical:
+   case nir_texop_query_levels:
       /* These operations do not use a sampler */
       return false;
 
@@ -654,6 +658,7 @@ agx_nir_needs_texture_crawl(nir_instr *instr)
       /* Queries always become a crawl */
       case nir_texop_txs:
       case nir_texop_texture_samples:
+      case nir_texop_query_levels:
          return true;
 
       /* Buffer textures need their format read */

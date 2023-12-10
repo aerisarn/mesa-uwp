@@ -68,6 +68,18 @@ libagx_texture_samples(constant struct agx_texture_packed *ptr)
    return (d.samples == AGX_SAMPLE_COUNT_2) ? 2 : 4;
 }
 
+uint
+libagx_texture_levels(constant struct agx_texture_packed *ptr)
+{
+   agx_unpack(NULL, ptr, TEXTURE, d);
+
+   /* As above */
+   if (d.null)
+      return 0;
+   else
+      return (d.last_level - d.first_level) + 1;
+}
+
 static uint32_t
 calculate_twiddled_coordinates(ushort2 coord, uint16_t tile_w_px,
                                uint16_t tile_h_px, uint32_t width_tl)
