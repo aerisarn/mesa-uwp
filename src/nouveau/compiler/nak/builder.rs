@@ -295,7 +295,7 @@ pub trait SSABuilder: Builder {
 
     fn imul(&mut self, x: Src, y: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
-        if self.sm() > 70 {
+        if self.sm() >= 70 {
             self.push_op(OpIMad {
                 dst: dst.into(),
                 srcs: [x, y, 0.into()],
@@ -314,7 +314,7 @@ pub trait SSABuilder: Builder {
 
     fn imul_2x32_64(&mut self, x: Src, y: Src, signed: bool) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 2);
-        if self.sm() > 70 {
+        if self.sm() >= 70 {
             self.push_op(OpIMad64 {
                 dst: dst.into(),
                 srcs: [x, y, 0.into()],

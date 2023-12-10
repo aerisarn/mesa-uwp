@@ -1923,7 +1923,7 @@ impl SM70Instr {
         ip: usize,
         labels: &HashMap<Label, usize>,
     ) -> [u32; 4] {
-        assert!(sm >= 75);
+        assert!(sm >= 70);
 
         let mut si = SM70Instr {
             inst: [0; 4],

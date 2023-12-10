@@ -138,9 +138,10 @@ impl RegFile {
                     // We need at least 16 registers to satisfy RA constraints
                     // for texture ops and another 2 for parallel copy lowering
                     18
-                } else if sm >= 75 {
-                    // Turing+ has a maximum of 253 registers.  Presumably
-                    // because two registers get burned for UGPRs?
+                } else if sm >= 70 {
+                    // Volta+ has a maximum of 253 registers.  Presumably
+                    // because two registers get burned for UGPRs? Unclear
+                    // on why we need it on Volta though.
                     253
                 } else {
                     255
@@ -5637,7 +5638,7 @@ impl Shader {
         self.map_instrs(|mut instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
                 Op::INeg(neg) => {
-                    if sm >= 75 {
+                    if sm >= 70 {
                         instr.op = Op::IAdd3(OpIAdd3 {
                             dst: neg.dst,
                             overflow: [Dst::None; 2],
