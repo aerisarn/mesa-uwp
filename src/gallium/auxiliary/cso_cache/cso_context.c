@@ -1329,9 +1329,6 @@ cso_set_vertex_buffers_and_elements(struct cso_context *cso,
 
    if (vbuf && (ctx->always_use_vbuf || uses_user_vertex_buffers)) {
       if (!ctx->vbuf_current) {
-         /* Unbind all buffers in cso_context, because we'll use u_vbuf. */
-         pipe->set_vertex_buffers(pipe, 0, false, NULL);
-
          /* Unset this to make sure the CSO is re-bound on the next use. */
          ctx->velements = NULL;
          ctx->vbuf_current = pipe->vbuf = vbuf;
@@ -1345,9 +1342,6 @@ cso_set_vertex_buffers_and_elements(struct cso_context *cso,
    }
 
    if (ctx->vbuf_current) {
-      /* Unbind all buffers in u_vbuf, because we'll use cso_context. */
-      u_vbuf_set_vertex_buffers(vbuf, 0, false, NULL);
-
       /* Unset this to make sure the CSO is re-bound on the next use. */
       u_vbuf_unset_vertex_elements(vbuf);
       ctx->vbuf_current = pipe->vbuf = NULL;
