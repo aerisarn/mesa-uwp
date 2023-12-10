@@ -1105,7 +1105,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
                              uint64_t scratch_va)
 {
    bool dma_upload = !(sscreen->debug_flags & DBG(NO_DMA_SHADERS)) &&
-                     sscreen->info.has_dedicated_vram;
+                     sscreen->info.has_dedicated_vram && !sscreen->info.all_vram_visible;
 
    if (shader->binary.type == SI_SHADER_BINARY_ELF) {
       return upload_binary_elf(sscreen, shader, scratch_va, dma_upload);
