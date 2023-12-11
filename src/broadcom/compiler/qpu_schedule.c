@@ -381,6 +381,8 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
                 break;
 
         case V3D_QPU_A_SETMSF:
+                add_write_dep(state, &state->last_tmu_write, n);
+                FALLTHROUGH;
         case V3D_QPU_A_SETREVF:
                 add_write_dep(state, &state->last_tlb, n);
                 break;
