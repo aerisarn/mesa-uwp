@@ -170,6 +170,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_timeline_semaphore               = true,
       .KHR_uniform_buffer_standard_layout   = true,
       .KHR_shader_integer_dot_product       = true,
+      .KHR_shader_terminate_invocation      = true,
       .KHR_synchronization2                 = true,
       .KHR_workgroup_memory_explicit_layout = true,
 #ifdef V3DV_USE_WSI_PLATFORM
@@ -440,6 +441,9 @@ get_features(const struct v3dv_physical_device *physical_device,
 
       /* VK_EXT_multi_draw */
       .multiDraw = true,
+
+      /* VK_KHR_shader_terminate_invocation */
+      .shaderTerminateInvocation = true,
    };
 }
 

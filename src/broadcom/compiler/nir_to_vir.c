@@ -3428,6 +3428,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_discard:
+        case nir_intrinsic_terminate:
                 ntq_flush_tmu(c);
 
                 if (vir_in_nonuniform_control_flow(c)) {
@@ -3443,7 +3444,8 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 c->emitted_discard = true;
                 break;
 
-        case nir_intrinsic_discard_if: {
+        case nir_intrinsic_discard_if:
+        case nir_intrinsic_terminate_if: {
                 ntq_flush_tmu(c);
 
                 enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, instr->src[0]);
