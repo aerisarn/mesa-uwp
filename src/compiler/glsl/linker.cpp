@@ -3104,20 +3104,12 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       if (prog->_LinkedShaders[i] == NULL)
          continue;
 
-      detect_recursion_linked(prog, prog->_LinkedShaders[i]->ir);
-      if (!prog->data->LinkStatus)
-         goto done;
-   }
-
-   /* Check and validate stream emissions in geometry shaders */
-   validate_geometry_shader_emissions(consts, prog);
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i] == NULL)
-         continue;
-
       struct gl_linked_shader *shader = prog->_LinkedShaders[i];
       exec_list *ir = shader->ir;
+
+      detect_recursion_linked(prog, ir);
+      if (!prog->data->LinkStatus)
+         goto done;
 
       lower_vector_derefs(shader);
 
@@ -3130,6 +3122,9 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
       do_vec_index_to_cond_assign(ir);
    }
+
+   /* Check and validate stream emissions in geometry shaders */
+   validate_geometry_shader_emissions(consts, prog);
 
 done:
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
