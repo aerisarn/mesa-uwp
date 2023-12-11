@@ -242,14 +242,14 @@ if with_gallium_st_d3d10umd
   subdir('targets/d3d10sw')
 endif
 if with_platform_windows
-  subdir('frontends/wgl')
-  if with_gallium_d3d12
-    subdir('winsys/d3d12/wgl')
-  else
-    winsys_d3d12_wgl = declare_dependency()
-  endif
-  subdir('targets/wgl')
   if with_opengl
+    subdir('frontends/wgl')
+    if with_gallium_d3d12
+      subdir('winsys/d3d12/wgl')
+    else
+      winsys_d3d12_wgl = declare_dependency()
+    endif
+    subdir('targets/wgl')
     subdir('targets/libgl-gdi')
   endif
 endif
