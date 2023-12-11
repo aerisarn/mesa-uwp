@@ -221,7 +221,6 @@ struct radeon_cmdbuf {
    /* Memory usage of the buffer list. These are always 0 for preamble IBs. */
    uint32_t used_vram_kb;
    uint32_t used_gart_kb;
-   uint64_t gpu_address;
 
    /* Private winsys data. */
    void *priv;
