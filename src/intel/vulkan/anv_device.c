@@ -224,6 +224,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_acceleration_structure            = rt_enabled,
       .KHR_bind_memory2                      = true,
       .KHR_buffer_device_address             = true,
+      .KHR_calibrated_timestamps             = device->has_reg_timestamp,
       .KHR_copy_commands2                    = true,
       .KHR_create_renderpass2                = true,
       .KHR_dedicated_allocation              = true,
@@ -4824,24 +4825,24 @@ void anv_DestroySampler(
    vk_sampler_destroy(&device->vk, pAllocator, &sampler->vk);
 }
 
-static const VkTimeDomainEXT anv_time_domains[] = {
-   VK_TIME_DOMAIN_DEVICE_EXT,
-   VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT,
+static const VkTimeDomainKHR anv_time_domains[] = {
+   VK_TIME_DOMAIN_DEVICE_KHR,
+   VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR,
 #ifdef CLOCK_MONOTONIC_RAW
-   VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT,
+   VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR,
 #endif
 };
 
-VkResult anv_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
+VkResult anv_GetPhysicalDeviceCalibrateableTimeDomainsKHR(
    VkPhysicalDevice                             physicalDevice,
    uint32_t                                     *pTimeDomainCount,
-   VkTimeDomainEXT                              *pTimeDomains)
+   VkTimeDomainKHR                              *pTimeDomains)
 {
    int d;
-   VK_OUTARRAY_MAKE_TYPED(VkTimeDomainEXT, out, pTimeDomains, pTimeDomainCount);
+   VK_OUTARRAY_MAKE_TYPED(VkTimeDomainKHR, out, pTimeDomains, pTimeDomainCount);
 
    for (d = 0; d < ARRAY_SIZE(anv_time_domains); d++) {
-      vk_outarray_append_typed(VkTimeDomainEXT, &out, i) {
+      vk_outarray_append_typed(VkTimeDomainKHR, &out, i) {
          *i = anv_time_domains[d];
       }
    }
@@ -4860,14 +4861,14 @@ anv_get_default_cpu_clock_id(void)
 }
 
 static inline clockid_t
-vk_time_domain_to_clockid(VkTimeDomainEXT domain)
+vk_time_domain_to_clockid(VkTimeDomainKHR domain)
 {
    switch (domain) {
 #ifdef CLOCK_MONOTONIC_RAW
-   case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+   case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR:
       return CLOCK_MONOTONIC_RAW;
 #endif
-   case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
+   case VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR:
       return CLOCK_MONOTONIC;
    default:
       unreachable("Missing");
@@ -4876,22 +4877,22 @@ vk_time_domain_to_clockid(VkTimeDomainEXT domain)
 }
 
 static inline bool
-is_cpu_time_domain(VkTimeDomainEXT domain)
+is_cpu_time_domain(VkTimeDomainKHR domain)
 {
-   return domain == VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT ||
-          domain == VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT;
+   return domain == VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR ||
+          domain == VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR;
 }
 
 static inline bool
-is_gpu_time_domain(VkTimeDomainEXT domain)
+is_gpu_time_domain(VkTimeDomainKHR domain)
 {
-   return domain == VK_TIME_DOMAIN_DEVICE_EXT;
+   return domain == VK_TIME_DOMAIN_DEVICE_KHR;
 }
 
-VkResult anv_GetCalibratedTimestampsEXT(
+VkResult anv_GetCalibratedTimestampsKHR(
    VkDevice                                     _device,
    uint32_t                                     timestampCount,
-   const VkCalibratedTimestampInfoEXT           *pTimestampInfos,
+   const VkCalibratedTimestampInfoKHR           *pTimestampInfos,
    uint64_t                                     *pTimestamps,
    uint64_t                                     *pMaxDeviation)
 {
@@ -4908,16 +4909,16 @@ VkResult anv_GetCalibratedTimestampsEXT(
    begin = end = vk_clock_gettime(anv_get_default_cpu_clock_id());
 
    for (d = 0, increment = 1; d < timestampCount; d += increment) {
-      const VkTimeDomainEXT current = pTimestampInfos[d].timeDomain;
+      const VkTimeDomainKHR current = pTimestampInfos[d].timeDomain;
       /* If we have a request pattern like this :
-       * - domain0 = VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT or VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT
-       * - domain1 = VK_TIME_DOMAIN_DEVICE_EXT
+       * - domain0 = VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR or VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR
+       * - domain1 = VK_TIME_DOMAIN_DEVICE_KHR
        * - domain2 = domain0 (optional)
        *
        * We can combine all of those into a single ioctl for maximum accuracy.
        */
       if (has_correlate_timestamp && (d + 1) < timestampCount) {
-         const VkTimeDomainEXT next = pTimestampInfos[d + 1].timeDomain;
+         const VkTimeDomainKHR next = pTimestampInfos[d + 1].timeDomain;
 
          if ((is_cpu_time_domain(current) && is_gpu_time_domain(next)) ||
              (is_gpu_time_domain(current) && is_cpu_time_domain(next))) {
@@ -4973,7 +4974,7 @@ VkResult anv_GetCalibratedTimestampsEXT(
       /* fallback to regular method */
       increment = 1;
       switch (current) {
-      case VK_TIME_DOMAIN_DEVICE_EXT:
+      case VK_TIME_DOMAIN_DEVICE_KHR:
          if (!intel_gem_read_render_timestamp(device->fd,
                                               device->info->kmd_type,
                                               &pTimestamps[d])) {
@@ -4982,13 +4983,13 @@ VkResult anv_GetCalibratedTimestampsEXT(
          }
          max_clock_period = MAX2(max_clock_period, device_period);
          break;
-      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
+      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR:
          pTimestamps[d] = vk_clock_gettime(CLOCK_MONOTONIC);
          max_clock_period = MAX2(max_clock_period, 1);
          break;
 
 #ifdef CLOCK_MONOTONIC_RAW
-      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_KHR:
          pTimestamps[d] = begin;
          break;
 #endif
