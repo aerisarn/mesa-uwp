@@ -1509,9 +1509,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    anv_physical_device_init_perf(device, fd);
 
-   get_device_extensions(device, &device->vk.supported_extensions);
-   get_features(device, &device->vk.supported_features);
-
    /* Gather major/minor before WSI. */
    struct stat st;
 
@@ -1534,6 +1531,9 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       device->local_major = 0;
       device->local_minor = 0;
    }
+
+   get_device_extensions(device, &device->vk.supported_extensions);
+   get_features(device, &device->vk.supported_features);
 
    result = anv_init_wsi(device);
    if (result != VK_SUCCESS)
