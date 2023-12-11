@@ -404,10 +404,9 @@ libmesa_rust = static_library(
   ]
 )
 
-rusticl_proc_macros = shared_library(
+rusticl_proc_macros = rust.proc_macro(
   'rusticl_proc_macros',
   [rusticl_proc_macros_files],
-  rust_crate_type : 'proc-macro',
   rust_args : [
     rusticl_args,
   ],
