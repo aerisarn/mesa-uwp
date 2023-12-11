@@ -3269,6 +3269,16 @@ anv_can_fast_clear_color_view(struct anv_device *device,
                     "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
    }
 
+   /* Wa_18020603990 - slow clear surfaces up to 256x256, 32bpp. */
+   if (intel_needs_workaround(device->info, 18020603990)) {
+      const struct anv_surface *anv_surf =
+         &iview->image->planes->primary_surface;
+      if (isl_format_get_layout(anv_surf->isl.format)->bpb <= 32 &&
+          anv_surf->isl.logical_level0_px.w <= 256 &&
+          anv_surf->isl.logical_level0_px.h <= 256)
+         return false;
+   }
+
    return true;
 }
 
