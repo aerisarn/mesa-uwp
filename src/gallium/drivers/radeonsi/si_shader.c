@@ -1966,8 +1966,9 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
 
       unsigned clip_plane_enable =
          SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(key->ge.opt.ngg_culling);
+      unsigned num_vertices = gfx10_ngg_get_vertices_per_prim(shader);
 
-      options.num_vertices_per_primitive = gfx10_ngg_get_vertices_per_prim(shader);
+      options.num_vertices_per_primitive = num_vertices ? num_vertices : 3;
       options.early_prim_export = gfx10_ngg_export_prim_early(shader);
       options.passthrough = gfx10_is_ngg_passthrough(shader);
       options.use_edgeflags = gfx10_edgeflags_have_effect(shader);

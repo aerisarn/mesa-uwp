@@ -32,38 +32,6 @@ nir_def *si_nir_load_internal_binding(nir_builder *b, struct si_shader_args *arg
    return nir_load_smem_amd(b, num_components, addr, nir_imm_int(b, slot * 16));
 }
 
-static nir_def *get_num_vert_per_prim(nir_builder *b, struct si_shader *shader,
-                                          struct si_shader_args *args)
-{
-   const struct si_shader_info *info = &shader->selector->info;
-   gl_shader_stage stage = shader->selector->stage;
-
-   unsigned num_vertices;
-   if (stage == MESA_SHADER_GEOMETRY) {
-      num_vertices = mesa_vertices_per_prim(info->base.gs.output_primitive);
-   } else if (stage == MESA_SHADER_VERTEX) {
-      if (info->base.vs.blit_sgprs_amd)
-         num_vertices = 3;
-      else if (shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES)
-         num_vertices = 2;
-      else {
-         /* Extract OUTPRIM field. */
-         nir_def *num = GET_FIELD_NIR(GS_STATE_OUTPRIM);
-         return nir_iadd_imm(b, num, 1);
-      }
-   } else {
-      assert(stage == MESA_SHADER_TESS_EVAL);
-
-      if (info->base.tess.point_mode)
-         num_vertices = 1;
-      else if (info->base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
-         num_vertices = 2;
-      else
-         num_vertices = 3;
-   }
-   return nir_imm_int(b, num_vertices);
-}
-
 static nir_def *build_attr_ring_desc(nir_builder *b, struct si_shader *shader,
                                          struct si_shader_args *args)
 {
@@ -411,9 +379,14 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_load_smem_amd(b, 4, addr, nir_imm_int(b, offset));
       break;
    }
-   case nir_intrinsic_load_num_vertices_per_primitive_amd:
-      replacement = get_num_vert_per_prim(b, shader, args);
+   case nir_intrinsic_load_num_vertices_per_primitive_amd: {
+      unsigned num_vertices = gfx10_ngg_get_vertices_per_prim(shader);
+      if (num_vertices)
+         replacement = nir_imm_int(b, num_vertices);
+      else
+         replacement = nir_iadd_imm(b, GET_FIELD_NIR(GS_STATE_OUTPRIM), 1);
       break;
+   }
    case nir_intrinsic_load_cull_ccw_amd:
       /* radeonsi embed cw/ccw info into front/back face enabled */
       replacement = nir_imm_false(b);
