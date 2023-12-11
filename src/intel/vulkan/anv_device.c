@@ -304,6 +304,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_timeline_semaphore                = true,
       .KHR_uniform_buffer_standard_layout    = true,
       .KHR_variable_pointers                 = true,
+      .KHR_vertex_attribute_divisor          = true,
       .KHR_video_queue                       = device->video_decode_enabled,
       .KHR_video_decode_queue                = device->video_decode_enabled,
       .KHR_video_decode_h264                 = VIDEO_CODEC_H264DEC && device->video_decode_enabled,
@@ -761,7 +762,7 @@ get_features(const struct anv_physical_device *pdevice,
       .transformFeedback = true,
       .geometryStreams = true,
 
-      /* VK_EXT_vertex_attribute_divisor */
+      /* VK_KHR_vertex_attribute_divisor */
       .vertexAttributeInstanceRateDivisor = true,
       .vertexAttributeInstanceRateZeroDivisor = true,
 
@@ -1420,6 +1421,12 @@ get_properties(const struct anv_physical_device *pdevice,
       props->maxRayHitAttributeSize = BRW_RT_SIZEOF_HIT_ATTRIB_DATA;
    }
 
+   /* VK_KHR_vertex_attribute_divisor */
+   {
+      props->maxVertexAttribDivisor = UINT32_MAX / 16;
+      props->supportsNonZeroFirstInstance = true;
+   }
+
    /* VK_EXT_conservative_rasterization */
    {
       /* There's nothing in the public docs about this value as far as I can
@@ -1704,11 +1711,6 @@ get_properties(const struct anv_physical_device *pdevice,
       props->transformFeedbackStreamsLinesTriangles = false;
       props->transformFeedbackRasterizationStreamSelect = false;
       props->transformFeedbackDraw = true;
-   }
-
-   /* VK_EXT_vertex_attribute_divisor */
-   {
-      props->maxVertexAttribDivisor = UINT32_MAX / 16;
    }
 }
 
