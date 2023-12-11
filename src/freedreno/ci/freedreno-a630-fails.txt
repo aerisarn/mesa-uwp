@@ -644,6 +644,7 @@ wayland-dEQP-EGL.functional.render.single_context.gles2.other,Fail
 wayland-dEQP-EGL.functional.render.single_context.gles3.other,Fail
 
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.32bit.triangle_strip.draw,Fail
+dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.64bit.line_strip.draw,Fail
 gmem-dEQP-VK.glsl.derivate.dfdy.dynamic_if.vec4_highp,Crash
 gmem-dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_1.pgq_32bit_xfb_64bit.triangle_strip_with_adjacency.draw,Fail
 stale-regs-dEQP-VK.glsl.derivate.dfdxcoarse.dynamic_switch.vec3_highp,Crash
