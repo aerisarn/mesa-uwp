@@ -101,6 +101,17 @@ fn copy_alu_src_if_not_reg(
     }
 }
 
+fn copy_alu_src_if_both_not_reg(
+    b: &mut impl SSABuilder,
+    src1: &Src,
+    src2: &mut Src,
+    src_type: SrcType,
+) {
+    if !src_is_reg(&src1) && !src_is_reg(&src2) {
+        copy_alu_src(b, src2, src_type);
+    }
+}
+
 fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) -> bool {
     if !src_is_reg(x) && src_is_reg(y) {
         std::mem::swap(x, y);
@@ -282,7 +293,7 @@ fn legalize_sm70_instr(
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
             copy_alu_src_if_not_reg(b, src0, SrcType::F32);
-            copy_alu_src_if_not_reg(b, src2, SrcType::F32);
+            copy_alu_src_if_both_not_reg(b, src1, src2, SrcType::F32);
         }
         Op::FMnMx(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -331,7 +342,7 @@ fn legalize_sm70_instr(
                 *src0 = val.into();
             }
             copy_alu_src_if_not_reg(b, src0, SrcType::I32);
-            copy_alu_src_if_not_reg(b, src2, SrcType::I32);
+            copy_alu_src_if_both_not_reg(b, src1, src2, SrcType::I32);
         }
         Op::IAdd3X(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
@@ -348,7 +359,7 @@ fn legalize_sm70_instr(
                 *src0 = val.into();
             }
             copy_alu_src_if_not_reg(b, src0, SrcType::B32);
-            copy_alu_src_if_not_reg(b, src2, SrcType::B32);
+            copy_alu_src_if_both_not_reg(b, src1, src2, SrcType::B32);
         }
         Op::IDp4(op) => {
             let [ref mut src_type0, ref mut src_type1] = op.src_types;
@@ -363,13 +374,13 @@ fn legalize_sm70_instr(
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
             copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
-            copy_alu_src_if_not_reg(b, src2, SrcType::ALU);
+            copy_alu_src_if_both_not_reg(b, src1, src2, SrcType::ALU);
         }
         Op::IMad64(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
             copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
-            copy_alu_src_if_not_reg(b, src2, SrcType::ALU);
+            copy_alu_src_if_both_not_reg(b, src1, src2, SrcType::ALU);
         }
         Op::IMnMx(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
