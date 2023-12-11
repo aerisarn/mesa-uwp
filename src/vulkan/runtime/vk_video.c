@@ -1456,63 +1456,66 @@ vk_video_encode_h264_sps(StdVideoH264SequenceParameterSet *sps,
       vl_bitstream_exp_golomb_ue(&enc, sps->frame_crop_bottom_offset);
    }
 
-   vl_bitstream_put_bits(&enc, 1, sps->flags.vui_parameters_present_flag); /* vui parameters preseent flag */
+   vl_bitstream_put_bits(&enc, 1, sps->flags.vui_parameters_present_flag); /* vui parameters present flag */
    if (sps->flags.vui_parameters_present_flag) {
       const StdVideoH264SequenceParameterSetVui *vui = sps->pSequenceParameterSetVui;
       vl_bitstream_put_bits(&enc, 1, vui->flags.aspect_ratio_info_present_flag);
+
       if (vui->flags.aspect_ratio_info_present_flag) {
          vl_bitstream_put_bits(&enc, 8, vui->aspect_ratio_idc);
          if (vui->aspect_ratio_idc == STD_VIDEO_H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
             vl_bitstream_put_bits(&enc, 16, vui->sar_width);
             vl_bitstream_put_bits(&enc, 16, vui->sar_height);
          }
-         vl_bitstream_put_bits(&enc, 1, vui->flags.overscan_info_present_flag);
-         if (vui->flags.overscan_info_present_flag)
-            vl_bitstream_put_bits(&enc, 1, vui->flags.overscan_appropriate_flag);
-         vl_bitstream_put_bits(&enc, 1, vui->flags.video_signal_type_present_flag);
-         if (vui->flags.video_signal_type_present_flag) {
-            vl_bitstream_put_bits(&enc, 3, vui->video_format);
-            vl_bitstream_put_bits(&enc, 1, vui->flags.video_full_range_flag);
-            vl_bitstream_put_bits(&enc, 1, vui->flags.color_description_present_flag);
-            if (vui->flags.color_description_present_flag) {
-               vl_bitstream_put_bits(&enc, 8, vui->colour_primaries);
-               vl_bitstream_put_bits(&enc, 8, vui->transfer_characteristics);
-               vl_bitstream_put_bits(&enc, 8, vui->matrix_coefficients);
-            }
-         }
+      }
 
-         vl_bitstream_put_bits(&enc, 1, vui->flags.chroma_loc_info_present_flag);
-         if (vui->flags.chroma_loc_info_present_flag) {
-            vl_bitstream_exp_golomb_ue(&enc, vui->chroma_sample_loc_type_top_field);
-            vl_bitstream_exp_golomb_ue(&enc, vui->chroma_sample_loc_type_bottom_field);
-         }
-         vl_bitstream_put_bits(&enc, 1, vui->flags.timing_info_present_flag);
-         if (vui->flags.timing_info_present_flag) {
-            vl_bitstream_put_bits(&enc, 32, vui->num_units_in_tick);
-            vl_bitstream_put_bits(&enc, 32, vui->time_scale);
-            vl_bitstream_put_bits(&enc, 32, vui->flags.fixed_frame_rate_flag);
-         }
-         vl_bitstream_put_bits(&enc, 1, vui->flags.nal_hrd_parameters_present_flag);
-         if (vui->flags.nal_hrd_parameters_present_flag)
-            encode_hrd_params(&enc, vui->pHrdParameters);
-         vl_bitstream_put_bits(&enc, 1, vui->flags.vcl_hrd_parameters_present_flag);
-         if (vui->flags.vcl_hrd_parameters_present_flag)
-            encode_hrd_params(&enc, vui->pHrdParameters);
-         if (vui->flags.nal_hrd_parameters_present_flag || vui->flags.vcl_hrd_parameters_present_flag)
-            vl_bitstream_put_bits(&enc, 1, 0);
-         vl_bitstream_put_bits(&enc, 1, 0);
-         vl_bitstream_put_bits(&enc, 1, vui->flags.bitstream_restriction_flag);
-         if (vui->flags.bitstream_restriction_flag) {
-            vl_bitstream_put_bits(&enc, 1, 0);
-            vl_bitstream_exp_golomb_ue(&enc, 0);
-            vl_bitstream_exp_golomb_ue(&enc, 0);
-            vl_bitstream_exp_golomb_ue(&enc, 0);
-            vl_bitstream_exp_golomb_ue(&enc, 0);
-            vl_bitstream_exp_golomb_ue(&enc, vui->max_num_reorder_frames);
-            vl_bitstream_exp_golomb_ue(&enc, vui->max_dec_frame_buffering);
+      vl_bitstream_put_bits(&enc, 1, vui->flags.overscan_info_present_flag);
+      if (vui->flags.overscan_info_present_flag)
+         vl_bitstream_put_bits(&enc, 1, vui->flags.overscan_appropriate_flag);
+      vl_bitstream_put_bits(&enc, 1, vui->flags.video_signal_type_present_flag);
+      if (vui->flags.video_signal_type_present_flag) {
+         vl_bitstream_put_bits(&enc, 3, vui->video_format);
+         vl_bitstream_put_bits(&enc, 1, vui->flags.video_full_range_flag);
+         vl_bitstream_put_bits(&enc, 1, vui->flags.color_description_present_flag);
+         if (vui->flags.color_description_present_flag) {
+            vl_bitstream_put_bits(&enc, 8, vui->colour_primaries);
+            vl_bitstream_put_bits(&enc, 8, vui->transfer_characteristics);
+            vl_bitstream_put_bits(&enc, 8, vui->matrix_coefficients);
          }
       }
+
+      vl_bitstream_put_bits(&enc, 1, vui->flags.chroma_loc_info_present_flag);
+      if (vui->flags.chroma_loc_info_present_flag) {
+         vl_bitstream_exp_golomb_ue(&enc, vui->chroma_sample_loc_type_top_field);
+         vl_bitstream_exp_golomb_ue(&enc, vui->chroma_sample_loc_type_bottom_field);
+      }
+      vl_bitstream_put_bits(&enc, 1, vui->flags.timing_info_present_flag);
+      if (vui->flags.timing_info_present_flag) {
+         vl_bitstream_put_bits(&enc, 32, vui->num_units_in_tick);
+         vl_bitstream_put_bits(&enc, 32, vui->time_scale);
+         vl_bitstream_put_bits(&enc, 32, vui->flags.fixed_frame_rate_flag);
+      }
+      vl_bitstream_put_bits(&enc, 1, vui->flags.nal_hrd_parameters_present_flag);
+      if (vui->flags.nal_hrd_parameters_present_flag)
+         encode_hrd_params(&enc, vui->pHrdParameters);
+      vl_bitstream_put_bits(&enc, 1, vui->flags.vcl_hrd_parameters_present_flag);
+      if (vui->flags.vcl_hrd_parameters_present_flag)
+         encode_hrd_params(&enc, vui->pHrdParameters);
+      if (vui->flags.nal_hrd_parameters_present_flag || vui->flags.vcl_hrd_parameters_present_flag)
+         vl_bitstream_put_bits(&enc, 1, 0);
+      vl_bitstream_put_bits(&enc, 1, 0);
+      vl_bitstream_put_bits(&enc, 1, vui->flags.bitstream_restriction_flag);
+      if (vui->flags.bitstream_restriction_flag) {
+         vl_bitstream_put_bits(&enc, 1, 0);
+         vl_bitstream_exp_golomb_ue(&enc, 0);
+         vl_bitstream_exp_golomb_ue(&enc, 0);
+         vl_bitstream_exp_golomb_ue(&enc, 0);
+         vl_bitstream_exp_golomb_ue(&enc, 0);
+         vl_bitstream_exp_golomb_ue(&enc, vui->max_num_reorder_frames);
+         vl_bitstream_exp_golomb_ue(&enc, vui->max_dec_frame_buffering);
+      }
    }
+
    vl_bitstream_rbsp_trailing(&enc);
 
    vl_bitstream_flush(&enc);
