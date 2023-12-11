@@ -222,7 +222,7 @@ vk_physical_device_properties = custom_target(
 vk_synchronization_helpers = custom_target(
   'vk_synchronization_helpers',
   input : [vk_synchronization_helpers_gen, vk_api_xml],
-  output : ['vk_synchronization_helpers.c', 'vk_synchronization_helpers.h'],
+  output : 'vk_synchronization_helpers.c',
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
     '--out-c', '@OUTPUT0@',
