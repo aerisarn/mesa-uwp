@@ -3658,7 +3658,7 @@ pub struct OpAtom {
     #[src_type(GPR)]
     pub addr: Src,
 
-    #[src_type(SSA)]
+    #[src_type(GPR)]
     pub cmpr: Src,
 
     #[src_type(SSA)]
