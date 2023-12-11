@@ -141,8 +141,7 @@ fd_screen_get_timestamp(struct pipe_screen *pscreen)
    if (screen->has_timestamp) {
       uint64_t n;
       fd_pipe_get_param(screen->pipe, FD_TIMESTAMP, &n);
-      assert(screen->max_freq > 0);
-      return n * 1000000000 / screen->max_freq;
+      return ticks_to_ns(n);
    } else {
       int64_t cpu_time = os_time_get_nano();
       return cpu_time + screen->cpu_gpu_time_delta;
@@ -1113,9 +1112,10 @@ fd_screen_create(int fd,
       screen->max_freq = 0;
    } else {
       screen->max_freq = val;
-      if (fd_pipe_get_param(screen->pipe, FD_TIMESTAMP, &val) == 0)
-         screen->has_timestamp = true;
    }
+
+   if (fd_pipe_get_param(screen->pipe, FD_TIMESTAMP, &val) == 0)
+      screen->has_timestamp = true;
 
    screen->dev_id = fd_pipe_dev_id(screen->pipe);
 
