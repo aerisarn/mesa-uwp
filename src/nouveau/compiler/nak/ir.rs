@@ -1122,6 +1122,19 @@ impl Src {
         }
     }
 
+    pub fn as_u32(&self) -> Option<u32> {
+        if self.src_mod.is_none() {
+            match self.src_ref {
+                SrcRef::Zero => Some(0),
+                SrcRef::Imm32(u) => Some(u),
+                SrcRef::CBuf(_) | SrcRef::SSA(_) | SrcRef::Reg(_) => None,
+                _ => panic!("Invalid integer source"),
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn as_imm_not_i20(&self) -> Option<u32> {
         match self.src_ref {
             SrcRef::Imm32(i) => {

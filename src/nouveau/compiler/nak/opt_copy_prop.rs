@@ -384,6 +384,42 @@ impl CopyPropPass {
                 assert!(dst.comps() == 1);
                 self.add_copy(dst[0], SrcType::I32, neg.src.ineg());
             }
+            Op::Prmt(prmt) => {
+                let dst = prmt.dst.as_ssa().unwrap();
+                assert!(dst.comps() == 1);
+                if prmt.mode != PrmtMode::Index {
+                    return;
+                }
+                let SrcRef::Imm32(sel) = prmt.sel.src_ref else {
+                    return;
+                };
+
+                if sel == 0x3210 {
+                    self.add_copy(dst[0], SrcType::GPR, prmt.srcs[0]);
+                } else if sel == 0x7654 {
+                    self.add_copy(dst[0], SrcType::GPR, prmt.srcs[1]);
+                } else {
+                    let mut is_imm = true;
+                    let mut imm = 0_u32;
+                    for d in 0..4 {
+                        let s = ((sel >> d * 4) & 0x7) as usize;
+                        let sign = (sel >> d * 4) & 0x8 != 0;
+                        if let Some(u) = prmt.srcs[s / 4].as_u32() {
+                            let mut sb = (u >> (s * 8)) as u8;
+                            if sign {
+                                sb = ((sb as i8) >> 7) as u8;
+                            }
+                            imm |= (sb as u32) << (d * 8);
+                        } else {
+                            is_imm = false;
+                            break;
+                        }
+                    }
+                    if is_imm {
+                        self.add_copy(dst[0], SrcType::GPR, imm.into());
+                    }
+                }
+            }
             Op::Copy(copy) => {
                 let dst = copy.dst.as_ssa().unwrap();
                 assert!(dst.comps() == 1);
