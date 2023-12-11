@@ -56,6 +56,7 @@ struct vpe_video_processor {
     uint8_t bufs_num;
     uint8_t cur_buf;
     struct rvid_buffer *emb_buffers;
+    void **mapped_cpu_va;
 
     struct pipe_fence_handle *process_fence;
 

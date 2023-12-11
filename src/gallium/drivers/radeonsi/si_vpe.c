@@ -647,11 +647,15 @@ si_vpe_processor_destroy(struct pipe_video_codec *codec)
    }
    if (vpeproc->emb_buffers) {
       for (i = 0; i < vpeproc->bufs_num; i++) {
-         if (vpeproc->emb_buffers[i].res)
+         if (vpeproc->emb_buffers[i].res) {
+            vpeproc->ws->buffer_unmap(vpeproc->ws, vpeproc->emb_buffers[i].res->buf);
             si_vid_destroy_buffer(&vpeproc->emb_buffers[i]);
+         }
       }
       FREE(vpeproc->emb_buffers);
    }
+   if (vpeproc->mapped_cpu_va)
+      FREE(vpeproc->mapped_cpu_va);
    vpeproc->bufs_num = 0;
 
    SIVPE_DBG(vpeproc->log_level, "Success\n");
@@ -813,9 +817,7 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    vpeproc->vpe_build_bufs->cmd_buf.tmz = false;
 
    emb_buf = &vpeproc->emb_buffers[vpeproc->cur_buf];
-   vpe_ptr = (uint64_t *)vpeproc->ws->buffer_map(vpeproc->ws, emb_buf->res->buf,
-                                                 &vpeproc->cs, PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
-   vpeproc->vpe_build_bufs->emb_buf.cpu_va = (uintptr_t)vpe_ptr;
+   vpeproc->vpe_build_bufs->emb_buf.cpu_va = (uintptr_t)vpeproc->mapped_cpu_va[vpeproc->cur_buf];
    vpeproc->vpe_build_bufs->emb_buf.gpu_va = vpeproc->ws->buffer_get_virtual_address(emb_buf->res->buf);
    vpeproc->vpe_build_bufs->emb_buf.size = VPE_EMBBUF_SIZE;
    vpeproc->vpe_build_bufs->emb_buf.tmz = false;
@@ -926,7 +928,6 @@ si_vpe_processor_process_frame(struct pipe_video_codec *codec,
    vpeproc->cs.current.cdw += (vpeproc->vpe_build_bufs->cmd_buf.size / 4);
 
    /* Add embbuf into bo_handle list */
-   vpeproc->ws->buffer_unmap(vpeproc->ws, emb_buf->res->buf);
    vpeproc->ws->cs_add_buffer(&vpeproc->cs, emb_buf->res->buf, RADEON_USAGE_READ | RADEON_USAGE_SYNCHRONIZED, RADEON_DOMAIN_GTT);
 
    si_vpe_cs_add_surface_buffer(vpeproc, vpeproc->src_surfaces, RADEON_USAGE_READ);
@@ -1067,12 +1068,23 @@ si_vpe_create_processor(struct pipe_context *context, const struct pipe_video_co
    } else
       SIVPE_INFO(vpeproc->log_level, "Number of emb_buf is %d\n", vpeproc->bufs_num);
 
+   vpeproc->mapped_cpu_va = (void **)CALLOC(vpeproc->bufs_num, sizeof(void *));
+   if (!vpeproc->mapped_cpu_va) {
+       SIVPE_ERR("Can't allocated mapped_cpu_va for emb_buf buffers.\n");
+       goto fail;
+   }
+
    for (i = 0; i < vpeproc->bufs_num; i++) {
       if (!si_vid_create_buffer(vpeproc->screen, &vpeproc->emb_buffers[i], VPE_EMBBUF_SIZE, PIPE_USAGE_DEFAULT)) {
           SIVPE_ERR("Can't allocated emb_buf buffers.\n");
           goto fail;
       }
       si_vid_clear_buffer(context, &vpeproc->emb_buffers[i]);
+
+      vpeproc->mapped_cpu_va[i] = vpeproc->ws->buffer_map(vpeproc->ws, vpeproc->emb_buffers[i].res->buf,
+                                                          &vpeproc->cs, PIPE_MAP_WRITE);
+      if (!vpeproc->mapped_cpu_va[i])
+         goto fail;
    }
 
    /* Create VPE parameters structure */
