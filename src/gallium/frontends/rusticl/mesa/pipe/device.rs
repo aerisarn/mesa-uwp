@@ -75,6 +75,7 @@ fn get_enabled_devs() -> HashMap<String, u32> {
 
                 let driver_str = match driver_str[0] {
                     "llvmpipe" | "lp" => "swrast",
+                    "freedreno" => "msm",
                     a => a,
                 };
 
