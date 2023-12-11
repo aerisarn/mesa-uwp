@@ -3116,7 +3116,19 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       if (prog->_LinkedShaders[i] == NULL)
          continue;
 
-      lower_vector_derefs(prog->_LinkedShaders[i]);
+      struct gl_linked_shader *shader = prog->_LinkedShaders[i];
+      exec_list *ir = shader->ir;
+
+      lower_vector_derefs(shader);
+
+      lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
+                             ctx->Extensions.ARB_gpu_shader5,
+                             ctx->Const.GLSLHasHalfFloatPacking);
+      do_mat_op_to_vec(ir);
+
+      lower_instructions(ir, ctx->Extensions.ARB_gpu_shader5);
+
+      do_vec_index_to_cond_assign(ir);
    }
 
 done:

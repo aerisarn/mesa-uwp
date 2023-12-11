@@ -192,14 +192,6 @@ namespace
          fprintf(stderr, "Linker error: %s", whole_program->data->InfoLog);
       EXPECT_EQ(whole_program->data->LinkStatus, LINKING_SUCCESS);
 
-      for (unsigned i = 0; i < ARRAY_SIZE(whole_program->_LinkedShaders); i++) {
-         struct gl_linked_shader *sh = whole_program->_LinkedShaders[i];
-         if (!sh)
-            continue;
-
-         do_mat_op_to_vec(sh->ir);
-      }
-
       /* Save off the GLSL IR now, since glsl_to_nir() frees it. */
       fs_ir = get_fs_ir();
 
