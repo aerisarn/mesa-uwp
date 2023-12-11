@@ -117,7 +117,7 @@ radv_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs)
       radeon_set_sh_reg(cs, R_00B9F4_COMPUTE_DISPATCH_TUNNEL, 0);
    }
 
-   if (device->physical_device->rad_info.gfx_level <= GFX6) {
+   if (device->physical_device->rad_info.gfx_level == GFX6) {
       if (device->border_color_data.bo) {
          uint64_t bc_va = radv_buffer_get_va(device->border_color_data.bo);
          radeon_set_config_reg(cs, R_00950C_TA_CS_BC_BASE_ADDR, bc_va >> 8);
