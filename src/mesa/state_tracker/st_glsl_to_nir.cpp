@@ -523,8 +523,6 @@ st_link_glsl_to_nir(struct gl_context *ctx,
       if (shader_program->data->spirv) {
          prog->nir = _mesa_spirv_to_nir(ctx, shader_program, shader->Stage, options);
       } else {
-         validate_ir_tree(shader->ir);
-
          if (ctx->_Shader->Flags & GLSL_DUMP) {
             _mesa_log("\n");
             _mesa_log("GLSL IR for linked %s program %d:\n",
