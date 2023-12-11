@@ -217,7 +217,7 @@ a630_vk_full:
   # don't lock up too many runners for a long time when a dev is testing full VK
   # status.  The full runs are restricted to just 2 runners to keep from
   # blocking up normal merges, so going more parallel doesn't make any sense.
-  timeout: 3h
+  timeout: 4.5h
   extends:
     - a630_vk
     - .a630-full
