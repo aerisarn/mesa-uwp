@@ -447,10 +447,13 @@ wsi_swapchain_init(const struct wsi_device *wsi,
       if (chain->blit.queue != VK_NULL_HANDLE) {
          VK_FROM_HANDLE(vk_queue, queue, chain->blit.queue);
          queue_family_index = queue->queue_family_index;
+      } else {
+         /* Queues returned by get_blit_queue() might not be listed in
+          * GetPhysicalDeviceQueueFamilyProperties, so this check is skipped for those queues.
+          */
+         if (!(wsi->queue_supports_blit & BITFIELD64_BIT(queue_family_index)))
+            continue;
       }
-
-      if (!(wsi->queue_supports_blit & BITFIELD64_BIT(queue_family_index)))
-         continue;
 
       const VkCommandPoolCreateInfo cmd_pool_info = {
          .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
