@@ -420,7 +420,7 @@ isl_device_init(struct isl_device *dev,
  * supported.
  */
 isl_sample_count_mask_t ATTRIBUTE_CONST
-isl_device_get_sample_counts(struct isl_device *dev)
+isl_device_get_sample_counts(const struct isl_device *dev)
 {
    if (ISL_GFX_VER(dev) >= 9) {
       return ISL_SAMPLE_COUNT_1_BIT |

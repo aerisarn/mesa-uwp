@@ -1927,7 +1927,7 @@ isl_device_init(struct isl_device *dev,
                 const struct intel_device_info *info);
 
 isl_sample_count_mask_t ATTRIBUTE_CONST
-isl_device_get_sample_counts(struct isl_device *dev);
+isl_device_get_sample_counts(const struct isl_device *dev);
 
 /**
  * :returns: The isl_format_layout for the given isl_format
