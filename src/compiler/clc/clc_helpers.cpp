@@ -799,27 +799,7 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       "-O0",
       // Ensure inline functions are actually emitted
       "-fgnu89-inline",
-      // Undefine clang added SPIR(V) defines so we don't magically enable extensions
-      "-U__SPIR__",
-      "-U__SPIRV__",
    };
-
-   // llvm handles these extensions differently so we have to pass this flag instead to expose the clc functions
-
-   clang_opts.push_back("-Dcl_khr_expect_assume=1");
-   if (args->features.integer_dot_product) {
-      clang_opts.push_back("-Dcl_khr_integer_dot_product=1");
-      clang_opts.push_back("-D__opencl_c_integer_dot_product_input_4x8bit_packed=1");
-      clang_opts.push_back("-D__opencl_c_integer_dot_product_input_4x8bit=1");
-   }
-   if (args->features.subgroups) {
-      if (args->features.subgroups_shuffle) {
-         clang_opts.push_back("-Dcl_khr_subgroup_shuffle=1");
-      }
-      if (args->features.subgroups_shuffle_relative) {
-         clang_opts.push_back("-Dcl_khr_subgroup_shuffle_relative=1");
-      }
-   }
 
    // We assume there's appropriate defines for __OPENCL_VERSION__ and __IMAGE_SUPPORT__
    // being provided by the caller here.
@@ -909,6 +889,10 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
 #endif
 #endif
 
+   // Undefine clang added SPIR(V) defines so we don't magically enable extensions
+   c->getPreprocessorOpts().addMacroUndef("__SPIR__");
+   c->getPreprocessorOpts().addMacroUndef("__SPIRV__");
+
 #if LLVM_VERSION_MAJOR >= 14
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-all");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_byte_addressable_store");
@@ -948,6 +932,22 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_subgroups");
    }
 #endif
+
+   // llvm handles these extensions differently so we have to pass those flags instead to expose the clc functions
+   c->getPreprocessorOpts().addMacroDef("cl_khr_expect_assume=1");
+   if (args->features.integer_dot_product) {
+      c->getPreprocessorOpts().addMacroDef("cl_khr_integer_dot_product=1");
+      c->getPreprocessorOpts().addMacroDef("__opencl_c_integer_dot_product_input_4x8bit_packed=1");
+      c->getPreprocessorOpts().addMacroDef("__opencl_c_integer_dot_product_input_4x8bit=1");
+   }
+   if (args->features.subgroups) {
+      if (args->features.subgroups_shuffle) {
+         c->getPreprocessorOpts().addMacroDef("cl_khr_subgroup_shuffle=1");
+      }
+      if (args->features.subgroups_shuffle_relative) {
+         c->getPreprocessorOpts().addMacroDef("cl_khr_subgroup_shuffle_relative=1");
+      }
+   }
 
    if (args->num_headers) {
       ::llvm::SmallString<128> tmp_header_path;
