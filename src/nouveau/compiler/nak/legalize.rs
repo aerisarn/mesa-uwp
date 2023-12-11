@@ -42,22 +42,62 @@ fn fold_lop_src(src: &Src, x: &mut u8) {
     }
 }
 
-fn copy_src(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
-    let val = b.alloc_ssa(file, 1);
-    b.copy_to(val.into(), src.src_ref.into());
+fn copy_alu_src(b: &mut impl SSABuilder, src: &mut Src, src_type: SrcType) {
+    let val = match src_type {
+        SrcType::GPR
+        | SrcType::ALU
+        | SrcType::F32
+        | SrcType::I32
+        | SrcType::B32 => b.alloc_ssa(RegFile::GPR, 1),
+        SrcType::F64 => b.alloc_ssa(RegFile::GPR, 2),
+        SrcType::Pred => b.alloc_ssa(RegFile::Pred, 1),
+        _ => panic!("Unknown source type"),
+    };
+
+    if val.comps() == 1 {
+        b.copy_to(val.into(), src.src_ref.into());
+    } else {
+        match src.src_ref {
+            SrcRef::Imm32(u) => {
+                // Immediates go in the top bits
+                b.copy_to(val[0].into(), 0.into());
+                b.copy_to(val[1].into(), u.into());
+            }
+            SrcRef::CBuf(cb) => {
+                // CBufs load 8B
+                b.copy_to(val[0].into(), cb.into());
+                b.copy_to(val[1].into(), cb.offset(4).into());
+            }
+            SrcRef::SSA(vec) => {
+                assert!(vec.comps() == 2);
+                b.copy_to(val[0].into(), vec[0].into());
+                b.copy_to(val[1].into(), vec[1].into());
+            }
+            _ => panic!("Invalid 64-bit SrcRef"),
+        }
+    }
+
     src.src_ref = val.into();
 }
 
-fn copy_src_if_cbuf(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
+fn copy_alu_src_if_cbuf(
+    b: &mut impl SSABuilder,
+    src: &mut Src,
+    src_type: SrcType,
+) {
     match src.src_ref {
-        SrcRef::CBuf(_) => copy_src(b, src, file),
+        SrcRef::CBuf(_) => copy_alu_src(b, src, src_type),
         _ => (),
     }
 }
 
-fn copy_src_if_not_reg(b: &mut impl SSABuilder, src: &mut Src, file: RegFile) {
+fn copy_alu_src_if_not_reg(
+    b: &mut impl SSABuilder,
+    src: &mut Src,
+    src_type: SrcType,
+) {
     if !src_is_reg(&src) {
-        copy_src(b, src, file);
+        copy_alu_src(b, src, src_type);
     }
 }
 
@@ -70,13 +110,13 @@ fn swap_srcs_if_not_reg(x: &mut Src, y: &mut Src) -> bool {
     }
 }
 
-fn copy_src_if_i20_overflow(
+fn copy_alu_src_if_i20_overflow(
     b: &mut impl SSABuilder,
     src: &mut Src,
-    file: RegFile,
+    src_type: SrcType,
 ) {
     if src.as_imm_not_i20().is_some() {
-        copy_src(b, src, file);
+        copy_alu_src(b, src, src_type);
     }
 }
 
@@ -88,114 +128,114 @@ fn legalize_sm50_instr(
 ) {
     match &mut instr.op {
         Op::Shf(op) => {
-            copy_src_if_not_reg(b, &mut op.shift, RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.high, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.shift, SrcType::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.high, SrcType::GPR);
         }
         Op::Shl(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
-            copy_src_if_i20_overflow(b, &mut op.shift, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
+            copy_alu_src_if_i20_overflow(b, &mut op.shift, SrcType::ALU);
         }
         Op::Shr(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
-            copy_src_if_i20_overflow(b, &mut op.shift, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
+            copy_alu_src_if_i20_overflow(b, &mut op.shift, SrcType::ALU);
         }
         Op::FAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src1, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src1, SrcType::F32);
         }
         Op::FMul(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);
         }
         Op::FSet(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);
         }
         Op::FSetP(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);
         }
         Op::ISetP(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::ALU);
         }
         Op::Lop2(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::ALU);
         }
         Op::PSetP(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::Pred);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::Pred);
-            copy_src_if_not_reg(b, &mut op.srcs[2], RegFile::Pred);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::Pred);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::Pred);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[2], SrcType::Pred);
         }
         Op::MuFu(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
         }
         Op::IAbs(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
         }
         Op::Sel(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::GPR);
         }
         Op::Shfl(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
-            copy_src_if_cbuf(b, &mut op.lane, RegFile::GPR);
-            copy_src_if_cbuf(b, &mut op.c, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
+            copy_alu_src_if_cbuf(b, &mut op.lane, SrcType::ALU);
+            copy_alu_src_if_cbuf(b, &mut op.c, SrcType::ALU);
         }
         Op::Vote(_) => (),
         Op::IAdd2(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::I32);
         }
         Op::I2F(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
         }
         Op::F2F(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
         }
         Op::IMad(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[2], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[2], SrcType::ALU);
         }
         Op::IMul(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             if swap_srcs_if_not_reg(src0, src1) {
                 op.signed.swap(0, 1);
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
         }
         Op::F2I(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
         }
         Op::IMnMx(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::ALU);
         }
         Op::Ipa(op) => {
-            copy_src_if_not_reg(b, &mut op.offset, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.offset, SrcType::GPR);
         }
         Op::PopC(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::ALU);
         }
         Op::Brev(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::ALU);
         }
         Op::FMnMx(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);
         }
         Op::Prmt(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.sel, RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.sel, SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::GPR);
         }
         Op::FFma(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[2], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::F32);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::F32);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[2], SrcType::F32);
         }
         Op::Ldc(_) => (),  // Nothing to do
         Op::Copy(_) => (), // Nothing to do
@@ -204,12 +244,10 @@ fn legalize_sm50_instr(
             for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
                 match src_types[i] {
                     SrcType::SSA => {
-                        if src.as_ssa().is_none() {
-                            copy_src(b, src, RegFile::GPR);
-                        }
+                        assert!(src.as_ssa().is_some());
                     }
                     SrcType::GPR => {
-                        copy_src_if_not_reg(b, src, RegFile::GPR);
+                        assert!(src_is_reg(src));
                     }
                     SrcType::ALU
                     | SrcType::F32
@@ -238,23 +276,23 @@ fn legalize_sm70_instr(
         Op::FAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
         }
         Op::FFma(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
+            copy_alu_src_if_not_reg(b, src2, SrcType::F32);
         }
         Op::FMnMx(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
         }
         Op::FMul(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
         }
         Op::FSet(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -262,7 +300,7 @@ fn legalize_sm70_instr(
                 std::mem::swap(src0, src1);
                 op.cmp_op = op.cmp_op.flip();
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
         }
         Op::FSetP(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -270,7 +308,7 @@ fn legalize_sm70_instr(
                 std::mem::swap(src0, src1);
                 op.cmp_op = op.cmp_op.flip();
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
         }
         Op::MuFu(_) => (), // Nothing to do
         Op::DAdd(op) => {
@@ -292,8 +330,8 @@ fn legalize_sm70_instr(
                 });
                 *src0 = val.into();
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::I32);
+            copy_alu_src_if_not_reg(b, src2, SrcType::I32);
         }
         Op::IAdd3X(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
@@ -309,8 +347,8 @@ fn legalize_sm70_instr(
                 });
                 *src0 = val.into();
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::B32);
+            copy_alu_src_if_not_reg(b, src2, SrcType::B32);
         }
         Op::IDp4(op) => {
             let [ref mut src_type0, ref mut src_type1] = op.src_types;
@@ -318,25 +356,25 @@ fn legalize_sm70_instr(
             if swap_srcs_if_not_reg(src0, src1) {
                 std::mem::swap(src_type0, src_type1);
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
+            copy_alu_src_if_not_reg(b, src2, SrcType::ALU);
         }
         Op::IMad(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
+            copy_alu_src_if_not_reg(b, src2, SrcType::ALU);
         }
         Op::IMad64(op) => {
             let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
+            copy_alu_src_if_not_reg(b, src2, SrcType::ALU);
         }
         Op::IMnMx(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
         }
         Op::ISetP(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -344,7 +382,7 @@ fn legalize_sm70_instr(
                 std::mem::swap(src0, src1);
                 op.cmp_op = op.cmp_op.flip();
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
         }
         Op::Lop3(op) => {
             // Fold constants and modifiers if we can
@@ -371,18 +409,18 @@ fn legalize_sm70_instr(
                 op.op = LogicOp3::new_lut(&|x, y, z| op.op.eval(x, z, y))
             }
 
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
+            copy_alu_src_if_not_reg(b, src2, SrcType::ALU);
         }
         Op::PopC(_) => (),
         Op::Shf(op) => {
-            copy_src_if_not_reg(b, &mut op.low, RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.high, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.low, SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.high, SrcType::ALU);
         }
         Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) | Op::FRnd(_) => (),
         Op::Prmt(op) => {
-            copy_src_if_not_reg(b, &mut op.srcs[0], RegFile::GPR);
-            copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);
+            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::ALU);
         }
         Op::Sel(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
@@ -390,7 +428,7 @@ fn legalize_sm70_instr(
                 std::mem::swap(src0, src1);
                 op.cond.src_mod = op.cond.src_mod.bnot();
             }
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
         }
         Op::PLop3(op) => {
             // Fold constants and modifiers if we can
@@ -423,22 +461,22 @@ fn legalize_sm70_instr(
                 }
             }
 
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src2, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::Pred);
+            copy_alu_src_if_not_reg(b, src2, SrcType::Pred);
         }
         Op::FSwzAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
-            copy_src_if_not_reg(b, src0, RegFile::GPR);
-            copy_src_if_not_reg(b, src1, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F32);
+            copy_alu_src_if_not_reg(b, src1, SrcType::F32);
         }
         Op::Shfl(op) => {
-            copy_src_if_not_reg(b, &mut op.src, RegFile::GPR);
-            copy_src_if_cbuf(b, &mut op.lane, RegFile::GPR);
-            copy_src_if_cbuf(b, &mut op.c, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
+            copy_alu_src_if_cbuf(b, &mut op.lane, SrcType::ALU);
+            copy_alu_src_if_cbuf(b, &mut op.c, SrcType::ALU);
         }
         Op::Out(op) => {
-            copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
-            copy_src_if_cbuf(b, &mut op.stream, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.handle, SrcType::GPR);
+            copy_alu_src_if_cbuf(b, &mut op.stream, SrcType::ALU);
         }
         Op::Break(op) => {
             let bar_in = op.bar_in.src_ref.as_ssa().unwrap();
@@ -457,7 +495,7 @@ fn legalize_sm70_instr(
             }
         }
         Op::OutFinal(op) => {
-            copy_src_if_not_reg(b, &mut op.handle, RegFile::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.handle, SrcType::GPR);
         }
         Op::Ldc(_) => (), // Nothing to do
         Op::BSync(_) => (),
@@ -468,12 +506,10 @@ fn legalize_sm70_instr(
             for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
                 match src_types[i] {
                     SrcType::SSA => {
-                        if src.as_ssa().is_none() {
-                            copy_src(b, src, RegFile::GPR);
-                        }
+                        assert!(src.as_ssa().is_some());
                     }
                     SrcType::GPR => {
-                        copy_src_if_not_reg(b, src, RegFile::GPR);
+                        assert!(src_is_reg(src));
                     }
                     SrcType::ALU
                     | SrcType::F32
