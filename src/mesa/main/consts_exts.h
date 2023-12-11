@@ -752,6 +752,8 @@ struct gl_constants
     */
    GLboolean GLSLSkipStrictMaxUniformLimitCheck;
 
+   GLboolean GLSLHasHalfFloatPacking;
+
    /**
     * Whether gl_FragCoord, gl_PointCoord and gl_FrontFacing
     * are system values.

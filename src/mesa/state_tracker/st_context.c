@@ -595,7 +595,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !screen->get_param(screen, PIPE_CAP_GL_CLAMP);
    st->has_time_elapsed =
       screen->get_param(screen, PIPE_CAP_QUERY_TIME_ELAPSED);
-   st->has_half_float_packing =
+   ctx->Const.GLSLHasHalfFloatPacking =
       screen->get_param(screen, PIPE_CAP_SHADER_PACK_HALF_FLOAT);
    st->has_multi_draw_indirect =
       screen->get_param(screen, PIPE_CAP_MULTI_DRAW_INDIRECT);

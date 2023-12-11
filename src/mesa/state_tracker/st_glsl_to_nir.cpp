@@ -511,7 +511,7 @@ st_link_glsl_to_nir(struct gl_context *ctx,
 
          lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
                                 ctx->Extensions.ARB_gpu_shader5,
-                                ctx->st->has_half_float_packing);
+                                ctx->Const.GLSLHasHalfFloatPacking);
          do_mat_op_to_vec(ir);
 
          lower_instructions(ir, ctx->Extensions.ARB_gpu_shader5);
