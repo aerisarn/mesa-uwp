@@ -97,6 +97,5 @@ values['local_container'] = values['local_container'].replace(
 
 values['cmdline_extras'] = environ.get('B2C_KERNEL_CMDLINE_EXTRAS', '')
 
-f = open(path.splitext(path.basename(args.template))[0], "w")
-f.write(template.render(values))
-f.close()
+with open(path.splitext(path.basename(args.template))[0], "w") as f:
+    f.write(template.render(values))
