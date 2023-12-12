@@ -113,6 +113,8 @@ a618_piglit:
   variables:
     HWCI_START_WESTON: 1
     PIGLIT_PROFILES: gpu
+    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
+    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 a618-traces:
   extends:
