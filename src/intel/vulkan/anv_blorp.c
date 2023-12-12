@@ -377,21 +377,24 @@ record_main_rcs_cmd_buffer_done(struct anv_cmd_buffer *cmd_buffer)
 {
    const struct intel_device_info *info = cmd_buffer->device->info;
 
-   if (cmd_buffer->companion_rcs_cmd_buffer == NULL) {
-      anv_create_companion_rcs_command_buffer(cmd_buffer);
-      /* Re-emit the aux table register in every command buffer.  This way we're
-       * ensured that we have the table even if this command buffer doesn't
-       * initialize any images.
-       */
-      if (cmd_buffer->device->info->has_aux_map) {
-         assert(cmd_buffer->companion_rcs_cmd_buffer != NULL);
-         anv_add_pending_pipe_bits(cmd_buffer->companion_rcs_cmd_buffer,
-                                   ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
-                                   "new cmd buffer with aux-tt");
-      }
+   const VkResult result = anv_cmd_buffer_ensure_rcs_companion(cmd_buffer);
+   if (result != VK_SUCCESS) {
+      anv_batch_set_error(&cmd_buffer->batch, result);
+      return ANV_STATE_NULL;
    }
 
    assert(cmd_buffer->companion_rcs_cmd_buffer != NULL);
+
+   /* Re-emit the aux table register in every command buffer.  This way we're
+    * ensured that we have the table even if this command buffer doesn't
+    * initialize any images.
+    */
+   if (cmd_buffer->device->info->has_aux_map) {
+      anv_add_pending_pipe_bits(cmd_buffer->companion_rcs_cmd_buffer,
+                                 ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
+                                 "new cmd buffer with aux-tt");
+   }
+
    return anv_genX(info, cmd_buffer_begin_companion_rcs_syncpoint)(cmd_buffer);
 }
 

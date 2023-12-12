@@ -85,29 +85,30 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
 }
 
 VkResult
-anv_create_companion_rcs_command_buffer(struct anv_cmd_buffer *cmd_buffer)
+anv_cmd_buffer_ensure_rcs_companion(struct anv_cmd_buffer *cmd_buffer)
 {
+   if (cmd_buffer->companion_rcs_cmd_buffer)
+      return VK_SUCCESS;
+
    VkResult result = VK_SUCCESS;
    pthread_mutex_lock(&cmd_buffer->device->mutex);
-   if (cmd_buffer->companion_rcs_cmd_buffer == NULL) {
-      VK_FROM_HANDLE(vk_command_pool, pool,
-                     cmd_buffer->device->companion_rcs_cmd_pool);
-      assert(pool != NULL);
+   VK_FROM_HANDLE(vk_command_pool, pool,
+                  cmd_buffer->device->companion_rcs_cmd_pool);
+   assert(pool != NULL);
 
-      struct vk_command_buffer *tmp_cmd_buffer = NULL;
-      result = pool->command_buffer_ops->create(pool, &tmp_cmd_buffer);
-      if (result != VK_SUCCESS) {
-         pthread_mutex_unlock(&cmd_buffer->device->mutex);
-         return result;
-      }
+   struct vk_command_buffer *tmp_cmd_buffer = NULL;
+   result = pool->command_buffer_ops->create(pool, &tmp_cmd_buffer);
 
-      cmd_buffer->companion_rcs_cmd_buffer =
-         container_of(tmp_cmd_buffer, struct anv_cmd_buffer, vk);
-      cmd_buffer->companion_rcs_cmd_buffer->vk.level = cmd_buffer->vk.level;
-      cmd_buffer->companion_rcs_cmd_buffer->is_companion_rcs_cmd_buffer = true;
-   }
+   if (result != VK_SUCCESS)
+      goto unlock_and_return;
+
+   cmd_buffer->companion_rcs_cmd_buffer =
+      container_of(tmp_cmd_buffer, struct anv_cmd_buffer, vk);
+   cmd_buffer->companion_rcs_cmd_buffer->vk.level = cmd_buffer->vk.level;
+   cmd_buffer->companion_rcs_cmd_buffer->is_companion_rcs_cmd_buffer = true;
+
+unlock_and_return:
    pthread_mutex_unlock(&cmd_buffer->device->mutex);
-
    return result;
 }
 

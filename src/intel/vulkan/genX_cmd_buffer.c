@@ -3714,13 +3714,12 @@ genX(CmdExecuteCommands)(
        * command buffer for execution if secondary RCS is valid.
        */
       if (secondary->companion_rcs_cmd_buffer != NULL) {
-         if (container->companion_rcs_cmd_buffer == NULL) {
-            VkResult result = anv_create_companion_rcs_command_buffer(container);
-            if (result != VK_SUCCESS) {
-               anv_batch_set_error(&container->batch, result);
-               return;
-            }
+         VkResult result = anv_cmd_buffer_ensure_rcs_companion(container);
+         if (result != VK_SUCCESS) {
+            anv_batch_set_error(&container->batch, result);
+            return;
          }
+
          anv_cmd_buffer_add_secondary(container->companion_rcs_cmd_buffer,
                                       secondary->companion_rcs_cmd_buffer);
       }
