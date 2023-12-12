@@ -479,6 +479,12 @@ Intel driver environment variables
    advertise support for a compute queue if a compute engine is
    detected.
 
+.. envvar:: INTEL_COPY_CLASS
+
+   If set to 1, true or yes, then I915_ENGINE_CLASS_COPY will be
+   supported. For Vulkan, anvil will advertise support for a transfer
+   queue if a copy engine is detected.
+
 .. envvar:: INTEL_DEBUG
 
    a comma-separated list of named flags, which do various things:
