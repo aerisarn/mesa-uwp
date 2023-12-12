@@ -370,7 +370,6 @@ clang-format:
         --timeout-retries "${B2C_TIMEOUT_RETRIES}" \
         --job-volume-exclusions "${B2C_JOB_VOLUME_EXCLUSIONS}" \
         --local-container "${IMAGE_UNDER_TEST}" \
-        ${B2C_EXTRA_VOLUME_ARGS} \
         --working-dir "$CI_PROJECT_DIR"
 
       cat b2c.yml.jinja2
