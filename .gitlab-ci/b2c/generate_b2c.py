@@ -95,9 +95,10 @@ assert(len(args.local_container) > 0)
 
 # Use the gateway's pull-through registry caches to reduce load on fd.o.
 values['local_container'] = args.local_container
-for url, replacement in [('registry.freedesktop.org', '{{ fdo_proxy_registry }}'),
-                         ('harbor.freedesktop.org', '{{ harbor_fdo_registry }}')]:
-    values['local_container'] = values['local_container'].replace(url, replacement)
+values['local_container'] = values['local_container'].replace(
+    'registry.freedesktop.org',
+    '{{ fdo_proxy_registry }}'
+)
 
 if 'B2C_KERNEL_CMDLINE_EXTRAS' in environ:
     values['cmdline_extras'] = environ['B2C_KERNEL_CMDLINE_EXTRAS']
