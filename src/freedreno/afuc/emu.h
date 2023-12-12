@@ -113,7 +113,6 @@ emu_queue_pop(struct emu_queue *q, uint32_t *val)
  */
 struct emu_draw_state {
    unsigned prev_draw_state_sel;
-   unsigned write_idx;
    struct {
       union {
          uint32_t hdr;
@@ -294,6 +293,7 @@ void emu_set_reg64(struct emu *emu, struct emu_reg *reg, uint64_t val);
 /* Draw-state control reg emulation: */
 uint32_t emu_get_draw_state_reg(struct emu *emu, unsigned n);
 void emu_set_draw_state_reg(struct emu *emu, unsigned n, uint32_t val);
+void emu_set_draw_state_base(struct emu *emu, unsigned n, uint32_t val);
 
 /* Helpers: */
 #define printdelta(fmt, ...) afuc_printc(AFUC_ERR, fmt, ##__VA_ARGS__)

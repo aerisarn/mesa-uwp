@@ -44,6 +44,7 @@
 
 EMU_SQE_REG(SP);
 EMU_SQE_REG(STACK0);
+EMU_CONTROL_REG(DRAW_STATE_SET_HDR);
 
 /**
  * AFUC emulator.  Currently only supports a6xx
@@ -215,14 +216,24 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
    case OPC_CWRITE: {
       uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
       uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);
+      uint32_t reg = src2 + instr->immed;
 
       if (instr->preincrement) {
-         emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
-      } else if (instr->bit && !emu->quiet) {
-         printf("unhandled flags: %x\n", instr->bit);
+         emu_set_gpr_reg(emu, instr->src2, reg);
       }
 
-      emu_set_control_reg(emu, src2 + instr->immed, src1);
+      emu_set_control_reg(emu, reg, src1);
+
+      for (unsigned i = 0; i < instr->sds; i++) {
+         uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
+
+         /* TODO: There is likely a DRAW_STATE_SET_BASE register on a6xx, as
+          * there is on a7xx, and we should be writing that instead of setting
+          * the base directly.
+          */
+         if (reg == emu_reg_offset(&DRAW_STATE_SET_HDR))
+            emu_set_draw_state_base(emu, i, src1);
+      }
       break;
    }
    case OPC_CREAD: {
@@ -230,8 +241,6 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
 
       if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
-      } else if (instr->bit && !emu->quiet) {
-         printf("unhandled flags: %x\n", instr->bit);
       }
 
       emu_set_gpr_reg(emu, instr->dst,
@@ -244,8 +253,6 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
 
       if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
-      } else if (instr->bit && !emu->quiet) {
-         printf("unhandled flags: %x\n", instr->bit);
       }
 
       emu_set_sqe_reg(emu, src2 + instr->immed, src1);
@@ -256,8 +263,6 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
 
       if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
-      } else if (instr->bit && !emu->quiet) {
-         printf("unhandled flags: %x\n", instr->bit);
       }
 
       emu_set_gpr_reg(emu, instr->dst,
@@ -271,8 +276,6 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       if (instr->preincrement) {
          uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
          emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
-      } else if (instr->bit && !emu->quiet) {
-         printf("unhandled flags: %x\n", instr->bit);
       }
 
       uint32_t val = emu_mem_read_dword(emu, addr);
@@ -288,8 +291,6 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       if (instr->preincrement) {
          uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);
          emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
-      } else if (instr->bit && !emu->quiet) {
-         printf("unhandled flags: %x\n", instr->bit);
       }
 
       uint32_t val = emu_get_gpr_reg(emu, instr->src1);

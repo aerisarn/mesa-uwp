@@ -130,7 +130,14 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		</doc>
 	</reg32>
 	<reg32 name="DRAW_STATE_ACTIVE_BITMASK" offset="0x049"/>
-	<reg32 name="DRAW_STATE_SET" offset="0x04a"/>
+
+	<doc>
+		This register is written for each state group entry in
+		CP_SET_DRAW_STATE. The value is copied directly from the packet
+		to these registers so the format is identical to the first word.
+		The draw state base is set via the (sds2) modifier.
+	</doc>
+	<reg32 name="DRAW_STATE_SET_HDR" offset="0x04a"/>
 
 	<doc> Controls whether RB, IB1, or IB2 is executed </doc>
 	<reg32 name="IB_LEVEL" offset="0x054"/>

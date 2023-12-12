@@ -95,6 +95,7 @@ extern YYSTYPE yylval;
 "<<"                              return TOKEN(T_LSHIFT);
 "(rep)"                           return TOKEN(T_REP);
 "(xmov"[1-3]")"	                  yylval.num = yytext[5] - '0'; return T_XMOV;
+"(sds"[1-3]")"                    yylval.num = yytext[4] - '0'; return T_SDS;
 
 ","                               return ',';
 "["                               return '[';

@@ -2,37 +2,37 @@
 ; Version: 01000001
 
 [01000001]
-[0100007e]
+[01000081]
 mov $01, 0x830	; CP_SQE_INSTR_BASE
 mov $02, 0x2
-cwrite $01, [$00 + @REG_READ_ADDR], 0x0
-cwrite $02, [$00 + @REG_READ_DWORDS], 0x0
+cwrite $01, [$00 + @REG_READ_ADDR]
+cwrite $02, [$00 + @REG_READ_DWORDS]
 mov $01, $regdata
 mov $02, $regdata
 add $01, $01, 0x4
 addhi $02, $02, 0x0
 mov $03, 0x1
-cwrite $01, [$00 + @MEM_READ_ADDR], 0x0
-cwrite $02, [$00 + @MEM_READ_ADDR+0x1], 0x0
-cwrite $03, [$00 + @MEM_READ_DWORDS], 0x0
+cwrite $01, [$00 + @MEM_READ_ADDR]
+cwrite $02, [$00 + @MEM_READ_ADDR+0x1]
+cwrite $03, [$00 + @MEM_READ_DWORDS]
 rot $04, $memdata, 0x8
 ushr $04, $04, 0x6
 sub $04, $04, 0x4
 add $01, $01, $04
 addhi $02, $02, 0x0
 mov $rem, 0x80
-cwrite $01, [$00 + @MEM_READ_ADDR], 0x0
-cwrite $02, [$00 + @MEM_READ_ADDR+0x1], 0x0
-cwrite $02, [$00 + @LOAD_STORE_HI], 0x0
-cwrite $rem, [$00 + @MEM_READ_DWORDS], 0x0
-cwrite $00, [$00 + @PACKET_TABLE_WRITE_ADDR], 0x0
-(rep)cwrite $memdata, [$00 + @PACKET_TABLE_WRITE], 0x0
+cwrite $01, [$00 + @MEM_READ_ADDR]
+cwrite $02, [$00 + @MEM_READ_ADDR+0x1]
+cwrite $02, [$00 + @LOAD_STORE_HI]
+cwrite $rem, [$00 + @MEM_READ_DWORDS]
+cwrite $00, [$00 + @PACKET_TABLE_WRITE_ADDR]
+(rep)cwrite $memdata, [$00 + @PACKET_TABLE_WRITE]
 mov $02, 0x883	; CP_SCRATCH[0].REG
 mov $03, 0xbeef
 mov $04, 0xdead << 16
 or $03, $03, $04
-cwrite $02, [$00 + @REG_WRITE_ADDR], 0x0
-cwrite $03, [$00 + @REG_WRITE], 0x0
+cwrite $02, [$00 + @REG_WRITE_ADDR]
+cwrite $03, [$00 + @REG_WRITE]
 waitin
 mov $01, $data
 
@@ -52,48 +52,53 @@ mov $01, $data
 
 CP_SCRATCH_WRITE:
 mov $02, 0xff
-(rep)cwrite $data, [$02 + 0x1]!, 0x0
+(rep)cwrite $data, [$02 + 0x1]!
+waitin
+mov $01, $data
+
+CP_SET_DRAW_STATE:
+(rep)(sds2)cwrite $data, [$00 + @DRAW_STATE_SET_HDR]
 waitin
 mov $01, $data
 
 CP_SET_BIN_DATA5:
-sread $02, [$00 + %SP], 0x0
-swrite $02, [$00 + %SP], 0x0
+sread $02, [$00 + %SP]
+swrite $02, [$00 + %SP]
 mov $02, 0x7
-(rep)swrite $data, [$02 + 0x1]!, 0x0
+(rep)swrite $data, [$02 + 0x1]!
 waitin
 mov $01, $data
 
 CP_SET_SECURE_MODE:
 mov $02, $data
-setsecure $02, #l58
-l56:
-jump #l56
+setsecure $02, #l61
+l59:
+jump #l59
 nop
-l58:
+l61:
 waitin
 mov $01, $data
 
-fxn60:
-l60:
+fxn63:
+l63:
 cmp $04, $02, $03
-breq $04, b0, #l67
-brne $04, b1, #l65
-breq $04, b2, #l60
+breq $04, b0, #l70
+brne $04, b1, #l68
+breq $04, b2, #l63
 sub $03, $03, $02
-l65:
-jump #l60
+l68:
+jump #l63
 sub $02, $02, $03
-l67:
+l70:
 ret
 nop
 
 CP_REG_RMW:
-cwrite $data, [$00 + @REG_READ_ADDR], 0x0
+cwrite $data, [$00 + @REG_READ_ADDR]
 add $02, $regdata, 0x42
 addhi $03, $00, $regdata
 sub $02, $02, $regdata
-call #fxn60
+call #fxn63
 subhi $03, $03, $regdata
 and $02, $02, $regdata
 or $02, $02, 0x1
@@ -118,39 +123,39 @@ mov $03, $data
 mov $04, $data
 mov $05, $data
 mov $06, $data
-l96:
-breq $06, 0x0, #l102
-cwrite $03, [$00 + @LOAD_STORE_HI], 0x0
-load $07, [$02 + 0x4]!, 0x0
-cwrite $05, [$00 + @LOAD_STORE_HI], 0x0
-jump #l96
-store $07, [$04 + 0x4]!, 0x0
-l102:
+l99:
+breq $06, 0x0, #l105
+cwrite $03, [$00 + @LOAD_STORE_HI]
+load $07, [$02 + 0x4]!
+cwrite $05, [$00 + @LOAD_STORE_HI]
+jump #l99
+store $07, [$04 + 0x4]!
+l105:
 waitin
 mov $01, $data
 
 CP_MEM_TO_MEM:
-cwrite $data, [$00 + @MEM_READ_ADDR], 0x0
-cwrite $data, [$00 + @MEM_READ_ADDR+0x1], 0x0
+cwrite $data, [$00 + @MEM_READ_ADDR]
+cwrite $data, [$00 + @MEM_READ_ADDR+0x1]
 mov $02, $data
-cwrite $data, [$00 + @LOAD_STORE_HI], 0x0
+cwrite $data, [$00 + @LOAD_STORE_HI]
 mov $rem, $data
-cwrite $rem, [$00 + @MEM_READ_DWORDS], 0x0
-(rep)store $memdata, [$02 + 0x4]!, 0x0
+cwrite $rem, [$00 + @MEM_READ_DWORDS]
+(rep)store $memdata, [$02 + 0x4]!
 waitin
 mov $01, $data
 
 IN_PREEMPT:
-cread $02, [$00 + 0x101], 0x0
-brne $02, 0x1, #l122
+cread $02, [$00 + 0x101]
+brne $02, 0x1, #l125
 nop
-preemptleave #l56
+preemptleave #l59
 nop
 nop
 nop
 waitin
 mov $01, $data
-l122:
+l125:
 iret
 nop
 
@@ -208,7 +213,6 @@ CP_SET_BIN_DATA5_OFFSET:
 CP_SET_CONSTANT:
 CP_SET_CTXSWITCH_IB:
 CP_SET_DRAW_INIT_FLAGS:
-CP_SET_DRAW_STATE:
 CP_SET_MARKER:
 CP_SET_MODE:
 CP_SET_PROTECTED_MODE:
@@ -275,131 +279,131 @@ UNKN96:
 UNKN97:
 waitin
 mov $01, $data
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[00000071]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[00000045]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[00000030]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[00000074]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[00000048]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[00000033]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
 [00000025]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[00000030]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
 [00000022]
-[0000007c]
-[0000007c]
-[0000007c]
+[0000007f]
+[0000007f]
+[0000007f]
 [0000002c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[00000036]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[00000068]
-[0000007c]
-[0000005b]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
-[0000007c]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[00000039]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000006b]
+[0000007f]
+[0000005e]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]
+[0000007f]

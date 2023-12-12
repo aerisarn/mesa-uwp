@@ -167,6 +167,7 @@ struct afuc_instr {
    uint8_t shift;
    uint8_t bit;
    uint8_t xmov;
+   uint8_t sds;
    uint32_t literal;
    int offset;
    const char *label;

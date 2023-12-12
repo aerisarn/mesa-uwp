@@ -552,6 +552,28 @@ Although ``(xmovN)`` is often used in combination with ``(rep)``, it doesn't
 have to be. For example, ``(xmov1)mov $data, $data`` moves the next 2 packet
 words to 2 successive registers.
 
+.. _afuc-sds:
+
+Set Draw State
+--------------
+
+``(sdsN)`` is a modifier for ``cwrite`` used to accelerate
+``CP_SET_DRAW_STATE``. For each draw state group to update,
+``CP_SET_DRAW_STATE`` needs to copy 3 words from the packet containing the
+group to update, metadata, and base address plus size.  Using the ``(sds2)``
+modifier as well as ``(rep)``, this can be accomplished in a single
+instruction::
+
+  (rep)(sds2)cwrite $data, [$00 + @DRAW_STATE_SET_HDR]
+
+The first word containing the header is written to ``@DRAW_STATE_SET_HDR``, and
+the second and third words containing the draw state base come from reading the
+source again twice and are written directly to the draw state RAM.
+
+In testing with other control registers, ``(sdsN)`` causes the source to be
+read ``N`` extra times and then thrown away. Only when used in combination with
+``@DRAW_STATE_SET_HDR`` do the extra source reads have an effect.
+
 Packet Table
 ============
 
