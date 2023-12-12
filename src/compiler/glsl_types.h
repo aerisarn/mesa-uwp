@@ -547,11 +547,6 @@ struct glsl_type {
    bool get_interface_row_major() const;
 
    /**
-    * Query if a type is unnamed/anonymous (named by the parser)
-    */
-   bool is_anonymous() const;
-
-   /**
     * Get the type of a structure field
     *
     * \return

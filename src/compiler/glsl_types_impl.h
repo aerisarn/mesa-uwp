@@ -279,12 +279,6 @@ glsl_type::is_uint_16_32() const
           base_type == GLSL_TYPE_UINT16;
 }
 
-inline bool
-glsl_type::is_anonymous() const
-{
-   return !strncmp(glsl_get_type_name(this), "#anon", 5);
-}
-
 inline unsigned glsl_type::arrays_of_arrays_size() const { return glsl_get_aoa_size(this); }
 
 inline unsigned

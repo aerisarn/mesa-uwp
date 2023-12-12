@@ -7912,6 +7912,12 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
    return decl_count;
 }
 
+static bool
+is_anonymous(const glsl_type *t)
+{
+   /* See handling for struct_specifier in glsl_parser.yy. */
+   return !strncmp(glsl_get_type_name(t), "#anon", 5);
+}
 
 ir_rvalue *
 ast_struct_specifier::hir(exec_list *instructions,
@@ -7950,7 +7956,7 @@ ast_struct_specifier::hir(exec_list *instructions,
 
    type = glsl_type::get_struct_instance(fields, decl_count, this->name);
 
-   if (!type->is_anonymous() && !state->symbols->add_type(name, type)) {
+   if (!is_anonymous(type) && !state->symbols->add_type(name, type)) {
       const glsl_type *match = state->symbols->get_type(name);
       /* allow struct matching for desktop GL - older UE4 does this */
       if (match != NULL && state->is_version(130, 0) && match->record_compare(type, true, false))
