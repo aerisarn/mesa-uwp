@@ -712,7 +712,9 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [srcs[0], srcs[1], srcs[2]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
-                    ftz: self.float_ctl[ftype].ftz,
+                    // The hardware doesn't like FTZ+DNZ and DNZ implies FTZ
+                    // anyway so only set one of the two bits.
+                    ftz: alu.op != nir_op_ffmaz && self.float_ctl[ftype].ftz,
                     dnz: alu.op == nir_op_ffmaz,
                 });
                 dst
@@ -741,7 +743,9 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [srcs[0], srcs[1]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
-                    ftz: self.float_ctl[ftype].ftz,
+                    // The hardware doesn't like FTZ+DNZ and DNZ implies FTZ
+                    // anyway so only set one of the two bits.
+                    ftz: alu.op != nir_op_fmulz && self.float_ctl[ftype].ftz,
                     dnz: alu.op == nir_op_fmulz,
                 });
                 dst
