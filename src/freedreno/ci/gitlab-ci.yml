@@ -80,7 +80,7 @@ a618_gl:
 
 # Run dEQP EGL window system tests separately with the window systems available.
 # X11 takes over the screen, wayland is run headless.
-.a618_egl:  # FIXME disabled due to device outage
+a618_egl:
   extends:
     - .lava-test-deqp:arm64
     - .a618-test-limozeen-nots-r5
@@ -102,7 +102,7 @@ a618_skqp:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a618-skqp
 
-.a618_piglit_gles2:  # FIXME disabled due to device outage
+a618_piglit:
   extends:
     - .piglit-test
     - .lava-piglit:arm64
@@ -112,7 +112,6 @@ a618_skqp:
     - .collabora-freedreno-turnip-rules
   variables:
     HWCI_START_WESTON: 1
-    DEQP_VER: gles2
     PIGLIT_PROFILES: gpu
 
 a618-traces:
