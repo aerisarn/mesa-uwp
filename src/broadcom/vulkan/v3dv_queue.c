@@ -398,13 +398,13 @@ handle_reset_query_cpu_job(struct v3dv_queue *queue,
       struct vk_sync_wait waits[info->count];
       unsigned wait_count = 0;
       for (int i = 0; i < info->count; i++) {
-         struct v3dv_query *query = &info->pool->queries[i];
+         struct v3dv_query *query = &info->pool->queries[info->first + i];
          /* Only wait for a query if we've used it otherwise we will be
           * waiting forever for the fence to become signaled.
           */
          if (query->maybe_available) {
             waits[wait_count] = (struct vk_sync_wait){
-               .sync = info->pool->queries[i].perf.last_job_sync
+               .sync = query->perf.last_job_sync
             };
             wait_count++;
          };
