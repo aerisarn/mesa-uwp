@@ -538,7 +538,7 @@ optimize_frontfacing_ternary(nir_to_brw_state &ntb,
    /* nir_opt_algebraic should have gotten rid of bcsel(b, a, a) */
    assert(value1 == -value2);
 
-   fs_reg tmp = s.vgrf(glsl_type::int_type);
+   fs_reg tmp = s.vgrf(glsl_int_type());
 
    if (devinfo->ver >= 12) {
       /* Bit 15 of g1.1 is 0 if the polygon is front facing. */
@@ -859,7 +859,7 @@ emit_fsign(nir_to_brw_state &ntb, const fs_builder &bld, const nir_alu_instr *in
        * - We need to produce a DF result.
        */
 
-      fs_reg zero = s.vgrf(glsl_type::double_type);
+      fs_reg zero = s.vgrf(glsl_double_type());
       bld.MOV(zero, setup_imm_df(bld, 0.0));
       bld.CMP(bld.null_reg_df(), op[0], zero, BRW_CONDITIONAL_NZ);
 
@@ -1571,7 +1571,7 @@ fs_nir_emit_alu(nir_to_brw_state &ntb, nir_alu_instr *instr,
 
    case nir_op_fceil: {
       op[0].negate = !op[0].negate;
-      fs_reg temp = s.vgrf(glsl_type::float_type);
+      fs_reg temp = s.vgrf(glsl_float_type());
       bld.RNDD(temp, op[0]);
       temp.negate = true;
       inst = bld.MOV(result, temp);
@@ -1932,7 +1932,7 @@ fs_nir_emit_alu(nir_to_brw_state &ntb, nir_alu_instr *instr,
    if (devinfo->ver <= 5 &&
        !result.is_null() &&
        (instr->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) == BRW_NIR_BOOLEAN_NEEDS_RESOLVE) {
-      fs_reg masked = s.vgrf(glsl_type::int_type);
+      fs_reg masked = s.vgrf(glsl_int_type());
       bld.AND(masked, result, brw_imm_d(1));
       masked.negate = true;
       bld.MOV(retype(result, BRW_REGISTER_TYPE_D), masked);
@@ -2250,10 +2250,10 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
    fs_reg channel_mask, per_slot_offset;
 
    if (gs_compile->control_data_header_size_bits > 32)
-      channel_mask = vgrf(glsl_type::uint_type);
+      channel_mask = vgrf(glsl_uint_type());
 
    if (gs_compile->control_data_header_size_bits > 128)
-      per_slot_offset = vgrf(glsl_type::uint_type);
+      per_slot_offset = vgrf(glsl_uint_type());
 
    /* Figure out which DWord we're trying to write to using the formula:
     *
@@ -3314,7 +3314,7 @@ emit_mcs_fetch(nir_to_brw_state &ntb, const fs_reg &coordinate, unsigned compone
 {
    const fs_builder &bld = ntb.bld;
 
-   const fs_reg dest = ntb.s.vgrf(glsl_type::uvec4_type);
+   const fs_reg dest = ntb.s.vgrf(glsl_uvec4_type());
 
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
    srcs[TEX_LOGICAL_SRC_COORDINATE] = coordinate;
@@ -3803,8 +3803,8 @@ emit_samplemaskin_setup(nir_to_brw_state &ntb)
    if (ntb.system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
       ntb.system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup(ntb);
 
-   fs_reg one = s.vgrf(glsl_type::int_type);
-   fs_reg enabled_mask = s.vgrf(glsl_type::int_type);
+   fs_reg one = s.vgrf(glsl_int_type());
+   fs_reg enabled_mask = s.vgrf(glsl_int_type());
    abld.MOV(one, brw_imm_d(1));
    abld.SHL(enabled_mask, one, ntb.system_values[SYSTEM_VALUE_SAMPLE_ID]);
    fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
@@ -4241,7 +4241,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
          dest.type = BRW_REGISTER_TYPE_F;
 
          if (devinfo->ver < 6 && interp_mode == INTERP_MODE_SMOOTH) {
-            fs_reg tmp = s.vgrf(glsl_type::float_type);
+            fs_reg tmp = s.vgrf(glsl_float_type());
             bld.emit(FS_OPCODE_LINTERP, tmp, dst_xy, interp);
             bld.MUL(offset(dest, bld, i), tmp, s.pixel_w);
          } else {
@@ -7673,7 +7673,7 @@ fs_nir_emit_surface_atomic(nir_to_brw_state &ntb, const fs_builder &bld,
             brw_imm_ud(nir_intrinsic_base(instr) +
                        nir_src_as_uint(instr->src[0]));
       } else {
-         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = s.vgrf(glsl_type::uint_type);
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = s.vgrf(glsl_uint_type());
          bld.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
                  retype(get_nir_src(ntb, instr->src[0]), BRW_REGISTER_TYPE_UD),
                  brw_imm_ud(nir_intrinsic_base(instr)));
@@ -7881,7 +7881,7 @@ fs_nir_emit_texture(nir_to_brw_state &ntb,
          if (instr->texture_index == 0 && is_resource_src(nir_src))
             srcs[TEX_LOGICAL_SRC_SURFACE] = get_resource_nir_src(ntb, nir_src);
          if (srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE) {
-            fs_reg tmp = s.vgrf(glsl_type::uint_type);
+            fs_reg tmp = s.vgrf(glsl_uint_type());
             bld.ADD(tmp, src, brw_imm_ud(instr->texture_index));
             srcs[TEX_LOGICAL_SRC_SURFACE] = bld.emit_uniformize(tmp);
          }
@@ -7894,7 +7894,7 @@ fs_nir_emit_texture(nir_to_brw_state &ntb,
          if (instr->sampler_index == 0 && is_resource_src(nir_src))
             srcs[TEX_LOGICAL_SRC_SAMPLER] = get_resource_nir_src(ntb, nir_src);
          if (srcs[TEX_LOGICAL_SRC_SAMPLER].file == BAD_FILE) {
-            fs_reg tmp = s.vgrf(glsl_type::uint_type);
+            fs_reg tmp = s.vgrf(glsl_uint_type());
             bld.ADD(tmp, src, brw_imm_ud(instr->sampler_index));
             srcs[TEX_LOGICAL_SRC_SAMPLER] = bld.emit_uniformize(tmp);
          }
@@ -8014,7 +8014,7 @@ fs_nir_emit_texture(nir_to_brw_state &ntb,
       if (srcs[TEX_LOGICAL_SRC_MCS].file == BRW_IMMEDIATE_VALUE) {
          bld.MOV(dst, brw_imm_ud(0u));
       } else if (devinfo->ver >= 9) {
-         fs_reg tmp = s.vgrf(glsl_type::uint_type);
+         fs_reg tmp = s.vgrf(glsl_uint_type());
          bld.OR(tmp, srcs[TEX_LOGICAL_SRC_MCS],
                 offset(srcs[TEX_LOGICAL_SRC_MCS], bld, 1));
          bld.CMP(dst, tmp, brw_imm_ud(0u), BRW_CONDITIONAL_EQ);
@@ -8106,7 +8106,7 @@ fs_nir_emit_texture(nir_to_brw_state &ntb,
               dest_size >= 3 && devinfo->ver < 7) {
       /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
       fs_reg depth = offset(dst, bld, 2);
-      nir_dest[2] = s.vgrf(glsl_type::int_type);
+      nir_dest[2] = s.vgrf(glsl_int_type());
       bld.emit_minmax(nir_dest[2], depth, brw_imm_d(1), BRW_CONDITIONAL_GE);
    }
 

@@ -1672,7 +1672,7 @@ vec4_visitor::get_timestamp()
                                 BRW_SWIZZLE_XYZW,
                                 WRITEMASK_XYZW));
 
-   dst_reg dst = dst_reg(this, glsl_type::uvec4_type);
+   dst_reg dst = dst_reg(this, glsl_uvec4_type());
 
    vec4_instruction *mov = emit(MOV(dst, ts));
    /* We want to read the 3 fields we care about (mostly field 0, but also 2)
@@ -2233,7 +2233,7 @@ vec4_visitor::lower_64bit_mad_to_mul_add()
       if (type_sz(inst->dst.type) != 8)
          continue;
 
-      dst_reg mul_dst = dst_reg(this, glsl_type::dvec4_type);
+      dst_reg mul_dst = dst_reg(this, glsl_dvec4_type());
 
       /* Use the copy constructor so we copy all relevant instruction fields
        * from the original mad into the add and mul instructions

@@ -96,8 +96,8 @@ fs_visitor::emit_interpolation_setup_gfx4()
    struct brw_reg g1_uw = retype(brw_vec1_grf(1, 0), BRW_REGISTER_TYPE_UW);
 
    fs_builder abld = fs_builder(this).at_end().annotate("compute pixel centers");
-   this->pixel_x = vgrf(glsl_type::uint_type);
-   this->pixel_y = vgrf(glsl_type::uint_type);
+   this->pixel_x = vgrf(glsl_uint_type());
+   this->pixel_y = vgrf(glsl_uint_type());
    this->pixel_x.type = BRW_REGISTER_TYPE_UW;
    this->pixel_y.type = BRW_REGISTER_TYPE_UW;
    abld.ADD(this->pixel_x,
@@ -111,7 +111,7 @@ fs_visitor::emit_interpolation_setup_gfx4()
    abld = bld.annotate("compute pixel deltas from v0");
 
    this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL] =
-      vgrf(glsl_type::vec2_type);
+      vgrf(glsl_vec2_type());
    const fs_reg &delta_xy = this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL];
    const fs_reg xstart(negate(brw_vec1_grf(1, 0)));
    const fs_reg ystart(negate(brw_vec1_grf(1, 1)));
@@ -141,11 +141,11 @@ fs_visitor::emit_interpolation_setup_gfx4()
    /* Compute wpos.w.  It's always in our setup, since it's needed to
     * interpolate the other attributes.
     */
-   this->wpos_w = vgrf(glsl_type::float_type);
+   this->wpos_w = vgrf(glsl_float_type());
    abld.emit(FS_OPCODE_LINTERP, wpos_w, delta_xy,
              component(interp_reg(VARYING_SLOT_POS, 3), 0));
    /* Compute the pixel 1/W value from wpos.w. */
-   this->pixel_w = vgrf(glsl_type::float_type);
+   this->pixel_w = vgrf(glsl_float_type());
    abld.emit(SHADER_OPCODE_RCP, this->pixel_w, wpos_w);
 }
 
@@ -156,8 +156,8 @@ fs_visitor::emit_interpolation_setup_gfx6()
    const fs_builder bld = fs_builder(this).at_end();
    fs_builder abld = bld.annotate("compute pixel centers");
 
-   this->pixel_x = vgrf(glsl_type::float_type);
-   this->pixel_y = vgrf(glsl_type::float_type);
+   this->pixel_x = vgrf(glsl_float_type());
+   this->pixel_y = vgrf(glsl_float_type());
 
    const struct brw_wm_prog_key *wm_key = (brw_wm_prog_key*) this->key;
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(prog_data);
@@ -481,7 +481,7 @@ fs_visitor::emit_interpolation_setup_gfx6()
    if (wm_prog_data->uses_src_w) {
       abld = bld.annotate("compute pos.w");
       this->pixel_w = fetch_payload_reg(abld, fs_payload().source_w_reg);
-      this->wpos_w = vgrf(glsl_type::float_type);
+      this->wpos_w = vgrf(glsl_float_type());
       abld.emit(SHADER_OPCODE_RCP, this->wpos_w, this->pixel_w);
    }
 
@@ -839,7 +839,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
          per_slot_offsets = brw_imm_ud(output_vertex_size_owords *
                                        gs_vertex_count.ud);
       } else {
-         per_slot_offsets = vgrf(glsl_type::uint_type);
+         per_slot_offsets = vgrf(glsl_uint_type());
          bld.MUL(per_slot_offsets, gs_vertex_count,
                  brw_imm_ud(output_vertex_size_owords));
       }

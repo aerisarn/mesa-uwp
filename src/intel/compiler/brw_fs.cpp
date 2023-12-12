@@ -185,7 +185,7 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
     * later notice that those loads are all the same and eliminate the
     * redundant ones.
     */
-   fs_reg vec4_offset = vgrf(glsl_type::uint_type);
+   fs_reg vec4_offset = vgrf(glsl_uint_type());
    bld.ADD(vec4_offset, varying_offset, brw_imm_ud(const_offset & ~0xf));
 
    /* The pull load message will load a vec4 (16 bytes). If we are loading
@@ -6855,11 +6855,11 @@ fs_visitor::run_gs()
 
    payload_ = new gs_thread_payload(*this);
 
-   this->final_gs_vertex_count = vgrf(glsl_type::uint_type);
+   this->final_gs_vertex_count = vgrf(glsl_uint_type());
 
    if (gs_compile->control_data_header_size_bits > 0) {
       /* Create a VGRF to store accumulated control data bits. */
-      this->control_data_bits = vgrf(glsl_type::uint_type);
+      this->control_data_bits = vgrf(glsl_uint_type());
 
       /* If we're outputting more than 32 control data bits, then EmitVertex()
        * will set control_data_bits to 0 after emitting the first vertex.
