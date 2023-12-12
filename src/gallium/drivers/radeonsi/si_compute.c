@@ -1000,8 +1000,8 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
 
    /* Skipping setting redundant registers on compute queues breaks compute. */
    if (!sctx->has_graphics) {
-      BITSET_SET_RANGE(sctx->tracked_regs.reg_saved_mask,
-                       SI_FIRST_TRACKED_OTHER_REG, SI_NUM_ALL_TRACKED_REGS - 1);
+      BITSET_CLEAR_RANGE(sctx->tracked_regs.reg_saved_mask,
+                         SI_FIRST_TRACKED_OTHER_REG, SI_NUM_ALL_TRACKED_REGS - 1);
    }
 
    /* First emit registers. */
