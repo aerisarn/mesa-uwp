@@ -617,7 +617,8 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
       pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
-   pci.pColorBlendState = &blend_state;
+   if (!screen->have_full_ds3)
+      pci.pColorBlendState = &blend_state;
    pci.pMultisampleState = &ms_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
 
