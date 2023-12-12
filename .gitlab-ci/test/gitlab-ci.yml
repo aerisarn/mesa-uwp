@@ -400,16 +400,15 @@ clang-format:
       env PYTHONUNBUFFERED=1 executorctl \
           run -w b2c.yml.jinja2 -j $(slugify "$CI_JOB_NAME") -s ${JOB_FOLDER} -i "$CI_RUNNER_DESCRIPTION"
 
-      # Anything our job places in results/ will be collected by the
-      # Gitlab coordinator for status presentation. results/junit.xml
-      # will be parsed by the UI for more detailed explanations of
-      # test execution.
-
+  # Anything our job places in results/ will be collected by the
+  # Gitlab coordinator for status presentation. results/junit.xml
+  # will be parsed by the UI for more detailed explanations of
+  # test execution.
   after_script:
-      # Keep the results path the same as baremetal and LAVA
-      - mkdir -p "${JOB_FOLDER}"/results
-      - mv "${JOB_FOLDER}"/results results/
-      - !reference [default, after_script]
+    # Keep the results path the same as baremetal and LAVA
+    - mkdir -p "${JOB_FOLDER}"/results
+    - mv "${JOB_FOLDER}"/results results/
+    - !reference [default, after_script]
 
   artifacts:
     when: always
