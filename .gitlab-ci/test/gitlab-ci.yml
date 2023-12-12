@@ -347,29 +347,7 @@ clang-format:
 
       # The Valve CI gateway receives jobs in a YAML format. Create a
       # job description from the CI environment.
-      python3 "$CI_B2C_ARTIFACTS"/generate_b2c.py \
-        --ci-job-id "${CI_JOB_ID}" \
-        --container-cmd "${B2C_TEST_SCRIPT}" \
-        --initramfs-url "${B2C_INITRAMFS_URL}" \
-        --job-success-regex "${B2C_JOB_SUCCESS_REGEX}" \
-        --job-warn-regex "${B2C_JOB_WARN_REGEX}" \
-        --kernel-url "${B2C_KERNEL_URL}" \
-        --log-level "${B2C_LOG_LEVEL}" \
-        --poweroff-delay "${B2C_POWEROFF_DELAY}" \
-        --session-end-regex "${B2C_SESSION_END_REGEX}" \
-        --session-reboot-regex "${B2C_SESSION_REBOOT_REGEX}" \
-        --tags "${CI_RUNNER_TAGS}" \
-        --template "${B2C_JOB_TEMPLATE}" \
-        --timeout-boot-minutes "${B2C_TIMEOUT_BOOT_MINUTES}" \
-        --timeout-boot-retries "${B2C_TIMEOUT_BOOT_RETRIES}" \
-        --timeout-first-minutes "${B2C_TIMEOUT_FIRST_MINUTES}" \
-        --timeout-first-retries "${B2C_TIMEOUT_FIRST_RETRIES}" \
-        --timeout-minutes "${B2C_TIMEOUT_MINUTES}" \
-        --timeout-overall-minutes "${B2C_TIMEOUT_OVERALL_MINUTES}" \
-        --timeout-retries "${B2C_TIMEOUT_RETRIES}" \
-        --job-volume-exclusions "${B2C_JOB_VOLUME_EXCLUSIONS}" \
-        --local-container "${IMAGE_UNDER_TEST}" \
-        --working-dir "$CI_PROJECT_DIR"
+      python3 "$CI_B2C_ARTIFACTS"/generate_b2c.py
 
       cat b2c.yml.jinja2
 

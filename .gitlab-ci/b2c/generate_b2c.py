@@ -22,74 +22,44 @@
 # IN THE SOFTWARE.
 
 from jinja2 import Environment, FileSystemLoader
-from argparse import ArgumentParser
 from os import environ, path
 import json
 
 
-parser = ArgumentParser()
-parser.add_argument('--ci-job-id')
-parser.add_argument('--container-cmd')
-parser.add_argument('--initramfs-url')
-parser.add_argument('--job-success-regex')
-parser.add_argument('--job-warn-regex')
-parser.add_argument('--kernel-url')
-parser.add_argument('--log-level', type=int)
-parser.add_argument('--poweroff-delay', type=int)
-parser.add_argument('--session-end-regex')
-parser.add_argument('--session-reboot-regex')
-parser.add_argument('--tags', nargs='?', default='')
-parser.add_argument('--template', default='b2c.yml.jinja2.jinja2')
-parser.add_argument('--timeout-boot-minutes', type=int)
-parser.add_argument('--timeout-boot-retries', type=int)
-parser.add_argument('--timeout-first-minutes', type=int)
-parser.add_argument('--timeout-first-retries', type=int)
-parser.add_argument('--timeout-minutes', type=int)
-parser.add_argument('--timeout-overall-minutes', type=int)
-parser.add_argument('--timeout-retries', type=int)
-parser.add_argument('--job-volume-exclusions', nargs='?', default='')
-parser.add_argument('--volume', action='append')
-parser.add_argument('--mount-volume', action='append')
-parser.add_argument('--local-container', default=environ.get('B2C_LOCAL_CONTAINER', 'alpine:latest'))
-parser.add_argument('--working-dir')
-args = parser.parse_args()
-
-env = Environment(loader=FileSystemLoader(path.dirname(args.template)),
+env = Environment(loader=FileSystemLoader(path.dirname(environ['B2C_JOB_TEMPLATE'])),
                   trim_blocks=True, lstrip_blocks=True)
 
-template = env.get_template(path.basename(args.template))
+template = env.get_template(path.basename(environ['B2C_JOB_TEMPLATE']))
 
 values = {}
-values['ci_job_id'] = args.ci_job_id
-values['container_cmd'] = args.container_cmd
-values['initramfs_url'] = args.initramfs_url
-values['job_success_regex'] = args.job_success_regex
-values['job_warn_regex'] = args.job_warn_regex
-values['kernel_url'] = args.kernel_url
-values['log_level'] = args.log_level
-values['poweroff_delay'] = args.poweroff_delay
-values['session_end_regex'] = args.session_end_regex
-values['session_reboot_regex'] = args.session_reboot_regex
+values['ci_job_id'] = environ['CI_JOB_ID']
+values['container_cmd'] = environ['B2C_TEST_SCRIPT']
+values['initramfs_url'] = environ['B2C_INITRAMFS_URL']
+values['job_success_regex'] = environ['B2C_JOB_SUCCESS_REGEX']
+values['job_warn_regex'] = environ['B2C_JOB_WARN_REGEX']
+values['kernel_url'] = environ['B2C_KERNEL_URL']
+values['log_level'] = environ['B2C_LOG_LEVEL']
+values['poweroff_delay'] = environ['B2C_POWEROFF_DELAY']
+values['session_end_regex'] = environ['B2C_SESSION_END_REGEX']
+values['session_reboot_regex'] = environ['B2C_SESSION_REBOOT_REGEX']
 try:
-    values['tags'] = json.loads(args.tags)
+    values['tags'] = json.loads(environ['CI_RUNNER_TAGS'])
 except json.decoder.JSONDecodeError:
-    values['tags'] = args.tags.split(",")
-values['template'] = args.template
-values['timeout_boot_minutes'] = args.timeout_boot_minutes
-values['timeout_boot_retries'] = args.timeout_boot_retries
-values['timeout_first_minutes'] = args.timeout_first_minutes
-values['timeout_first_retries'] = args.timeout_first_retries
-values['timeout_minutes'] = args.timeout_minutes
-values['timeout_overall_minutes'] = args.timeout_overall_minutes
-values['timeout_retries'] = args.timeout_retries
-exclusions = args.job_volume_exclusions.split(",")
+    values['tags'] = environ['CI_RUNNER_TAGS'].split(",")
+values['template'] = environ['B2C_JOB_TEMPLATE']
+values['timeout_boot_minutes'] = environ['B2C_TIMEOUT_BOOT_MINUTES']
+values['timeout_boot_retries'] = environ['B2C_TIMEOUT_BOOT_RETRIES']
+values['timeout_first_minutes'] = environ['B2C_TIMEOUT_FIRST_MINUTES']
+values['timeout_first_retries'] = environ['B2C_TIMEOUT_FIRST_RETRIES']
+values['timeout_minutes'] = environ['B2C_TIMEOUT_MINUTES']
+values['timeout_overall_minutes'] = environ['B2C_TIMEOUT_OVERALL_MINUTES']
+values['timeout_retries'] = environ['B2C_TIMEOUT_RETRIES']
+exclusions = environ['B2C_JOB_VOLUME_EXCLUSIONS'].split(",")
 values['job_volume_exclusions'] = [excl for excl in exclusions if excl]
-values['working_dir'] = args.working_dir
-
-assert(len(args.local_container) > 0)
+values['working_dir'] = environ['CI_PROJECT_DIR']
 
 # Use the gateway's pull-through registry caches to reduce load on fd.o.
-values['local_container'] = args.local_container
+values['local_container'] = environ['IMAGE_UNDER_TEST']
 values['local_container'] = values['local_container'].replace(
     'registry.freedesktop.org',
     '{{ fdo_proxy_registry }}'
@@ -97,5 +67,5 @@ values['local_container'] = values['local_container'].replace(
 
 values['cmdline_extras'] = environ.get('B2C_KERNEL_CMDLINE_EXTRAS', '')
 
-with open(path.splitext(path.basename(args.template))[0], "w") as f:
+with open(path.splitext(path.basename(environ['B2C_JOB_TEMPLATE']))[0], "w") as f:
     f.write(template.render(values))
