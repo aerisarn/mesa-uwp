@@ -45,6 +45,7 @@ enum amdgpu_bo_type {
 /* Anything above REAL will use the BO list for REAL. */
 #define NUM_BO_LIST_TYPES (AMDGPU_BO_REAL + 1)
 
+/* Base class of the buffer object that other structures inherit. */
 struct amdgpu_winsys_bo {
    struct pb_buffer base;
    enum amdgpu_bo_type type;
@@ -62,6 +63,12 @@ struct amdgpu_winsys_bo {
    struct pipe_fence_handle **fences;
 };
 
+/* Real GPU memory allocation managed by the amdgpu kernel driver.
+ *
+ * There are also types of buffers that are not "real" kernel allocations, such as slab entry
+ * BOs, which are suballocated from real BOs, and sparse BOs, which initially only allocate
+ * the virtual address range, not memory.
+ */
 struct amdgpu_bo_real {
    struct amdgpu_winsys_bo b;
 
@@ -83,11 +90,17 @@ struct amdgpu_bo_real {
    bool is_shared;
 };
 
+/* Same as amdgpu_bo_real except this BO isn't destroyed when its reference count drops to 0.
+ * Instead it's cached in pb_cache for later reuse.
+ */
 struct amdgpu_bo_real_reusable {
    struct amdgpu_bo_real b;
    struct pb_cache_entry cache_entry;
 };
 
+/* Sparse BO. This only allocates the virtual address range for the BO. The physical storage is
+ * allocated on demand by the user using radeon_winsys::buffer_commit with 64KB granularity.
+ */
 struct amdgpu_bo_sparse {
    struct amdgpu_winsys_bo b;
    amdgpu_va_handle va_handle;
@@ -102,6 +115,9 @@ struct amdgpu_bo_sparse {
    struct amdgpu_sparse_commitment *commitments;
 };
 
+/* Suballocated buffer using the slab allocator. This BO is only 1 piece of a larger buffer
+ * called slab, which is a buffer that's divided into smaller equal-sized buffers.
+ */
 struct amdgpu_bo_slab {
    struct amdgpu_winsys_bo b;
    struct amdgpu_bo_real *real;
