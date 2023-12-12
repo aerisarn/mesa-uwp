@@ -910,7 +910,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
        dst_queue_family != VK_QUEUE_FAMILY_IGNORED &&
        src_queue_family != dst_queue_family) {
       enum intel_engine_class src_engine =
-         cmd_buffer->queue_family[src_queue_family].engine_class;
+         cmd_buffer->queue_family->engine_class;
       if (src_engine != INTEL_ENGINE_CLASS_RENDER)
          return;
    }
