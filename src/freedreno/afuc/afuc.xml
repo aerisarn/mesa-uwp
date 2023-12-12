@@ -670,6 +670,25 @@ SOFTWARE.
 	<gen min="6"/>
 </bitset>
 
+<bitset name="swrite" extends="#control">
+	<doc>Write to a SQE register.</doc>
+	<gen min="6"/>
+	<display>
+		{REP}swrite {SRC}, [{OFFSET} + {SQEREG}], 0x{FLAGS}
+	</display>
+
+	<field name="SQEREG" low="0" high="11" type="custom"/>
+	<field name="SRC" low="16" high="20" type="#src"/>
+	<pattern pos="15">1</pattern>
+	<pattern low="27" high="31">10101</pattern>
+
+	<encode>
+		<map name="SRC">src->src1</map>
+		<map name="OFFSET">src->src2</map>
+		<map name="SQEREG">src->immed</map>
+	</encode>
+</bitset>
+
 <bitset name="load" extends="#control">
 	<gen min="6"/>
 	<doc>
@@ -716,6 +735,25 @@ SOFTWARE.
 	<gen min="6"/>
 	<pattern pos="15">0</pattern>
 	<!-- a6xx shuffled around the cread opcode -->
+	<pattern low="27" high="31">10111</pattern>
+</bitset>
+
+<bitset name="sread" extends="#control">
+	<doc>Read from a SQE register.</doc>
+	<gen min="6"/>
+	<display>
+		{REP}sread {DST}, [{OFFSET} + {SQEREG}], 0x{FLAGS}
+	</display>
+
+	<field name="SQEREG" low="0" high="11" type="custom"/>
+	<field name="DST" low="16" high="20" type="#dst"/>
+
+	<encode>
+		<map name="OFFSET">src->src1</map>
+		<map name="SQEREG">src->immed</map>
+	</encode>
+
+	<pattern pos="15">1</pattern>
 	<pattern low="27" high="31">10111</pattern>
 </bitset>
 

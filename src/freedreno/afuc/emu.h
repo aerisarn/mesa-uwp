@@ -48,6 +48,13 @@ struct emu_control_regs {
    uint32_t val[EMU_NUM_CONTROL_REGS];
 };
 
+#define EMU_NUM_SQE_REGS 0x10
+
+struct emu_sqe_regs {
+   BITSET_DECLARE(written, EMU_NUM_SQE_REGS);
+   uint32_t val[EMU_NUM_SQE_REGS];
+};
+
 #define EMU_NUM_GPU_REGS 0x10000
 
 struct emu_gpu_regs {
@@ -166,6 +173,7 @@ struct emu {
    unsigned gpu_id;
 
    struct emu_control_regs control_regs;
+   struct emu_sqe_regs     sqe_regs;
    struct emu_pipe_regs    pipe_regs;
    struct emu_gpu_regs     gpu_regs;
    struct emu_gpr_regs     gpr_regs;
@@ -185,7 +193,9 @@ struct emu {
    /* (r)un mode, don't stop for input until next waitin: */
    bool run_mode;
 
-   /* carry-bits for add/sub for addhi/subhi */
+   /* carry-bits for add/sub for addhi/subhi
+    * TODO: this is probably in a SQE register somewhere
+    */
    uint32_t carry;
 
    /* call-stack of saved PCs.. I expect this to be a fixed size, but not
@@ -251,6 +261,9 @@ void emu_set_gpu_reg(struct emu *emu, unsigned n, uint32_t val);
 
 uint32_t emu_get_control_reg(struct emu *emu, unsigned n);
 void emu_set_control_reg(struct emu *emu, unsigned n, uint32_t val);
+
+uint32_t emu_get_sqe_reg(struct emu *emu, unsigned n);
+void emu_set_sqe_reg(struct emu *emu, unsigned n, uint32_t val);
 
 /* Register helpers for fixed fxn emulation, to avoid lots of boilerplate
  * for accessing other pipe/control registers.

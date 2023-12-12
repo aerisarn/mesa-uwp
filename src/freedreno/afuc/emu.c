@@ -235,6 +235,32 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
                       emu_get_control_reg(emu, src1 + instr->immed));
       break;
    }
+   case OPC_SWRITE: {
+      uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
+      uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);
+
+      if (instr->bit == 0x4) {
+         emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
+      } else if (instr->bit && !emu->quiet) {
+         printf("unhandled flags: %x\n", instr->bit);
+      }
+
+      emu_set_sqe_reg(emu, src2 + instr->immed, src1);
+      break;
+   }
+   case OPC_SREAD: {
+      uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
+
+      if (instr->bit == 0x4) {
+         emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
+      } else if (instr->bit && !emu->quiet) {
+         printf("unhandled flags: %x\n", instr->bit);
+      }
+
+      emu_set_gpr_reg(emu, instr->dst,
+                      emu_get_sqe_reg(emu, src1 + instr->immed));
+      break;
+   }
    case OPC_LOAD: {
       uintptr_t addr = load_store_addr(emu, instr->src1) +
             instr->immed;

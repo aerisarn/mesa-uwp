@@ -121,6 +121,7 @@ label(const char *str)
 %token <num> T_INT
 %token <num> T_HEX
 %token <num> T_CONTROL_REG
+%token <num> T_SQE_REG
 %token <str> T_LABEL_DECL
 %token <str> T_LABEL_REF
 %token <num> T_LITERAL
@@ -153,6 +154,8 @@ label(const char *str)
 %token <tok> T_OP_MOV
 %token <tok> T_OP_CWRITE
 %token <tok> T_OP_CREAD
+%token <tok> T_OP_SWRITE
+%token <tok> T_OP_SREAD
 %token <tok> T_OP_STORE
 %token <tok> T_OP_LOAD
 %token <tok> T_OP_BRNE
@@ -254,8 +257,10 @@ alu_instr:         alu_2src_instr
 
 load_op:           T_OP_LOAD      { new_instr(OPC_LOAD); }
 |                  T_OP_CREAD     { new_instr(OPC_CREAD); }
+|                  T_OP_SREAD     { new_instr(OPC_SREAD); }
 store_op:          T_OP_STORE     { new_instr(OPC_STORE); }
 |                  T_OP_CWRITE    { new_instr(OPC_CWRITE); }
+|                  T_OP_SWRITE    { new_instr(OPC_SWRITE); }
 
 load_instr:        load_op reg ',' '[' reg '+' immediate ']' ',' immediate {
                        dst($2); src1($5); immed($7); bit($10);
@@ -286,4 +291,6 @@ immediate:         T_HEX
 |                  T_INT
 |                  T_CONTROL_REG
 |                  T_CONTROL_REG '+' immediate { $$ = $1 + $3; }
+|                  T_SQE_REG
+|                  T_SQE_REG '+' immediate { $$ = $1 + $3; }
 

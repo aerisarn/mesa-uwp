@@ -4,9 +4,33 @@ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 <!--
-	This documents the internal register space used by the CP firmware since
+	This documents the internal register spaces used by the CP firmware since
 	the afuc instruction set was introduced.
 -->
+
+<domain name="A6XX_SQE_REG" width="32">
+	<!-- TODO: the carry flag is probably here somewhere -->
+
+	<doc>
+		Instruction to jump to when the CP is preempted to perform a
+		context switch, initialized to entry 15 of the jump table at
+		bootup.
+	</doc>
+	<reg32 name="PREEMPT_INSTR" offset="0x04"/>
+
+	<doc> Stack Pointer for call/ret return address stack </doc>
+	<reg32 name="SP" offset="0x05"/>
+
+	<!-- TODO: make asm can handle arrays so we can use an array here -->
+	<reg32 name="STACK0" offset="0x08" type="hex"/>
+	<reg32 name="STACK1" offset="0x09" type="hex"/>
+	<reg32 name="STACK2" offset="0x0a" type="hex"/>
+	<reg32 name="STACK3" offset="0x0b" type="hex"/>
+	<reg32 name="STACK4" offset="0x0c" type="hex"/>
+	<reg32 name="STACK5" offset="0x0d" type="hex"/>
+	<reg32 name="STACK6" offset="0x0e" type="hex"/>
+	<reg32 name="STACK7" offset="0x0f" type="hex"/>
+</domain>
 
 <domain name="A5XX_CONTROL_REG" width="32">
 	<reg32 name="REG_WRITE_ADDR" offset="0x010"/>
@@ -30,12 +54,6 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 <domain name="A6XX_CONTROL_REG" width="32">
 	<reg32 name="RB_RPTR" offset="0x001"/>
-	<doc>
-		Instruction to jump to when the CP is preempted to perform a
-		context switch, initialized to entry 15 of the jump table at
-		bootup.
-	</doc>
-	<reg32 name="PREEMPT_INSTR" offset="0x004"/>
 
 	<reg64 name="IB1_BASE" offset="0x010"/>
 	<reg32 name="IB1_DWORDS" offset="0x012"/>

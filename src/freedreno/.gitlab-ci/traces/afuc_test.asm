@@ -94,6 +94,15 @@ mov $02, 0xff
 waitin
 mov $01, $data
 
+CP_SET_BIN_DATA5:
+; test SQE registers
+sread $02, [$00 + %SP], 0x0
+swrite $02, [$00 + %SP], 0x0
+mov $02, 7
+(rep)swrite $data, [$02 + 1], 0x4
+waitin
+mov $01, $data
+
 CP_SET_SECURE_MODE:
 ; test setsecure
 mov $02, $data
@@ -244,7 +253,6 @@ CP_IM_LOAD_IMMEDIATE:
 CP_BLIT:
 CP_SET_CONSTANT:
 CP_SET_BIN_DATA5_OFFSET:
-CP_SET_BIN_DATA5:
 UNKN48:
 CP_RUN_OPENCL:
 CP_LOAD_STATE6_GEOM:

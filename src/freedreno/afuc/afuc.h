@@ -103,6 +103,13 @@ typedef enum {
    OPC_STORE,
    OPC_LOAD,
 
+   /* A6xx added new opcodes that let you read/write the state of the
+    * SQE processor itself, like the call stack. This is mostly used by
+    * preemption but is also used to set the preempt routine entrypoint.
+    */
+   OPC_SREAD,
+   OPC_SWRITE,
+
    OPC_BRNEI,         /* relative branch (if $src != immed) */
    OPC_BREQI,         /* relative branch (if $src == immed) */
    OPC_BRNEB,         /* relative branch (if bit not set) */
@@ -172,6 +179,7 @@ struct afuc_instr {
 };
 
 void print_control_reg(uint32_t id);
+void print_sqe_reg(uint32_t id);
 void print_pipe_reg(uint32_t id);
 
 #endif /* _AFUC_H_ */

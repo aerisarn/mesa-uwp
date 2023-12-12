@@ -276,6 +276,17 @@ but on a6xx::
   cwrite $0b, [$05 + @IB1_BASE+0x1], 0x0
   cwrite $04, [$05 + @IB1_DWORDS], 0x0
 
+.. _afuc-sqe-regs:
+
+SQE Registers
+=============
+
+Starting with a6xx, the state of the SQE processor itself can be accessed
+through ``sread``/``swrite`` instructions that work identically to
+``cread``/``cwrite``. For example, this includes the state of the
+``call``/``ret`` stack. This is mainly used during the preemption routine but
+it's also used to set the entrypoint for preemption.
+
 .. _afuc-read:
 
 Reading Memory and Registers
