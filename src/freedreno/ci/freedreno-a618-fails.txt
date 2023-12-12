@@ -91,6 +91,7 @@ spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
 
 # Same results w/ zink-on-tu as with freedreno:
+spec@arb_post_depth_coverage@arb_post_depth_coverage-multisampling,Fail
 spec@arb_sample_shading@samplemask 2 all@noms partition,Fail
 spec@arb_sample_shading@samplemask 2@noms partition,Fail
 spec@arb_sample_shading@samplemask 4 all@noms partition,Fail
