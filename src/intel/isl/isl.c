@@ -2577,6 +2577,7 @@ isl_calc_base_alignment(const struct isl_device *dev,
        * there.
        */
       if (dev->info->has_aux_map &&
+          !INTEL_DEBUG(DEBUG_NO_CCS) &&
           !(info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
          base_alignment_B = MAX(base_alignment_B, dev->info->verx10 >= 125 ?
                1024 * 1024 : 64 * 1024);
