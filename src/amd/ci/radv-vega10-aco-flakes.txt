@@ -14,6 +14,3 @@ dEQP-VK.multiview.multisample.get_query_pool_results.*
 dEQP-VK.*framebuffer_attachment.diff_attachments.*
 dEQP-VK.*framebuffer_attachment.multi_attachments_not_exported_2d.*
 dEQP-VK.*framebuffer_attachment.resolve_input_same_attachment
-
-# New flakes in CTS 1.3.7.0
-dEQP-VK.dynamic_rendering.primary_cmd_buff.basic.partial_binding_depth_stencil

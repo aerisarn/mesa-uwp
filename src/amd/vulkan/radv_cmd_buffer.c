@@ -7664,7 +7664,17 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
 
       assert(d_iview == NULL || s_iview == NULL || d_iview == s_iview);
       ds_att.iview = d_iview ? d_iview : s_iview, ds_att.format = ds_att.iview->vk.format;
-      radv_initialise_ds_surface(cmd_buffer->device, &ds_att.ds, ds_att.iview);
+
+      VkImageAspectFlags ds_aspects;
+      if (d_iview && s_iview) {
+         ds_aspects = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      } else if (d_iview) {
+         ds_aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
+      } else {
+         ds_aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+      }
+
+      radv_initialise_ds_surface(cmd_buffer->device, &ds_att.ds, ds_att.iview, ds_aspects);
 
       assert(d_res_iview == NULL || s_res_iview == NULL || d_res_iview == s_res_iview);
       ds_att.resolve_iview = d_res_iview ? d_res_iview : s_res_iview;
