@@ -186,7 +186,7 @@ struct loop_record
       /* also supported for the "function loop" */
       if(!this->execute_flag) {
          exec_list& list = this->loop ? this->loop->body_instructions : signature->body;
-         this->execute_flag = new(this->signature) ir_variable(glsl_type::bool_type, "execute_flag", ir_var_temporary);
+         this->execute_flag = new(this->signature) ir_variable(&glsl_type_builtin_bool, "execute_flag", ir_var_temporary);
          list.push_head(new(this->signature) ir_assignment(new(this->signature) ir_dereference_variable(execute_flag), new(this->signature) ir_constant(true)));
          list.push_head(this->execute_flag);
       }
@@ -215,7 +215,7 @@ struct function_record
    ir_variable* get_return_flag()
    {
       if(!this->return_flag) {
-         this->return_flag = new(this->signature) ir_variable(glsl_type::bool_type, "return_flag", ir_var_temporary);
+         this->return_flag = new(this->signature) ir_variable(&glsl_type_builtin_bool, "return_flag", ir_var_temporary);
          this->signature->body.push_head(new(this->signature) ir_assignment(new(this->signature) ir_dereference_variable(return_flag), new(this->signature) ir_constant(false)));
          this->signature->body.push_head(this->return_flag);
       }

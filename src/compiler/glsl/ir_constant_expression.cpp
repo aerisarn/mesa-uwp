@@ -1168,7 +1168,7 @@ ir_function_signature::constant_expression_value(void *mem_ctx,
    assert(mem_ctx);
 
    const glsl_type *type = this->return_type;
-   if (type == glsl_type::void_type)
+   if (type == &glsl_type_builtin_void)
       return NULL;
 
    /* From the GLSL 1.20 spec, page 23:

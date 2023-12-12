@@ -379,15 +379,6 @@ struct glsl_type {
 /* C++ parts of glsl_type. */
 #ifdef __cplusplus
    /**
-    * \name Pointers to various public type singletons
-    */
-   /*@{*/
-#define BUILTIN_TYPES_CPP_DECLARATIONS
-#include "builtin_types_cpp.h"
-#undef BUILTIN_TYPES_CPP_DECLARATIONS
-   /*@}*/
-
-   /**
     * Convenience accessors for vector types (shorter than get_instance()).
     * @{
     */

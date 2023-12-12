@@ -751,12 +751,12 @@ nir_visitor::create_function(ir_function_signature *ir)
       func->is_entrypoint = true;
 
    func->num_params = ir->parameters.length() +
-                      (ir->return_type != glsl_type::void_type);
+                      (ir->return_type != &glsl_type_builtin_void);
    func->params = ralloc_array(shader, nir_parameter, func->num_params);
 
    unsigned np = 0;
 
-   if (ir->return_type != glsl_type::void_type) {
+   if (ir->return_type != &glsl_type_builtin_void) {
       /* The return value is a variable deref (basically an out parameter) */
       func->params[np].num_components = 1;
       func->params[np].bit_size = 32;
@@ -810,7 +810,7 @@ nir_visitor::visit(ir_function_signature *ir)
 
       b = nir_builder_at(nir_after_impl(impl));
 
-      unsigned i = (ir->return_type != glsl_type::void_type) ? 1 : 0;
+      unsigned i = (ir->return_type != &glsl_type_builtin_void) ? 1 : 0;
 
       foreach_in_list(ir_variable, param, &ir->parameters) {
          nir_variable *var =
@@ -996,13 +996,13 @@ nir_visitor::visit(ir_call *ir)
       case ir_intrinsic_generic_atomic_min:
          assert(ir->return_deref);
          op = nir_intrinsic_deref_atomic;
-         if (ir->return_deref->type == glsl_type::int_type ||
-             ir->return_deref->type == glsl_type::int64_t_type)
+         if (ir->return_deref->type == &glsl_type_builtin_int ||
+             ir->return_deref->type == &glsl_type_builtin_int64_t)
              atomic_op = nir_atomic_op_imin;
-         else if (ir->return_deref->type == glsl_type::uint_type ||
-                  ir->return_deref->type == glsl_type::uint64_t_type)
+         else if (ir->return_deref->type == &glsl_type_builtin_uint ||
+                  ir->return_deref->type == &glsl_type_builtin_uint64_t)
              atomic_op = nir_atomic_op_umin;
-         else if (ir->return_deref->type == glsl_type::float_type)
+         else if (ir->return_deref->type == &glsl_type_builtin_float)
              atomic_op = nir_atomic_op_fmin;
          else
             unreachable("Invalid type");
@@ -1010,13 +1010,13 @@ nir_visitor::visit(ir_call *ir)
       case ir_intrinsic_generic_atomic_max:
          assert(ir->return_deref);
          op = nir_intrinsic_deref_atomic;
-         if (ir->return_deref->type == glsl_type::int_type ||
-             ir->return_deref->type == glsl_type::int64_t_type)
+         if (ir->return_deref->type == &glsl_type_builtin_int ||
+             ir->return_deref->type == &glsl_type_builtin_int64_t)
              atomic_op = nir_atomic_op_imax;
-         else if (ir->return_deref->type == glsl_type::uint_type ||
-                  ir->return_deref->type == glsl_type::uint64_t_type)
+         else if (ir->return_deref->type == &glsl_type_builtin_uint ||
+                  ir->return_deref->type == &glsl_type_builtin_uint64_t)
              atomic_op = nir_atomic_op_umax;
-         else if (ir->return_deref->type == glsl_type::float_type)
+         else if (ir->return_deref->type == &glsl_type_builtin_float)
              atomic_op = nir_atomic_op_fmax;
          else
             unreachable("Invalid type");
@@ -1078,18 +1078,18 @@ nir_visitor::visit(ir_call *ir)
          break;
       case ir_intrinsic_image_atomic_min:
          op = nir_intrinsic_image_deref_atomic;
-         if (ir->return_deref->type == glsl_type::int_type)
+         if (ir->return_deref->type == &glsl_type_builtin_int)
             atomic_op = nir_atomic_op_imin;
-         else if (ir->return_deref->type == glsl_type::uint_type)
+         else if (ir->return_deref->type == &glsl_type_builtin_uint)
             atomic_op = nir_atomic_op_umin;
          else
             unreachable("Invalid type");
          break;
       case ir_intrinsic_image_atomic_max:
          op = nir_intrinsic_image_deref_atomic;
-         if (ir->return_deref->type == glsl_type::int_type)
+         if (ir->return_deref->type == &glsl_type_builtin_int)
             atomic_op = nir_atomic_op_imax;
-         else if (ir->return_deref->type == glsl_type::uint_type)
+         else if (ir->return_deref->type == &glsl_type_builtin_uint)
             atomic_op = nir_atomic_op_umax;
          else
             unreachable("Invalid type");
@@ -2456,7 +2456,7 @@ nir_visitor::visit(ir_texture *ir)
 
    const glsl_type *dest_type
       = ir->is_sparse ? ir->type->field_type("texel") : ir->type;
-   assert(dest_type != glsl_type::error_type);
+   assert(dest_type != &glsl_type_builtin_error);
    if (instr->is_shadow)
       instr->is_new_style_shadow = (dest_type->vector_elements == 1);
    instr->dest_type = nir_get_nir_type_for_glsl_type(dest_type);
@@ -2591,7 +2591,7 @@ void
 nir_visitor::visit(ir_dereference_variable *ir)
 {
    if (ir->variable_referenced()->data.mode == ir_var_function_out) {
-      unsigned i = (sig->return_type != glsl_type::void_type) ? 1 : 0;
+      unsigned i = (sig->return_type != &glsl_type_builtin_void) ? 1 : 0;
 
       foreach_in_list(ir_variable, param, &sig->parameters) {
          if (param == ir->variable_referenced()) {

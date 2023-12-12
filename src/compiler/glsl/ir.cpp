@@ -31,7 +31,7 @@
 ir_rvalue::ir_rvalue(enum ir_node_type t)
    : ir_instruction(t)
 {
-   this->type = glsl_type::error_type;
+   this->type = &glsl_type_builtin_error;
 }
 
 bool ir_rvalue::is_zero() const
@@ -371,11 +371,11 @@ ir_expression::ir_expression(int op, ir_rvalue *op0)
 
    case ir_unop_unpack_double_2x32:
    case ir_unop_unpack_uint_2x32:
-      this->type = glsl_type::uvec2_type;
+      this->type = &glsl_type_builtin_uvec2;
       break;
 
    case ir_unop_unpack_int_2x32:
-      this->type = glsl_type::ivec2_type;
+      this->type = &glsl_type_builtin_ivec2;
       break;
 
    case ir_unop_pack_snorm_2x16:
@@ -383,35 +383,35 @@ ir_expression::ir_expression(int op, ir_rvalue *op0)
    case ir_unop_pack_unorm_2x16:
    case ir_unop_pack_unorm_4x8:
    case ir_unop_pack_half_2x16:
-      this->type = glsl_type::uint_type;
+      this->type = &glsl_type_builtin_uint;
       break;
 
    case ir_unop_pack_double_2x32:
-      this->type = glsl_type::double_type;
+      this->type = &glsl_type_builtin_double;
       break;
 
    case ir_unop_pack_int_2x32:
-      this->type = glsl_type::int64_t_type;
+      this->type = &glsl_type_builtin_int64_t;
       break;
 
    case ir_unop_pack_uint_2x32:
-      this->type = glsl_type::uint64_t_type;
+      this->type = &glsl_type_builtin_uint64_t;
       break;
 
    case ir_unop_unpack_snorm_2x16:
    case ir_unop_unpack_unorm_2x16:
    case ir_unop_unpack_half_2x16:
-      this->type = glsl_type::vec2_type;
+      this->type = &glsl_type_builtin_vec2;
       break;
 
    case ir_unop_unpack_snorm_4x8:
    case ir_unop_unpack_unorm_4x8:
-      this->type = glsl_type::vec4_type;
+      this->type = &glsl_type_builtin_vec4;
       break;
 
    case ir_unop_unpack_sampler_2x32:
    case ir_unop_unpack_image_2x32:
-      this->type = glsl_type::uvec2_type;
+      this->type = &glsl_type_builtin_uvec2;
       break;
 
    case ir_unop_pack_sampler_2x32:
@@ -430,7 +430,7 @@ ir_expression::ir_expression(int op, ir_rvalue *op0)
    case ir_unop_get_buffer_size:
    case ir_unop_ssbo_unsized_array_length:
    case ir_unop_implicitly_sized_array_length:
-      this->type = glsl_type::int_type;
+      this->type = &glsl_type_builtin_int;
       break;
 
    case ir_unop_bitcast_i642d:
@@ -474,7 +474,7 @@ ir_expression::ir_expression(int op, ir_rvalue *op0, ir_rvalue *op1)
    switch (this->operation) {
    case ir_binop_all_equal:
    case ir_binop_any_nequal:
-      this->type = glsl_type::bool_type;
+      this->type = &glsl_type_builtin_bool;
       break;
 
    case ir_binop_add:
@@ -587,7 +587,7 @@ ir_expression::ir_expression(int op, ir_rvalue *op0, ir_rvalue *op1)
 
    default:
       assert(!"not reached: missing automatic type setup for ir_expression");
-      this->type = glsl_type::float_type;
+      this->type = &glsl_type_builtin_float;
    }
 }
 
@@ -622,7 +622,7 @@ ir_expression::ir_expression(int op, ir_rvalue *op0, ir_rvalue *op1,
 
    default:
       assert(!"not reached: missing automatic type setup for ir_expression");
-      this->type = glsl_type::float_type;
+      this->type = &glsl_type_builtin_float;
    }
 }
 
@@ -1802,7 +1802,7 @@ ir_texture::set_sampler(ir_dereference *sampler, const glsl_type *type)
    if (this->is_sparse) {
       /* code holds residency info */
       glsl_struct_field fields[2] = {
-         glsl_struct_field(glsl_type::int_type, "code"),
+         glsl_struct_field(&glsl_type_builtin_int, "code"),
          glsl_struct_field(type, "texel"),
       };
       this->type = glsl_type::get_struct_instance(fields, 2, "struct");
@@ -1816,7 +1816,7 @@ ir_texture::set_sampler(ir_dereference *sampler, const glsl_type *type)
       assert(type->vector_elements == 2);
       assert(type->is_float());
    } else if (this->op == ir_samples_identical) {
-      assert(type == glsl_type::bool_type);
+      assert(type == &glsl_type_builtin_bool);
       assert(sampler->type->is_sampler());
       assert(sampler->type->sampler_dimensionality == GLSL_SAMPLER_DIM_MS);
    } else {
@@ -2224,7 +2224,7 @@ ir_rvalue::error_value(void *mem_ctx)
 {
    ir_rvalue *v = new(mem_ctx) ir_rvalue(ir_type_unset);
 
-   v->type = glsl_type::error_type;
+   v->type = &glsl_type_builtin_error;
    return v;
 }
 

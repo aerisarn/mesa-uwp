@@ -2326,18 +2326,18 @@ ast_function_expression::hir(exec_list *instructions,
             /* Convert a sampler/image type to a pair of 32-bit unsigned
              * integers as defined by ARB_bindless_texture.
              */
-            if (constructor_type != glsl_type::uvec2_type) {
+            if (constructor_type != &glsl_type_builtin_uvec2) {
                _mesa_glsl_error(&loc, state, "sampler and image types can only "
                                 "be converted to a pair of 32-bit unsigned "
                                 "integers");
             }
-            desired_type = glsl_type::uvec2_type;
+            desired_type = &glsl_type_builtin_uvec2;
          } else if (constructor_type->is_sampler() ||
                     constructor_type->is_image()) {
             /* Convert a pair of 32-bit unsigned integers to a sampler or image
              * type as defined by ARB_bindless_texture.
              */
-            if (ir->type != glsl_type::uvec2_type) {
+            if (ir->type != &glsl_type_builtin_uvec2) {
                _mesa_glsl_error(&loc, state, "sampler and image types can only "
                                 "be converted from a pair of 32-bit unsigned "
                                 "integers");
@@ -2442,7 +2442,7 @@ ast_function_expression::hir(exec_list *instructions,
          ir_variable *mvp =
             state->symbols->get_variable("gl_ModelViewProjectionMatrix");
          ir_variable *vtx = state->symbols->get_variable("gl_Vertex");
-         value = new(ctx) ir_expression(ir_binop_mul, glsl_type::vec4_type,
+         value = new(ctx) ir_expression(ir_binop_mul, &glsl_type_builtin_vec4,
                                         new(ctx) ir_dereference_variable(mvp),
                                         new(ctx) ir_dereference_variable(vtx));
       } else {
@@ -2496,7 +2496,7 @@ ast_function_expression::hir(exec_list *instructions,
          value = generate_call(instructions, sig, &actual_parameters, sub_var,
                                array_idx, state);
          if (!value) {
-            ir_variable *const tmp = new(ctx) ir_variable(glsl_type::void_type,
+            ir_variable *const tmp = new(ctx) ir_variable(&glsl_type_builtin_void,
                                                           "void_var",
                                                           ir_var_temporary);
             instructions->push_tail(tmp);

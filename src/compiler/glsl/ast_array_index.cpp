@@ -357,7 +357,7 @@ _mesa_ast_array_index_to_hir(void *mem_ctx,
       return array;
    } else {
       ir_rvalue *result = new(mem_ctx) ir_dereference_array(array, idx);
-      result->type = glsl_type::error_type;
+      result->type = &glsl_type_builtin_error;
 
       return result;
    }

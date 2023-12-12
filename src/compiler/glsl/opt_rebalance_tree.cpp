@@ -292,7 +292,7 @@ update_types(ir_instruction *ir, void *)
                               MAX2(expr->operands[0]->type->vector_elements,
                                    expr->operands[1]->type->vector_elements),
                               1);
-   assert(new_type != glsl_type::error_type);
+   assert(new_type != &glsl_type_builtin_error);
    expr->type = new_type;
 }
 

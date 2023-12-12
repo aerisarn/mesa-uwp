@@ -8,10 +8,6 @@
 
 #ifdef __cplusplus
 
-#define BUILTIN_TYPES_CPP_DEFINITIONS
-#include "compiler/builtin_types_cpp.h"
-#undef BUILTIN_TYPES_CPP_DEFINITIONS
-
 inline bool glsl_type::is_boolean() const { return glsl_type_is_boolean(this); }
 inline bool glsl_type::is_sampler() const { return glsl_type_is_sampler(this); }
 inline bool glsl_type::is_texture() const { return glsl_type_is_texture(this); }

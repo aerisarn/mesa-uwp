@@ -694,10 +694,10 @@ ir_reader::read_call(s_expression *expr)
       return NULL;
    }
 
-   if (callee->return_type == glsl_type::void_type && return_deref) {
+   if (callee->return_type == &glsl_type_builtin_void && return_deref) {
       ir_read_error(expr, "call has return value storage but void type");
       return NULL;
-   } else if (callee->return_type != glsl_type::void_type && !return_deref) {
+   } else if (callee->return_type != &glsl_type_builtin_void && !return_deref) {
       ir_read_error(expr, "call has non-void type but no return value storage");
       return NULL;
    }
@@ -1032,7 +1032,7 @@ ir_reader::read_texture(s_expression *expr)
 
    if (is_sparse) {
       const glsl_type *texel = type->field_type("texel");
-      if (texel == glsl_type::error_type) {
+      if (texel == &glsl_type_builtin_error) {
          ir_read_error(NULL, "invalid type for sparse texture");
          return NULL;
       }
