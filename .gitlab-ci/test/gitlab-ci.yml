@@ -322,7 +322,7 @@ clang-format:
     - !reference [default, before_script]
 
     - |
-      set -x
+      set -eux
 
       # Useful as a hook point for runner admins. You may edit the
       # config.toml for the Gitlab runner and use a bind-mount to
