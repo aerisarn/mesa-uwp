@@ -100,6 +100,7 @@ extern YYSTYPE yylval;
 "["                               return '[';
 "]"                               return ']';
 "+"                               return '+';
+"!"                               return '!';
 
 .                                 fprintf(stderr, "error at line %d: Unknown token: %s\n", yyget_lineno(), yytext); yyterminate();
 

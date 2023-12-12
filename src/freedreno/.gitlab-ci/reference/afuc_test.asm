@@ -52,7 +52,7 @@ mov $01, $data
 
 CP_SCRATCH_WRITE:
 mov $02, 0xff
-(rep)cwrite $data, [$02 + @RB_RPTR], 0x4
+(rep)cwrite $data, [$02 + 0x1]!, 0x0
 waitin
 mov $01, $data
 
@@ -60,7 +60,7 @@ CP_SET_BIN_DATA5:
 sread $02, [$00 + %SP], 0x0
 swrite $02, [$00 + %SP], 0x0
 mov $02, 0x7
-(rep)swrite $data, [$02 + 0x001], 0x4
+(rep)swrite $data, [$02 + 0x1]!, 0x0
 waitin
 mov $01, $data
 
@@ -121,10 +121,10 @@ mov $06, $data
 l96:
 breq $06, 0x0, #l102
 cwrite $03, [$00 + @LOAD_STORE_HI], 0x0
-load $07, [$02 + 0x4], 0x4
+load $07, [$02 + 0x4]!, 0x0
 cwrite $05, [$00 + @LOAD_STORE_HI], 0x0
 jump #l96
-store $07, [$04 + 0x4], 0x4
+store $07, [$04 + 0x4]!, 0x0
 l102:
 waitin
 mov $01, $data
@@ -136,7 +136,7 @@ mov $02, $data
 cwrite $data, [$00 + @LOAD_STORE_HI], 0x0
 mov $rem, $data
 cwrite $rem, [$00 + @MEM_READ_DWORDS], 0x0
-(rep)store $memdata, [$02 + 0x4], 0x4
+(rep)store $memdata, [$02 + 0x4]!, 0x0
 waitin
 mov $01, $data
 

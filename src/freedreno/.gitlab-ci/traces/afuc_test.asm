@@ -90,7 +90,7 @@ CP_SCRATCH_WRITE:
 ; test (rep) + flags + non-zero offset with cwrite
 ; TODO: 0x4 flag is actually pre-increment addressing, handle it as such
 mov $02, 0xff
-(rep)cwrite $data, [$02 + 0x001], 0x4
+(rep)cwrite $data, [$02 + 0x001]!, 0x0
 waitin
 mov $01, $data
 
@@ -99,7 +99,7 @@ CP_SET_BIN_DATA5:
 sread $02, [$00 + %SP], 0x0
 swrite $02, [$00 + %SP], 0x0
 mov $02, 7
-(rep)swrite $data, [$02 + 1], 0x4
+(rep)swrite $data, [$02 + 1]!, 0x0
 waitin
 mov $01, $data
 
@@ -172,10 +172,10 @@ mov $06, $data
 cpy_header:
 breq $06, 0, #cpy_exit
 cwrite $03, [$00 + @LOAD_STORE_HI], 0x0
-load $07, [$02 + 0x004], 0x4
+load $07, [$02 + 0x004]!, 0x0
 cwrite $05, [$00 + @LOAD_STORE_HI], 0x0
 jump #cpy_header
-store $07, [$04 + 0x004], 0x4
+store $07, [$04 + 0x004]!, 0x0
 cpy_exit:
 waitin
 mov $01, $data
@@ -189,7 +189,7 @@ mov $02, $data
 cwrite $data, [$00 + @LOAD_STORE_HI], 0x0
 mov $rem, $data
 cwrite $rem, [$00 + @MEM_READ_DWORDS], 0x0
-(rep)store $memdata, [$02 + 0x004], 0x4
+(rep)store $memdata, [$02 + 0x004]!, 0x0
 waitin
 mov $01, $data
 

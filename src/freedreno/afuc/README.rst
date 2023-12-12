@@ -224,7 +224,9 @@ Control registers are a special register space that can only be read/written
 directly by CP through ``cread``/``cwrite`` instructions::
 
 - ``cread $dst, [$off + addr], flags``
+- ``cread $dst, [$off + addr]!, flags``
 - ``cwrite $src, [$off + addr], flags``
+- ``cwrite $src, [$off + addr]!, flags``
 
 Control registers ``0x000`` to ``0x0ff`` are private registers used to control
 the CP, for example to indicate where to read from memory or (normal)
@@ -235,8 +237,8 @@ packets.
 
 In cases where no offset is needed, ``$00`` is frequently used as the offset.
 
-A value of 4 for ``flags`` is known to be a pre-increment mode that writes the
-final address ``$off + addr`` to ``$off``, it's not known what other values do.
+The addressing mode with ``!`` is a pre-increment mode that writes the final
+address ``$off + addr`` to ``$off``.
 
 For example, the following sequences sets::
 

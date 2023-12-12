@@ -216,7 +216,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
       uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);
 
-      if (instr->bit == 0x4) {
+      if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
       } else if (instr->bit && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->bit);
@@ -228,7 +228,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
    case OPC_CREAD: {
       uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
 
-      if (instr->bit == 0x4) {
+      if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
       } else if (instr->bit && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->bit);
@@ -242,7 +242,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
       uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);
 
-      if (instr->bit == 0x4) {
+      if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
       } else if (instr->bit && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->bit);
@@ -254,7 +254,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
    case OPC_SREAD: {
       uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
 
-      if (instr->bit == 0x4) {
+      if (instr->preincrement) {
          emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
       } else if (instr->bit && !emu->quiet) {
          printf("unhandled flags: %x\n", instr->bit);
@@ -268,7 +268,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       uintptr_t addr = load_store_addr(emu, instr->src1) +
             instr->immed;
 
-      if (instr->bit == 0x4) {
+      if (instr->preincrement) {
          uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
          emu_set_gpr_reg(emu, instr->src1, src1 + instr->immed);
       } else if (instr->bit && !emu->quiet) {
@@ -285,7 +285,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       uintptr_t addr = load_store_addr(emu, instr->src2) +
             instr->immed;
 
-      if (instr->bit == 0x4) {
+      if (instr->preincrement) {
          uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);
          emu_set_gpr_reg(emu, instr->src2, src2 + instr->immed);
       } else if (instr->bit && !emu->quiet) {

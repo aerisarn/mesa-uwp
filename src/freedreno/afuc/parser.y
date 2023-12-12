@@ -262,11 +262,14 @@ store_op:          T_OP_STORE     { new_instr(OPC_STORE); }
 |                  T_OP_CWRITE    { new_instr(OPC_CWRITE); }
 |                  T_OP_SWRITE    { new_instr(OPC_SWRITE); }
 
-load_instr:        load_op reg ',' '[' reg '+' immediate ']' ',' immediate {
-                       dst($2); src1($5); immed($7); bit($10);
+preincrement:
+|              '!'   { instr->preincrement = true; }
+
+load_instr:        load_op reg ',' '[' reg '+' immediate ']' preincrement ',' immediate {
+                       dst($2); src1($5); immed($7); bit($11);
 }
-store_instr:       store_op reg ',' '[' reg '+' immediate ']' ',' immediate {
-                       src1($2); src2($5); immed($7); bit($10);
+store_instr:       store_op reg ',' '[' reg '+' immediate ']' preincrement ',' immediate {
+                       src1($2); src2($5); immed($7); bit($11);
 }
 
 branch_op:         T_OP_BRNE      { new_instr(OPC_BRNE); }

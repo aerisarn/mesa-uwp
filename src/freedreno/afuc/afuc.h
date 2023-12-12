@@ -176,6 +176,7 @@ struct afuc_instr {
    bool has_bit : 1;
    bool is_literal : 1;
    bool rep : 1;
+   bool preincrement : 1;
 };
 
 void print_control_reg(uint32_t id);
