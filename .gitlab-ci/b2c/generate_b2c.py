@@ -95,8 +95,7 @@ values['local_container'] = values['local_container'].replace(
     '{{ fdo_proxy_registry }}'
 )
 
-if 'B2C_KERNEL_CMDLINE_EXTRAS' in environ:
-    values['cmdline_extras'] = environ['B2C_KERNEL_CMDLINE_EXTRAS']
+values['cmdline_extras'] = environ.get('B2C_KERNEL_CMDLINE_EXTRAS', '')
 
 f = open(path.splitext(path.basename(args.template))[0], "w")
 f.write(template.render(values))
