@@ -82,9 +82,8 @@ values['timeout_first_retries'] = args.timeout_first_retries
 values['timeout_minutes'] = args.timeout_minutes
 values['timeout_overall_minutes'] = args.timeout_overall_minutes
 values['timeout_retries'] = args.timeout_retries
-if len(args.job_volume_exclusions) > 0:
-    exclusions = args.job_volume_exclusions.split(",")
-    values['job_volume_exclusions'] = [excl for excl in exclusions if len(excl) > 0]
+exclusions = args.job_volume_exclusions.split(",")
+values['job_volume_exclusions'] = [excl for excl in exclusions if excl]
 values['working_dir'] = args.working_dir
 
 assert(len(args.local_container) > 0)
