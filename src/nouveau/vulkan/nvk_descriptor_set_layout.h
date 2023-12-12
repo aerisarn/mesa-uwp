@@ -67,7 +67,7 @@ void
 nvk_descriptor_stride_align_for_type(const struct nvk_physical_device *pdev,
                                      VkDescriptorType type,
                                      const VkMutableDescriptorTypeListEXT *type_list,
-                                     uint32_t *stride, uint32_t *align);
+                                     uint32_t *stride, uint32_t *alignment);
 
 static inline struct nvk_descriptor_set_layout *
 vk_to_nvk_descriptor_set_layout(struct vk_descriptor_set_layout *layout)

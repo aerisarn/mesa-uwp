@@ -395,11 +395,11 @@ nvk_CreateDescriptorPool(VkDevice _device,
           mutable_info && i < mutable_info->mutableDescriptorTypeListCount)
             type_list = &mutable_info->pMutableDescriptorTypeLists[i];
 
-      uint32_t stride, align;
+      uint32_t stride, alignment;
       nvk_descriptor_stride_align_for_type(pdev,
                                            pCreateInfo->pPoolSizes[i].type,
-                                           type_list, &stride, &align);
-      max_align = MAX2(max_align, align);
+                                           type_list, &stride, &alignment);
+      max_align = MAX2(max_align, alignment);
    }
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
@@ -408,10 +408,10 @@ nvk_CreateDescriptorPool(VkDevice _device,
           mutable_info && i < mutable_info->mutableDescriptorTypeListCount)
             type_list = &mutable_info->pMutableDescriptorTypeLists[i];
 
-      uint32_t stride, align;
+      uint32_t stride, alignment;
       nvk_descriptor_stride_align_for_type(pdev,
                                            pCreateInfo->pPoolSizes[i].type,
-                                           type_list, &stride, &align);
+                                           type_list, &stride, &alignment);
       bo_size += MAX2(stride, max_align) *
                  pCreateInfo->pPoolSizes[i].descriptorCount;
    }

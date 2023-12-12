@@ -31,7 +31,7 @@ void
 nvk_descriptor_stride_align_for_type(const struct nvk_physical_device *pdev,
                                      VkDescriptorType type,
                                      const VkMutableDescriptorTypeListEXT *type_list,
-                                     uint32_t *stride, uint32_t *align)
+                                     uint32_t *stride, uint32_t *alignment)
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -42,28 +42,28 @@ nvk_descriptor_stride_align_for_type(const struct nvk_physical_device *pdev,
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-      *stride = *align = sizeof(struct nvk_image_descriptor);
+      *stride = *alignment = sizeof(struct nvk_image_descriptor);
       break;
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      *stride = *align = sizeof(struct nvk_buffer_address);
+      *stride = *alignment = sizeof(struct nvk_buffer_address);
       break;
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      *stride = *align = 0; /* These don't take up buffer space */
+      *stride = *alignment = 0; /* These don't take up buffer space */
       break;
 
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
       *stride = 1; /* Array size is bytes */
-      *align = nvk_min_cbuf_alignment(&pdev->info);
+      *alignment = nvk_min_cbuf_alignment(&pdev->info);
       break;
 
    case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
-      *stride = *align = 0;
+      *stride = *alignment = 0;
       if (type_list == NULL)
-         *stride = *align = NVK_MAX_DESCRIPTOR_SIZE;
+         *stride = *alignment = NVK_MAX_DESCRIPTOR_SIZE;
       for (unsigned i = 0; type_list && i < type_list->descriptorTypeCount; i++) {
          /* This shouldn't recurse */
          assert(type_list->pDescriptorTypes[i] !=
@@ -73,9 +73,9 @@ nvk_descriptor_stride_align_for_type(const struct nvk_physical_device *pdev,
                                               type_list->pDescriptorTypes[i],
                                               NULL, &desc_stride, &desc_align);
          *stride = MAX2(*stride, desc_stride);
-         *align = MAX2(*align, desc_align);
+         *alignment = MAX2(*alignment, desc_align);
       }
-      *stride = ALIGN(*stride, *align);
+      *stride = ALIGN(*stride, *alignment);
       break;
 
    default:
@@ -200,9 +200,9 @@ nvk_CreateDescriptorSetLayout(VkDevice device,
          nvk_descriptor_get_type_list(binding->descriptorType,
                                       mutable_info, info_idx);
 
-      uint32_t stride, align;
+      uint32_t stride, alignment;
       nvk_descriptor_stride_align_for_type(pdev, binding->descriptorType,
-                                           type_list, &stride, &align);
+                                           type_list, &stride, &alignment);
 
       uint8_t max_plane_count = 1;
 
@@ -223,9 +223,9 @@ nvk_CreateDescriptorSetLayout(VkDevice device,
 
       if (stride > 0) {
          assert(stride <= UINT8_MAX);
-         assert(util_is_power_of_two_nonzero(align));
+         assert(util_is_power_of_two_nonzero(alignment));
 
-         buffer_size = align64(buffer_size, align);
+         buffer_size = align64(buffer_size, alignment);
          layout->binding[b].offset = buffer_size;
          layout->binding[b].stride = stride;
 
@@ -309,10 +309,10 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice device,
          nvk_descriptor_get_type_list(binding->descriptorType,
                                       mutable_info, i);
 
-      uint32_t stride, align;
+      uint32_t stride, alignment;
       nvk_descriptor_stride_align_for_type(pdev, binding->descriptorType,
-                                           type_list, &stride, &align);
-      max_align = MAX2(max_align, align);
+                                           type_list, &stride, &alignment);
+      max_align = MAX2(max_align, alignment);
    }
 
    uint64_t non_variable_size = 0;
@@ -340,13 +340,13 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice device,
          nvk_descriptor_get_type_list(binding->descriptorType,
                                       mutable_info, i);
 
-      uint32_t stride, align;
+      uint32_t stride, alignment;
       nvk_descriptor_stride_align_for_type(pdev, binding->descriptorType,
-                                           type_list, &stride, &align);
+                                           type_list, &stride, &alignment);
 
       if (stride > 0) {
          assert(stride <= UINT8_MAX);
-         assert(util_is_power_of_two_nonzero(align));
+         assert(util_is_power_of_two_nonzero(alignment));
 
          if (flags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
             /* From the Vulkan 1.3.256 spec:
