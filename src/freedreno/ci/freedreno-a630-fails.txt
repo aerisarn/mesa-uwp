@@ -114,8 +114,6 @@ spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-dvec4-i
 
 spec@arb_texture_rectangle@1-1-linear-texture,Fail
 
-spec@arb_timer_query@timestamp-get,Fail
-
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
 
 # fails unrelated to GL_ARB_enhanced_layouts
