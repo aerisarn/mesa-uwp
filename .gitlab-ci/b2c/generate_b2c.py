@@ -85,10 +85,6 @@ values['timeout_retries'] = args.timeout_retries
 if len(args.job_volume_exclusions) > 0:
     exclusions = args.job_volume_exclusions.split(",")
     values['job_volume_exclusions'] = [excl for excl in exclusions if len(excl) > 0]
-if args.volume is not None:
-    values['volumes'] = args.volume
-if args.mount_volume is not None:
-    values['mount_volumes'] = args.mount_volume
 values['working_dir'] = args.working_dir
 
 assert(len(args.local_container) > 0)
