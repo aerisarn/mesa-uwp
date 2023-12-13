@@ -842,7 +842,7 @@ enum vpe_status vpe_color_update_movable_cm(
             vpe_color_update_gamut(vpe_priv, out_lut_cs, vpe_priv->output_ctx.cs,
                 output_ctx->gamut_remap, !enable_3dlut);
 
-            convert_to_tetrahedral(vpe_priv, param->streams[stream_idx].tm_params.lut_data,
+            vpe_convert_to_tetrahedral(vpe_priv, param->streams[stream_idx].tm_params.lut_data,
                 stream_ctx->lut3d_func, enable_3dlut);
 
             stream_ctx->update_3dlut = false;
