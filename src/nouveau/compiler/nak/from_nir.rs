@@ -701,7 +701,7 @@ impl<'a> ShaderFromNir<'a> {
                 dst
             }
             nir_op_fexp2 => b.mufu(MuFuOp::Exp2, srcs[0]),
-            nir_op_ffma | nir_op_ffmaz => {
+            nir_op_ffma => {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -712,8 +712,25 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
                     // The hardware doesn't like FTZ+DNZ and DNZ implies FTZ
                     // anyway so only set one of the two bits.
-                    ftz: alu.op != nir_op_ffmaz && self.float_ctl[ftype].ftz,
-                    dnz: alu.op == nir_op_ffmaz,
+                    ftz: self.float_ctl[ftype].ftz,
+                    dnz: false,
+                });
+                dst
+            }
+            nir_op_ffmaz => {
+                assert!(alu.def.bit_size() == 32);
+                // DNZ implies FTZ so we need FTZ set or this is invalid
+                assert!(self.float_ctl.fp32.ftz);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpFFma {
+                    dst: dst.into(),
+                    srcs: [srcs[0], srcs[1], srcs[2]],
+                    saturate: self.try_saturate_alu_dst(&alu.def),
+                    rnd_mode: self.float_ctl.fp32.rnd_mode,
+                    // The hardware doesn't like FTZ+DNZ and DNZ implies FTZ
+                    // anyway so only set one of the two bits.
+                    ftz: false,
+                    dnz: true,
                 });
                 dst
             }
@@ -732,7 +749,7 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
-            nir_op_fmul | nir_op_fmulz => {
+            nir_op_fmul => {
                 let ftype = FloatType::from_bits(alu.def.bit_size().into());
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -741,10 +758,25 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [srcs[0], srcs[1]],
                     saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: self.float_ctl[ftype].rnd_mode,
+                    ftz: self.float_ctl[ftype].ftz,
+                    dnz: false,
+                });
+                dst
+            }
+            nir_op_fmulz => {
+                assert!(alu.def.bit_size() == 32);
+                // DNZ implies FTZ so we need FTZ set or this is invalid
+                assert!(self.float_ctl.fp32.ftz);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpFMul {
+                    dst: dst.into(),
+                    srcs: [srcs[0], srcs[1]],
+                    saturate: self.try_saturate_alu_dst(&alu.def),
+                    rnd_mode: self.float_ctl.fp32.rnd_mode,
                     // The hardware doesn't like FTZ+DNZ and DNZ implies FTZ
                     // anyway so only set one of the two bits.
-                    ftz: alu.op != nir_op_fmulz && self.float_ctl[ftype].ftz,
-                    dnz: alu.op == nir_op_fmulz,
+                    ftz: false,
+                    dnz: true,
                 });
                 dst
             }
