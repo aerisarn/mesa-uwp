@@ -1752,8 +1752,7 @@ radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_
 }
 
 static struct radv_ps_epilog_key
-radv_pipeline_generate_ps_epilog_key(const struct radv_device *device, const struct vk_graphics_pipeline_state *state,
-                                     bool disable_mrt_compaction)
+radv_pipeline_generate_ps_epilog_key(const struct radv_device *device, const struct vk_graphics_pipeline_state *state)
 {
    struct radv_ps_epilog_state ps_epilog = {0};
 
@@ -1806,7 +1805,7 @@ radv_pipeline_generate_ps_epilog_key(const struct radv_device *device, const str
       }
    }
 
-   return radv_generate_ps_epilog_key(device, &ps_epilog, disable_mrt_compaction);
+   return radv_generate_ps_epilog_key(device, &ps_epilog, false);
 }
 
 static struct radv_pipeline_key
@@ -1933,10 +1932,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    if (radv_pipeline_needs_ps_epilog(pipeline, lib_flags))
       key.ps.has_epilog = true;
 
-   /* Disable MRT compaction when a PS epilog is needed because we don't know the fragment output
-    * interface.
-    */
-   key.ps.epilog = radv_pipeline_generate_ps_epilog_key(device, state, key.ps.has_epilog);
+   key.ps.epilog = radv_pipeline_generate_ps_epilog_key(device, state);
 
    if (device->physical_device->rad_info.gfx_level >= GFX11) {
       /* On GFX11, alpha to coverage is exported via MRTZ when depth/stencil/samplemask are also
