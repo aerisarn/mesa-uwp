@@ -480,6 +480,25 @@ impl SM50Instr {
         }
     }
 
+    fn encode_ldc(&mut self, op: &OpLdc) {
+        assert!(op.cb.src_mod.is_none());
+        let SrcRef::CBuf(cb) = &op.cb.src_ref else {
+            panic!("Not a CBuf source");
+        };
+        let CBuf::Binding(cb_idx) = cb.buf else {
+            panic!("Must be a bound constant buffer");
+        };
+
+        self.set_opcode(0xef90);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(8..16, op.offset);
+        self.set_field(20..36, cb.offset);
+        self.set_field(36..41, cb_idx);
+        self.set_field(44..46, 0_u8); // TODO: subop
+        self.set_mem_type(48..51, op.mem_type);
+    }
+
     fn encode_stg(&mut self, op: &OpSt) {
         self.set_opcode(0xeed8);
 
@@ -1747,6 +1766,7 @@ impl SM50Instr {
             Op::PopC(op) => si.encode_popc(&op),
             Op::Prmt(op) => si.encode_prmt(&op),
             Op::Ld(op) => si.encode_ld(&op),
+            Op::Ldc(op) => si.encode_ldc(&op),
             Op::St(op) => si.encode_st(&op),
             Op::Lop2(op) => si.encode_lop2(&op),
             Op::Shf(op) => si.encode_shf(&op),

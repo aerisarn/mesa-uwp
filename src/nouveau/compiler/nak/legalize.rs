@@ -199,6 +199,7 @@ fn legalize_sm50_instr(
             copy_src_if_not_reg(b, &mut op.srcs[1], RegFile::GPR);
             copy_src_if_not_reg(b, &mut op.srcs[2], RegFile::GPR);
         }
+        Op::Ldc(_) => (),  // Nothing to do
         Op::Copy(_) => (), // Nothing to do
         _ => {
             let src_types = instr.src_types();
