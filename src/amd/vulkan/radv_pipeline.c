@@ -656,21 +656,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
          .family = device->physical_device->rad_info.family,
          .use_aco = !radv_use_llvm_for_stage(device, stage->stage),
          .uses_discard = true,
-         /* Compared to radv_pipeline_key.ps.alpha_to_coverage_via_mrtz,
-          * radv_shader_info.ps.writes_mrt0_alpha need any depth/stencil/sample_mask exist.
-          * ac_nir_lower_ps() require this field to reflect whether alpha via mrtz is really
-          * present.
-          */
-         .alpha_to_coverage_via_mrtz = stage->info.ps.writes_mrt0_alpha,
-         .dual_src_blend_swizzle = pipeline_key->ps.epilog.mrt0_is_dual_src && gfx_level >= GFX11,
-         /* Need to filter out unwritten color slots. */
-         .spi_shader_col_format = pipeline_key->ps.epilog.spi_shader_col_format & stage->info.ps.colors_written,
-         .color_is_int8 = pipeline_key->ps.epilog.color_is_int8,
-         .color_is_int10 = pipeline_key->ps.epilog.color_is_int10,
          .alpha_func = COMPARE_FUNC_ALWAYS,
-
-         .enable_mrt_output_nan_fixup =
-            pipeline_key->ps.epilog.enable_mrt_output_nan_fixup && !stage->nir->info.internal,
          .no_color_export = stage->info.has_epilog,
          .no_depth_export = stage->info.ps.exports_mrtz_via_epilog,
 
@@ -679,6 +665,25 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
          .bc_optimize_for_linear = G_0286CC_LINEAR_CENTER_ENA(stage->info.ps.spi_ps_input) &&
                                    G_0286CC_LINEAR_CENTROID_ENA(stage->info.ps.spi_ps_input),
       };
+
+      if (!options.no_color_export) {
+         options.dual_src_blend_swizzle = pipeline_key->ps.epilog.mrt0_is_dual_src && gfx_level >= GFX11;
+         options.color_is_int8 = pipeline_key->ps.epilog.color_is_int8;
+         options.color_is_int10 = pipeline_key->ps.epilog.color_is_int10;
+         options.enable_mrt_output_nan_fixup =
+            pipeline_key->ps.epilog.enable_mrt_output_nan_fixup && !stage->nir->info.internal;
+         /* Need to filter out unwritten color slots. */
+         options.spi_shader_col_format = pipeline_key->ps.epilog.spi_shader_col_format & stage->info.ps.colors_written;
+      }
+
+      if (!options.no_depth_export) {
+         /* Compared to radv_pipeline_key.ps.alpha_to_coverage_via_mrtz,
+          * radv_shader_info.ps.writes_mrt0_alpha need any depth/stencil/sample_mask exist.
+          * ac_nir_lower_ps() require this field to reflect whether alpha via mrtz is really
+          * present.
+          */
+         options.alpha_to_coverage_via_mrtz = stage->info.ps.writes_mrt0_alpha;
+      }
 
       NIR_PASS_V(stage->nir, ac_nir_lower_ps, &options);
    }
