@@ -5,8 +5,9 @@ use crate::api::{GetDebugFlags, DEBUG};
 use crate::ir::*;
 
 use std::cmp::max;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Index, IndexMut, Range};
+use std::slice;
 
 struct RegTracker<T> {
     reg: [T; 255],
@@ -26,8 +27,29 @@ impl<T: Copy> RegTracker<T> {
             carry: [v; 1],
         }
     }
+}
 
-    pub fn for_each_instr_src_mut(
+fn new_array_with<T, const N: usize>(f: &impl Fn() -> T) -> [T; N] {
+    let mut v = Vec::new();
+    for _ in 0..N {
+        v.push(f());
+    }
+    v.try_into()
+        .unwrap_or_else(|_| panic!("Array size mismatch"))
+}
+
+impl<T> RegTracker<T> {
+    pub fn new_with(f: &impl Fn() -> T) -> Self {
+        Self {
+            reg: new_array_with(f),
+            ureg: new_array_with(f),
+            pred: new_array_with(f),
+            upred: new_array_with(f),
+            carry: new_array_with(f),
+        }
+    }
+
+    pub fn for_each_instr_pred_mut(
         &mut self,
         instr: &Instr,
         mut f: impl FnMut(&mut T),
@@ -37,6 +59,13 @@ impl<T: Copy> RegTracker<T> {
                 f(i);
             }
         }
+    }
+
+    pub fn for_each_instr_src_mut(
+        &mut self,
+        instr: &Instr,
+        mut f: impl FnMut(&mut T),
+    ) {
         for src in instr.srcs() {
             if let SrcRef::Reg(reg) = &src.src_ref {
                 for i in &mut self[*reg] {
@@ -103,56 +132,212 @@ impl<T> IndexMut<RegRef> for RegTracker<T> {
     }
 }
 
-struct BarDep {
-    dep: usize,
-    bar: u8,
+#[derive(Clone)]
+enum RegUse {
+    None,
+    Write(usize),
+    Reads(Vec<usize>),
+}
+
+impl RegUse {
+    pub fn deps(&self) -> &[usize] {
+        match self {
+            RegUse::None => &[],
+            RegUse::Write(dep) => slice::from_ref(dep),
+            RegUse::Reads(deps) => &deps[..],
+        }
+    }
+
+    pub fn clear(&mut self) -> RegUse {
+        std::mem::replace(self, RegUse::None)
+    }
+
+    pub fn clear_write(&mut self) -> RegUse {
+        if matches!(self, RegUse::Write(_)) {
+            std::mem::replace(self, RegUse::None)
+        } else {
+            RegUse::None
+        }
+    }
+
+    pub fn add_read(&mut self, dep: usize) -> RegUse {
+        match self {
+            RegUse::None => {
+                *self = RegUse::Reads(vec![dep]);
+                RegUse::None
+            }
+            RegUse::Write(_) => {
+                std::mem::replace(self, RegUse::Reads(vec![dep]))
+            }
+            RegUse::Reads(reads) => {
+                reads.push(dep);
+                RegUse::None
+            }
+        }
+    }
+
+    pub fn set_write(&mut self, dep: usize) -> RegUse {
+        std::mem::replace(self, RegUse::Write(dep))
+    }
+}
+
+struct DepNode {
+    read_dep: Option<usize>,
+    first_wait: Option<(usize, usize)>,
+}
+
+struct DepGraph {
+    deps: Vec<DepNode>,
+    instr_deps: HashMap<(usize, usize), (usize, usize)>,
+    instr_waits: HashMap<(usize, usize), Vec<usize>>,
+    active: HashSet<usize>,
+}
+
+impl DepGraph {
+    pub fn new() -> Self {
+        Self {
+            deps: Vec::new(),
+            instr_deps: HashMap::new(),
+            instr_waits: HashMap::new(),
+            active: HashSet::new(),
+        }
+    }
+
+    fn add_new_dep(&mut self, read_dep: Option<usize>) -> usize {
+        let dep = self.deps.len();
+        self.deps.push(DepNode {
+            read_dep: read_dep,
+            first_wait: None,
+        });
+        dep
+    }
+
+    pub fn add_instr(&mut self, block_idx: usize, ip: usize) -> (usize, usize) {
+        let rd = self.add_new_dep(None);
+        let wr = self.add_new_dep(Some(rd));
+        self.instr_deps.insert((block_idx, ip), (rd, wr));
+        (rd, wr)
+    }
+
+    pub fn add_signal(&mut self, dep: usize) {
+        self.active.insert(dep);
+    }
+
+    pub fn add_waits(
+        &mut self,
+        block_idx: usize,
+        ip: usize,
+        mut waits: Vec<usize>,
+    ) {
+        for dep in &waits {
+            // A wait on a write automatically waits on the read.  By removing
+            // it from the active set here we ensure that we don't record any
+            // duplicate write/read waits in the retain below.
+            if let Some(rd) = &self.deps[*dep].read_dep {
+                self.active.remove(rd);
+            }
+        }
+
+        waits.retain(|dep| {
+            let node = &mut self.deps[*dep];
+            if let Some(wait) = node.first_wait {
+                // Someone has already waited on this dep
+                debug_assert!(!self.active.contains(dep));
+                debug_assert!((block_idx, ip) >= wait);
+                false
+            } else if !self.active.contains(dep) {
+                // Even if it doesn't have a use, it may still be deactivated.
+                // This can happen if we depend the the destination before any
+                // of its sources.
+                false
+            } else {
+                self.deps[*dep].first_wait = Some((block_idx, ip));
+                self.active.remove(dep);
+                true
+            }
+        });
+
+        // Sort for stability.  The list of waits may come from a HashSet (see
+        // add_barrier()) and so it's not guaranteed stable across Rust
+        // versions.  This also ensures that everything always waits on oldest
+        // dependencies first.
+        waits.sort();
+
+        let _old = self.instr_waits.insert((block_idx, ip), waits);
+        debug_assert!(_old.is_none());
+    }
+
+    pub fn add_barrier(&mut self, block_idx: usize, ip: usize) {
+        let waits = self.active.iter().cloned().collect();
+        self.add_waits(block_idx, ip, waits);
+        debug_assert!(self.active.is_empty());
+    }
+
+    pub fn dep_is_waited_after(
+        &self,
+        dep: usize,
+        block_idx: usize,
+        ip: usize,
+    ) -> bool {
+        if let Some(wait) = self.deps[dep].first_wait {
+            wait > (block_idx, ip)
+        } else {
+            false
+        }
+    }
+
+    pub fn get_instr_deps(
+        &self,
+        block_idx: usize,
+        ip: usize,
+    ) -> (usize, usize) {
+        *self.instr_deps.get(&(block_idx, ip)).unwrap()
+    }
+
+    pub fn get_instr_waits(&self, block_idx: usize, ip: usize) -> &[usize] {
+        if let Some(waits) = self.instr_waits.get(&(block_idx, ip)) {
+            &waits[..]
+        } else {
+            &[]
+        }
+    }
 }
 
 struct BarAlloc {
     num_bars: u8,
-    wr_bars: u8,
     bar_dep: [usize; 6],
-    dep_bar: Vec<u8>,
 }
 
 impl BarAlloc {
     pub fn new() -> BarAlloc {
         BarAlloc {
             num_bars: 6,
-            wr_bars: 0,
             bar_dep: [usize::MAX; 6],
-            dep_bar: Vec::new(),
         }
     }
 
     pub fn bar_is_free(&self, bar: u8) -> bool {
-        assert!(bar < self.num_bars);
+        debug_assert!(bar < self.num_bars);
         self.bar_dep[usize::from(bar)] == usize::MAX
     }
 
-    pub fn is_wr_bar(&self, bar: u8) -> bool {
-        assert!(!self.bar_is_free(bar));
-        self.wr_bars & (1 << bar) != 0
-    }
-
-    pub fn get_bar(&self, dep: usize) -> Option<u8> {
-        let bar = self.dep_bar[dep];
-        if bar == u8::MAX {
-            None
-        } else {
-            assert!(self.bar_dep[usize::from(bar)] == dep);
-            Some(bar)
-        }
+    pub fn set_bar_dep(&mut self, bar: u8, dep: usize) {
+        debug_assert!(self.bar_is_free(bar));
+        self.bar_dep[usize::from(bar)] = dep;
     }
 
     pub fn free_bar(&mut self, bar: u8) {
-        assert!(bar < self.num_bars);
-        let dep = self.bar_dep[usize::from(bar)];
-        assert!(dep != usize::MAX);
-
-        self.wr_bars &= !(1 << bar);
+        debug_assert!(!self.bar_is_free(bar));
         self.bar_dep[usize::from(bar)] = usize::MAX;
-        self.dep_bar[dep] = u8::MAX;
+    }
+
+    pub fn try_find_free_bar(&self) -> Option<u8> {
+        for bar in 0..self.num_bars {
+            if self.bar_is_free(bar) {
+                return Some(bar);
+            }
+        }
+        None
     }
 
     pub fn free_some_bar(&mut self) -> u8 {
@@ -167,23 +352,10 @@ impl BarAlloc {
         bar
     }
 
-    pub fn alloc_dep_for_bar(&mut self, bar: u8, is_write: bool) -> BarDep {
-        assert!(self.bar_is_free(bar));
-        assert!(self.wr_bars & (1 << bar) == 0);
-
-        let dep = self.dep_bar.len();
-        self.bar_dep[usize::from(bar)] = dep;
-        self.dep_bar.push(bar);
-        if is_write {
-            self.wr_bars |= 1 << bar;
-        }
-        BarDep { dep: dep, bar: bar }
-    }
-
-    pub fn try_alloc_bar_dep(&mut self, is_write: bool) -> Option<BarDep> {
+    pub fn get_bar_for_dep(&self, dep: usize) -> Option<u8> {
         for bar in 0..self.num_bars {
-            if self.bar_is_free(bar) {
-                return Some(self.alloc_dep_for_bar(bar, is_write));
+            if self.bar_dep[usize::from(bar)] == dep {
+                return Some(bar);
             }
         }
         None
@@ -191,47 +363,75 @@ impl BarAlloc {
 }
 
 fn assign_barriers(f: &mut Function) {
-    let mut deps = RegTracker::new(usize::MAX);
-    let mut bars = BarAlloc::new();
+    let mut uses = RegTracker::new_with(&|| RegUse::None);
+    let mut deps = DepGraph::new();
 
-    for b in f.blocks.iter_mut() {
-        for instr in b.instrs.iter_mut() {
-            let mut wait_mask = 0_u8;
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ip, instr) in b.instrs.iter().enumerate() {
             if instr.is_branch() {
-                // For branch instructions, we grab everything
-                for bar in 0..bars.num_bars {
-                    if !bars.bar_is_free(bar) {
-                        wait_mask |= 1 << bar;
-                    }
-                }
+                deps.add_barrier(bi, ip);
             } else {
-                deps.for_each_instr_src_mut(instr, |dep| {
-                    if *dep != usize::MAX {
-                        if let Some(bar) = bars.get_bar(*dep) {
-                            // We don't care about RaR deps
-                            if bars.is_wr_bar(bar) {
-                                wait_mask |= 1 << bar;
+                // Execution predicates are handled immediately and we don't
+                // need barriers for them, regardless of whether or not it's a
+                // fixed-latency instruction.
+                let mut waits = Vec::new();
+                uses.for_each_instr_pred_mut(instr, |u| {
+                    let u = u.clear_write();
+                    waits.extend_from_slice(u.deps());
+                });
+
+                if instr.has_fixed_latency() {
+                    // Delays will cover us here.  We just need to make sure
+                    // that we wait on any uses that we consume.
+                    uses.for_each_instr_src_mut(instr, |u| {
+                        let u = u.clear_write();
+                        waits.extend_from_slice(u.deps());
+                    });
+                    uses.for_each_instr_dst_mut(instr, |u| {
+                        let u = u.clear();
+                        waits.extend_from_slice(u.deps());
+                    });
+                } else {
+                    let (rd, wr) = deps.add_instr(bi, ip);
+                    uses.for_each_instr_src_mut(instr, |u| {
+                        // Only mark a dep as signaled if we actually have
+                        // something that shows up in the register file as
+                        // needing scoreboarding
+                        deps.add_signal(rd);
+                        let u = u.add_read(rd);
+                        waits.extend_from_slice(u.deps());
+                    });
+                    uses.for_each_instr_dst_mut(instr, |u| {
+                        // Only mark a dep as signaled if we actually have
+                        // something that shows up in the register file as
+                        // needing scoreboarding
+                        deps.add_signal(wr);
+                        let u = u.set_write(wr);
+                        for dep in u.deps() {
+                            // Don't wait on ourselves
+                            if *dep != rd {
+                                waits.push(*dep);
                             }
                         }
-                    }
-                });
-                deps.for_each_instr_dst_mut(instr, |dep| {
-                    if *dep != usize::MAX {
-                        if let Some(bar) = bars.get_bar(*dep) {
-                            wait_mask |= 1 << bar;
-                        }
-                    }
-                });
+                    });
+                }
+                deps.add_waits(bi, ip, waits);
             }
+        }
+    }
 
+    let mut bars = BarAlloc::new();
+
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        for (ip, instr) in b.instrs.iter_mut().enumerate() {
+            let mut wait_mask = 0_u8;
+            for dep in deps.get_instr_waits(bi, ip) {
+                if let Some(bar) = bars.get_bar_for_dep(*dep) {
+                    wait_mask |= 1 << bar;
+                    bars.free_bar(bar);
+                }
+            }
             instr.deps.add_wt_bar_mask(wait_mask);
-
-            // Free any barriers we just waited on
-            while wait_mask != 0 {
-                let bar: u8 = wait_mask.trailing_zeros().try_into().unwrap();
-                bars.free_bar(bar);
-                wait_mask &= !(1 << bar);
-            }
 
             if instr.needs_yield() {
                 instr.deps.set_yield(true);
@@ -241,67 +441,24 @@ fn assign_barriers(f: &mut Function) {
                 continue;
             }
 
-            // Gather sources and destinations into a hash sets
-            let mut srcs = HashSet::new();
-            if let PredRef::Reg(reg) = &instr.pred.pred_ref {
-                for c in 0..reg.comps() {
-                    srcs.insert(reg.comp(c));
-                }
-            }
-            for src in instr.srcs() {
-                if let SrcRef::Reg(reg) = &src.src_ref {
-                    if reg.file() == RegFile::Bar {
-                        continue;
-                    }
-                    for c in 0..reg.comps() {
-                        srcs.insert(reg.comp(c));
-                    }
-                }
-            }
-
-            let mut dsts = HashSet::new();
-            for dst in instr.dsts() {
-                if let Dst::Reg(reg) = dst {
-                    if reg.file() == RegFile::Bar {
-                        continue;
-                    }
-                    for c in 0..reg.comps() {
-                        dsts.insert(reg.comp(c));
-                        // Remove any sources which this instruction overwrites.
-                        // We are going to set a write barrier for those so
-                        // there's no point in also setting a read barrier for
-                        // them.
-                        srcs.remove(&reg.comp(c));
-                    }
-                }
-            }
-
-            // Note: It's okay to use hash sets for sources and destinations
-            // because we allocate a single barrier for the entire set of
-            // sources or destinations so the order of the set doesn't matter.
-
-            if !srcs.is_empty() {
-                let bd = bars.try_alloc_bar_dep(false).unwrap_or_else(|| {
+            let (rd_dep, wr_dep) = deps.get_instr_deps(bi, ip);
+            if deps.dep_is_waited_after(rd_dep, bi, ip) {
+                let rd_bar = bars.try_find_free_bar().unwrap_or_else(|| {
                     let bar = bars.free_some_bar();
                     instr.deps.add_wt_bar(bar);
-                    bars.alloc_dep_for_bar(bar, false)
+                    bar
                 });
-                instr.deps.set_rd_bar(bd.bar);
-                for src in srcs {
-                    deps[src][0] = bd.dep;
-                }
+                bars.set_bar_dep(rd_bar, rd_dep);
+                instr.deps.set_rd_bar(rd_bar);
             }
-
-            if !dsts.is_empty() {
-                let bd = bars.try_alloc_bar_dep(true).unwrap_or_else(|| {
+            if deps.dep_is_waited_after(wr_dep, bi, ip) {
+                let wr_bar = bars.try_find_free_bar().unwrap_or_else(|| {
                     let bar = bars.free_some_bar();
                     instr.deps.add_wt_bar(bar);
-                    bars.alloc_dep_for_bar(bar, true)
+                    bar
                 });
-                instr.deps.set_wr_bar(bd.bar);
-                for dst in dsts {
-                    deps[dst][0] = bd.dep;
-                }
+                bars.set_bar_dep(wr_bar, wr_dep);
+                instr.deps.set_wr_bar(wr_bar);
             }
         }
     }
