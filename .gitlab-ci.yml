@@ -84,6 +84,7 @@ variables:
   # Disable farm with   `git mv .ci-farms{,-disabled}/$farm_name`
   # Re-enable farm with `git mv .ci-farms{-disabled,}/$farm_name`
   # NEVER MIX FARM MAINTENANCE WITH ANY OTHER CHANGE IN THE SAME MERGE REQUEST!
+  ARTIFACTS_BASE_URL: https://${CI_PROJECT_ROOT_NAMESPACE}.${$CI_PAGES_DOMAIN}/-/${CI_PROJECT_NAME}/-/jobs/${CI_JOB_ID}/artifacts
 
 default:
   before_script:
