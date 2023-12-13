@@ -2,10 +2,7 @@ version: 1
 
 # Rules to match for a machine to qualify
 target:
-  tags:
-{% for tag in tags %}
-    - '{{ tag | trim }}'
-{% endfor %}
+  id: '{{ ci_runner_id }}'
 
 timeouts:
   first_console_activity:  # This limits the time it can take to receive the first console log

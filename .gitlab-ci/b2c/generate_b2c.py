@@ -23,7 +23,6 @@
 
 from jinja2 import Environment, FileSystemLoader
 from os import environ, path
-import json
 
 
 # Pass all the environment variables prefixed by B2C_
@@ -38,10 +37,7 @@ env = Environment(loader=FileSystemLoader(path.dirname(values['job_template'])),
 template = env.get_template(path.basename(values['job_template']))
 
 values['ci_job_id'] = environ['CI_JOB_ID']
-try:
-    values['tags'] = json.loads(environ['CI_RUNNER_TAGS'])
-except json.decoder.JSONDecodeError:
-    values['tags'] = environ['CI_RUNNER_TAGS'].split(",")
+values['ci_runner_id'] = environ['CI_RUNNER_ID']
 values['job_volume_exclusions'] = [excl for excl in values['job_volume_exclusions'].split(",") if excl]
 values['working_dir'] = environ['CI_PROJECT_DIR']
 
