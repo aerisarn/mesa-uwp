@@ -31,10 +31,6 @@
 #include "radv_private.h"
 
 struct radv_sdma_chunked_copy_info {
-   unsigned bpp;
-   unsigned blk_w;
-   unsigned blk_h;
-   unsigned row_pitch_alignment;
    unsigned extent_horizontal_blocks;
    unsigned extent_vertical_blocks;
    unsigned aligned_row_pitch;
@@ -130,14 +126,10 @@ static struct radv_sdma_chunked_copy_info
 radv_sdma_get_chunked_copy_info(const struct radv_device *const device, const struct radv_sdma_surf *const img,
                                 const VkExtent3D extent)
 {
-   const unsigned bpp = img->bpp;
-   const unsigned blk_w = img->blk_w;
-   const unsigned blk_h = img->blk_h;
-   const unsigned row_pitch_alignment = 4;
-   const unsigned extent_horizontal_blocks = DIV_ROUND_UP(extent.width, blk_w);
-   const unsigned extent_vertical_blocks = DIV_ROUND_UP(extent.height, blk_h);
-   const unsigned aligned_row_pitch = ALIGN(extent_horizontal_blocks, row_pitch_alignment);
-   const unsigned aligned_row_bytes = aligned_row_pitch * bpp;
+   const unsigned extent_horizontal_blocks = DIV_ROUND_UP(extent.width, img->blk_w);
+   const unsigned extent_vertical_blocks = DIV_ROUND_UP(extent.height, img->blk_h);
+   const unsigned aligned_row_pitch = ALIGN(extent_horizontal_blocks, 4);
+   const unsigned aligned_row_bytes = aligned_row_pitch * img->bpp;
 
    /* Assume that we can always copy at least one full row at a time. */
    const unsigned max_num_rows_per_copy = MIN2(RADV_SDMA_TRANSFER_TEMP_BYTES / aligned_row_bytes, extent.height);
@@ -147,10 +139,6 @@ radv_sdma_get_chunked_copy_info(const struct radv_device *const device, const st
    const unsigned num_rows_per_copy = MAX2(1, util_next_power_of_two(max_num_rows_per_copy + 1) / 2);
 
    const struct radv_sdma_chunked_copy_info r = {
-      .bpp = bpp,
-      .blk_w = blk_w,
-      .blk_h = blk_h,
-      .row_pitch_alignment = row_pitch_alignment,
       .extent_horizontal_blocks = extent_horizontal_blocks,
       .extent_vertical_blocks = extent_vertical_blocks,
       .aligned_row_pitch = aligned_row_pitch,
@@ -519,16 +507,16 @@ radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct r
    struct radv_sdma_surf img = *img_in;
    struct radv_sdma_surf tmp = {
       .va = temp_bo->va,
-      .bpp = info.bpp,
-      .blk_w = info.blk_w,
-      .blk_h = info.blk_h,
-      .pitch = info.aligned_row_pitch * info.blk_w,
-      .slice_pitch = info.aligned_row_pitch * info.blk_w * info.extent_vertical_blocks * info.blk_h,
+      .bpp = img.bpp,
+      .blk_w = img.blk_w,
+      .blk_h = img.blk_h,
+      .pitch = info.aligned_row_pitch * img.blk_w,
+      .slice_pitch = info.aligned_row_pitch * img.blk_w * info.extent_vertical_blocks * img.blk_h,
    };
 
    VkExtent3D extent = base_extent;
-   const unsigned buf_pitch_blocks = DIV_ROUND_UP(buf->pitch, info.blk_w);
-   const unsigned buf_slice_pitch_blocks = DIV_ROUND_UP(DIV_ROUND_UP(buf->slice_pitch, info.blk_w), info.blk_h);
+   const unsigned buf_pitch_blocks = DIV_ROUND_UP(buf->pitch, img.blk_w);
+   const unsigned buf_slice_pitch_blocks = DIV_ROUND_UP(DIV_ROUND_UP(buf->slice_pitch, img.blk_w), img.blk_h);
    assert(buf_pitch_blocks);
    assert(buf_slice_pitch_blocks);
    extent.depth = 1;
@@ -537,10 +525,10 @@ radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct r
       for (unsigned row = 0; row < info.extent_vertical_blocks; row += info.num_rows_per_copy) {
          const unsigned rows = MIN2(info.extent_vertical_blocks - row, info.num_rows_per_copy);
 
-         img.offset.y = img_in->offset.y + row * info.blk_h;
+         img.offset.y = img_in->offset.y + row * img.blk_h;
          img.offset.z = img_in->offset.z + slice;
-         extent.height = rows * info.blk_h;
-         tmp.slice_pitch = tmp.pitch * rows * info.blk_h;
+         extent.height = rows * img.blk_h;
+         tmp.slice_pitch = tmp.pitch * rows * img.blk_h;
 
          if (!to_image) {
             /* Copy the rows from the source image to the temporary buffer. */
@@ -558,10 +546,10 @@ radv_sdma_copy_buffer_image_unaligned(const struct radv_device *device, struct r
           */
          for (unsigned r = 0; r < rows; ++r) {
             const uint64_t buf_va =
-               buf->va + slice * buf_slice_pitch_blocks * info.bpp + (row + r) * buf_pitch_blocks * info.bpp;
-            const uint64_t tmp_va = tmp.va + r * info.aligned_row_pitch * info.bpp;
+               buf->va + slice * buf_slice_pitch_blocks * img.bpp + (row + r) * buf_pitch_blocks * img.bpp;
+            const uint64_t tmp_va = tmp.va + r * info.aligned_row_pitch * img.bpp;
             radv_sdma_copy_buffer(device, cs, to_image ? buf_va : tmp_va, to_image ? tmp_va : buf_va,
-                                  info.extent_horizontal_blocks * info.bpp);
+                                  info.extent_horizontal_blocks * img.bpp);
          }
 
          /* Wait for the copy to finish. */
