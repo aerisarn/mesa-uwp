@@ -1994,8 +1994,9 @@ void
 nvk_mme_draw(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   struct mme_value draw_idx = mme_load(b);
 
-   nvk_mme_build_draw(b, mme_zero());
+   nvk_mme_build_draw(b, draw_idx);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2019,13 +2020,50 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW));
    P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, 0 /* draw_idx */);
    P_INLINE_DATA(p, vertexCount);
    P_INLINE_DATA(p, instanceCount);
    P_INLINE_DATA(p, firstVertex);
    P_INLINE_DATA(p, firstInstance);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawMultiEXT(VkCommandBuffer commandBuffer,
+                    uint32_t drawCount,
+                    const VkMultiDrawInfoEXT *pVertexInfo,
+                    uint32_t instanceCount,
+                    uint32_t firstInstance,
+                    uint32_t stride)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   nvk_flush_gfx_state(cmd);
+
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
+
+   for (uint32_t draw_idx = 0; draw_idx < drawCount; draw_idx++) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW));
+      P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, draw_idx);
+      P_INLINE_DATA(p, pVertexInfo->vertexCount);
+      P_INLINE_DATA(p, instanceCount);
+      P_INLINE_DATA(p, pVertexInfo->firstVertex);
+      P_INLINE_DATA(p, firstInstance);
+
+      pVertexInfo = ((void *)pVertexInfo) + stride;
+   }
 }
 
 static void
@@ -2119,8 +2157,9 @@ void
 nvk_mme_draw_indexed(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   struct mme_value draw_idx = mme_load(b);
 
-   nvk_mme_build_draw_indexed(b, mme_zero());
+   nvk_mme_build_draw_indexed(b, draw_idx);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2145,14 +2184,56 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED));
    P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, 0 /* draw_idx */);
    P_INLINE_DATA(p, indexCount);
    P_INLINE_DATA(p, instanceCount);
    P_INLINE_DATA(p, firstIndex);
    P_INLINE_DATA(p, vertexOffset);
    P_INLINE_DATA(p, firstInstance);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
+                           uint32_t drawCount,
+                           const VkMultiDrawIndexedInfoEXT *pIndexInfo,
+                           uint32_t instanceCount,
+                           uint32_t firstInstance,
+                           uint32_t stride,
+                           const int32_t *pVertexOffset)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   nvk_flush_gfx_state(cmd);
+
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
+
+   for (uint32_t draw_idx = 0; draw_idx < drawCount; draw_idx++) {
+      const uint32_t vertex_offset =
+         pVertexOffset != NULL ? *pVertexOffset : pIndexInfo->vertexOffset;
+
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED));
+      P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, draw_idx);
+      P_INLINE_DATA(p, pIndexInfo->indexCount);
+      P_INLINE_DATA(p, instanceCount);
+      P_INLINE_DATA(p, pIndexInfo->firstIndex);
+      P_INLINE_DATA(p, vertex_offset);
+      P_INLINE_DATA(p, firstInstance);
+
+      pIndexInfo = ((void *)pIndexInfo) + stride;
+   }
 }
 
 void

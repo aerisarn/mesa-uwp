@@ -159,6 +159,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_inline_uniform_block = true,
       .EXT_line_rasterization = true,
       .EXT_load_store_op_none = true,
+      .EXT_multi_draw = true,
       .EXT_mutable_descriptor_type = true,
       .EXT_non_seamless_cube_map = true,
       .EXT_pci_bus_info = info->type == NV_DEVICE_TYPE_DIS,
@@ -436,6 +437,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       .stippledRectangularLines = true,
       .stippledBresenhamLines = true,
       .stippledSmoothLines = true,
+
+      /* VK_EXT_multi_draw */
+      .multiDraw = true,
 
       /* VK_EXT_non_seamless_cube_map */
       .nonSeamlessCubeMap = true,
@@ -737,6 +741,9 @@ nvk_get_device_properties(const struct nvk_instance *instance,
 
       /* VK_EXT_line_rasterization */
       .lineSubPixelPrecisionBits = 8,
+
+      /* VK_EXT_multi_draw */
+      .maxMultiDrawCount = UINT32_MAX,
 
       /* VK_EXT_pci_bus_info */
       .pciDomain   = info->pci.domain,
