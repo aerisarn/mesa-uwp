@@ -47,8 +47,6 @@ struct NOP_ctx_gfx6 {
    {
       set_vskip_mode_then_vector =
          MAX2(set_vskip_mode_then_vector, other.set_vskip_mode_then_vector);
-      valu_wr_vcc_then_vccz = MAX2(valu_wr_vcc_then_vccz, other.valu_wr_vcc_then_vccz);
-      valu_wr_exec_then_execz = MAX2(valu_wr_exec_then_execz, other.valu_wr_exec_then_execz);
       valu_wr_vcc_then_div_fmas = MAX2(valu_wr_vcc_then_div_fmas, other.valu_wr_vcc_then_div_fmas);
       salu_wr_m0_then_gds_msg_ttrace =
          MAX2(salu_wr_m0_then_gds_msg_ttrace, other.salu_wr_m0_then_gds_msg_ttrace);
@@ -68,8 +66,6 @@ struct NOP_ctx_gfx6 {
    bool operator==(const NOP_ctx_gfx6& other)
    {
       return set_vskip_mode_then_vector == other.set_vskip_mode_then_vector &&
-             valu_wr_vcc_then_vccz == other.valu_wr_vcc_then_vccz &&
-             valu_wr_exec_then_execz == other.valu_wr_exec_then_execz &&
              valu_wr_vcc_then_div_fmas == other.valu_wr_vcc_then_div_fmas &&
              vmem_store_then_wr_data == other.vmem_store_then_wr_data &&
              salu_wr_m0_then_gds_msg_ttrace == other.salu_wr_m0_then_gds_msg_ttrace &&
@@ -86,12 +82,6 @@ struct NOP_ctx_gfx6 {
    {
       if ((set_vskip_mode_then_vector -= amount) < 0)
          set_vskip_mode_then_vector = 0;
-
-      if ((valu_wr_vcc_then_vccz -= amount) < 0)
-         valu_wr_vcc_then_vccz = 0;
-
-      if ((valu_wr_exec_then_execz -= amount) < 0)
-         valu_wr_exec_then_execz = 0;
 
       if ((valu_wr_vcc_then_div_fmas -= amount) < 0)
          valu_wr_vcc_then_div_fmas = 0;
@@ -116,10 +106,6 @@ struct NOP_ctx_gfx6 {
 
    /* setting MODE.vskip and then any vector op requires 2 wait states */
    int8_t set_vskip_mode_then_vector = 0;
-
-   /* VALU writing VCC/EXEC and then a VALU reading VCCZ/EXECZ requires 5 wait states */
-   int8_t valu_wr_vcc_then_vccz = 0;
-   int8_t valu_wr_exec_then_execz = 0;
 
    /* VALU writing VCC followed by v_div_fmas require 4 wait states */
    int8_t valu_wr_vcc_then_div_fmas = 0;
@@ -565,13 +551,6 @@ handle_instruction_gfx6(State& state, NOP_ctx_gfx6& ctx, aco_ptr<Instruction>& i
    } else if (instr->isDS() && instr->ds().gds) {
       NOPs = MAX2(NOPs, ctx.salu_wr_m0_then_gds_msg_ttrace);
    } else if (instr->isVALU() || instr->isVINTRP()) {
-      for (Operand op : instr->operands) {
-         if (op.physReg() == vccz)
-            NOPs = MAX2(NOPs, ctx.valu_wr_vcc_then_vccz);
-         if (op.physReg() == execz)
-            NOPs = MAX2(NOPs, ctx.valu_wr_exec_then_execz);
-      }
-
       if (instr->isDPP()) {
          NOPs = MAX2(NOPs, ctx.valu_wr_exec_then_dpp);
          handle_valu_then_read_hazard(state, &NOPs, 2, instr->operands[0]);
@@ -672,11 +651,9 @@ handle_instruction_gfx6(State& state, NOP_ctx_gfx6& ctx, aco_ptr<Instruction>& i
       for (Definition def : instr->definitions) {
          if (def.regClass().type() == RegType::sgpr) {
             if (def.physReg() == vcc || def.physReg() == vcc_hi) {
-               ctx.valu_wr_vcc_then_vccz = 5;
                ctx.valu_wr_vcc_then_div_fmas = 4;
             }
             if (def.physReg() == exec || def.physReg() == exec_hi) {
-               ctx.valu_wr_exec_then_execz = 5;
                ctx.valu_wr_exec_then_dpp = 5;
             }
          }
@@ -783,8 +760,6 @@ resolve_all_gfx6(State& state, NOP_ctx_gfx6& ctx,
    NOPs = MAX2(NOPs, ctx.salu_wr_m0_then_gds_msg_ttrace);
 
    /* VALU hazards */
-   NOPs = MAX2(NOPs, ctx.valu_wr_vcc_then_vccz);
-   NOPs = MAX2(NOPs, ctx.valu_wr_exec_then_execz);
    NOPs = MAX2(NOPs, ctx.valu_wr_exec_then_dpp);
    if (state.program->gfx_level >= GFX8)
       handle_wr_hazard<false, false>(state, &NOPs, 2); /* VALU->DPP */
