@@ -762,6 +762,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
    radv_pipeline_init(device, &pipeline->base.base, RADV_PIPELINE_RAY_TRACING);
    pipeline->base.base.create_flags = vk_rt_pipeline_create_flags(pCreateInfo);
    pipeline->stage_count = local_create_info.stageCount;
+   pipeline->non_imported_stage_count = pCreateInfo->stageCount;
    pipeline->group_count = local_create_info.groupCount;
    pipeline->stages = stages;
    pipeline->groups = groups;
@@ -806,7 +807,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
       compile_rt_prolog(device, pipeline);
 
       radv_compute_pipeline_init(device, &pipeline->base, pipeline_layout, pipeline->prolog);
-      radv_rmv_log_compute_pipeline_create(device, &pipeline->base.base, false);
+      radv_rmv_log_rt_pipeline_create(device, pipeline);
    }
 
    if (!cache_hit)
