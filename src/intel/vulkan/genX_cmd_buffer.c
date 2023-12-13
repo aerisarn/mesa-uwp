@@ -3376,6 +3376,19 @@ genX(BeginCommandBuffer)(
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       cmd_buffer->usage_flags &= ~VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 
+#if GFX_VER >= 12
+   /* Reenable prefetching at the beginning of secondary command buffers. We
+    * do this so that the return instruction edition is not prefetched before
+    * completion.
+    */
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_ARB_CHECK), arb) {
+         arb.PreParserDisableMask = true;
+         arb.PreParserDisable = false;
+      }
+   }
+#endif
+
    /* Assume the viewport has already been set in primary command buffers. */
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
       cmd_buffer->state.gfx.viewport_set = true;
@@ -8510,6 +8523,53 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
    default:
       unreachable("invalid");
    }
+}
+
+void genX(batch_emit_secondary_call)(struct anv_batch *batch,
+                                     struct anv_address secondary_addr,
+                                     struct anv_address secondary_return_addr)
+{
+   /* Emit a write to change the return address of the secondary */
+   uint64_t *write_return_addr =
+      anv_batch_emitn(batch,
+                      GENX(MI_STORE_DATA_IMM_length) + 1 /* QWord write */,
+                      GENX(MI_STORE_DATA_IMM),
+#if GFX_VER >= 12
+                      .ForceWriteCompletionCheck = true,
+#endif
+                      .Address = secondary_return_addr) +
+      GENX(MI_STORE_DATA_IMM_ImmediateData_start) / 8;
+
+#if GFX_VER >= 12
+   /* Disable prefetcher before jumping into a secondary */
+   anv_batch_emit(batch, GENX(MI_ARB_CHECK), arb) {
+      arb.PreParserDisableMask = true;
+      arb.PreParserDisable = true;
+   }
+#endif
+
+   /* Jump into the secondary */
+   anv_batch_emit(batch, GENX(MI_BATCH_BUFFER_START), bbs) {
+      bbs.AddressSpaceIndicator = ASI_PPGTT;
+      bbs.SecondLevelBatchBuffer = Firstlevelbatch;
+      bbs.BatchBufferStartAddress = secondary_addr;
+   }
+
+   /* Replace the return address written by the MI_STORE_DATA_IMM above with
+    * the primary's current batch address (immediately after the jump).
+    */
+   *write_return_addr =
+      anv_address_physical(anv_batch_current_address(batch));
+}
+
+void *
+genX(batch_emit_return)(struct anv_batch *batch)
+{
+   return anv_batch_emitn(batch,
+                          GENX(MI_BATCH_BUFFER_START_length),
+                          GENX(MI_BATCH_BUFFER_START),
+                          .AddressSpaceIndicator = ASI_PPGTT,
+                          .SecondLevelBatchBuffer = Firstlevelbatch);
 }
 
 void
