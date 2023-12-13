@@ -808,17 +808,20 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
 
    info->has_epilog = pipeline_key->ps.has_epilog && info->ps.colors_written;
 
+   if (!info->has_epilog) {
+      info->ps.mrt0_is_dual_src = pipeline_key->ps.epilog.mrt0_is_dual_src;
+      info->ps.spi_shader_col_format = pipeline_key->ps.epilog.spi_shader_col_format;
+   }
+
    const bool export_alpha_and_mrtz =
       (info->ps.color0_written & 0x8) && (info->ps.writes_z || info->ps.writes_stencil || info->ps.writes_sample_mask);
 
    info->ps.exports_mrtz_via_epilog =
       info->has_epilog && pipeline_key->ps.exports_mrtz_via_epilog && export_alpha_and_mrtz;
 
-   info->ps.writes_mrt0_alpha = pipeline_key->ps.alpha_to_coverage_via_mrtz && export_alpha_and_mrtz;
-
-   info->ps.mrt0_is_dual_src = pipeline_key->ps.epilog.mrt0_is_dual_src;
-
-   info->ps.spi_shader_col_format = pipeline_key->ps.epilog.spi_shader_col_format;
+   if (!info->ps.exports_mrtz_via_epilog) {
+      info->ps.writes_mrt0_alpha = pipeline_key->ps.alpha_to_coverage_via_mrtz && export_alpha_and_mrtz;
+   }
 
    nir_foreach_shader_in_variable (var, nir) {
       const struct glsl_type *type = var->data.per_vertex ? glsl_get_array_element(var->type) : var->type;
