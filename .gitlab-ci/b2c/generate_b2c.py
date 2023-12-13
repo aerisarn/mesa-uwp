@@ -26,36 +26,24 @@ from os import environ, path
 import json
 
 
-env = Environment(loader=FileSystemLoader(path.dirname(environ['B2C_JOB_TEMPLATE'])),
+# Pass all the environment variables prefixed by B2C_
+values = {
+    key.removeprefix("B2C_").lower(): environ[key]
+    for key in environ if key.startswith("B2C_")
+}
+
+env = Environment(loader=FileSystemLoader(path.dirname(values['job_template'])),
                   trim_blocks=True, lstrip_blocks=True)
 
-template = env.get_template(path.basename(environ['B2C_JOB_TEMPLATE']))
+template = env.get_template(path.basename(values['job_template']))
 
-values = {}
 values['ci_job_id'] = environ['CI_JOB_ID']
-values['container_cmd'] = environ['B2C_TEST_SCRIPT']
-values['initramfs_url'] = environ['B2C_INITRAMFS_URL']
-values['job_success_regex'] = environ['B2C_JOB_SUCCESS_REGEX']
-values['job_warn_regex'] = environ['B2C_JOB_WARN_REGEX']
-values['kernel_url'] = environ['B2C_KERNEL_URL']
-values['log_level'] = environ['B2C_LOG_LEVEL']
-values['poweroff_delay'] = environ['B2C_POWEROFF_DELAY']
-values['session_end_regex'] = environ['B2C_SESSION_END_REGEX']
-values['session_reboot_regex'] = environ['B2C_SESSION_REBOOT_REGEX']
+values['container_cmd'] = values['test_script']
 try:
     values['tags'] = json.loads(environ['CI_RUNNER_TAGS'])
 except json.decoder.JSONDecodeError:
     values['tags'] = environ['CI_RUNNER_TAGS'].split(",")
-values['template'] = environ['B2C_JOB_TEMPLATE']
-values['timeout_boot_minutes'] = environ['B2C_TIMEOUT_BOOT_MINUTES']
-values['timeout_boot_retries'] = environ['B2C_TIMEOUT_BOOT_RETRIES']
-values['timeout_first_minutes'] = environ['B2C_TIMEOUT_FIRST_MINUTES']
-values['timeout_first_retries'] = environ['B2C_TIMEOUT_FIRST_RETRIES']
-values['timeout_minutes'] = environ['B2C_TIMEOUT_MINUTES']
-values['timeout_overall_minutes'] = environ['B2C_TIMEOUT_OVERALL_MINUTES']
-values['timeout_retries'] = environ['B2C_TIMEOUT_RETRIES']
-exclusions = environ['B2C_JOB_VOLUME_EXCLUSIONS'].split(",")
-values['job_volume_exclusions'] = [excl for excl in exclusions if excl]
+values['job_volume_exclusions'] = [excl for excl in values['job_volume_exclusions'].split(",") if excl]
 values['working_dir'] = environ['CI_PROJECT_DIR']
 
 # Use the gateway's pull-through registry caches to reduce load on fd.o.
@@ -65,7 +53,8 @@ values['local_container'] = values['local_container'].replace(
     '{{ fdo_proxy_registry }}'
 )
 
-values['cmdline_extras'] = environ.get('B2C_KERNEL_CMDLINE_EXTRAS', '')
+if 'cmdline_extras' not in values:
+    values['cmdline_extras'] = ''
 
-with open(path.splitext(path.basename(environ['B2C_JOB_TEMPLATE']))[0], "w") as f:
+with open(path.splitext(path.basename(values['job_template']))[0], "w") as f:
     f.write(template.render(values))
