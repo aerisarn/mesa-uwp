@@ -38,7 +38,6 @@ env = Environment(loader=FileSystemLoader(path.dirname(values['job_template'])),
 template = env.get_template(path.basename(values['job_template']))
 
 values['ci_job_id'] = environ['CI_JOB_ID']
-values['container_cmd'] = values['test_script']
 try:
     values['tags'] = json.loads(environ['CI_RUNNER_TAGS'])
 except json.decoder.JSONDecodeError:
