@@ -605,6 +605,81 @@ lower_tex_packing_cb(const nir_tex_instr *tex, const void *data)
       nir_lower_tex_packing_16 : nir_lower_tex_packing_none;
 }
 
+static bool
+v3d_nir_lower_null_pointers_cb(nir_builder *b,
+                               nir_intrinsic_instr *intr,
+                               void *_state)
+{
+        uint32_t buffer_src_idx;
+
+        switch (intr->intrinsic) {
+        case nir_intrinsic_load_ubo:
+        case nir_intrinsic_load_ssbo:
+                buffer_src_idx = 0;
+                break;
+        case nir_intrinsic_store_ssbo:
+                buffer_src_idx = 1;
+                break;
+        default:
+                return false;
+        }
+
+        /* If index if constant we are good */
+        nir_src *src = &intr->src[buffer_src_idx];
+        if (nir_src_is_const(*src))
+                return false;
+
+        /* Otherwise, see if it comes from a bcsel including a null pointer */
+        if (src->ssa->parent_instr->type != nir_instr_type_alu)
+                return false;
+
+        nir_alu_instr *alu = nir_instr_as_alu(src->ssa->parent_instr);
+        if (alu->op != nir_op_bcsel)
+                return false;
+
+        /* A null pointer is specified using block index 0xffffffff */
+        int32_t null_src_idx = -1;
+        for (int i = 1; i < 3; i++) {
+                 /* FIXME: since we are running this before optimization maybe
+                  * we need to also handle the case where we may have bcsel
+                  * chain that we need to recurse?
+                  */
+                if (!nir_src_is_const(alu->src[i].src))
+                        continue;
+                if (nir_src_comp_as_uint(alu->src[i].src, 0) != 0xffffffff)
+                        continue;
+
+                /* One of the bcsel srcs is a null pointer reference */
+                null_src_idx = i;
+                break;
+        }
+
+        if (null_src_idx < 0)
+                return false;
+
+        assert(null_src_idx == 1 || null_src_idx == 2);
+        int32_t copy_src_idx = null_src_idx == 1 ? 2 : 1;
+
+        /* Rewrite the null pointer reference so we use the same buffer index
+         * as the other bcsel branch. This will allow optimization to remove
+         * the bcsel and we should then end up with a constant buffer index
+         * like we need.
+         */
+        b->cursor = nir_before_instr(&alu->instr);
+        nir_def *copy = nir_mov(b, alu->src[copy_src_idx].src.ssa);
+        nir_src_rewrite(&alu->src[null_src_idx].src, copy);
+
+        return true;
+}
+
+static bool
+v3d_nir_lower_null_pointers(nir_shader *s)
+{
+        return nir_shader_intrinsics_pass(s, v3d_nir_lower_null_pointers_cb,
+                                            nir_metadata_block_index |
+                                            nir_metadata_dominance, NULL);
+}
+
 static void
 v3d_lower_nir(struct v3d_compile *c)
 {
@@ -656,6 +731,7 @@ v3d_lower_nir(struct v3d_compile *c)
                  0,
                  glsl_get_natural_size_align_bytes);
         NIR_PASS(_, c->s, v3d_nir_lower_scratch);
+        NIR_PASS(_, c->s, v3d_nir_lower_null_pointers);
 }
 
 static void
