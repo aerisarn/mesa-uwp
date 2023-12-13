@@ -1849,7 +1849,8 @@ radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
    if (cmd_buffer->state.emitted_ps_epilog == ps_epilog)
       return;
 
-   uint32_t col_format = ps_epilog->spi_shader_col_format;
+   uint32_t col_format = radv_compact_spi_shader_col_format(ps_shader, ps_epilog->spi_shader_col_format);
+
    bool need_null_export_workaround =
       radv_needs_null_export_workaround(device, ps_shader, cmd_buffer->state.custom_blend_mode);
    if (need_null_export_workaround && !col_format)
@@ -4226,7 +4227,11 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
       state.alpha_to_coverage_via_mrtz = d->vk.ms.alpha_to_coverage_enable;
    }
 
-   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, &state, true);
+   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, &state);
+
+   /* Clear color attachments that aren't exported by the FS to match IO shader arguments. */
+   key.spi_shader_col_format &= ps->info.ps.colors_written;
+
    return radv_shader_part_cache_get(device, &device->ps_epilogs, &cmd_buffer->ps_epilogs, &key);
 }
 

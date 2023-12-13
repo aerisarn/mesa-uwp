@@ -195,10 +195,9 @@ format_is_float32(VkFormat format)
    return channel >= 0 && desc->channel[channel].type == UTIL_FORMAT_TYPE_FLOAT && desc->channel[channel].size == 32;
 }
 
-static unsigned
-radv_compact_spi_shader_col_format(const struct radv_shader *ps, const struct radv_blend_state *blend)
+unsigned
+radv_compact_spi_shader_col_format(const struct radv_shader *ps, uint32_t spi_shader_col_format)
 {
-   unsigned spi_shader_col_format = blend->spi_shader_col_format;
    unsigned value = 0, num_mrts = 0;
    unsigned i, num_targets;
 
@@ -1677,8 +1676,7 @@ radv_graphics_shaders_link(const struct radv_device *device, const struct radv_p
 }
 
 struct radv_ps_epilog_key
-radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_ps_epilog_state *state,
-                            bool disable_mrt_compaction)
+radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_ps_epilog_state *state)
 {
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0, z_format = 0;
    struct radv_ps_epilog_key key;
@@ -1712,19 +1710,6 @@ radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_
        * alpha coverage is enabled because the depth attachment needs it.
        */
       col_format |= V_028714_SPI_SHADER_32_AR;
-   }
-
-   if (disable_mrt_compaction) {
-      /* Do not compact MRTs when the pipeline uses a PS epilog because we can't detect color
-       * attachments without exports. Without compaction and if the i-th target format is set, all
-       * previous target formats must be non-zero to avoid hangs.
-       */
-      unsigned num_targets = (util_last_bit(col_format) + 3) / 4;
-      for (unsigned i = 0; i < num_targets; i++) {
-         if (!(col_format & (0xfu << (i * 4)))) {
-            col_format |= V_028714_SPI_SHADER_32_R << (i * 4);
-         }
-      }
    }
 
    /* The output for dual source blending should have the same format as the first output. */
@@ -1805,7 +1790,7 @@ radv_pipeline_generate_ps_epilog_key(const struct radv_device *device, const str
       }
    }
 
-   return radv_generate_ps_epilog_key(device, &ps_epilog, false);
+   return radv_generate_ps_epilog_key(device, &ps_epilog);
 }
 
 static struct radv_pipeline_key
@@ -3962,7 +3947,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    bool enable_mrt_compaction = ps && !ps->info.has_epilog && !ps->info.ps.mrt0_is_dual_src;
    if (enable_mrt_compaction) {
-      blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
+      blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, blend.spi_shader_col_format);
 
       /* In presence of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap
        * them, so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to

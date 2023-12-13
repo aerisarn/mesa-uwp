@@ -2029,8 +2029,7 @@ struct radv_ps_epilog_state {
 };
 
 struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_device *device,
-                                                      const struct radv_ps_epilog_state *state,
-                                                      bool disable_mrt_compaction);
+                                                      const struct radv_ps_epilog_state *state);
 
 bool radv_needs_null_export_workaround(const struct radv_device *device, const struct radv_shader *ps,
                                        unsigned custom_blend_mode);
@@ -3708,6 +3707,8 @@ radv_has_pops(const struct radv_physical_device *pdevice)
 {
    return pdevice->rad_info.gfx_level >= GFX9 && !pdevice->use_llvm;
 }
+
+unsigned radv_compact_spi_shader_col_format(const struct radv_shader *ps, uint32_t spi_shader_col_format);
 
 /* radv_perfcounter.c */
 void radv_perfcounter_emit_shaders(struct radv_device *device, struct radeon_cmdbuf *cs, unsigned shaders);
