@@ -106,8 +106,25 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
 {
    const struct intel_device_info *devinfo = iris_bufmgr_get_device_info(bo->bufmgr);
    uint32_t handle = op == DRM_XE_VM_BIND_OP_UNMAP ? 0 : bo->gem_handle;
+   struct drm_xe_sync xe_sync = {
+      .type = DRM_XE_SYNC_TYPE_SYNCOBJ,
+      .flags = DRM_XE_SYNC_FLAG_SIGNAL,
+   };
+   struct drm_syncobj_create syncobj_create = {};
+   struct drm_syncobj_destroy syncobj_destroy = {};
+   struct drm_syncobj_wait syncobj_wait = {
+      .timeout_nsec = INT64_MAX,
+      .count_handles = 1,
+   };
    uint64_t range, obj_offset = 0;
-   int ret;
+   int ret, fd;
+
+   fd = iris_bufmgr_get_fd(bo->bufmgr);
+   ret = intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_CREATE, &syncobj_create);
+   if (ret)
+      return ret;
+
+   xe_sync.handle = syncobj_create.handle;
 
    if (iris_bo_is_imported(bo))
       range = bo->size;
@@ -127,6 +144,8 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
 
    struct drm_xe_vm_bind args = {
       .vm_id = iris_bufmgr_get_global_vm_id(bo->bufmgr),
+      .num_syncs = 1,
+      .syncs = (uintptr_t)&xe_sync,
       .num_binds = 1,
       .bind.obj = handle,
       .bind.obj_offset = obj_offset,
@@ -135,10 +154,16 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
       .bind.op = op,
       .bind.pat_index = pat_index,
    };
-   ret = intel_ioctl(iris_bufmgr_get_fd(bo->bufmgr), DRM_IOCTL_XE_VM_BIND, &args);
-   if (ret) {
+   ret = intel_ioctl(fd, DRM_IOCTL_XE_VM_BIND, &args);
+   if (ret == 0) {
+      syncobj_wait.handles = (uintptr_t)&xe_sync.handle;
+      ret = intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_WAIT, &syncobj_wait);
+   } else {
       DBG("vm_bind_op: DRM_IOCTL_XE_VM_BIND failed(%i)", ret);
    }
+
+   syncobj_destroy.handle = xe_sync.handle;
+   intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_DESTROY, &syncobj_destroy);
 
    return ret;
 }
