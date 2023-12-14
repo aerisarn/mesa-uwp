@@ -1919,13 +1919,6 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
 
    const size_t image_struct_size = sizeof(*image) + sizeof(struct radv_image_plane) * plane_count;
 
-   radv_assert(pCreateInfo->mipLevels > 0);
-   radv_assert(pCreateInfo->arrayLayers > 0);
-   radv_assert(pCreateInfo->samples > 0);
-   radv_assert(pCreateInfo->extent.width > 0);
-   radv_assert(pCreateInfo->extent.height > 0);
-   radv_assert(pCreateInfo->extent.depth > 0);
-
    image = vk_zalloc2(&device->vk.alloc, alloc, image_struct_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!image)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
