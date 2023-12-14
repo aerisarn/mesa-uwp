@@ -2064,9 +2064,7 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
    vk_pipeline_cache_object_init(&device->vk, &shader->base, &radv_shader_ops, shader->hash, sizeof(shader->hash));
 
    shader->info = binary->info;
-
-   /* Copy the shader binary configuration. */
-   memcpy(&shader->config, &binary->config, sizeof(shader->config));
+   shader->config = binary->config;
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
 #if !defined(USE_LIBELF)
