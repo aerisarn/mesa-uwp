@@ -1691,6 +1691,7 @@ struct radv_cmd_state {
    bool mesh_shading;
 
    uint8_t cb_mip[MAX_RTS];
+   uint8_t ds_mip;
 
    /* Whether DRAW_{INDEX}_INDIRECT_{MULTI} is emitted. */
    bool uses_draw_indirect;
