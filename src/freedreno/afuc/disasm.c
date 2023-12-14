@@ -469,6 +469,8 @@ main(int argc, char **argv)
       char *str = strstr(file, "a5");
       if (!str)
          str = strstr(file, "a6");
+      if (!str)
+         str = strstr(file, "a7");
       if (str)
          gpu_id = atoi(str + 1);
    }
