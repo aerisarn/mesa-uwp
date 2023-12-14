@@ -48,8 +48,8 @@ values['local_container'] = values['local_container'].replace(
     '{{ fdo_proxy_registry }}'
 )
 
-if 'cmdline_extras' not in values:
-    values['cmdline_extras'] = ''
+if 'kernel_cmdline_extras' not in values:
+    values['kernel_cmdline_extras'] = ''
 
 with open(path.splitext(path.basename(values['job_template']))[0], "w") as f:
     f.write(template.render(values))
