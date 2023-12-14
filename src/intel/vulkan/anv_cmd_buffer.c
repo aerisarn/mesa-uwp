@@ -1370,8 +1370,14 @@ anv_cmd_buffer_restore_state(struct anv_cmd_buffer *cmd_buffer,
    }
 
    if (state->flags & ANV_CMD_SAVED_STATE_PUSH_CONSTANTS) {
-      anv_CmdPushConstants(cmd_buffer_, VK_NULL_HANDLE, stage_flags, 0,
-                           sizeof(state->push_constants),
-                           state->push_constants);
+      VkPushConstantsInfoKHR push_info = {
+         .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO_KHR,
+         .layout = VK_NULL_HANDLE,
+         .stageFlags = stage_flags,
+         .offset = 0,
+         .size = sizeof(state->push_constants),
+         .pValues = state->push_constants,
+      };
+      anv_CmdPushConstants2KHR(cmd_buffer_, &push_info);
    }
 }
