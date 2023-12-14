@@ -914,6 +914,12 @@ struct v3d_compile {
 
         bool tmu_dirty_rcl;
         bool has_global_address;
+
+        /* If we have processed a discard/terminate instruction. This may
+         * cause some lanes to be inactive even during uniform control
+         * flow.
+         */
+        bool emitted_discard;
 };
 
 struct v3d_uniform_list {

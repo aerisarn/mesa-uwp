@@ -648,10 +648,14 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                 v3d_tmu_get_type_from_op(tmu_op, !is_load) ==
                                 V3D_TMU_OP_TYPE_ATOMIC;
 
+                        /* Only load per-quad if we can be certain that all
+                         * lines in the quad are active.
+                         */
                         uint32_t perquad =
-                                is_load && !vir_in_nonuniform_control_flow(c)
-                                ? GENERAL_TMU_LOOKUP_PER_QUAD
-                                : GENERAL_TMU_LOOKUP_PER_PIXEL;
+                                is_load && !vir_in_nonuniform_control_flow(c) &&
+                                !c->emitted_discard ?
+                                GENERAL_TMU_LOOKUP_PER_QUAD :
+                                GENERAL_TMU_LOOKUP_PER_PIXEL;
                         config = 0xffffff00 | tmu_op << 3 | perquad;
 
                         if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
@@ -3436,6 +3440,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                         vir_SETMSF_dest(c, vir_nop_reg(),
                                         vir_uniform_ui(c, 0));
                 }
+                c->emitted_discard = true;
                 break;
 
         case nir_intrinsic_discard_if: {
@@ -3456,7 +3461,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
                 vir_set_cond(vir_SETMSF_dest(c, vir_nop_reg(),
                                              vir_uniform_ui(c, 0)), cond);
-
+                c->emitted_discard = true;
                 break;
         }
 
