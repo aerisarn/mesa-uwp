@@ -311,8 +311,16 @@ fn calc_delays(f: &mut Function) {
     for b in f.blocks.iter_mut().rev() {
         let mut cycle = 0_u32;
         let mut ready = RegTracker::new(0_u32);
+        let mut bars_ready = [0_u32; 6];
         for instr in b.instrs.iter_mut().rev() {
             let mut min_start = cycle + 1; /* TODO: co-issue */
+            // Barriers take two cycles before we can wait on them
+            if let Some(bar) = instr.deps.rd_bar() {
+                min_start = max(min_start, bars_ready[usize::from(bar)] + 2);
+            }
+            if let Some(bar) = instr.deps.wr_bar() {
+                min_start = max(min_start, bars_ready[usize::from(bar)] + 2);
+            }
             if instr.has_fixed_latency() {
                 for (idx, dst) in instr.dsts().iter().enumerate() {
                     if let Dst::Reg(reg) = dst {
@@ -331,7 +339,14 @@ fn calc_delays(f: &mut Function) {
                 .unwrap();
             instr.deps.set_delay(delay);
 
+            ready.for_each_instr_pred_mut(instr, |c| *c = min_start);
             ready.for_each_instr_src_mut(instr, |c| *c = min_start);
+            for (bar, c) in bars_ready.iter_mut().enumerate() {
+                if instr.deps.wt_bar_mask & (1 << bar) != 0 {
+                    *c = min_start;
+                }
+            }
+
             cycle = min_start;
         }
     }
