@@ -324,6 +324,7 @@ fn legalize_sm50_instr(
         }
         Op::Ldc(_) => (),  // Nothing to do
         Op::Copy(_) => (), // Nothing to do
+        Op::INeg(_) => (), /* we unconditionally lower this */
         _ => {
             let src_types = instr.src_types();
             for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
