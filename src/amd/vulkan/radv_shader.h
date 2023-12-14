@@ -613,6 +613,7 @@ struct radv_shader {
    uint32_t code_size;
    uint32_t exec_size;
    struct radv_shader_info info;
+   uint32_t max_waves;
 
    blake3_hash hash;
    void *code;
@@ -756,8 +757,6 @@ struct radv_shader_part *radv_shader_part_cache_get(struct radv_device *device, 
 
 uint64_t radv_shader_get_va(const struct radv_shader *shader);
 struct radv_shader *radv_find_shader(struct radv_device *device, uint64_t pc);
-
-unsigned radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader, gl_shader_stage stage);
 
 unsigned radv_get_max_scratch_waves(const struct radv_device *device, struct radv_shader *shader);
 

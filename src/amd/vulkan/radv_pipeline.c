@@ -961,7 +961,6 @@ radv_GetPipelineExecutableStatisticsKHR(VkDevice _device, const VkPipelineExecut
    unsigned lds_increment = pdevice->rad_info.gfx_level >= GFX11 && stage == MESA_SHADER_FRAGMENT
                                ? 1024
                                : pdevice->rad_info.lds_encode_granularity;
-   unsigned max_waves = radv_get_max_waves(device, shader, stage);
 
    VkPipelineExecutableStatisticKHR *s = pStatistics;
    VkPipelineExecutableStatisticKHR *end = s + (pStatistics ? *pStatisticCount : 0);
@@ -1035,7 +1034,7 @@ radv_GetPipelineExecutableStatisticsKHR(VkDevice _device, const VkPipelineExecut
       desc_copy(s->name, "Subgroups per SIMD");
       desc_copy(s->description, "The maximum number of subgroups in flight on a SIMD unit");
       s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
-      s->value.u64 = max_waves;
+      s->value.u64 = shader->max_waves;
    }
    ++s;
 
