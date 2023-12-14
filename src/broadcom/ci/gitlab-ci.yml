@@ -11,7 +11,6 @@ vc4-rpi3-gl:arm32:
   parallel: 4
   variables:
     GPU_VERSION: broadcom-rpi3
-    HWCI_KERNEL_MODULES: vc4
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
     DEVICE_TYPE: rpi3
@@ -37,7 +36,6 @@ v3d-rpi4-gl:arm64:
   parallel: 10
   variables:
     GPU_VERSION: broadcom-rpi4
-    HWCI_KERNEL_MODULES: v3d,vc4
     HWCI_START_WESTON: 1
     DEQP_SUITE: broadcom-rpi4
     DEQP_FRACTION: 2
@@ -65,7 +63,6 @@ v3d-rpi4-traces:arm64:
     - .v3d-rules
   variables:
     GPU_VERSION: broadcom-rpi4
-    HWCI_KERNEL_MODULES: v3d,vc4
     HWCI_TEST_SCRIPT: "/install/piglit/piglit-traces.sh"
     PIGLIT_TRACES_FILE: traces-broadcom.yml
     PIGLIT_REPLAY_DEVICE_NAME: "broadcom-rpi4"
@@ -87,7 +84,6 @@ v3dv-rpi4-vk:arm64:
     DEQP_VER: vk
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: broadcom-rpi4
-    HWCI_KERNEL_MODULES: v3d,vc4
     VK_DRIVER: broadcom
     DEVICE_TYPE: rpi4
   tags:
