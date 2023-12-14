@@ -37,6 +37,14 @@ it internally).
 With Adreno 6xx, the separate PFP and ME are replaced with a single
 SQE microcontroller using the same instruction set as 5xx.
 
+Starting with Adreno 660, another processor called LPAC (Low Priority
+Asynchronous Compute) is introduced which is a slightly cut-down copy of the
+SQE used to execute background compute tasks. Unlike on 5xx, the firmware is
+bundled together with the main SQE firmware, and the SQE is responsible for
+booting LPAC. On 7xx, to implement concurrent binning the SQE is split into two
+processors called BR and BV. Again, the firmware for all three is bundled
+together and BR is responsible for booting both BV and LPAC.
+
 .. _afuc-overview:
 
 Instruction Set Overview
@@ -233,7 +241,10 @@ the CP, for example to indicate where to read from memory or (normal)
 registers.  ``0x100`` to ``0x17f`` are a private scratch space used by the
 firmware however it wants, for example as an ad-hoc stack to spill registers
 when calling a function or to store the scratch used in ``CP_SCRATCH_TO_*``
-packets.
+packets. Starting with the introduction of LPAC, ``0x200`` to ``0x27f`` are a
+shared scratch space used to communicate between processors and on a7xx they
+can also be written on event completion to implement so-called "on-chip
+timestamps".
 
 In cases where no offset is needed, ``$00`` is frequently used as the offset.
 
