@@ -2012,7 +2012,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          c_count < 1 ? INTEL_ENGINE_CLASS_RENDER : INTEL_ENGINE_CLASS_COMPUTE;
 
       int blit_count = 0;
-      if (debug_get_bool_option("INTEL_COPY_CLASS", false) &&
+      if (debug_get_bool_option("INTEL_COPY_CLASS", true) &&
           pdevice->info.verx10 >= 125) {
          if (!can_use_non_render_engines)
             mesa_logw("cannot initialize blitter engine");
