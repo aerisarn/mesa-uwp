@@ -3406,3 +3406,10 @@ nir_remove_non_exported(nir_shader *nir)
          exec_node_remove(&func->node);
    }
 }
+
+unsigned
+nir_static_workgroup_size(const nir_shader *s)
+{
+   return s->info.workgroup_size[0] * s->info.workgroup_size[1] *
+          s->info.workgroup_size[2];
+}

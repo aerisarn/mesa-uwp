@@ -6515,6 +6515,9 @@ nir_remove_tex_shadow(nir_shader *shader, unsigned textures_bitmask);
 void
 nir_trivialize_registers(nir_shader *s);
 
+unsigned
+nir_static_workgroup_size(const nir_shader *s);
+
 static inline nir_intrinsic_instr *
 nir_reg_get_decl(nir_def *reg)
 {
