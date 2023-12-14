@@ -348,6 +348,11 @@ radv_image_use_dcc_predication(const struct radv_device *device, const struct ra
 static inline bool
 radv_use_fmask_for_image(const struct radv_device *device, const struct radv_image *image)
 {
+   if (device->physical_device->rad_info.gfx_level == GFX9 && image->vk.array_layers > 1) {
+      /* On GFX9, FMASK can be interleaved with layers and this isn't properly supported. */
+      return false;
+   }
+
    return device->physical_device->use_fmask && image->vk.samples > 1 &&
           ((image->vk.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ||
            (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
