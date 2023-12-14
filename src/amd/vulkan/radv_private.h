@@ -420,42 +420,6 @@ struct vk_pipeline_cache_object *radv_pipeline_cache_nir_to_handle(struct radv_d
 struct nir_shader *radv_pipeline_cache_handle_to_nir(struct radv_device *device,
                                                      struct vk_pipeline_cache_object *object);
 
-enum radv_blit_ds_layout {
-   RADV_BLIT_DS_LAYOUT_TILE_ENABLE,
-   RADV_BLIT_DS_LAYOUT_TILE_DISABLE,
-   RADV_BLIT_DS_LAYOUT_COUNT,
-};
-
-static inline enum radv_blit_ds_layout
-radv_meta_blit_ds_to_type(VkImageLayout layout)
-{
-   return (layout == VK_IMAGE_LAYOUT_GENERAL) ? RADV_BLIT_DS_LAYOUT_TILE_DISABLE : RADV_BLIT_DS_LAYOUT_TILE_ENABLE;
-}
-
-static inline VkImageLayout
-radv_meta_blit_ds_to_layout(enum radv_blit_ds_layout ds_layout)
-{
-   return ds_layout == RADV_BLIT_DS_LAYOUT_TILE_ENABLE ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-}
-
-enum radv_meta_dst_layout {
-   RADV_META_DST_LAYOUT_GENERAL,
-   RADV_META_DST_LAYOUT_OPTIMAL,
-   RADV_META_DST_LAYOUT_COUNT,
-};
-
-static inline enum radv_meta_dst_layout
-radv_meta_dst_layout_from_layout(VkImageLayout layout)
-{
-   return (layout == VK_IMAGE_LAYOUT_GENERAL) ? RADV_META_DST_LAYOUT_GENERAL : RADV_META_DST_LAYOUT_OPTIMAL;
-}
-
-static inline VkImageLayout
-radv_meta_dst_layout_to_layout(enum radv_meta_dst_layout layout)
-{
-   return layout == RADV_META_DST_LAYOUT_OPTIMAL ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-}
-
 struct radv_meta_state {
    VkAllocationCallbacks alloc;
 
@@ -2003,19 +1967,6 @@ void radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
                                    void *vb_ptr);
 void radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs);
 
-void radv_cmd_buffer_clear_attachment(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *attachment);
-void radv_cmd_buffer_clear_rendering(struct radv_cmd_buffer *cmd_buffer, const VkRenderingInfo *render_info);
-void radv_cmd_buffer_resolve_rendering(struct radv_cmd_buffer *cmd_buffer);
-void radv_cmd_buffer_resolve_rendering_cs(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_iview,
-                                          VkImageLayout src_layout, struct radv_image_view *dst_iview,
-                                          VkImageLayout dst_layout, const VkImageResolve2 *region);
-void radv_depth_stencil_resolve_rendering_cs(struct radv_cmd_buffer *cmd_buffer, VkImageAspectFlags aspects,
-                                             VkResolveModeFlagBits resolve_mode);
-void radv_cmd_buffer_resolve_rendering_fs(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_iview,
-                                          VkImageLayout src_layout, struct radv_image_view *dst_iview,
-                                          VkImageLayout dst_layout);
-void radv_depth_stencil_resolve_rendering_fs(struct radv_cmd_buffer *cmd_buffer, VkImageAspectFlags aspects,
-                                             VkResolveModeFlagBits resolve_mode);
 void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples);
 unsigned radv_get_default_max_sample_dist(int log_samples);
 void radv_device_init_msaa(struct radv_device *device);
@@ -2041,10 +1992,6 @@ enum radv_cmd_flush_bits radv_src_access_flush(struct radv_cmd_buffer *cmd_buffe
                                                const struct radv_image *image);
 enum radv_cmd_flush_bits radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2 dst_flags,
                                                const struct radv_image *image);
-uint32_t radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *image,
-                          struct radeon_winsys_bo *bo, uint64_t va, uint64_t size, uint32_t value);
-void radv_copy_buffer(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *src_bo,
-                      struct radeon_winsys_bo *dst_bo, uint64_t src_offset, uint64_t dst_offset, uint64_t size);
 
 void radv_write_timestamp(struct radv_cmd_buffer *cmd_buffer, uint64_t va, VkPipelineStageFlags2 stage);
 
@@ -2165,9 +2112,6 @@ enum {
 #define radv_foreach_stage(stage, stage_bits)                                                                          \
    for (gl_shader_stage stage, __tmp = (gl_shader_stage)((stage_bits)&RADV_STAGE_MASK); stage = ffs(__tmp) - 1, __tmp; \
         __tmp &= ~(1 << (stage)))
-
-extern const VkFormat radv_fs_key_format_exemplars[NUM_META_FS_KEYS];
-unsigned radv_format_meta_fs_key(struct radv_device *device, VkFormat format);
 
 struct radv_prim_vertex_count {
    uint8_t min;
@@ -2947,9 +2891,6 @@ struct radv_resolve_barrier {
 };
 
 void radv_emit_resolve_barrier(struct radv_cmd_buffer *cmd_buffer, const struct radv_resolve_barrier *barrier);
-
-VkResult radv_device_init_meta(struct radv_device *device);
-void radv_device_finish_meta(struct radv_device *device);
 
 struct radv_query_pool {
    struct vk_query_pool vk;

@@ -43,6 +43,7 @@
 #include <sys/inotify.h>
 #endif
 
+#include "meta/radv_meta.h"
 #include "util/disk_cache.h"
 #include "util/u_debug.h"
 #include "radv_cs.h"
