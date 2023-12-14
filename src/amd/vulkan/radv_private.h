@@ -175,13 +175,6 @@ align_u64(uint64_t v, uint64_t a)
    return (v + a - 1) & ~(a - 1);
 }
 
-static inline int32_t
-align_i32(int32_t v, int32_t a)
-{
-   assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
-}
-
 /** Alignment must be a power of 2. */
 static inline bool
 radv_is_aligned(uintmax_t n, uintmax_t a)
@@ -197,29 +190,6 @@ radv_minify(uint32_t n, uint32_t levels)
       return 0;
    else
       return MAX2(n >> levels, 1);
-}
-static inline float
-radv_clamp_f(float f, float min, float max)
-{
-   assert(min < max);
-
-   if (f > max)
-      return max;
-   else if (f < min)
-      return min;
-   else
-      return f;
-}
-
-static inline bool
-radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
-{
-   if (*inout_mask & clear_mask) {
-      *inout_mask &= ~clear_mask;
-      return true;
-   } else {
-      return false;
-   }
 }
 
 static inline int
@@ -242,19 +212,6 @@ radv_float_to_ufixed(float value, unsigned frac_bits)
 struct radv_image_view;
 struct radv_instance;
 struct rvcn_decode_buffer_s;
-
-/* A non-fatal assert.  Useful for debugging. */
-#ifdef NDEBUG
-#define radv_assert(x)                                                                                                 \
-   do {                                                                                                                \
-   } while (0)
-#else
-#define radv_assert(x)                                                                                                 \
-   do {                                                                                                                \
-      if (unlikely(!(x)))                                                                                              \
-         fprintf(stderr, "%s:%d ASSERT: %s\n", __FILE__, __LINE__, #x);                                                \
-   } while (0)
-#endif
 
 /* queue types */
 enum radv_queue_family {
