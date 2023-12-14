@@ -352,6 +352,12 @@ const struct emu_reg_accessor emu_control_accessor = {
       .set = emu_set_control_reg,
 };
 
+const struct emu_reg_accessor emu_sqe_accessor = {
+      .get_offset = afuc_sqe_reg,
+      .get = emu_get_sqe_reg,
+      .set = emu_set_sqe_reg,
+};
+
 const struct emu_reg_accessor emu_pipe_accessor = {
       .get_offset = afuc_pipe_reg,
       .get = emu_get_pipe_reg,

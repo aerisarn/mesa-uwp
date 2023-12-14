@@ -42,6 +42,9 @@
 #define rotl32(x,r) (((x) << (r)) | ((x) >> (32 - (r))))
 #define rotl64(x,r) (((x) << (r)) | ((x) >> (64 - (r))))
 
+EMU_SQE_REG(SP);
+EMU_SQE_REG(STACK0);
+
 /**
  * AFUC emulator.  Currently only supports a6xx
  *
@@ -317,20 +320,24 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       break;
    }
    case OPC_RET: {
-      assert(emu->call_stack_idx > 0);
+      unsigned sp = emu_get_reg32(emu, &SP);
+      assert(sp > 0);
 
       /* counter-part to 'call' instruction, also has a delay slot: */
-      emu->branch_target = emu->call_stack[--emu->call_stack_idx];
+      emu->branch_target = emu_get_sqe_reg(emu, emu_reg_offset(&STACK0) + sp - 1);
+      emu_set_reg32(emu, &SP, sp - 1);
 
       break;
    }
    case OPC_CALL: {
-      assert(emu->call_stack_idx < ARRAY_SIZE(emu->call_stack));
+      unsigned sp = emu_get_reg32(emu, &SP);
+      assert(sp + emu_reg_offset(&STACK0) < ARRAY_SIZE(emu->sqe_regs.val));
 
       /* call looks to have same delay-slot behavior as branch/etc, so
        * presumably the return PC is two instructions later:
        */
-      emu->call_stack[emu->call_stack_idx++] = emu->gpr_regs.pc + 2;
+      emu_set_sqe_reg(emu, emu_reg_offset(&STACK0) + sp, emu->gpr_regs.pc + 2);
+      emu_set_reg32(emu, &SP, sp + 1);
       emu->branch_target = instr->literal;
 
       break;

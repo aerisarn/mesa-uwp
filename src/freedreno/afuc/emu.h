@@ -198,12 +198,6 @@ struct emu {
     */
    uint32_t carry;
 
-   /* call-stack of saved PCs.. I expect this to be a fixed size, but not
-    * sure what the actual size is
-    */
-   uint32_t call_stack[5];
-   int call_stack_idx;
-
    /* packet table (aka jmptable) has offsets for pm4 packet handlers: */
    uint32_t jmptbl[0x80];
 
@@ -282,10 +276,12 @@ struct emu_reg {
 };
 
 extern const struct emu_reg_accessor emu_control_accessor;
+extern const struct emu_reg_accessor emu_sqe_accessor;
 extern const struct emu_reg_accessor emu_pipe_accessor;
 extern const struct emu_reg_accessor emu_gpu_accessor;
 
 #define EMU_CONTROL_REG(name) static struct emu_reg name = { #name, &emu_control_accessor, ~0 }
+#define EMU_SQE_REG(name) static struct emu_reg name = { #name, &emu_sqe_accessor, ~0 }
 #define EMU_PIPE_REG(name)    static struct emu_reg name = { #name, &emu_pipe_accessor, ~0 }
 #define EMU_GPU_REG(name)     static struct emu_reg name = { #name, &emu_gpu_accessor, ~0 }
 
