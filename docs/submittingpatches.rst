@@ -409,6 +409,15 @@ Documentation patches
 Our documentation is written as `reStructuredText`_ files in the
 :file:`docs` folder, and built using `Sphinx`_.
 
+.. code-block:: sh
+
+   # Install dependencies (adapt for your distro)
+   apk add coreutils graphviz py3-clang clang-dev musl-dev linux-headers
+   pip3 install sphinx===5.1.1 mako===1.2.3 hawkmoth===0.16.0
+
+   # Build docs
+   sphinx-build -W -b html docs docs-html/
+
 The preferred language of the documentation is US English. This
 doesn't mean that everyone is expected to pay close attention to
 the different English variants, but it does mean someone might
