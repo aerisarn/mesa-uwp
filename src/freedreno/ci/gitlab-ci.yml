@@ -113,8 +113,6 @@ a618_piglit:
   variables:
     HWCI_START_WESTON: 1
     PIGLIT_PROFILES: gpu
-    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
-    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 a618-traces:
   extends:
@@ -187,8 +185,6 @@ a630_gl:
     DEQP_SUITE: freedreno-a630
     HWCI_START_XORG: 1
     HWCI_START_WESTON: 1
-    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
-    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 a630_gles_asan:
   extends:
@@ -209,8 +205,6 @@ a630_vk:
     - .google-turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk
-    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
-    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 
 a630_vk_full:
@@ -248,8 +242,6 @@ a630_piglit:
   variables:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-piglit
-    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
-    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 a630-traces:
   extends:
