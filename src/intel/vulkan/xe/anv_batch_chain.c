@@ -25,8 +25,6 @@
 
 #include "anv_private.h"
 
-#include <xf86drm.h>
-
 #include "drm-uapi/xe_drm.h"
 
 VkResult
@@ -36,18 +34,20 @@ xe_execute_simple_batch(struct anv_queue *queue,
                         bool is_companion_rcs_batch)
 {
    struct anv_device *device = queue->device;
-   VkResult result = VK_SUCCESS;
-   uint32_t syncobj_handle;
    uint32_t exec_queue_id = is_companion_rcs_batch ?
                             queue->companion_rcs_id :
                             queue->exec_queue_id;
-   if (drmSyncobjCreate(device->fd, 0, &syncobj_handle))
+   struct drm_syncobj_create syncobj_create = {};
+   struct drm_syncobj_destroy syncobj_destroy = {};
+   VkResult result = VK_SUCCESS;
+
+   if (intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &syncobj_create))
       return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create sync obj");
 
    struct drm_xe_sync sync = {
       .type = DRM_XE_SYNC_TYPE_SYNCOBJ,
       .flags = DRM_XE_SYNC_FLAG_SIGNAL,
-      .handle = syncobj_handle,
+      .handle = syncobj_create.handle,
    };
    struct drm_xe_exec exec = {
       .exec_queue_id = exec_queue_id,
@@ -63,7 +63,7 @@ xe_execute_simple_batch(struct anv_queue *queue,
    }
 
    struct drm_syncobj_wait wait = {
-      .handles = (uintptr_t)&syncobj_handle,
+      .handles = (uintptr_t)&syncobj_create.handle,
       .timeout_nsec = INT64_MAX,
       .count_handles = 1,
    };
@@ -71,7 +71,8 @@ xe_execute_simple_batch(struct anv_queue *queue,
       result = vk_device_set_lost(&device->vk, "DRM_IOCTL_SYNCOBJ_WAIT failed: %m");
 
 exec_error:
-   drmSyncobjDestroy(device->fd, syncobj_handle);
+   syncobj_destroy.handle = syncobj_create.handle;
+   intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY, &syncobj_destroy);
 
    return result;
 }

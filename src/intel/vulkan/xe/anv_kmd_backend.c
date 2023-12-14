@@ -22,7 +22,6 @@
  */
 
 #include <sys/mman.h>
-#include <xf86drm.h>
 
 #include "common/xe/intel_engine.h"
 
