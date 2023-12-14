@@ -92,7 +92,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    /* If we use s_sendmsg to set tess factors to all 0 or all 1 instead of writing to the tess
     * factor buffer, we need this at the end of command buffers:
     */
-   if (ctx->gfx_level == GFX11 && ctx->tess_rings) {
+   if ((ctx->gfx_level == GFX11 || ctx->gfx_level == GFX11_5) && ctx->tess_rings) {
       radeon_begin(cs);
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
