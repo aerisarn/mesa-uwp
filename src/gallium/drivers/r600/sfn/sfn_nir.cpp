@@ -443,7 +443,7 @@ r600_nir_lower_atomics(nir_shader *shader)
    std::map<unsigned, nir_variable *> sorted_var;
 
    nir_foreach_variable_with_modes_safe(var, shader, nir_var_uniform) {
-      if (var->type->contains_atomic()) {
+      if (glsl_contains_atomic(var->type)) {
          sorted_var[(var->data.binding << 16) | var->data.offset] = var;
          exec_node_remove(&var->node);
       }
@@ -451,7 +451,7 @@ r600_nir_lower_atomics(nir_shader *shader)
 
    for (auto& [dummy, var] : sorted_var) {
       auto iindex = binding_offset.find(var->data.binding);
-      unsigned offset_update = var->type->atomic_size() / 4; /* ATOMIC_COUNTER_SIZE */
+      unsigned offset_update = glsl_atomic_size(var->type) / 4; /* ATOMIC_COUNTER_SIZE */
       if (iindex == binding_offset.end()) {
          var->data.index = 0;
          binding_offset[var->data.binding] = offset_update;
