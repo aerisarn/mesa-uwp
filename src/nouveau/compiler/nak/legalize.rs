@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::ir::*;
 use crate::liveness::{BlockLiveness, Liveness, SimpleLiveness};
@@ -274,7 +272,7 @@ fn legalize_sm70_instr(
             }
             copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
-        Op::MuFu(_) => (), /* Nothing to do */
+        Op::MuFu(_) => (), // Nothing to do
         Op::DAdd(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             swap_srcs_if_not_reg(src0, src1);
@@ -349,7 +347,7 @@ fn legalize_sm70_instr(
             copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::Lop3(op) => {
-            /* Fold constants and modifiers if we can */
+            // Fold constants and modifiers if we can
             op.op = LogicOp3::new_lut(&|mut x, mut y, mut z| {
                 fold_lop_src(&op.srcs[0], &mut x);
                 fold_lop_src(&op.srcs[1], &mut y);
@@ -395,7 +393,7 @@ fn legalize_sm70_instr(
             copy_src_if_not_reg(b, src0, RegFile::GPR);
         }
         Op::PLop3(op) => {
-            /* Fold constants and modifiers if we can */
+            // Fold constants and modifiers if we can
             for lop in &mut op.ops {
                 *lop = LogicOp3::new_lut(&|mut x, mut y, mut z| {
                     fold_lop_src(&op.srcs[0], &mut x);
@@ -546,10 +544,9 @@ fn legalize_instr(
                 continue;
             }
 
-            /* If the same vector shows up twice in one instruction, that's
-             * okay. Just make it look the same as the previous source we
-             * fixed up.
-             */
+            // If the same vector shows up twice in one instruction, that's
+            // okay. Just make it look the same as the previous source we
+            // fixed up.
             if let Some(new_vec) = vec_src_map.get(&vec) {
                 src.src_ref = (*new_vec).into();
                 continue;
@@ -558,11 +555,10 @@ fn legalize_instr(
             let mut new_vec = *vec;
             for c in 0..vec.comps() {
                 let ssa = vec[usize::from(c)];
-                /* If the same SSA value shows up in multiple non-identical
-                 * vector sources or as multiple components in the same
-                 * source, we need to make a copy so it can get assigned to
-                 * multiple different registers.
-                 */
+                // If the same SSA value shows up in multiple non-identical
+                // vector sources or as multiple components in the same
+                // source, we need to make a copy so it can get assigned to
+                // multiple different registers.
                 if vec_comps.get(&ssa).is_some() {
                     let copy = b.alloc_ssa(ssa.file(), 1)[0];
                     b.copy_to(copy.into(), ssa.into());

@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::ir::*;
 use bitview::*;
@@ -187,7 +185,7 @@ impl SM70Instr {
     }
 
     fn set_pred_src(&mut self, range: Range<usize>, not_bit: usize, src: Src) {
-        /* The default for predicates is true */
+        // The default for predicates is true
         let true_reg = RegRef::new(RegFile::Pred, 7, 1);
 
         let (not, reg) = match src.src_ref {
@@ -336,45 +334,45 @@ impl SM70Instr {
                 match &src2 {
                     ALUSrc::None => {
                         self.set_alu_reg(32..40, 62, 63, reg1);
-                        1_u8 /* form */
+                        1_u8 // form
                     }
                     ALUSrc::Reg(reg2) => {
                         self.set_alu_reg(32..40, 62, 63, reg1);
                         self.set_alu_reg(64..72, 74, 75, reg2);
-                        1_u8 /* form */
+                        1_u8 // form
                     }
                     ALUSrc::UReg(reg2) => {
                         self.set_alu_ureg(32..40, 62, 63, reg2);
                         self.set_alu_reg(64..72, 74, 75, reg1);
-                        7_u8 /* form */
+                        7_u8 // form
                     }
                     ALUSrc::Imm32(imm) => {
                         self.set_src_imm(32..64, &imm);
                         self.set_alu_reg(64..72, 74, 75, reg1);
-                        2_u8 /* form */
+                        2_u8 // form
                     }
                     ALUSrc::CBuf(cb) => {
-                        /* TODO set_src_cx */
+                        // TODO set_src_cx
                         self.set_alu_cb(38..59, 62, 63, cb);
                         self.set_alu_reg(64..72, 74, 75, reg1);
-                        3_u8 /* form */
+                        3_u8 // form
                     }
                 }
             }
             ALUSrc::UReg(reg1) => {
                 self.set_alu_ureg(32..40, 62, 63, reg1);
                 self.set_alu_reg_src(64..72, 74, 75, &src2);
-                6_u8 /* form */
+                6_u8 // form
             }
             ALUSrc::Imm32(imm) => {
                 self.set_src_imm(32..64, &imm);
                 self.set_alu_reg_src(64..72, 74, 75, &src2);
-                4_u8 /* form */
+                4_u8 // form
             }
             ALUSrc::CBuf(cb) => {
                 self.set_alu_cb(38..59, 62, 63, cb);
                 self.set_alu_reg_src(64..72, 74, 75, &src2);
-                5_u8 /* form */
+                5_u8 // form
             }
             _ => panic!("Invalid instruction form"),
         };
@@ -466,7 +464,7 @@ impl SM70Instr {
         self.set_bit(77, op.saturate);
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);
-        self.set_field(84..87, 0x4_u8) /* TODO: PDIV */
+        self.set_field(84..87, 0x4_u8) // TODO: PDIV
     }
 
     fn set_float_cmp_op(&mut self, range: Range<usize>, op: FloatCmpOp) {
@@ -502,7 +500,7 @@ impl SM70Instr {
         );
         self.set_float_cmp_op(76..80, op.cmp_op);
         self.set_bit(80, op.ftz);
-        self.set_field(87..90, 0x7_u8); /* TODO: src predicate */
+        self.set_field(87..90, 0x7_u8); // TODO: src predicate
     }
 
     fn set_pred_set_op(&mut self, range: Range<usize>, op: PredSetOp) {
@@ -531,7 +529,7 @@ impl SM70Instr {
         self.set_bit(80, op.ftz);
 
         self.set_pred_dst(81..84, op.dst);
-        self.set_pred_dst(84..87, Dst::None); /* dst1 */
+        self.set_pred_dst(84..87, Dst::None); // dst1
 
         self.set_pred_src(87..90, 90, op.accum);
     }
@@ -558,7 +556,7 @@ impl SM70Instr {
 
         self.set_field(32..40, subop);
 
-        self.set_bit(77, false); /* NDV */
+        self.set_bit(77, false); // NDV
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);
     }
@@ -767,7 +765,7 @@ impl SM70Instr {
         self.set_int_cmp_op(76..79, op.cmp_op);
 
         self.set_pred_dst(81..84, op.dst);
-        self.set_pred_dst(84..87, Dst::None); /* dst1 */
+        self.set_pred_dst(84..87, Dst::None); // dst1
 
         self.set_pred_src(87..90, 90, op.accum);
     }
@@ -782,8 +780,8 @@ impl SM70Instr {
         );
 
         self.set_field(72..80, op.op.lut);
-        self.set_bit(80, false); /* .PAND */
-        self.set_field(81..84, 7_u32); /* pred */
+        self.set_bit(80, false); // .PAND
+        self.set_field(81..84, 7_u32); // pred
         self.set_pred_src(87..90, 90, SrcRef::False.into());
     }
 
@@ -874,7 +872,7 @@ impl SM70Instr {
 
         self.set_bit(72, op.dst_type.is_signed());
         self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
-        self.set_bit(77, false); /* NTZ */
+        self.set_bit(77, false); // NTZ
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);
         self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
@@ -899,7 +897,7 @@ impl SM70Instr {
             );
         }
 
-        self.set_field(60..62, 0_u8); /* TODO: subop */
+        self.set_field(60..62, 0_u8); // TODO: subop
         self.set_bit(74, op.src_type.is_signed());
         self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_rnd_mode(78..80, op.rnd_mode);
@@ -1073,7 +1071,7 @@ impl SM70Instr {
 
     fn encode_tex(&mut self, op: &OpTex) {
         self.set_opcode(0x361);
-        self.set_bit(59, true); /* .B */
+        self.set_bit(59, true); // .B
 
         self.set_dst(op.dsts[0]);
         if let Dst::Reg(reg) = op.dsts[1] {
@@ -1089,16 +1087,16 @@ impl SM70Instr {
         self.set_tex_dim(61..64, op.dim);
         self.set_field(72..76, op.mask);
         self.set_bit(76, op.offset);
-        self.set_bit(77, false); /* ToDo: NDV */
+        self.set_bit(77, false); // ToDo: NDV
         self.set_bit(78, op.z_cmpr);
         self.set_field(84..87, 1);
         self.set_tex_lod_mode(87..90, op.lod_mode);
-        self.set_bit(90, false); /* TODO: .NODEP */
+        self.set_bit(90, false); // TODO: .NODEP
     }
 
     fn encode_tld(&mut self, op: &OpTld) {
         self.set_opcode(0x367);
-        self.set_bit(59, true); /* .B */
+        self.set_bit(59, true); // .B
 
         self.set_dst(op.dsts[0]);
         if let Dst::Reg(reg) = op.dsts[1] {
@@ -1114,19 +1112,19 @@ impl SM70Instr {
         self.set_tex_dim(61..64, op.dim);
         self.set_field(72..76, op.mask);
         self.set_bit(76, op.offset);
-        /* bit 77: .CL */
+        // bit 77: .CL
         self.set_bit(78, op.is_ms);
-        /* bits 79..81: .F16 */
+        // bits 79..81: .F16
         assert!(
             op.lod_mode == TexLodMode::Zero || op.lod_mode == TexLodMode::Lod
         );
         self.set_tex_lod_mode(87..90, op.lod_mode);
-        self.set_bit(90, false); /* TODO: .NODEP */
+        self.set_bit(90, false); // TODO: .NODEP
     }
 
     fn encode_tld4(&mut self, op: &OpTld4) {
         self.set_opcode(0x364);
-        self.set_bit(59, true); /* .B */
+        self.set_bit(59, true); // .B
 
         self.set_dst(op.dsts[0]);
         if let Dst::Reg(reg) = op.dsts[1] {
@@ -1149,16 +1147,16 @@ impl SM70Instr {
                 Tld4OffsetMode::PerPx => 2_u8,
             },
         );
-        /* bit 77: .CL */
+        // bit 77: .CL
         self.set_bit(78, op.z_cmpr);
-        self.set_bit(84, true); /* !.EF */
+        self.set_bit(84, true); // !.EF
         self.set_field(87..89, op.comp);
-        self.set_bit(90, false); /* TODO: .NODEP */
+        self.set_bit(90, false); // TODO: .NODEP
     }
 
     fn encode_tmml(&mut self, op: &OpTmml) {
         self.set_opcode(0x36a);
-        self.set_bit(59, true); /* .B */
+        self.set_bit(59, true); // .B
 
         self.set_dst(op.dsts[0]);
         if let Dst::Reg(reg) = op.dsts[1] {
@@ -1172,13 +1170,13 @@ impl SM70Instr {
 
         self.set_tex_dim(61..64, op.dim);
         self.set_field(72..76, op.mask);
-        self.set_bit(77, false); /* ToDo: NDV */
-        self.set_bit(90, false); /* TODO: .NODEP */
+        self.set_bit(77, false); // ToDo: NDV
+        self.set_bit(90, false); // TODO: .NODEP
     }
 
     fn encode_txd(&mut self, op: &OpTxd) {
         self.set_opcode(0x36d);
-        self.set_bit(59, true); /* .B */
+        self.set_bit(59, true); // .B
 
         self.set_dst(op.dsts[0]);
         if let Dst::Reg(reg) = op.dsts[1] {
@@ -1194,13 +1192,13 @@ impl SM70Instr {
         self.set_tex_dim(61..64, op.dim);
         self.set_field(72..76, op.mask);
         self.set_bit(76, op.offset);
-        self.set_bit(77, false); /* ToDo: NDV */
-        self.set_bit(90, false); /* TODO: .NODEP */
+        self.set_bit(77, false); // ToDo: NDV
+        self.set_bit(90, false); // TODO: .NODEP
     }
 
     fn encode_txq(&mut self, op: &OpTxq) {
         self.set_opcode(0x370);
-        self.set_bit(59, true); /* .B */
+        self.set_bit(59, true); // .B
 
         self.set_dst(op.dsts[0]);
         if let Dst::Reg(reg) = op.dsts[1] {
@@ -1247,7 +1245,7 @@ impl SM70Instr {
                 77..79,
                 match scope {
                     MemScope::CTA => 0_u8,
-                    /* SM => 1_u8, */
+                    // SM => 1_u8,
                     MemScope::GPU => 2_u8,
                     MemScope::System => 3_u8,
                 },
@@ -1258,7 +1256,7 @@ impl SM70Instr {
                     MemOrder::Constant => 0_u8,
                     MemOrder::Weak => 1_u8,
                     MemOrder::Strong(_) => 2_u8,
-                    /* MMIO => 3_u8, */
+                    // MMIO => 3_u8,
                 },
             );
         } else {
@@ -1335,7 +1333,7 @@ impl SM70Instr {
         self.set_mem_order(&op.mem_order);
         self.set_eviction_priority(&op.mem_eviction_priority);
 
-        self.set_bit(72, false); /* .BA */
+        self.set_bit(72, false); // .BA
         self.set_atom_type(73..76, op.atom_type);
         self.set_atom_op(87..91, op.atom_op);
     }
@@ -1403,7 +1401,7 @@ impl SM70Instr {
         assert!(op.access.order == MemOrder::Strong(MemScope::CTA));
         assert!(op.access.eviction_priority == MemEvictionPriority::Normal);
 
-        self.set_bit(87, false); /* !.ZD - Returns a predicate? */
+        self.set_bit(87, false); // !.ZD - Returns a predicate?
     }
 
     fn encode_ld(&mut self, op: &OpLd) {
@@ -1424,7 +1422,7 @@ impl SM70Instr {
         );
 
         self.set_mem_type(73..76, op.mem_type);
-        self.set_field(78..80, 0_u8); /* subop */
+        self.set_field(78..80, 0_u8); // subop
     }
 
     fn encode_stg(&mut self, op: &OpSt) {
@@ -1640,7 +1638,7 @@ impl SM70Instr {
         assert!(op.inv_w.is_zero());
         self.set_reg_src(32..40, op.offset);
 
-        /* TODO: What is this for? */
+        // TODO: What is this for?
         self.set_pred_dst(81..84, Dst::None);
     }
 
@@ -1684,17 +1682,17 @@ impl SM70Instr {
     fn encode_membar(&mut self, op: &OpMemBar) {
         self.set_opcode(0x992);
 
-        self.set_bit(72, false); /* !.MMIO */
+        self.set_bit(72, false); // !.MMIO
         self.set_field(
             76..79,
             match op.scope {
                 MemScope::CTA => 0_u8,
-                /* SM => 1_u8, */
+                // SM => 1_u8,
                 MemScope::GPU => 2_u8,
                 MemScope::System => 3_u8,
             },
         );
-        self.set_bit(80, false); /* .SC */
+        self.set_bit(80, false); // .SC
     }
 
     fn set_rel_offset(
@@ -1777,17 +1775,17 @@ impl SM70Instr {
     ) {
         self.set_opcode(0x947);
         self.set_rel_offset(34..82, &op.target, ip, labels);
-        self.set_field(87..90, 0x7_u8); /* TODO: Pred? */
+        self.set_field(87..90, 0x7_u8); // TODO: Pred?
     }
 
     fn encode_exit(&mut self, _op: &OpExit) {
         self.set_opcode(0x94d);
 
-        /* ./.KEEPREFCOUNT/.PREEMPTED/.INVALID3 */
+        // ./.KEEPREFCOUNT/.PREEMPTED/.INVALID3
         self.set_field(84..85, false);
-        self.set_field(85..86, false); /* .NO_ATEXIT */
-        self.set_field(87..90, 0x7_u8); /* TODO: Predicate */
-        self.set_field(90..91, false); /* NOT */
+        self.set_field(85..86, false); // .NO_ATEXIT
+        self.set_field(87..90, 0x7_u8); // TODO: Predicate
+        self.set_field(90..91, false); // NOT
     }
 
     fn encode_warpsync(&mut self, op: &OpWarpSync) {
@@ -1806,22 +1804,18 @@ impl SM70Instr {
 
         // self.set_opcode(0x31d);
 
-        // /* src0 == src1 */
+        // // src0 == src1
         // self.set_reg_src(32..40, SrcRef::Zero.into());
 
-        // /*
-        //  * 00: RED.POPC
-        //  * 01: RED.AND
-        //  * 02: RED.OR
-        //  */
+        // // 00: RED.POPC
+        // // 01: RED.AND
+        // // 02: RED.OR
         // self.set_field(74..76, 0_u8);
 
-        // /*
-        //  * 00: SYNC
-        //  * 01: ARV
-        //  * 02: RED
-        //  * 03: SCAN
-        //  */
+        // // 00: SYNC
+        // // 01: ARV
+        // // 02: RED
+        // // 03: SCAN
         // self.set_field(77..79, 0_u8);
 
         // self.set_pred_src(87..90, 90, SrcRef::True.into());

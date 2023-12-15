@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::ir::*;
 
@@ -148,10 +146,9 @@ impl LopPass {
                         return;
                     }
 
-                    /* All callers of this function need to ensure that
-                     * constant sources are already folded so we know we
-                     * can always re-use them.
-                     */
+                    // All callers of this function need to ensure that
+                    // constant sources are already folded so we know we
+                    // can always re-use them.
                     if next_src == src_idx
                         || src_as_bool(&srcs[next_src]).is_some()
                     {
@@ -163,10 +160,9 @@ impl LopPass {
                 }
             }
 
-            /* Clear out the propagated source. What we put here doesn't matter
-             * since it's no longer used.  It may be overwritten by one of the
-             * entry sources but there is no guarantee of this.
-             */
+            // Clear out the propagated source. What we put here doesn't matter
+            // since it's no longer used.  It may be overwritten by one of the
+            // entry sources but there is no guarantee of this.
             srcs[src_idx] = match ssa.file() {
                 RegFile::GPR | RegFile::UGPR => SrcRef::Zero.into(),
                 RegFile::Pred | RegFile::UPred => SrcRef::True.into(),
@@ -208,7 +204,7 @@ impl LopPass {
             }
 
             if !op.op.src_used(i) {
-                /* Replace unused sources with RZ */
+                // Replace unused sources with RZ
                 *src = SrcRef::Zero.into();
             }
         }
@@ -227,7 +223,7 @@ impl LopPass {
         self.dedup_srcs(&mut op.ops[0], &op.srcs);
         self.dedup_srcs(&mut op.ops[1], &op.srcs);
 
-        /* Replace unused sources with PT */
+        // Replace unused sources with PT
         for (i, src) in op.srcs.iter_mut().enumerate() {
             if src.src_mod.is_bnot() {
                 op.ops[0].invert_src(i);

@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::bitset::BitSet;
 use crate::ir::*;
@@ -60,10 +58,9 @@ impl LiveSet {
         instr: &Instr,
         bl: &L,
     ) -> PerRegFile<u32> {
-        /* Vector destinations go live before sources are killed.  Even
-         * in the case where the destination is immediately killed, it
-         * still may contribute to pressure temporarily.
-         */
+        // Vector destinations go live before sources are killed.  Even
+        // in the case where the destination is immediately killed, it
+        // still may contribute to pressure temporarily.
         for dst in instr.dsts() {
             if let Dst::SSA(vec) = dst {
                 if vec.comps() > 1 {
@@ -82,7 +79,7 @@ impl LiveSet {
             }
         });
 
-        /* Scalar destinations are allocated last */
+        // Scalar destinations are allocated last
         for dst in instr.dsts() {
             if let Dst::SSA(vec) = dst {
                 if vec.comps() == 1 {
@@ -95,9 +92,8 @@ impl LiveSet {
             max(self.live[file], after_dsts_live[file])
         });
 
-        /* It's possible (but unlikely) that a destination is immediately
-         * killed. Remove any which are killed by this instruction.
-         */
+        // It's possible (but unlikely) that a destination is immediately
+        // killed. Remove any which are killed by this instruction.
         instr.for_each_ssa_def(|ssa| {
             debug_assert!(self.contains(ssa));
             if !bl.is_live_after_ip(ssa, ip) {
@@ -132,7 +128,7 @@ pub trait BlockLiveness {
     fn get_instr_pressure(&self, ip: usize, instr: &Instr) -> PerRegFile<u8> {
         let mut live = PerRegFile::new_with(|_| 0_i8);
 
-        /* Vector destinations go live before sources are killed. */
+        // Vector destinations go live before sources are killed.
         for dst in instr.dsts() {
             if let Dst::SSA(vec) = dst {
                 if vec.comps() > 1 {
@@ -143,10 +139,10 @@ pub trait BlockLiveness {
             }
         }
 
-        /* This is the first high point */
+        // This is the first high point
         let vec_dst_live = live.clone();
 
-        /* Use a hash set because sources may occur more than once */
+        // Use a hash set because sources may occur more than once
         let mut killed = HashSet::new();
         instr.for_each_ssa_use(|ssa| {
             if !self.is_live_after_ip(ssa, ip) {
@@ -157,7 +153,7 @@ pub trait BlockLiveness {
             live[ssa.file()] -= 1;
         }
 
-        /* Scalar destinations are allocated last */
+        // Scalar destinations are allocated last
         for dst in instr.dsts() {
             if let Dst::SSA(vec) = dst {
                 if vec.comps() == 1 {
@@ -188,9 +184,8 @@ pub trait Liveness {
 
             let mut live = LiveSet::new();
 
-            /* Predecessors are added block order so we can just grab the first
-             * one (if any) and it will be a block we've processed.
-             */
+            // Predecessors are added block order so we can just grab the first
+            // one (if any) and it will be a block we've processed.
             if let Some(pred_idx) = f.blocks.pred_indices(bb_idx).first() {
                 let pred_out = &block_live_out[*pred_idx];
                 for ssa in pred_out.iter() {
@@ -315,7 +310,7 @@ impl SimpleLiveness {
         while to_do {
             to_do = false;
             for (b_idx, bl) in l.blocks.iter_mut().enumerate().rev() {
-                /* Compute live-out */
+                // Compute live-out
                 for sb_idx in func.blocks.succ_indices(b_idx) {
                     to_do |= bl.live_out.union_with(&live_in[*sb_idx]);
                 }
@@ -382,16 +377,16 @@ impl SSAUseDef {
         num_block_instrs: usize,
         use_ip: usize,
     ) -> bool {
-        /* IPs are relative to the start of their block */
+        // IPs are relative to the start of their block
         let use_ip = num_block_instrs + use_ip;
 
         if let Some(last_use_ip) = self.uses.last_mut() {
             if *last_use_ip < num_block_instrs {
-                /* We've never seen a successor use before */
+                // We've never seen a successor use before
                 self.uses.push(use_ip);
                 true
             } else if *last_use_ip > use_ip {
-                /* Otherwise, we want the minimum next use */
+                // Otherwise, we want the minimum next use
                 *last_use_ip = use_ip;
                 true
             } else {
@@ -558,7 +553,7 @@ impl NextUseLiveness {
                 let num_instrs = b.instrs.len();
                 let mut bl = blocks[b_idx].borrow_mut();
 
-                /* Compute live-out */
+                // Compute live-out
                 for sb_idx in func.blocks.succ_indices(b_idx) {
                     if *sb_idx == b_idx {
                         for entry in bl.ssa_map.values_mut() {

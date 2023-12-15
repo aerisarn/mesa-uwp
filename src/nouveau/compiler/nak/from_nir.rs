@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 #![allow(non_upper_case_globals)]
 
@@ -1323,7 +1321,7 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn parse_jump(&mut self, _b: &mut impl SSABuilder, _jump: &nir_jump_instr) {
-        /* Nothing to do */
+        // Nothing to do
     }
 
     fn parse_tex(&mut self, b: &mut impl SSABuilder, tex: &nir_tex_instr) {
@@ -1583,7 +1581,7 @@ impl<'a> ShaderFromNir<'a> {
         dim: ImageDim,
     ) -> Src {
         let vec = self.get_ssa(intrin.get_src(1).as_def());
-        /* let sample = self.get_src(&srcs[2]); */
+        // let sample = self.get_src(&srcs[2]);
         let comps = usize::from(dim.coord_comps());
         SSARef::try_from(&vec[0..comps]).unwrap().into()
     }
@@ -1763,7 +1761,7 @@ impl<'a> ShaderFromNir<'a> {
                 let handle = self.get_src(&srcs[0]);
                 let dim = self.get_image_dim(intrin);
                 let coord = self.get_image_coord(intrin, dim);
-                /* let sample = self.get_src(&srcs[2]); */
+                // let sample = self.get_src(&srcs[2]);
                 let atom_type = self.get_atomic_type(intrin);
                 let atom_op = self.get_atomic_op(intrin);
 
@@ -1814,7 +1812,7 @@ impl<'a> ShaderFromNir<'a> {
                 let handle = self.get_src(&srcs[0]);
                 let dim = self.get_image_dim(intrin);
                 let coord = self.get_image_coord(intrin, dim);
-                /* let sample = self.get_src(&srcs[2]); */
+                // let sample = self.get_src(&srcs[2]);
 
                 let comps = u8::try_from(intrin.num_components).unwrap();
                 assert!(intrin.def.bit_size() == 32);
@@ -1839,7 +1837,7 @@ impl<'a> ShaderFromNir<'a> {
                 let handle = self.get_src(&srcs[0]);
                 let dim = self.get_image_dim(intrin);
                 let coord = self.get_image_coord(intrin, dim);
-                /* let sample = self.get_src(&srcs[2]); */
+                // let sample = self.get_src(&srcs[2]);
                 let data = self.get_src(&srcs[3]);
 
                 let comps = u8::try_from(intrin.num_components).unwrap();
@@ -2758,7 +2756,7 @@ impl<'a> ShaderFromNir<'a> {
         }
 
         if let Some(ni) = nb.following_if() {
-            /* The fall-through edge has to come first */
+            // The fall-through edge has to come first
             self.cfg.add_edge(nb.index, ni.first_then_block().index);
             self.cfg.add_edge(nb.index, ni.first_else_block().index);
 
@@ -2768,7 +2766,7 @@ impl<'a> ShaderFromNir<'a> {
 
             let cond = self.get_ssa(&ni.condition.as_def())[0];
             bra.pred = cond.into();
-            /* This is the branch to jump to the else */
+            // This is the branch to jump to the else
             bra.pred.pred_inv = true;
 
             b.push_instr(bra);

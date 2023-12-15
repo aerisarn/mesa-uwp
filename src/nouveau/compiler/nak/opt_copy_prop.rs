@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::ir::*;
 
@@ -142,7 +140,7 @@ impl CopyPropPass {
         loop {
             let src_ssa = match &mut src.src_ref {
                 SrcRef::SSA(ssa) => {
-                    /* First, try to propagate SSA components */
+                    // First, try to propagate SSA components
                     if self.prop_to_ssa_ref(ssa) {
                         continue;
                     }
@@ -163,7 +161,7 @@ impl CopyPropPass {
                 }
             }
 
-            /* If we got here, all the components are zero */
+            // If we got here, all the components are zero
             src.src_ref = SrcRef::Zero;
         }
     }
@@ -181,7 +179,7 @@ impl CopyPropPass {
                 None => return,
             };
 
-            /* If there are modifiers, the source types have to match */
+            // If there are modifiers, the source types have to match
             if !entry.src.src_mod.is_none() && entry.src_type != src_type {
                 return;
             }
@@ -200,11 +198,10 @@ impl CopyPropPass {
 
             assert!(src_ssa.comps() == 2);
 
-            /* First, try to propagate the two halves individually.  Source
-             * modifiers only apply to the high 32 bits so we have to reject
-             * any copies with source modifiers in the low bits and apply
-             * source modifiers as needed when propagating the high bits.
-             */
+            // First, try to propagate the two halves individually.  Source
+            // modifiers only apply to the high 32 bits so we have to reject
+            // any copies with source modifiers in the low bits and apply
+            // source modifiers as needed when propagating the high bits.
             let lo_entry_or_none = self.get_copy(&src_ssa[0]);
             if let Some(lo_entry) = lo_entry_or_none {
                 if !lo_entry.src.src_mod.is_none() {
@@ -254,9 +251,8 @@ impl CopyPropPass {
                     _ => return,
                 },
                 SrcRef::Imm32(i) => {
-                    /* 32-bit immediates for f64 srouces are the top 32 bits
-                     * with zero in the lower 32.
-                     */
+                    // 32-bit immediates for f64 srouces are the top 32 bits
+                    // with zero in the lower 32.
                     match lo_entry.src.src_ref {
                         SrcRef::Zero | SrcRef::Imm32(0) => SrcRef::Imm32(i),
                         _ => return,
@@ -277,7 +273,7 @@ impl CopyPropPass {
                     }
                     _ => return,
                 },
-                /* SrcRef::SSA is already handled above */
+                // SrcRef::SSA is already handled above
                 _ => return,
             };
 

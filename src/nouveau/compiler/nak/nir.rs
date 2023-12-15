@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use nak_bindings::*;
 
@@ -16,7 +14,8 @@ macro_rules! offset_of {
         // Using a separate function to minimize unhygienic hazards
         // (e.g. unsafety of #[repr(packed)] field borrows).
         // Uncomment `const` when `const fn`s can juggle pointers.
-        /*const*/
+
+        // const
         fn offset() -> usize {
             let u = std::mem::MaybeUninit::<$Struct>::uninit();
             // Use pattern-matching to avoid accidentally going through Deref.

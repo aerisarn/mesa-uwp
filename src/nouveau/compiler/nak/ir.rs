@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 extern crate bitview;
 extern crate nak_ir_proc;
@@ -1609,7 +1607,7 @@ impl LogicOp3 {
         y: T,
         z: T,
     ) -> T {
-        let mut res = x & !x; /* zero */
+        let mut res = x & !x; // zero
         if (self.lut & (1 << 0)) != 0 {
             res = res | (!x & !y & !z);
         }
@@ -4298,14 +4296,13 @@ impl<A: Clone, B: Clone> VecPair<A, B> {
 
         let mut new_len = i;
 
-        /* Don't check this one twice. */
+        // Don't check this one twice.
         i += 1;
 
         while i < len {
-            /* This could be more efficient but it's good enough for our
-             * purposes since everything we're storing is small and has a
-             * trivial Drop.
-             */
+            // This could be more efficient but it's good enough for our
+            // purposes since everything we're storing is small and has a
+            // trivial Drop.
             if f(&self.a[i], &self.b[i]) {
                 self.a[new_len] = self.a[i].clone();
                 self.b[new_len] = self.b[i].clone();

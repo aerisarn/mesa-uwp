@@ -1,7 +1,5 @@
-/*
- * Copyright © 2022 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2022 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::bitset::BitSet;
 use crate::ir::*;
@@ -96,7 +94,7 @@ impl SSAUseMap {
                     }
                 }
                 _ => {
-                    /* We don't care about predicates because they're scalar */
+                    // We don't care about predicates because they're scalar
                     for src in instr.srcs() {
                         if let SrcRef::SSA(ssa) = src.src_ref {
                             self.add_vec_use(ip, ssa);
@@ -128,7 +126,7 @@ struct LiveValue {
     pub reg_ref: RegRef,
 }
 
-/* We need a stable ordering of live values so that RA is deterministic */
+// We need a stable ordering of live values so that RA is deterministic
 impl Ord for LiveValue {
     fn cmp(&self, other: &Self) -> Ordering {
         let s_file = u8::from(self.reg_ref.file());
@@ -263,12 +261,11 @@ impl RegAllocator {
                 .try_into()
                 .unwrap();
 
-            /* Ensure we're properly aligned */
+            // Ensure we're properly aligned
             let reg = reg.next_multiple_of(align);
 
-            /* Ensure we're in-bounds. This also serves as a check to ensure
-             * that u8::try_from(reg + i) will succeed.
-             */
+            // Ensure we're in-bounds. This also serves as a check to ensure
+            // that u8::try_from(reg + i) will succeed.
             if reg > self.num_regs - u32::from(comps) {
                 return None;
             }
@@ -328,9 +325,8 @@ impl RegAllocator {
                         }
                     }
 
-                    /* We weren't able to pair it with an already allocated
-                     * register but maybe we can at least find an aligned one.
-                     */
+                    // We weren't able to pair it with an already allocated
+                    // register but maybe we can at least find an aligned one.
                     if let Some(reg) =
                         self.try_find_unused_reg_range(0, align, 1)
                     {
@@ -423,12 +419,11 @@ impl<'a> PinnedRegAllocator<'a> {
                 .try_into()
                 .unwrap();
 
-            /* Ensure we're properly aligned */
+            // Ensure we're properly aligned
             let reg = reg.next_multiple_of(align);
 
-            /* Ensure we're in-bounds. This also serves as a check to ensure
-             * that u8::try_from(reg + i) will succeed.
-             */
+            // Ensure we're in-bounds. This also serves as a check to ensure
+            // that u8::try_from(reg + i) will succeed.
             if reg > self.ra.num_regs - u32::from(comps) {
                 return None;
             }
@@ -492,9 +487,8 @@ impl<'a> PinnedRegAllocator<'a> {
         pcopy.dsts_srcs.append(&mut self.pcopy.dsts_srcs);
 
         if !self.evicted.is_empty() {
-            /* Sort so we get determinism, even if the hash map order changes
-             * from one run to another or due to rust compiler updates.
-             */
+            // Sort so we get determinism, even if the hash map order changes
+            // from one run to another or due to rust compiler updates.
             let mut evicted: Vec<_> = self.evicted.drain().collect();
             evicted.sort_by_key(|(_, reg)| *reg);
 
@@ -603,9 +597,8 @@ impl Drop for PinnedRegAllocator<'_> {
 }
 
 fn instr_remap_srcs_file(instr: &mut Instr, ra: &mut PinnedRegAllocator) {
-    /* Collect vector sources first since those may silently pin some of our
-     * scalar sources.
-     */
+    // Collect vector sources first since those may silently pin some of our
+    // scalar sources.
     for src in instr.srcs_mut() {
         if let SrcRef::SSA(ssa) = &src.src_ref {
             if ssa.file() == ra.file() && ssa.comps() > 1 {
@@ -677,7 +670,7 @@ fn instr_assign_regs_file(
         }
     }
 
-    /* No vector destinations is the easy case */
+    // No vector destinations is the easy case
     if vec_dst_comps == 0 {
         let mut pra = PinnedRegAllocator::new(ra);
         instr_remap_srcs_file(instr, &mut pra);
@@ -687,10 +680,9 @@ fn instr_assign_regs_file(
         return;
     }
 
-    /* Predicates can't be vectors.  This lets us ignore instr.pred in our
-     * analysis for the cases below. Only the easy case above needs to care
-     * about them.
-     */
+    // Predicates can't be vectors.  This lets us ignore instr.pred in our
+    // analysis for the cases below. Only the easy case above needs to care
+    // about them.
     assert!(!ra.file().is_predicate());
 
     let mut avail = killed.set.clone();
@@ -782,9 +774,8 @@ fn instr_assign_regs_file(
         let mut pra = PinnedRegAllocator::new(ra);
         instr_remap_srcs_file(instr, &mut pra);
 
-        /* Allocate vector destinations first so we have the most freedom.
-         * Scalar destinations can fill in holes.
-         */
+        // Allocate vector destinations first so we have the most freedom.
+        // Scalar destinations can fill in holes.
         for dst in instr.dsts_mut() {
             if let Dst::SSA(ssa) = dst {
                 if ssa.file() == pra.file() && ssa.comps() > 1 {
@@ -1088,9 +1079,8 @@ impl AssignRegsBlock {
         bl: &BL,
         pred_ra: Option<&PerRegFile<RegAllocator>>,
     ) {
-        /* Populate live in from the register file we're handed.  We'll add more
-         * live in when we process the OpPhiDst, if any.
-         */
+        // Populate live in from the register file we're handed.  We'll add more
+        // live in when we process the OpPhiDst, if any.
         if let Some(pred_ra) = pred_ra {
             for (raf, pred_raf) in self.ra.values_mut().zip(pred_ra.values()) {
                 for (ssa, reg) in &pred_raf.ssa_reg {
@@ -1112,7 +1102,7 @@ impl AssignRegsBlock {
         let mut dsts_killed = KillSet::new();
 
         for (ip, instr) in b.instrs.drain(..).enumerate() {
-            /* Build up the kill set */
+            // Build up the kill set
             srcs_killed.clear();
             if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
                 if !bl.is_live_after_ip(ssa, ip) {
@@ -1159,7 +1149,7 @@ impl AssignRegsBlock {
             }
         }
 
-        /* Sort live-in to maintain determinism */
+        // Sort live-in to maintain determinism
         self.live_in.sort();
 
         b.instrs = instrs;
@@ -1268,7 +1258,7 @@ impl Shader {
             let pred_ra = if pred.is_empty() {
                 None
             } else {
-                /* Start with the previous block's. */
+                // Start with the previous block's.
                 Some(&blocks[pred[0]].ra)
             };
 

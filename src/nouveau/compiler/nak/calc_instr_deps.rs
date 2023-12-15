@@ -470,8 +470,8 @@ fn calc_delays(f: &mut Function) {
         let mut ready = RegTracker::new(0_u32);
         let mut bars_ready = [0_u32; 6];
         for instr in b.instrs.iter_mut().rev() {
-            let mut min_start = cycle + 1; /* TODO: co-issue */
-            // Barriers take two cycles before we can wait on them
+            let mut min_start = cycle + 1; // TODO: co-issue
+                                           // Barriers take two cycles before we can wait on them
             if let Some(bar) = instr.deps.rd_bar() {
                 min_start = max(min_start, bars_ready[usize::from(bar)] + 2);
             }

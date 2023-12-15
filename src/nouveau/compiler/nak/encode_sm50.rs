@@ -1,7 +1,5 @@
-/*
- * Copyright © 2023 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2023 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::ir::*;
 use bitview::*;
@@ -165,7 +163,7 @@ impl SM50Instr {
     }
 
     fn set_pred_src(&mut self, range: Range<usize>, not_bit: usize, src: Src) {
-        /* The default for predicates is true */
+        // The default for predicates is true
         let true_reg = RegRef::new(RegFile::Pred, 7, 1);
 
         let (not, reg) = match src.src_ref {
@@ -372,7 +370,7 @@ impl SM50Instr {
         self.set_opcode(0x5090);
 
         self.set_pred_dst(3..6, op.dsts[0]);
-        self.set_pred_dst(0..3, op.dsts[1]); /* dst1 */
+        self.set_pred_dst(0..3, op.dsts[1]);
 
         self.set_pred_src(12..15, 15, op.srcs[0]);
         self.set_pred_src(29..32, 32, op.srcs[1]);
@@ -691,7 +689,7 @@ impl SM50Instr {
             src => panic!("Unsupported src type for I2F: {src}"),
         }
 
-        self.set_field(41..43, 0_u8); /* TODO: subop */
+        self.set_field(41..43, 0_u8); // TODO: subop
         self.set_bit(13, op.src_type.is_signed());
         self.set_field(8..10, (op.dst_type.bits() / 8).ilog2());
         self.set_rnd_mode(39..41, op.rnd_mode);
@@ -722,11 +720,11 @@ impl SM50Instr {
             src => panic!("Unsupported src type for F2F: {src}"),
         }
 
-        /* no saturation in the IR, would be bit 50 */
+        // no saturation in the IR, would be bit 50
         self.set_field(8..10, (op.dst_type.bits() / 8).ilog2());
         self.set_field(10..12, (op.src_type.bits() / 8).ilog2());
         self.set_rnd_mode(39..41, op.rnd_mode);
-        self.set_field(41..43, 0_u8); /* TODO: subop */
+        self.set_field(41..43, 0_u8); // TODO: subop
         self.set_bit(44, op.ftz);
 
         self.set_dst(op.dst);
@@ -782,12 +780,12 @@ impl SM50Instr {
             src => panic!("Unsupported src2 type for F2F: {src}"),
         }
 
-        self.set_bit(48, op.signed); /* src0 signed */
+        self.set_bit(48, op.signed); // src0 signed
         self.set_bit(
             51,
             op.srcs[0].src_mod.is_ineg() ^ op.srcs[1].src_mod.is_ineg(),
         );
-        self.set_bit(53, op.signed); /* src1 signed */
+        self.set_bit(53, op.signed); // src1 signed
 
         self.set_reg_src(8..16, op.srcs[0]);
         self.set_dst(op.dst);
@@ -934,12 +932,12 @@ impl SM50Instr {
             _ => panic!("Unsupported src type"),
         }
 
-        self.set_pred_dst(0..3, Dst::None); /* dst1 */
+        self.set_pred_dst(0..3, Dst::None); // dst1
         self.set_pred_dst(3..6, op.dst);
         self.set_reg_src(8..16, op.srcs[0]);
         self.set_pred_src(39..42, 42, op.accum);
 
-        self.set_bit(43, false); /* .X */
+        self.set_bit(43, false); // .X
         self.set_pred_set_op(45..47, op.set_op);
 
         self.set_field(
@@ -1007,9 +1005,9 @@ impl SM50Instr {
                 AtomType::I32 => 1_u8,
                 AtomType::U64 => 2_u8,
                 AtomType::F32 => 3_u8,
-                /* NOTE: U128 => 4_u8, */
+                // NOTE: U128 => 4_u8,
                 AtomType::I64 => 5_u8,
-                /* TODO: do something about ATOMG.F64 */
+                // TODO: do something about ATOMG.F64
                 other => panic!("ATOMG.{other} not supported on SM50"),
             },
         );
@@ -1030,7 +1028,7 @@ impl SM50Instr {
                 AtomType::I32 => 1_u8,
                 AtomType::U64 => 2_u8,
                 AtomType::I64 => 3_u8,
-                /* TODO: do something about ATOMS.F{32,64} */
+                // TODO: do something about ATOMS.F{32,64}
                 other => panic!("ATOMS.{other} not supported on SM50"),
             },
         );
@@ -1088,9 +1086,9 @@ impl SM50Instr {
 
         self.set_tex_dim(28..31, op.dim);
         self.set_field(31..35, op.mask);
-        self.set_bit(35, false); /* ToDo: NDV */
+        self.set_bit(35, false); // ToDo: NDV
         self.set_tex_lod_mode(37..39, op.lod_mode);
-        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(49, false); // TODO: .NODEP
         self.set_bit(50, op.z_cmpr);
         self.set_bit(54, op.offset);
     }
@@ -1107,7 +1105,7 @@ impl SM50Instr {
         self.set_tex_dim(28..31, op.dim);
         self.set_field(31..35, op.mask);
         self.set_bit(35, op.offset);
-        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(49, false); // TODO: .NODEP
         self.set_bit(50, op.is_ms);
 
         assert!(
@@ -1127,7 +1125,7 @@ impl SM50Instr {
 
         self.set_tex_dim(28..31, op.dim);
         self.set_field(31..35, op.mask);
-        self.set_bit(35, false); /* ToDo: NDV */
+        self.set_bit(35, false); // ToDo: NDV
         self.set_field(
             36..38,
             match op.offset_mode {
@@ -1137,7 +1135,7 @@ impl SM50Instr {
             },
         );
         self.set_field(38..40, op.comp);
-        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(49, false); // TODO: .NODEP
         self.set_bit(50, op.z_cmpr);
     }
 
@@ -1151,8 +1149,8 @@ impl SM50Instr {
 
         self.set_tex_dim(28..31, op.dim);
         self.set_field(31..35, op.mask);
-        self.set_bit(35, false); /* ToDo: NDV */
-        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(35, false); // ToDo: NDV
+        self.set_bit(49, false); // TODO: .NODEP
     }
 
     fn encode_txd(&mut self, op: &OpTxd) {
@@ -1167,7 +1165,7 @@ impl SM50Instr {
         self.set_tex_dim(28..31, op.dim);
         self.set_field(31..35, op.mask);
         self.set_bit(35, op.offset);
-        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(49, false); // TODO: .NODEP
     }
 
     fn encode_txq(&mut self, op: &OpTxq) {
@@ -1190,7 +1188,7 @@ impl SM50Instr {
             },
         );
         self.set_field(31..35, op.mask);
-        self.set_bit(49, false); /* TODO: .NODEP */
+        self.set_bit(49, false); // TODO: .NODEP
     }
 
     fn encode_ipa(&mut self, op: &OpIpa) {
@@ -1294,7 +1292,7 @@ impl SM50Instr {
     ) {
         self.set_opcode(0xe240);
         self.set_rel_offset(20..44, &op.target, ip, labels);
-        self.set_field(0..5, 0xF_u8); /* TODO: Pred? */
+        self.set_field(0..5, 0xF_u8); // TODO: Pred?
     }
 
     fn encode_exit(&mut self, _op: &OpExit) {
@@ -1315,19 +1313,15 @@ impl SM50Instr {
 
         self.set_reg_src(8..16, SrcRef::Zero.into());
 
-        /*
-         * 00: RED.POPC
-         * 01: RED.AND
-         * 02: RED.OR
-         */
+        // 00: RED.POPC
+        // 01: RED.AND
+        // 02: RED.OR
         self.set_field(35..37, 0_u8);
 
-        /*
-         * 00: SYNC
-         * 01: ARV
-         * 02: RED
-         * 03: SCAN
-         */
+        // 00: SYNC
+        // 01: ARV
+        // 02: RED
+        // 03: SCAN
         self.set_field(32..35, 0_u8);
 
         self.set_pred_src(39..42, 42, SrcRef::True.into());
@@ -1470,7 +1464,7 @@ impl SM50Instr {
             }
 
             self.set_rnd_mode(39..41, op.rnd_mode);
-            self.set_field(41..44, 0x0_u8); /* TODO: PDIV */
+            self.set_field(41..44, 0x0_u8); // TODO: PDIV
             self.set_bit(44, op.ftz);
             self.set_bit(45, op.dnz);
             self.set_bit(
@@ -1485,7 +1479,7 @@ impl SM50Instr {
     }
 
     fn encode_ffma(&mut self, op: &OpFFma) {
-        /* TODO: FFMA in the 32 bits immediate form use the dest as source 2 */
+        // TODO: FFMA in the 32 bits immediate form use the dest as source 2
         assert!(op.srcs[1].as_imm_not_i20().is_none());
 
         // FFMA doesn't have any abs flags.
@@ -1571,7 +1565,7 @@ impl SM50Instr {
         self.set_reg_fmod_src(8..16, 54, 43, op.srcs[0]);
         self.set_pred_src(39..42, 42, SrcRef::True.into());
         self.set_float_cmp_op(48..52, op.cmp_op);
-        self.set_bit(52, true); /* bool float */
+        self.set_bit(52, true); // bool float
         self.set_bit(55, op.ftz);
         self.set_dst(op.dst);
     }
@@ -1596,7 +1590,7 @@ impl SM50Instr {
         }
 
         self.set_pred_dst(3..6, op.dst);
-        self.set_pred_dst(0..3, Dst::None); /* dst1 */
+        self.set_pred_dst(0..3, Dst::None); // dst1
         self.set_pred_src(39..42, 42, op.accum);
         self.set_pred_set_op(45..47, op.set_op);
         self.set_bit(47, op.ftz);
@@ -1733,7 +1727,7 @@ impl SM50Instr {
         self.set_reg_src(8..16, op.srcs[0]);
         self.set_reg_src(39..47, op.srcs[1]);
         self.set_dst(op.dst);
-        /* TODO: subop? */
+        // TODO: subop?
     }
 
     pub fn encode(

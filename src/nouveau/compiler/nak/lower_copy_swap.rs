@@ -155,7 +155,7 @@ impl LowerCopySwap {
         assert!(*swap.srcs[1].src_ref.as_reg().unwrap() == x);
 
         if x == y {
-            /* Nothing to do */
+            // Nothing to do
         } else if x.is_predicate() {
             // TODO: Transform this in PLOP2 for SM5x-SM6x
             b.push_op(OpPLop3 {

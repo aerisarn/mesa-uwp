@@ -306,9 +306,8 @@ impl<'a> SpillChooser<'a> {
         self.spills.push(Reverse(SSANextUse::new(ssa, next_use)));
 
         if self.spills.len() > self.count {
-            /* Because we reversed the heap, pop actually removes the
-             * one with the lowest next_use which is what we want here.
-             */
+            // Because we reversed the heap, pop actually removes the
+            // one with the lowest next_use which is what we want here.
             let old = self.spills.pop().unwrap();
             debug_assert!(self.spills.len() == self.count);
             self.min_next_use = max(self.min_next_use, old.0.next_use);
@@ -517,7 +516,7 @@ fn spill_values<S: Spill>(
 
             for (ssa, info) in live.drain() {
                 if info.num_preds == preds.len() {
-                    /* This one is in all the input sets */
+                    // This one is in all the input sets
                     w.insert(ssa);
                 } else {
                     some.push(Reverse(SSANextUse::new(ssa, info.next_use)));

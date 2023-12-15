@@ -1,7 +1,5 @@
-/*
- * Copyright © 2023 Collabora, Ltd.
- * SPDX-License-Identifier: MIT
- */
+// Copyright © 2023 Collabora, Ltd.
+// SPDX-License-Identifier: MIT
 
 use crate::bitset::BitSet;
 
@@ -46,13 +44,12 @@ fn graph_post_dfs<N>(
     }
     seen.insert(id);
 
-    /* Reverse the order of the successors so that any successors which are
-     * forward edges get descending indices.  This ensures that, in the reverse
-     * post order, successors (and their dominated children) come in-order.
-     * In particular, as long as fall-through edges are only ever used for
-     * forward edges and the fall-through edge comes first, we guarantee that
-     * the fallthrough block comes immediately after its predecessor.
-     */
+    // Reverse the order of the successors so that any successors which are
+    // forward edges get descending indices.  This ensures that, in the reverse
+    // post order, successors (and their dominated children) come in-order.
+    // In particular, as long as fall-through edges are only ever used for
+    // forward edges and the fall-through edge comes first, we guarantee that
+    // the fallthrough block comes immediately after its predecessor.
     for s in nodes[id].succ.iter().rev() {
         graph_post_dfs(nodes, *s, seen, post_idx, count);
     }
@@ -82,7 +79,7 @@ fn rev_post_order_sort<N>(nodes: &mut Vec<CFGNode<N>>) {
     };
     assert!(remap_idx(0) == Some(0));
 
-    /* Re-map edges to use post-index numbering */
+    // Re-map edges to use post-index numbering
     for n in nodes.iter_mut() {
         let remap_filter_idx = |i: &mut usize| {
             if let Some(r) = remap_idx(*i) {
@@ -96,9 +93,8 @@ fn rev_post_order_sort<N>(nodes: &mut Vec<CFGNode<N>>) {
         n.succ.retain_mut(remap_filter_idx);
     }
 
-    /* We know a priori that each non-MAX post_idx is unique so we can sort the
-     * nodes by inserting them into a new array by index.
-     */
+    // We know a priori that each non-MAX post_idx is unique so we can sort the
+    // nodes by inserting them into a new array by index.
     let mut sorted: Vec<CFGNode<N>> = Vec::with_capacity(count);
     for (i, n) in nodes.drain(..).enumerate() {
         if let Some(r) = remap_idx(i) {
@@ -214,11 +210,11 @@ fn detect_loops<N>(nodes: &mut Vec<CFGNode<N>>) -> bool {
     nodes[0].lph = usize::MAX;
     for i in 1..nodes.len() {
         if loops.get(i) {
-            /* This is a loop header */
+            // This is a loop header
             nodes[i].lph = i;
             has_loop = true;
         } else {
-            /* Otherwise, we have the same loop header as our dominator */
+            // Otherwise, we have the same loop header as our dominator
             let dom = nodes[i].dom;
             let dom_lph = nodes[dom].lph;
             nodes[i].lph = dom_lph;
@@ -300,10 +296,9 @@ impl<N> CFG<N> {
     }
 
     pub fn dominates(&self, parent: usize, child: usize) -> bool {
-        /* If a block is unreachable, then dom_pre_idx == usize::MAX and
-         * dom_post_idx == 0.  This allows us to trivially handle unreachable
-         * blocks here with zero extra work.
-         */
+        // If a block is unreachable, then dom_pre_idx == usize::MAX and
+        // dom_post_idx == 0.  This allows us to trivially handle unreachable
+        // blocks here with zero extra work.
         self.dom_dfs_pre_index(child) >= self.dom_dfs_pre_index(parent)
             && self.dom_dfs_post_index(child) <= self.dom_dfs_post_index(parent)
     }
