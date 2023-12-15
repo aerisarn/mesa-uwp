@@ -2245,7 +2245,6 @@ impl<'a> ShaderFromNir<'a> {
                         );
                         self.info.num_barriers = 1;
                         b.push_op(OpBar {});
-                        b.push_op(OpNop { label: None });
                     }
                     _ => panic!("Unhandled execution scope"),
                 }

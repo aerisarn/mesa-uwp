@@ -470,8 +470,8 @@ fn calc_delays(f: &mut Function, sm: u8) {
         let mut ready = RegTracker::new(0_u32);
         let mut bars_ready = [0_u32; 6];
         for instr in b.instrs.iter_mut().rev() {
-            let mut min_start = cycle + 1; // TODO: co-issue
-                                           // Barriers take two cycles before we can wait on them
+            // TODO: co-issue
+            let mut min_start = cycle + instr.get_exec_latency(sm);
             if let Some(bar) = instr.deps.rd_bar() {
                 min_start = max(min_start, bars_ready[usize::from(bar)] + 2);
             }
@@ -507,6 +507,20 @@ fn calc_delays(f: &mut Function, sm: u8) {
             cycle = min_start;
         }
     }
+
+    // It's unclear exactly why but the blob inserts a Nop with a delay of 2
+    // after every instruction which has an exec latency.  Perhaps it has
+    // something to do with .yld?  In any case, the extra 2 cycles aren't worth
+    // the chance of weird bugs.
+    f.map_instrs(|instr, _| {
+        if instr.get_exec_latency(sm) > 1 {
+            let mut nop = Instr::new_boxed(OpNop { label: None });
+            nop.deps.set_delay(2);
+            MappedInstrs::Many(vec![instr, nop])
+        } else {
+            MappedInstrs::One(instr)
+        }
+    });
 }
 
 impl Shader {
