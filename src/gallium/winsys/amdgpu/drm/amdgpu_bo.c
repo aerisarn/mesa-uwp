@@ -200,7 +200,7 @@ void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer_lean *_buf)
    else if (bo->b.base.placement & RADEON_DOMAIN_GTT)
       ws->allocated_gtt -= align64(bo->b.base.size, ws->info.gart_page_size);
 
-   simple_mtx_destroy(&bo->lock);
+   simple_mtx_destroy(&bo->map_lock);
    FREE(bo);
 }
 
@@ -363,18 +363,18 @@ void *amdgpu_bo_map(struct radeon_winsys *rws,
    } else {
       cpu = p_atomic_read(&real->cpu_ptr);
       if (!cpu) {
-         simple_mtx_lock(&real->lock);
+         simple_mtx_lock(&real->map_lock);
          /* Must re-check due to the possibility of a race. Re-check need not
           * be atomic thanks to the lock. */
          cpu = real->cpu_ptr;
          if (!cpu) {
             if (!amdgpu_bo_do_map(rws, real, &cpu)) {
-               simple_mtx_unlock(&real->lock);
+               simple_mtx_unlock(&real->map_lock);
                return NULL;
             }
             p_atomic_set(&real->cpu_ptr, cpu);
          }
-         simple_mtx_unlock(&real->lock);
+         simple_mtx_unlock(&real->map_lock);
       }
    }
 
@@ -566,7 +566,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
          goto error_va_map;
    }
 
-   simple_mtx_init(&bo->lock, mtx_plain);
+   simple_mtx_init(&bo->map_lock, mtx_plain);
    pipe_reference_init(&bo->b.base.reference, 1);
    bo->b.base.placement = initial_domain;
    bo->b.base.alignment_log2 = util_logbase2(alignment);
@@ -1546,7 +1546,7 @@ static struct pb_buffer_lean *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    bo->b.type = AMDGPU_BO_REAL;
    bo->gpu_address = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
-   simple_mtx_init(&bo->lock, mtx_plain);
+   simple_mtx_init(&bo->map_lock, mtx_plain);
    bo->bo_handle = result.buf_handle;
    bo->va_handle = va_handle;
    bo->is_shared = true;
@@ -1700,7 +1700,7 @@ static struct pb_buffer_lean *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     bo->b.type = AMDGPU_BO_REAL;
     bo->gpu_address = va;
     bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
-    simple_mtx_init(&bo->lock, mtx_plain);
+    simple_mtx_init(&bo->map_lock, mtx_plain);
     bo->bo_handle = buf_handle;
     bo->cpu_ptr = pointer;
     bo->va_handle = va_handle;

@@ -80,7 +80,7 @@ struct amdgpu_bo_real {
 #if DEBUG
    struct list_head global_list_item;
 #endif
-   simple_mtx_t lock;
+   simple_mtx_t map_lock;
 
    bool is_user_ptr;
 
