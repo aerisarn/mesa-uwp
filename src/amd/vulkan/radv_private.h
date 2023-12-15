@@ -1973,8 +1973,6 @@ struct radv_prim_vertex_count {
    uint8_t incr;
 };
 
-#define SI_GS_PER_ES 128
-
 enum radv_pipeline_type {
    RADV_PIPELINE_GRAPHICS,
    RADV_PIPELINE_GRAPHICS_LIB,
