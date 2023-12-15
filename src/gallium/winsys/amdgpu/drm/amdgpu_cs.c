@@ -1280,7 +1280,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
       struct amdgpu_cs_buffer *buffer = &cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[i];
       struct amdgpu_bo_sparse *bo = get_sparse_bo(buffer->bo);
 
-      simple_mtx_lock(&bo->lock);
+      simple_mtx_lock(&bo->commit_lock);
 
       list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->backing, list) {
          /* We can directly add the buffer here, because we know that each
@@ -1290,14 +1290,14 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
             amdgpu_do_add_buffer(cs, &backing->bo->b, &cs->buffer_lists[AMDGPU_BO_REAL]);
          if (!real_buffer) {
             fprintf(stderr, "%s: failed to add buffer\n", __func__);
-            simple_mtx_unlock(&bo->lock);
+            simple_mtx_unlock(&bo->commit_lock);
             return false;
          }
 
          real_buffer->usage = buffer->usage;
       }
 
-      simple_mtx_unlock(&bo->lock);
+      simple_mtx_unlock(&bo->commit_lock);
    }
 
    return true;

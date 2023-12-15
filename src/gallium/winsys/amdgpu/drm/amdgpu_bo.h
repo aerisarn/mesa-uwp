@@ -108,7 +108,7 @@ struct amdgpu_bo_sparse {
 
    uint32_t num_va_pages;
    uint32_t num_backing_pages;
-   simple_mtx_t lock;
+   simple_mtx_t commit_lock;
 
    struct list_head backing;
 

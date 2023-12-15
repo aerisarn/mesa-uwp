@@ -1016,7 +1016,7 @@ static void amdgpu_bo_sparse_destroy(struct radeon_winsys *rws, struct pb_buffer
 
    amdgpu_va_range_free(bo->va_handle);
    FREE(bo->commitments);
-   simple_mtx_destroy(&bo->lock);
+   simple_mtx_destroy(&bo->commit_lock);
    FREE(bo);
 }
 
@@ -1041,7 +1041,7 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    if (!bo)
       return NULL;
 
-   simple_mtx_init(&bo->lock, mtx_plain);
+   simple_mtx_init(&bo->commit_lock, mtx_plain);
    pipe_reference_init(&bo->b.base.reference, 1);
    bo->b.base.placement = domain;
    bo->b.base.alignment_log2 = util_logbase2(RADEON_SPARSE_PAGE_SIZE);
@@ -1079,7 +1079,7 @@ error_va_map:
 error_va_alloc:
    FREE(bo->commitments);
 error_alloc_commitments:
-   simple_mtx_destroy(&bo->lock);
+   simple_mtx_destroy(&bo->commit_lock);
    FREE(bo);
    return NULL;
 }
@@ -1104,7 +1104,7 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer_lean *buf,
    va_page = offset / RADEON_SPARSE_PAGE_SIZE;
    end_va_page = va_page + DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
 
-   simple_mtx_lock(&bo->lock);
+   simple_mtx_lock(&bo->commit_lock);
 
 #if DEBUG_SPARSE_COMMITS
    sparse_dump(bo, __func__);
@@ -1208,7 +1208,7 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer_lean *buf,
    }
 out:
 
-   simple_mtx_unlock(&bo->lock);
+   simple_mtx_unlock(&bo->commit_lock);
 
    return ok;
 }
@@ -1233,7 +1233,7 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer_lean *buf,
    start_va_page = va_page = range_offset / RADEON_SPARSE_PAGE_SIZE;
    end_va_page = (*range_size + range_offset) / RADEON_SPARSE_PAGE_SIZE;
 
-   simple_mtx_lock(&bo->lock);
+   simple_mtx_lock(&bo->commit_lock);
    /* Lookup the first committed page with backing physical storage */
    while (va_page < end_va_page && !comm[va_page].backing)
       va_page++;
@@ -1242,7 +1242,7 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer_lean *buf,
    if (va_page == end_va_page && !comm[va_page].backing) {
       uncommitted_range_prev = *range_size;
       *range_size = 0;
-      simple_mtx_unlock(&bo->lock);
+      simple_mtx_unlock(&bo->commit_lock);
       return uncommitted_range_prev;
    }
 
@@ -1250,7 +1250,7 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer_lean *buf,
    span_va_page = va_page;
    while (va_page < end_va_page && comm[va_page].backing)
       va_page++;
-   simple_mtx_unlock(&bo->lock);
+   simple_mtx_unlock(&bo->commit_lock);
 
    /* Calc byte count that need to skip before committed range */
    if (span_va_page != start_va_page)
