@@ -2368,8 +2368,15 @@ VkResult anv_BindImageMemory2(
          if (!bo || !isl_aux_usage_has_ccs(image->planes[p].aux_usage))
             continue;
 
-         /* Do nothing if flat CCS requirements are satisfied. */
-         if (device->info->has_flat_ccs && anv_bo_is_vram_only(bo))
+         /* Do nothing if flat CCS requirements are satisfied.
+          *
+          * Also, assume that imported BOs with a modifier including
+          * CCS live only in local memory. Otherwise the exporter should
+          * have failed the creation of the BO.
+          */
+         if (device->info->has_flat_ccs &&
+             (anv_bo_is_vram_only(bo) ||
+              (bo->alloc_flags & ANV_BO_ALLOC_IMPORTED)))
             continue;
 
          /* Add the plane to the aux map when applicable. */
