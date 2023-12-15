@@ -107,6 +107,7 @@
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     FLAKES_CHANNEL: "#videocore-ci"
+    FARM: igalia
   timeout: 20m
 
 .broadcom-test:arm64:

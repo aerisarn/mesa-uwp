@@ -22,7 +22,7 @@
 .formatting-check:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
-  stage: lint
+  stage: code-validation
   extends:
     - .use-debian/x86_64_build
   variables:
@@ -56,6 +56,29 @@ clang-format:
     - meson setup build
     - clang-format-${LLVM_VERSION} --version
     - ninja -C build clang-format
+
+.test-check:
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
+  stage: code-validation
+  extends:
+    - .use-debian/x86_64_build
+  variables:
+    GIT_STRATEGY: fetch
+  timeout: 10m
+
+python-test:
+  extends:
+    - .test-check
+  script:
+    - cd bin/ci
+    - pip install --break-system-packages -r test/requirements.txt
+    - PYTHONPATH=. pytest -v
+  rules:
+    - !reference [.disable-farm-mr-rules, rules]
+    - !reference [.never-post-merge-rules, rules]
+    - changes:
+        - bin/ci/**/*
 
 .test-gl:
   extends:

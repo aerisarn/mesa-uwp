@@ -14,6 +14,7 @@ vc4-rpi3-gl:arm32:
     HWCI_KERNEL_MODULES: vc4
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
+    DEVICE_TYPE: rpi3
 
 vc4-rpi3-gl-piglit-full:arm32:
   extends:
@@ -24,6 +25,7 @@ vc4-rpi3-gl-piglit-full:arm32:
     - igalia-fullrun
   variables:
     DEQP_SUITE: broadcom-rpi3-piglit-full
+    DEVICE_TYPE: rpi3
 
 
 v3d-rpi4-gl:arm64:
@@ -39,6 +41,7 @@ v3d-rpi4-gl:arm64:
     HWCI_START_WESTON: 1
     DEQP_SUITE: broadcom-rpi4
     DEQP_FRACTION: 2
+    DEVICE_TYPE: rpi4
 
 v3d-rpi4-gl-full:arm64:
   extends:
@@ -52,6 +55,7 @@ v3d-rpi4-gl-full:arm64:
   variables:
     TEST_PHASE_TIMEOUT: 40
     DEQP_FRACTION: 1
+    DEVICE_TYPE: rpi4
 
 
 v3d-rpi4-traces:arm64:
@@ -66,6 +70,7 @@ v3d-rpi4-traces:arm64:
     PIGLIT_TRACES_FILE: traces-broadcom.yml
     PIGLIT_REPLAY_DEVICE_NAME: "broadcom-rpi4"
     PIGLIT_RESULTS: "broadcom-rpi4-replay"
+    DEVICE_TYPE: rpi4
   tags:
     - igalia-rpi4
 
@@ -84,6 +89,7 @@ v3dv-rpi4-vk:arm64:
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
     VK_DRIVER: broadcom
+    DEVICE_TYPE: rpi4
   tags:
     - igalia-rpi4
 
@@ -99,3 +105,4 @@ v3dv-rpi4-vk-full:arm64:
   variables:
     TEST_PHASE_TIMEOUT: 80
     DEQP_FRACTION: 1
+    DEVICE_TYPE: rpi4
