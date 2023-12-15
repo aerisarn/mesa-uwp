@@ -2448,9 +2448,15 @@ const void *nir_to_rc_options(struct nir_shader *s,
               !options->lower_cmp && !options->lower_fabs);
    /* bool_to_float generates MOVs for b2f32 that we want to clean up. */
    NIR_PASS_V(s, nir_copy_prop);
+   /* At this point we need to clean;
+    *  a) fcsel_gt that come from the ftrunc lowering on R300,
+    *  b) all flavours of fcsels that read three different temp sources on R500.
+    */
    if (s->info.stage == MESA_SHADER_VERTEX) {
       if (is_r500)
          NIR_PASS_V(s, r300_nir_lower_fcsel_r500);
+      else
+         NIR_PASS_V(s, r300_nir_lower_fcsel_r300);
       NIR_PASS_V(s, r300_nir_lower_flrp);
    }
    NIR_PASS_V(s, nir_opt_dce);

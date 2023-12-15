@@ -99,6 +99,11 @@ r300_nir_lower_flrp = [
         (('flrp', a, b, c), ('ffma', b, c, ('ffma', ('fneg', a), c, a)))
 ]
 
+# Lower fcsel_ge from ftrunc on r300
+r300_nir_lower_fcsel_r300 = [
+        (('fcsel_ge', a, b, c), ('flrp', c, b, ('sge', a, 0.0)))
+]
+
 r300_nir_post_integer_lowering = [
         # If ffloor result is used only for indirect constant load, we can get rid of it
         # completelly as ntt emits ARL by default which already does the flooring.
@@ -167,6 +172,9 @@ def main():
 
         f.write(nir_algebraic.AlgebraicPass("r300_nir_lower_flrp",
                                             r300_nir_lower_flrp).render())
+
+        f.write(nir_algebraic.AlgebraicPass("r300_nir_lower_fcsel_r300",
+                                            r300_nir_lower_fcsel_r300).render())
 
 if __name__ == '__main__':
     main()
