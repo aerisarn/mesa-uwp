@@ -5112,7 +5112,8 @@ anv_device_get_pat_entry(struct anv_device *device,
     * This might change in future discrete platforms.
     */
    if (anv_physical_device_has_vram(device->physical)) {
-      if (alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)
+      if ((alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) ||
+          (alloc_flags & ANV_BO_ALLOC_IMPORTED))
          return &device->info->pat.cached_coherent;
       return &device->info->pat.writecombining;
    }

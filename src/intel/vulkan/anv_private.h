@@ -436,6 +436,12 @@ enum anv_bo_alloc_flags {
    /** For sampler pools */
    ANV_BO_ALLOC_SAMPLER_POOL =            (1 << 17),
 
+   /** Specifies that the BO is imported.
+    *
+    * Imported BOs must also be marked as ANV_BO_ALLOC_EXTERNAL
+    */
+   ANV_BO_ALLOC_IMPORTED =                (1 << 18),
+
    /** Specifies that the BO should be cached and coherent. */
    ANV_BO_ALLOC_HOST_CACHED_COHERENT =    (ANV_BO_ALLOC_HOST_COHERENT | ANV_BO_ALLOC_HOST_CACHED),
 };

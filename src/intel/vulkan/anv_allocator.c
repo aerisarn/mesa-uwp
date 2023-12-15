@@ -1431,7 +1431,8 @@ anv_bo_get_mmap_mode(struct anv_device *device, struct anv_bo *bo)
       return anv_device_get_pat_entry(device, alloc_flags)->mmap;
 
    if (anv_physical_device_has_vram(device->physical)) {
-      if (alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)
+      if ((alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) ||
+          (alloc_flags & ANV_BO_ALLOC_IMPORTED))
          return INTEL_DEVICE_INFO_MMAP_MODE_WB;
 
       return INTEL_DEVICE_INFO_MMAP_MODE_WC;
@@ -1665,8 +1666,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      /* Makes sure that userptr gets WB+1way host caching */
-      alloc_flags |= (ANV_BO_ALLOC_HOST_CACHED_COHERENT | ANV_BO_ALLOC_NO_LOCAL_MEM);
+      alloc_flags |= ANV_BO_ALLOC_IMPORTED;
       struct anv_bo new_bo = {
          .name = "host-ptr",
          .gem_handle = gem_handle,
@@ -1756,8 +1756,7 @@ anv_device_import_bo(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      /* so imported bos get WB+1way host caching */
-      alloc_flags |= (ANV_BO_ALLOC_HOST_CACHED_COHERENT | ANV_BO_ALLOC_NO_LOCAL_MEM);
+      alloc_flags |= ANV_BO_ALLOC_IMPORTED;
       struct anv_bo new_bo = {
          .name = "imported",
          .gem_handle = gem_handle,
