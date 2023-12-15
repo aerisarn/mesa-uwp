@@ -59,7 +59,7 @@ static bool amdgpu_bo_wait(struct radeon_winsys *rws,
       bool buffer_busy = true;
       int r;
 
-      r = amdgpu_bo_wait_for_idle(get_real_bo(bo)->bo, timeout, &buffer_busy);
+      r = amdgpu_bo_wait_for_idle(get_real_bo(bo)->bo_handle, timeout, &buffer_busy);
       if (r)
          fprintf(stderr, "%s: amdgpu_bo_wait_for_idle failed %i\n", __func__, r);
       return !buffer_busy;
@@ -149,10 +149,10 @@ void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer_lean *_buf)
       return;
    }
 
-   _mesa_hash_table_remove_key(ws->bo_export_table, bo->bo);
+   _mesa_hash_table_remove_key(ws->bo_export_table, bo->bo_handle);
 
    if (bo->b.base.placement & RADEON_DOMAIN_VRAM_GTT) {
-      amdgpu_bo_va_op(bo->bo, 0, bo->b.base.size, bo->gpu_address, 0, AMDGPU_VA_OP_UNMAP);
+      amdgpu_bo_va_op(bo->bo_handle, 0, bo->b.base.size, bo->gpu_address, 0, AMDGPU_VA_OP_UNMAP);
       amdgpu_va_range_free(bo->va_handle);
    }
 
@@ -164,7 +164,7 @@ void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer_lean *_buf)
    }
    assert(bo->is_user_ptr || bo->map_count == 0);
 
-   amdgpu_bo_free(bo->bo);
+   amdgpu_bo_free(bo->bo_handle);
 
 #if DEBUG
    if (ws->debug_all_bos) {
@@ -229,11 +229,11 @@ static bool amdgpu_bo_do_map(struct radeon_winsys *rws, struct amdgpu_bo_real *b
 
    assert(!bo->is_user_ptr);
 
-   int r = amdgpu_bo_cpu_map(bo->bo, cpu);
+   int r = amdgpu_bo_cpu_map(bo->bo_handle, cpu);
    if (r) {
       /* Clean up buffer managers and try again. */
       amdgpu_clean_up_buffer_managers(ws);
-      r = amdgpu_bo_cpu_map(bo->bo, cpu);
+      r = amdgpu_bo_cpu_map(bo->bo_handle, cpu);
       if (r)
          return false;
    }
@@ -406,7 +406,7 @@ void amdgpu_bo_unmap(struct radeon_winsys *rws, struct pb_buffer_lean *buf)
       ws->num_mapped_buffers--;
    }
 
-   amdgpu_bo_cpu_unmap(real->bo);
+   amdgpu_bo_cpu_unmap(real->bo_handle);
 }
 
 static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys *ws, struct amdgpu_bo_real *bo)
@@ -574,7 +574,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    bo->b.base.size = size;
    bo->gpu_address = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
-   bo->bo = buf_handle;
+   bo->bo_handle = buf_handle;
    bo->va_handle = va_handle;
 
    if (initial_domain & RADEON_DOMAIN_VRAM)
@@ -582,7 +582,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    else if (initial_domain & RADEON_DOMAIN_GTT)
       ws->allocated_gtt += align64(size, ws->info.gart_page_size);
 
-   amdgpu_bo_export(bo->bo, amdgpu_bo_handle_type_kms, &bo->kms_handle);
+   amdgpu_bo_export(bo->bo_handle, amdgpu_bo_handle_type_kms, &bo->kms_handle);
    amdgpu_add_buffer_to_global_list(ws, bo);
 
    return &bo->b;
@@ -1137,7 +1137,7 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer_lean *buf,
                goto out;
             }
 
-            r = amdgpu_bo_va_op_raw(ws->dev, backing->bo->bo,
+            r = amdgpu_bo_va_op_raw(ws->dev, backing->bo->bo_handle,
                                     (uint64_t)backing_start * RADEON_SPARSE_PAGE_SIZE,
                                     (uint64_t)backing_size * RADEON_SPARSE_PAGE_SIZE,
                                     bo->gpu_address + (uint64_t)span_va_page * RADEON_SPARSE_PAGE_SIZE,
@@ -1277,7 +1277,7 @@ static void amdgpu_buffer_get_metadata(struct radeon_winsys *rws,
    struct amdgpu_bo_info info = {0};
    int r;
 
-   r = amdgpu_bo_query_info(bo->bo, &info);
+   r = amdgpu_bo_query_info(bo->bo_handle, &info);
    if (r)
       return;
 
@@ -1302,7 +1302,7 @@ static void amdgpu_buffer_set_metadata(struct radeon_winsys *rws,
    metadata.size_metadata = md->size_metadata;
    memcpy(metadata.umd_metadata, md->metadata, sizeof(md->metadata));
 
-   amdgpu_bo_set_metadata(bo->bo, &metadata);
+   amdgpu_bo_set_metadata(bo->bo_handle, &metadata);
 }
 
 struct pb_buffer_lean *
@@ -1547,7 +1547,7 @@ static struct pb_buffer_lean *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    bo->gpu_address = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    simple_mtx_init(&bo->lock, mtx_plain);
-   bo->bo = result.buf_handle;
+   bo->bo_handle = result.buf_handle;
    bo->va_handle = va_handle;
    bo->is_shared = true;
 
@@ -1556,11 +1556,11 @@ static struct pb_buffer_lean *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    else if (bo->b.base.placement & RADEON_DOMAIN_GTT)
       ws->allocated_gtt += align64(bo->b.base.size, ws->info.gart_page_size);
 
-   amdgpu_bo_export(bo->bo, amdgpu_bo_handle_type_kms, &bo->kms_handle);
+   amdgpu_bo_export(bo->bo_handle, amdgpu_bo_handle_type_kms, &bo->kms_handle);
 
    amdgpu_add_buffer_to_global_list(ws, bo);
 
-   _mesa_hash_table_insert(ws->bo_export_table, bo->bo, bo);
+   _mesa_hash_table_insert(ws->bo_export_table, bo->bo_handle, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
    return &bo->b.base;
@@ -1623,7 +1623,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
       return false;
    }
 
-   r = amdgpu_bo_export(bo->bo, type, &whandle->handle);
+   r = amdgpu_bo_export(bo->bo_handle, type, &whandle->handle);
    if (r)
       return false;
 
@@ -1654,7 +1654,7 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
 
  hash_table_set:
    simple_mtx_lock(&ws->bo_export_table_lock);
-   _mesa_hash_table_insert(ws->bo_export_table, bo->bo, bo);
+   _mesa_hash_table_insert(ws->bo_export_table, bo->bo_handle, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
    bo->is_shared = true;
@@ -1701,7 +1701,7 @@ static struct pb_buffer_lean *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     bo->gpu_address = va;
     bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
     simple_mtx_init(&bo->lock, mtx_plain);
-    bo->bo = buf_handle;
+    bo->bo_handle = buf_handle;
     bo->cpu_ptr = pointer;
     bo->va_handle = va_handle;
 
@@ -1709,7 +1709,7 @@ static struct pb_buffer_lean *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
 
     amdgpu_add_buffer_to_global_list(ws, bo);
 
-    amdgpu_bo_export(bo->bo, amdgpu_bo_handle_type_kms, &bo->kms_handle);
+    amdgpu_bo_export(bo->bo_handle, amdgpu_bo_handle_type_kms, &bo->kms_handle);
 
     return (struct pb_buffer_lean*)bo;
 

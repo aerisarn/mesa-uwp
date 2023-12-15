@@ -71,7 +71,7 @@ struct amdgpu_winsys_bo {
 struct amdgpu_bo_real {
    struct amdgpu_winsys_bo b;
 
-   amdgpu_bo_handle bo;
+   amdgpu_bo_handle bo_handle;
    amdgpu_va_handle va_handle;
    uint64_t gpu_address;
    void *cpu_ptr; /* for user_ptr and permanent maps */
