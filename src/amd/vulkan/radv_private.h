@@ -2053,12 +2053,6 @@ struct radv_rt_capture_replay_handle {
    uint32_t non_recursive_idx;
 };
 
-enum radv_depth_clamp_mode {
-   RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,    /* Clamp to the viewport min/max depth bounds */
-   RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1, /* Clamp between 0.0f and 1.0f */
-   RADV_DEPTH_CLAMP_MODE_DISABLED = 2,    /* Disable depth clamping */
-};
-
 struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
