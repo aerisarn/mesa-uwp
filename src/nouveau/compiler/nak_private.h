@@ -22,7 +22,7 @@ struct nak_compiler {
    struct nir_shader_compiler_options nir_options;
 };
 
-enum PACKED nak_attr {
+enum ENUM_PACKED nak_attr {
    /* System values A */
    NAK_ATTR_TESS_LOD_LEFT     = 0x000,
    NAK_ATTR_TESS_LOD_RIGHT    = 0x004,
@@ -85,7 +85,7 @@ enum PACKED nak_attr {
    NAK_ATTR_FRONT_FACE        = 0x3fc,
 };
 
-enum PACKED nak_sv {
+enum ENUM_PACKED nak_sv {
    NAK_SV_LANE_ID          = 0x00,
    NAK_SV_VERTEX_COUNT     = 0x10,
    NAK_SV_INVOCATION_ID    = 0x11,

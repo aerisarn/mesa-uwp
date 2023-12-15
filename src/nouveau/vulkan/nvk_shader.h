@@ -25,7 +25,7 @@ struct vk_shader_module;
 #define TU102_SHADER_HEADER_SIZE (32 * 4)
 #define NVC0_MAX_SHADER_HEADER_SIZE TU102_SHADER_HEADER_SIZE
 
-enum PACKED nvk_cbuf_type {
+enum ENUM_PACKED nvk_cbuf_type {
    NVK_CBUF_TYPE_INVALID = 0,
    NVK_CBUF_TYPE_ROOT_DESC,
    NVK_CBUF_TYPE_DESC_SET,

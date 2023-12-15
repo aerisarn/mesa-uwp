@@ -5,7 +5,7 @@
 
 #define NVIDIA_VENDOR_ID 0x10de
 
-enum PACKED nv_device_type {
+enum ENUM_PACKED nv_device_type {
    NV_DEVICE_TYPE_IGP,
    NV_DEVICE_TYPE_DIS,
    NV_DEVICE_TYPE_SOC,

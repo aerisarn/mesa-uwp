@@ -53,19 +53,19 @@ void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak,
                          nir_variable_mode robust2_modes,
                          const struct nak_fs_key *fs_key);
 
-enum PACKED nak_ts_domain {
+enum ENUM_PACKED nak_ts_domain {
    NAK_TS_DOMAIN_ISOLINE = 0,
    NAK_TS_DOMAIN_TRIANGLE = 1,
    NAK_TS_DOMAIN_QUAD = 2,
 };
 
-enum PACKED nak_ts_spacing {
+enum ENUM_PACKED nak_ts_spacing {
    NAK_TS_SPACING_INTEGER = 0,
    NAK_TS_SPACING_FRACT_ODD = 1,
    NAK_TS_SPACING_FRACT_EVEN = 2,
 };
 
-enum PACKED nak_ts_prims {
+enum ENUM_PACKED nak_ts_prims {
    NAK_TS_PRIMS_POINTS = 0,
    NAK_TS_PRIMS_LINES = 1,
    NAK_TS_PRIMS_TRIANGLES_CW = 2,
