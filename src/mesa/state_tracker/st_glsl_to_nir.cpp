@@ -58,7 +58,7 @@
 static int
 type_size(const struct glsl_type *type)
 {
-   return type->count_attribute_slots(false);
+   return glsl_count_attribute_slots(type, false);
 }
 
 /* Depending on PIPE_CAP_TGSI_TEXCOORD (st->needs_texcoord_semantic) we
@@ -189,8 +189,8 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
       int loc;
 
       const struct glsl_type *type = glsl_without_array(uniform->type);
-      if (!uniform->data.bindless && (type->is_sampler() || type->is_image())) {
-         if (type->is_sampler()) {
+      if (!uniform->data.bindless && (glsl_type_is_sampler(type) || glsl_type_is_image(type))) {
+         if (glsl_type_is_sampler(type)) {
             loc = shaderidx;
             shaderidx += type_size(uniform->type);
          } else {
