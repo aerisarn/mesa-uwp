@@ -7117,13 +7117,16 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    bool program_needs_wa_14015055625 = false;
 
+#if INTEL_WA_14015055625_GFX_VER
    /* Check if FS stage will use primitive ID overrides for Wa_14015055625. */
    const struct brw_vue_map *last_vue_map =
       &brw_vue_prog_data(ice->shaders.last_vue_shader->prog_data)->vue_map;
    if ((wm_prog_data->inputs & VARYING_BIT_PRIMITIVE_ID) &&
-       last_vue_map->varying_to_slot[VARYING_SLOT_PRIMITIVE_ID] == -1) {
+       last_vue_map->varying_to_slot[VARYING_SLOT_PRIMITIVE_ID] == -1 &&
+       intel_needs_workaround(batch->screen->devinfo, 14015055625)) {
       program_needs_wa_14015055625 = true;
    }
+#endif
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(stage_dirty & (IRIS_STAGE_DIRTY_VS << stage)))
@@ -7139,8 +7142,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          uint32_t scratch_addr =
             pin_scratch_space(ice, batch, prog_data, stage);
 
+#if INTEL_WA_14015055625_GFX_VER
          shader_program_needs_wa_14015055625(ice, batch, prog_data, stage,
                                              &program_needs_wa_14015055625);
+#endif
 
          if (stage == MESA_SHADER_FRAGMENT) {
             UNUSED struct iris_rasterizer_state *cso = ice->state.cso_rast;
