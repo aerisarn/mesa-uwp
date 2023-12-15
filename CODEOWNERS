@@ -124,8 +124,8 @@ gitlab-ci*.yml @eric
 /src/gallium/drivers/freedreno/ @robclark
 
 # Imagination
-/include/drm-uapi/pvr_drm.h @CreativeCylon @frankbinns @MTCoster
-/src/imagination/ @CreativeCylon @frankbinns @MTCoster
+/include/drm-uapi/pvr_drm.h @aashishc @frankbinns @luigi.santivetti
+/src/imagination/ @aashishc @frankbinns @luigi.santivetti
 /src/imagination/rogue/ @simon-perretta-img
 
 # Intel
