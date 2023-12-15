@@ -1860,8 +1860,26 @@ void radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer, const str
 void radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, const struct radv_image_view *iview,
                                       int cb_idx, uint32_t color_values[2]);
 
+void si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *image,
+                                    const struct legacy_surf_level *base_level_info, unsigned plane_id,
+                                    unsigned base_level, unsigned first_level, unsigned block_width, bool is_stencil,
+                                    bool is_storage_image, bool disable_compression, bool enable_write_compression,
+                                    uint32_t *state, const struct ac_surf_nbc_view *nbc_view);
+
+void radv_make_texture_descriptor(struct radv_device *device, struct radv_image *image, bool is_storage_image,
+                                  VkImageViewType view_type, VkFormat vk_format, const VkComponentMapping *mapping,
+                                  unsigned first_level, unsigned last_level, unsigned first_layer, unsigned last_layer,
+                                  unsigned width, unsigned height, unsigned depth, float min_lod, uint32_t *state,
+                                  uint32_t *fmask_state, VkImageCreateFlags img_create_flags,
+                                  const struct ac_surf_nbc_view *nbc_view,
+                                  const VkImageViewSlicedCreateInfoEXT *sliced_3d);
+
 bool radv_image_use_dcc_image_stores(const struct radv_device *device, const struct radv_image *image);
 bool radv_image_use_dcc_predication(const struct radv_device *device, const struct radv_image *image);
+
+bool radv_image_can_fast_clear(const struct radv_device *device, const struct radv_image *image);
+
+unsigned radv_plane_from_aspect(VkImageAspectFlags mask);
 
 void radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                               const VkImageSubresourceRange *range, bool value);
