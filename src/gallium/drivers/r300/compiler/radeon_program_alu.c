@@ -363,30 +363,7 @@ static void transform_r300_vertex_CMP(struct radeon_compiler* c,
 	if (c->is_r500 && !rc_inst_has_three_diff_temp_srcs(inst))
 		return;
 
-	/* There is no decent CMP available on r300, so let's rig one up.
-	 * CMP is defined as dst = src0 < 0.0 ? src1 : src2
-	 * The following sequence consumes zero to two temps and two extra slots
-	 * (the second temp and the second slot is consumed by transform_LRP),
-	 * but should be equivalent:
-	 *
-	 * SLT tmp0, src0, 0.0
-	 * LRP dst, tmp0, src1, src2
-	 *
-	 * Yes, I know, I'm a mad scientist. ~ C. & M. */
-	struct rc_dst_register dst = new_dst_reg(c, inst);
-
-	/* SLT tmp0, src0, 0.0 */
-	emit2(c, inst->Prev, RC_OPCODE_SLT, NULL,
-		dst,
-		inst->U.I.SrcReg[0], builtin_zero);
-
-	/* LRP dst, tmp0, src1, src2 */
-	transform_LRP(c,
-		emit3(c, inst->Prev, RC_OPCODE_LRP, NULL,
-		      inst->U.I.DstReg,
-		      srcreg(RC_FILE_TEMPORARY, dst.Index), inst->U.I.SrcReg[1],  inst->U.I.SrcReg[2]));
-
-	rc_remove_instruction(inst);
+	unreachable();
 }
 
 static void transform_r300_vertex_DP2(struct radeon_compiler* c,
