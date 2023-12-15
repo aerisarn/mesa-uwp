@@ -582,10 +582,10 @@ type_size_xvec4(const struct glsl_type *type, bool as_vec4, bool bindless)
    case GLSL_TYPE_INT8:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
-      if (type->is_matrix()) {
-         const glsl_type *col_type = type->column_type();
+      if (glsl_type_is_matrix(type)) {
+         const glsl_type *col_type = glsl_get_column_type(type);
          unsigned col_slots =
-            (as_vec4 && col_type->is_dual_slot()) ? 2 : 1;
+            (as_vec4 && glsl_type_is_dual_slot(col_type)) ? 2 : 1;
          return type->matrix_columns * col_slots;
       } else {
          /* Regardless of size of vector, it gets a vec4. This is bad
@@ -593,7 +593,7 @@ type_size_xvec4(const struct glsl_type *type, bool as_vec4, bool bindless)
           * mess.  Hopefully a later pass over the code can pack scalars
           * down if appropriate.
           */
-         return (as_vec4 && type->is_dual_slot()) ? 2 : 1;
+         return (as_vec4 && glsl_type_is_dual_slot(type)) ? 2 : 1;
       }
    case GLSL_TYPE_ARRAY:
       assert(type->length > 0);
@@ -677,7 +677,7 @@ src_reg::src_reg(class vec4_visitor *v, const struct glsl_type *type)
    this->file = VGRF;
    this->nr = v->alloc.allocate(type_size_vec4(type, false));
 
-   if (type->is_array() || type->is_struct()) {
+   if (glsl_type_is_array(type) || glsl_type_is_struct(type)) {
       this->swizzle = BRW_SWIZZLE_NOOP;
    } else {
       this->swizzle = brw_swizzle_for_size(type->vector_elements);
@@ -707,7 +707,7 @@ dst_reg::dst_reg(class vec4_visitor *v, const struct glsl_type *type)
    this->file = VGRF;
    this->nr = v->alloc.allocate(type_size_vec4(type, false));
 
-   if (type->is_array() || type->is_struct()) {
+   if (glsl_type_is_array(type) || glsl_type_is_struct(type)) {
       this->writemask = WRITEMASK_XYZW;
    } else {
       this->writemask = (1 << type->vector_elements) - 1;

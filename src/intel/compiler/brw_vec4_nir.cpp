@@ -1908,13 +1908,13 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          case nir_texop_samples_identical:
             coordinate = get_nir_src(instr->src[i].src, BRW_REGISTER_TYPE_D,
                                      src_size);
-            coord_type = glsl_type::ivec(src_size);
+            coord_type = glsl_ivec_type(src_size);
             break;
 
          default:
             coordinate = get_nir_src(instr->src[i].src, BRW_REGISTER_TYPE_F,
                                      src_size);
-            coord_type = glsl_type::vec(src_size);
+            coord_type = glsl_vec_type(src_size);
             break;
          }
          break;

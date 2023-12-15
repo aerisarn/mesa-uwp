@@ -53,7 +53,7 @@ src_reg::src_reg(enum brw_reg_file file, int nr, const glsl_type *type)
 
    this->file = file;
    this->nr = nr;
-   if (type && (type->is_scalar() || type->is_vector() || type->is_matrix()))
+   if (type && (glsl_type_is_scalar(type) || glsl_type_is_vector(type) || glsl_type_is_matrix(type)))
       this->swizzle = brw_swizzle_for_size(type->vector_elements);
    else
       this->swizzle = BRW_SWIZZLE_XYZW;
