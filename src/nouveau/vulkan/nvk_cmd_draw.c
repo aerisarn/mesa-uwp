@@ -448,6 +448,7 @@ nvk_cmd_buffer_dirty_render_pass(struct nvk_cmd_buffer *cmd)
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_ENABLES);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS);
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_WRITE_MASKS);
 
    /* These depend on the depth/stencil format */
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE);
@@ -1694,15 +1695,20 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
       }
    }
 
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_WRITE_MASKS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
       uint32_t color_write_enables = 0x0;
       for (uint8_t a = 0; a < render->color_att_count; a++) {
          if (dyn->cb.color_write_enables & BITFIELD_BIT(a))
             color_write_enables |= 0xf << (4 * a);
       }
 
+      uint32_t att_write_mask = 0x0;
+      for (uint8_t a = 0; a < render->color_att_count; a++)
+         att_write_mask |= dyn->cb.attachments[a].write_mask << (a * 4);
+
       P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_WRITE_MASK_DYN),
-             color_write_enables);
+             color_write_enables & att_write_mask);
 
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_WRITE_MASK));
       P_INLINE_DATA(p, render->color_att_count);

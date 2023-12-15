@@ -103,14 +103,6 @@ emit_pipeline_ct_write_state(struct nv_push *p,
       }
    }
 
-   if (cb != NULL) {
-      assert(cb->attachment_count == att_count);
-      uint32_t wm = 0;
-      for (uint32_t a = 0; a < cb->attachment_count; a++)
-         wm |= cb->attachments[a].write_mask << (a * 4);
-      write_mask &= wm;
-   }
-
    P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_WRITE_MASK_PIPELINE),
           write_mask);
 
