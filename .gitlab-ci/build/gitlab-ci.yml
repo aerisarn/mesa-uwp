@@ -258,8 +258,6 @@ alpine-build-testing:
       -D shared-llvm=enabled
     UNWIND: "disabled"
     VULKAN_DRIVERS: "amd,broadcom,freedreno,intel,imagination-experimental"
-  script:
-    - .gitlab-ci/meson/build.sh
 
 fedora-release:
   extends:
@@ -308,8 +306,6 @@ fedora-release:
     LLVM_VERSION: ""
     UNWIND: "disabled"
     VULKAN_DRIVERS: "amd,broadcom,freedreno,imagination-experimental,intel,intel_hasvk"
-  script:
-    - .gitlab-ci/meson/build.sh
 
 debian-android:
   extends:
@@ -467,8 +463,6 @@ debian-arm64-build-test:
     VULKAN_DRIVERS: "amd"
     EXTRA_OPTION: >
       -Dtools=panfrost,imagination
-  script:
-    - .gitlab-ci/meson/build.sh
 
 debian-arm64-release:
   extends:
