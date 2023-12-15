@@ -225,6 +225,19 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
    return key;
 }
 
+#define RADV_HASH_SHADER_CS_WAVE32       (1 << 1)
+#define RADV_HASH_SHADER_PS_WAVE32       (1 << 2)
+#define RADV_HASH_SHADER_GE_WAVE32       (1 << 3)
+#define RADV_HASH_SHADER_LLVM            (1 << 4)
+#define RADV_HASH_SHADER_KEEP_STATISTICS (1 << 8)
+#define RADV_HASH_SHADER_USE_NGG_CULLING (1 << 13)
+#define RADV_HASH_SHADER_EMULATE_RT      (1 << 16)
+#define RADV_HASH_SHADER_SPLIT_FMA       (1 << 17)
+#define RADV_HASH_SHADER_RT_WAVE64       (1 << 18)
+#define RADV_HASH_SHADER_NO_FMASK        (1 << 19)
+#define RADV_HASH_SHADER_NO_RT           (1 << 20)
+#define RADV_HASH_SHADER_DUAL_BLEND_MRT1 (1 << 21)
+
 uint32_t
 radv_get_hash_flags(const struct radv_device *device, bool stats)
 {
