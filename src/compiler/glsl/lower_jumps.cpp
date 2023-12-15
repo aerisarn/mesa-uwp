@@ -225,7 +225,7 @@ struct function_record
    ir_variable* get_return_value()
    {
       if(!this->return_value) {
-         assert(!this->signature->return_type->is_void());
+         assert(!glsl_type_is_void(this->signature->return_type));
          return_value = new(this->signature) ir_variable(this->signature->return_type, "return_value", ir_var_temporary);
          this->signature->body.push_head(this->return_value);
       }
@@ -305,7 +305,7 @@ struct ir_lower_jumps_visitor : public ir_control_flow_visitor {
    void insert_lowered_return(ir_return *ir)
    {
       ir_variable* return_flag = this->function.get_return_flag();
-      if(!this->function.signature->return_type->is_void()) {
+      if(!glsl_type_is_void(this->function.signature->return_type)) {
          ir_variable* return_value = this->function.get_return_value();
          ir->insert_before(
             new(ir) ir_assignment(
@@ -515,7 +515,7 @@ retry: /* we get here if we put code after the if inside a branch */
             else if(jump_strengths[0] == strength_break)
                ir->insert_after(new(ir) ir_loop_jump(ir_loop_jump::jump_break));
             /* FINISHME: unify returns with identical expressions */
-            else if(jump_strengths[0] == strength_return && this->function.signature->return_type->is_void())
+            else if(jump_strengths[0] == strength_return && glsl_type_is_void(this->function.signature->return_type))
                ir->insert_after(new(ir) ir_return(NULL));
 	    else
 	       unify = false;
@@ -846,7 +846,7 @@ lower_continue:
             /* In case the loop is embedded inside an if add a new return to
              * the return flag then branch and let a future pass tidy it up.
              */
-            if (this->function.signature->return_type->is_void())
+            if (glsl_type_is_void(this->function.signature->return_type))
                return_if->then_instructions.push_tail(new(ir) ir_return(NULL));
             else {
                assert(this->function.return_value);
@@ -895,7 +895,7 @@ lower_continue:
        * If the body ended in a return of void, eliminate it because
        * it is redundant.
        */
-      if (ir->return_type->is_void() &&
+      if (glsl_type_is_void(ir->return_type) &&
           get_jump_strength((ir_instruction *) ir->body.get_tail())) {
          ir_jump *jump = (ir_jump *) ir->body.get_tail();
          assert (jump->ir_type == ir_type_return);

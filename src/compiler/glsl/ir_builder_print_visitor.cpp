@@ -313,7 +313,7 @@ ir_builder_print_visitor::visit_leave(ir_function_signature *ir)
 void
 ir_builder_print_visitor::print_without_declaration(const ir_constant *ir)
 {
-  if (ir->type->is_scalar()) {
+  if (glsl_type_is_scalar(ir->type)) {
       switch (ir->type->base_type) {
       case GLSL_TYPE_UINT:
          print_without_indent("body.constant(%uu)", ir->value.u[0]);

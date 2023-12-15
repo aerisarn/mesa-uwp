@@ -453,7 +453,7 @@ public:
     */
    inline bool is_interface_instance() const
    {
-      return this->type->without_array() == this->interface_type;
+      return glsl_without_array(this->type) == this->interface_type;
    }
 
    /**
@@ -461,7 +461,7 @@ public:
     */
    inline bool contains_bindless() const
    {
-      if (!this->type->contains_sampler() && !this->type->contains_image())
+      if (!glsl_contains_sampler(this->type) && !glsl_type_contains_image(this->type))
          return false;
 
       return this->data.bindless || this->data.mode != ir_var_uniform;
@@ -531,7 +531,7 @@ public:
 
    enum glsl_interface_packing get_interface_type_packing() const
    {
-     return this->interface_type->get_interface_packing();
+     return glsl_get_ifc_packing(this->interface_type);
    }
    /**
     * Get the max_ifc_array_access pointer
@@ -585,8 +585,8 @@ public:
    inline bool is_interpolation_flat() const
    {
       return this->data.interpolation == INTERP_MODE_FLAT ||
-             this->type->contains_integer() ||
-             this->type->contains_double();
+             glsl_contains_integer(this->type) ||
+             glsl_contains_double(this->type);
    }
 
    inline bool is_name_ralloced() const

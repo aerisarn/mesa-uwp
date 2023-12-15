@@ -248,7 +248,7 @@ public:
    virtual ir_visitor_status visit_leave(ir_dereference_array *ir)
    {
       const glsl_type *const vt = ir->array->type;
-      if (vt->is_array())
+      if (glsl_type_is_array(vt))
          ir->type = vt->fields.array;
       return visit_continue;
    }
@@ -285,7 +285,7 @@ public:
 
    virtual ir_visitor_status visit(ir_variable *var)
    {
-      if (!var->type->is_array() || var->data.mode != ir_var_shader_in ||
+      if (!glsl_type_is_array(var->type) || var->data.mode != ir_var_shader_in ||
           var->data.patch)
          return visit_continue;
 
@@ -316,8 +316,8 @@ public:
          }
       }
 
-      var->type = glsl_type::get_array_instance(var->type->fields.array,
-                                                this->num_vertices);
+      var->type = glsl_array_type(var->type->fields.array,
+                                  this->num_vertices, 0);
       var->data.max_array_access = this->num_vertices - 1;
 
       return visit_continue;
@@ -346,9 +346,9 @@ public:
       ir_expression *expr = (*rvalue)->as_expression();
       if (expr) {
          if (expr->operation == ir_unop_implicitly_sized_array_length) {
-            assert(!expr->operands[0]->type->is_unsized_array());
+            assert(!glsl_type_is_unsized_array(expr->operands[0]->type));
             ir_constant *constant = new(expr)
-               ir_constant(expr->operands[0]->type->array_size());
+               ir_constant(glsl_array_size(expr->operands[0]->type));
             if (constant) {
                *rvalue = constant;
             }
@@ -770,14 +770,14 @@ validate_intrastage_arrays(struct gl_shader_program *prog,
     * In addition, set the type of the linked variable to the
     * explicitly sized array.
     */
-   if (var->type->is_array() && existing->type->is_array()) {
+   if (glsl_type_is_array(var->type) && glsl_type_is_array(existing->type)) {
       const glsl_type *no_array_var = var->type->fields.array;
       const glsl_type *no_array_existing = existing->type->fields.array;
       bool type_matches;
 
       type_matches = (match_precision ?
                       no_array_var == no_array_existing :
-                      no_array_var->compare_no_precision(no_array_existing));
+                      glsl_type_compare_no_precision(no_array_var, no_array_existing));
 
       if (type_matches &&
           ((var->type->length == 0)|| (existing->type->length == 0))) {
@@ -829,7 +829,7 @@ cross_validate_globals(const struct gl_constants *consts,
          continue;
 
       /* don't cross validate subroutine uniforms */
-      if (var->type->contains_subroutine())
+      if (glsl_contains_subroutine(var->type))
          continue;
 
       /* Don't cross validate interface instances. These are only relevant
@@ -923,7 +923,7 @@ cross_validate_globals(const struct gl_constants *consts,
             existing->data.explicit_binding = true;
          }
 
-         if (var->type->contains_atomic() &&
+         if (glsl_contains_atomic(var->type) &&
              var->data.offset != existing->data.offset) {
             linker_error(prog, "offset specifications for %s "
                          "`%s' have differing values\n",
@@ -1348,8 +1348,8 @@ public:
                  var->data.from_ssbo_unsized_array,
                  &implicit_sized_array);
       var->data.implicit_sized_array = implicit_sized_array;
-      type_without_array = var->type->without_array();
-      if (var->type->is_interface()) {
+      type_without_array = glsl_without_array(var->type);
+      if (glsl_type_is_interface(var->type)) {
          if (interface_contains_unsized_arrays(var->type)) {
             const glsl_type *new_type =
                resize_interface_members(var->type,
@@ -1358,7 +1358,7 @@ public:
             var->type = new_type;
             var->change_interface_type(new_type);
          }
-      } else if (type_without_array->is_interface()) {
+      } else if (glsl_type_is_interface(type_without_array)) {
          if (interface_contains_unsized_arrays(type_without_array)) {
             const glsl_type *new_type =
                resize_interface_members(type_without_array,
@@ -1383,7 +1383,7 @@ public:
             _mesa_hash_table_insert(this->unnamed_interfaces, ifc_type,
                                     interface_vars);
          }
-         unsigned index = ifc_type->field_index(var->name);
+         unsigned index = glsl_get_field_index(ifc_type, var->name);
          assert(index < ifc_type->length);
          assert(interface_vars[index] == NULL);
          interface_vars[index] = var;
@@ -1411,9 +1411,9 @@ private:
    static void fixup_type(const glsl_type **type, unsigned max_array_access,
                           bool from_ssbo_unsized_array, bool *implicit_sized)
    {
-      if (!from_ssbo_unsized_array && (*type)->is_unsized_array()) {
-         *type = glsl_type::get_array_instance((*type)->fields.array,
-                                               max_array_access + 1);
+      if (!from_ssbo_unsized_array && glsl_type_is_unsized_array(*type)) {
+         *type = glsl_array_type((*type)->fields.array,
+                                 max_array_access + 1, 0);
          *implicit_sized = true;
          assert(*type != NULL);
       }
@@ -1424,13 +1424,12 @@ private:
                                   const glsl_type *new_interface_type)
    {
       const glsl_type *element_type = type->fields.array;
-      if (element_type->is_array()) {
+      if (glsl_type_is_array(element_type)) {
          const glsl_type *new_array_type =
             update_interface_members_array(element_type, new_interface_type);
-         return glsl_type::get_array_instance(new_array_type, type->length);
+         return glsl_array_type(new_array_type, type->length, 0);
       } else {
-         return glsl_type::get_array_instance(new_interface_type,
-                                              type->length);
+         return glsl_array_type(new_interface_type, type->length, 0);
       }
    }
 
@@ -1442,7 +1441,7 @@ private:
    {
       for (unsigned i = 0; i < type->length; i++) {
          const glsl_type *elem_type = type->fields.structure[i].type;
-         if (elem_type->is_unsized_array())
+         if (glsl_type_is_unsized_array(elem_type))
             return true;
       }
       return false;
@@ -1479,8 +1478,8 @@ private:
          (glsl_interface_packing) type->interface_packing;
       bool row_major = (bool) type->interface_row_major;
       const glsl_type *new_ifc_type =
-         glsl_type::get_interface_instance(fields, num_fields,
-                                           packing, row_major, glsl_get_type_name(type));
+         glsl_interface_type(fields, num_fields,
+                             packing, row_major, glsl_get_type_name(type));
       delete [] fields;
       return new_ifc_type;
    }
@@ -1510,8 +1509,8 @@ private:
          (glsl_interface_packing) ifc_type->interface_packing;
       bool row_major = (bool) ifc_type->interface_row_major;
       const glsl_type *new_ifc_type =
-         glsl_type::get_interface_instance(fields, num_fields, packing,
-                                           row_major, glsl_get_type_name(ifc_type));
+         glsl_interface_type(fields, num_fields, packing,
+                             row_major, glsl_get_type_name(ifc_type));
       delete [] fields;
       for (unsigned i = 0; i < num_fields; i++) {
          if (interface_vars[i] != NULL)
@@ -2457,7 +2456,7 @@ static int
 reserve_explicit_locations(struct gl_shader_program *prog,
                            string_to_uint_map *map, ir_variable *var)
 {
-   unsigned slots = var->type->uniform_locations();
+   unsigned slots = glsl_type_uniform_locations(var->type);
    unsigned max_loc = var->data.location + slots - 1;
    unsigned return_value = slots;
 
@@ -2523,7 +2522,7 @@ reserve_subroutine_explicit_locations(struct gl_shader_program *prog,
                                       struct gl_program *p,
                                       ir_variable *var)
 {
-   unsigned slots = var->type->uniform_locations();
+   unsigned slots = glsl_type_uniform_locations(var->type);
    unsigned max_loc = var->data.location + slots - 1;
 
    /* Resize remap table if locations do not fit in the current one. */
@@ -2608,7 +2607,7 @@ check_explicit_uniform_locations(const struct gl_extensions *exts,
 
          if (var->data.explicit_location) {
             bool ret = false;
-            if (var->type->without_array()->is_subroutine())
+            if (glsl_type_is_subroutine(glsl_without_array(var->type)))
                ret = reserve_subroutine_explicit_locations(prog, p, var);
             else {
                int slots = reserve_explicit_locations(prog, uniform_map,
@@ -2782,14 +2781,14 @@ public:
           * We have no way to handle this in NIR or the glsl to nir pass
           * currently so let the GLSL IR lowering handle it.
           */
-         if (param->type->contains_opaque()) {
+         if (glsl_contains_opaque(param->type)) {
             unsupported = true;
             return visit_stop;
          }
       }
 
       if (!glsl_type_is_vector_or_scalar(ir->return_type) &&
-          !ir->return_type->is_void()) {
+          !glsl_type_is_void(ir->return_type)) {
          unsupported = true;
          return visit_stop;
       }

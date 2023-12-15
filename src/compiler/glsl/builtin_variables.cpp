@@ -409,10 +409,10 @@ per_vertex_accumulator::add_field(int slot, const glsl_type *type,
 const glsl_type *
 per_vertex_accumulator::construct_interface_instance() const
 {
-   return glsl_type::get_interface_instance(this->fields, this->num_fields,
-                                            GLSL_INTERFACE_PACKING_STD140,
-                                            false,
-                                            "gl_PerVertex");
+   return glsl_interface_type(this->fields, this->num_fields,
+                              GLSL_INTERFACE_PACKING_STD140,
+                              false,
+                              "gl_PerVertex");
 }
 
 
@@ -435,7 +435,7 @@ public:
 private:
    const glsl_type *array(const glsl_type *base, unsigned elements)
    {
-      return glsl_type::get_array_instance(base, elements);
+      return glsl_array_type(base, elements, 0);
    }
 
    const glsl_type *type(const char *name)
@@ -669,7 +669,7 @@ builtin_variable_generator::add_uniform(const glsl_type *type,
       _mesa_glsl_get_builtin_uniform_desc(name);
    assert(statevar != NULL);
 
-   const unsigned array_count = type->is_array() ? type->length : 1;
+   const unsigned array_count = glsl_type_is_array(type) ? type->length : 1;
 
    ir_state_slot *slots =
       uni->allocate_state_slots(array_count * statevar->num_elements);
@@ -680,7 +680,7 @@ builtin_variable_generator::add_uniform(const glsl_type *type,
 	    &statevar->elements[j];
 
 	 memcpy(slots->tokens, element->tokens, sizeof(element->tokens));
-	 if (type->is_array())
+	 if (glsl_type_is_array(type))
             slots->tokens[1] = a;
 
 	 slots++;

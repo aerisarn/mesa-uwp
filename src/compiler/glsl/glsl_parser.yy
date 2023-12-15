@@ -896,7 +896,7 @@ function_header:
 
       if ($1->qualifier.is_subroutine_decl()) {
          /* add type for IDENTIFIER search */
-         state->symbols->add_type($2, glsl_type::get_subroutine_instance($2));
+         state->symbols->add_type($2, glsl_subroutine_type($2));
       } else
          state->symbols->add_function(new(state) ir_function($2));
       state->symbols->push_scope();

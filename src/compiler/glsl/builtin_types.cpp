@@ -259,7 +259,7 @@ _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state)
     * copy of the struct types.
     */
    {
-      #define GET_STRUCT_TYPE(NAME) glsl_type::get_struct_instance(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME)
+      #define GET_STRUCT_TYPE(NAME) glsl_struct_type(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME, false /* packed */)
 
       if (state->is_version(110, 100)) {
          add_type(symbols, GET_STRUCT_TYPE(gl_DepthRangeParameters));

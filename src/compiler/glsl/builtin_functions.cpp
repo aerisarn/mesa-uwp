@@ -5719,7 +5719,7 @@ builtin_builder::imm(const glsl_type *type, const ir_constant_data &data)
    return new(mem_ctx) ir_constant(type, &data);
 }
 
-#define IMM_FP(type, val) (type->is_double()) ? imm(val) : imm((float)val)
+#define IMM_FP(type, val) (glsl_type_is_double(type)) ? imm(val) : imm((float)val)
 
 ir_dereference_variable *
 builtin_builder::var_ref(ir_variable *var)
@@ -5917,7 +5917,7 @@ builtin_builder::call(ir_function *f, ir_variable *ret, exec_list params)
       return NULL;
 
    ir_dereference_variable *deref =
-      (sig->return_type->is_void() ? NULL : var_ref(ret));
+      (glsl_type_is_void(sig->return_type) ? NULL : var_ref(ret));
 
    return new(mem_ctx) ir_call(sig, deref, &actual_params);
 }
@@ -6147,14 +6147,14 @@ builtin_builder::_step(builtin_available_predicate avail, const glsl_type *edge_
    ir_variable *t = body.make_temp(x_type, "t");
    if (x_type->vector_elements == 1) {
       /* Both are floats */
-      if (edge_type->is_double())
+      if (glsl_type_is_double(edge_type))
          body.emit(assign(t, f2d(b2f(gequal(x, edge)))));
       else
          body.emit(assign(t, b2f(gequal(x, edge))));
    } else if (edge_type->vector_elements == 1) {
       /* x is a vector but edge is a float */
       for (int i = 0; i < x_type->vector_elements; i++) {
-         if (edge_type->is_double())
+         if (glsl_type_is_double(edge_type))
             body.emit(assign(t, f2d(b2f(gequal(swizzle(x, i, 1), edge))), 1 << i));
          else
             body.emit(assign(t, b2f(gequal(swizzle(x, i, 1), edge)), 1 << i));
@@ -6162,7 +6162,7 @@ builtin_builder::_step(builtin_available_predicate avail, const glsl_type *edge_
    } else {
       /* Both are vectors */
       for (int i = 0; i < x_type->vector_elements; i++) {
-         if (edge_type->is_double())
+         if (glsl_type_is_double(edge_type))
             body.emit(assign(t, f2d(b2f(gequal(swizzle(x, i, 1), swizzle(edge, i, 1)))),
                              1 << i));
          else
@@ -6204,7 +6204,7 @@ ir_function_signature *
 builtin_builder::_isnan(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::bvec(type->vector_elements), avail, 1, x);
+   MAKE_SIG(glsl_bvec_type(type->vector_elements), avail, 1, x);
 
    body.emit(ret(nequal(x, x)));
 
@@ -6215,7 +6215,7 @@ ir_function_signature *
 builtin_builder::_isinf(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::bvec(type->vector_elements), avail, 1, x);
+   MAKE_SIG(glsl_bvec_type(type->vector_elements), avail, 1, x);
 
    ir_constant_data infinities;
    for (int i = 0; i < type->vector_elements; i++) {
@@ -6246,7 +6246,7 @@ ir_function_signature *
 builtin_builder::_floatBitsToInt(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::ivec(type->vector_elements), shader_bit_encoding, 1, x);
+   MAKE_SIG(glsl_ivec_type(type->vector_elements), shader_bit_encoding, 1, x);
    body.emit(ret(bitcast_f2i(as_highp(body, x))));
    return sig;
 }
@@ -6255,7 +6255,7 @@ ir_function_signature *
 builtin_builder::_floatBitsToUint(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::uvec(type->vector_elements), shader_bit_encoding, 1, x);
+   MAKE_SIG(glsl_uvec_type(type->vector_elements), shader_bit_encoding, 1, x);
    body.emit(ret(bitcast_f2u(as_highp(body, x))));
    return sig;
 }
@@ -6264,7 +6264,7 @@ ir_function_signature *
 builtin_builder::_intBitsToFloat(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::vec(type->vector_elements), shader_bit_encoding, 1, x);
+   MAKE_SIG(glsl_vec_type(type->vector_elements), shader_bit_encoding, 1, x);
    body.emit(ret(bitcast_i2f(as_highp(body, x))));
    return sig;
 }
@@ -6273,7 +6273,7 @@ ir_function_signature *
 builtin_builder::_uintBitsToFloat(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::vec(type->vector_elements), shader_bit_encoding, 1, x);
+   MAKE_SIG(glsl_vec_type(type->vector_elements), shader_bit_encoding, 1, x);
    body.emit(ret(bitcast_u2f(as_highp(body, x))));
    return sig;
 }
@@ -6282,7 +6282,7 @@ ir_function_signature *
 builtin_builder::_doubleBitsToInt64(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::i64vec(type->vector_elements), avail, 1, x);
+   MAKE_SIG(glsl_i64vec_type(type->vector_elements), avail, 1, x);
    body.emit(ret(bitcast_d2i64(x)));
    return sig;
 }
@@ -6291,7 +6291,7 @@ ir_function_signature *
 builtin_builder::_doubleBitsToUint64(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::u64vec(type->vector_elements), avail, 1, x);
+   MAKE_SIG(glsl_u64vec_type(type->vector_elements), avail, 1, x);
    body.emit(ret(bitcast_d2u64(x)));
    return sig;
 }
@@ -6300,7 +6300,7 @@ ir_function_signature *
 builtin_builder::_int64BitsToDouble(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::dvec(type->vector_elements), avail, 1, x);
+   MAKE_SIG(glsl_dvec_type(type->vector_elements), avail, 1, x);
    body.emit(ret(bitcast_i642d(x)));
    return sig;
 }
@@ -6309,7 +6309,7 @@ ir_function_signature *
 builtin_builder::_uint64BitsToDouble(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::dvec(type->vector_elements), avail, 1, x);
+   MAKE_SIG(glsl_dvec_type(type->vector_elements), avail, 1, x);
    body.emit(ret(bitcast_u642d(x)));
    return sig;
 }
@@ -6473,7 +6473,7 @@ ir_function_signature *
 builtin_builder::_length(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(type->get_base_type(), avail, 1, x);
+   MAKE_SIG(glsl_get_base_glsl_type(type), avail, 1, x);
 
    body.emit(ret(sqrt(dot(x, x))));
 
@@ -6485,7 +6485,7 @@ builtin_builder::_distance(builtin_available_predicate avail, const glsl_type *t
 {
    ir_variable *p0 = in_var(type, "p0");
    ir_variable *p1 = in_var(type, "p1");
-   MAKE_SIG(type->get_base_type(), avail, 2, p0, p1);
+   MAKE_SIG(glsl_get_base_glsl_type(type), avail, 2, p0, p1);
 
    if (type->vector_elements == 1) {
       body.emit(ret(abs(sub(p0, p1))));
@@ -6505,7 +6505,7 @@ builtin_builder::_dot(builtin_available_predicate avail, const glsl_type *type)
       return binop(avail, ir_binop_mul, type, type, type);
 
    return binop(avail, ir_binop_dot,
-                type->get_base_type(), type, type);
+                glsl_get_base_glsl_type(type), type, type);
 }
 
 ir_function_signature *
@@ -6583,10 +6583,10 @@ builtin_builder::_refract(builtin_available_predicate avail, const glsl_type *ty
 {
    ir_variable *I = in_var(type, "I");
    ir_variable *N = in_var(type, "N");
-   ir_variable *eta = in_var(type->get_base_type(), "eta");
+   ir_variable *eta = in_var(glsl_get_base_glsl_type(type), "eta");
    MAKE_SIG(type, avail, 3, I, N, eta);
 
-   ir_variable *n_dot_i = body.make_temp(type->get_base_type(), "n_dot_i");
+   ir_variable *n_dot_i = body.make_temp(glsl_get_base_glsl_type(type), "n_dot_i");
    body.emit(assign(n_dot_i, dot(N, I)));
 
    /* From the GLSL 1.10 specification:
@@ -6596,7 +6596,7 @@ builtin_builder::_refract(builtin_available_predicate avail, const glsl_type *ty
     * else
     *    return eta * I - (eta * dot(N, I) + sqrt(k)) * N
     */
-   ir_variable *k = body.make_temp(type->get_base_type(), "k");
+   ir_variable *k = body.make_temp(glsl_get_base_glsl_type(type), "k");
    body.emit(assign(k, sub(IMM_FP(type, 1.0),
                            mul(eta, mul(eta, sub(IMM_FP(type, 1.0),
                                                  mul(n_dot_i, n_dot_i)))))));
@@ -6630,12 +6630,12 @@ builtin_builder::_outerProduct(builtin_available_predicate avail, const glsl_typ
    ir_variable *c;
    ir_variable *r;
 
-   if (type->is_double()) {
-      r = in_var(glsl_type::dvec(type->matrix_columns), "r");
-      c = in_var(glsl_type::dvec(type->vector_elements), "c");
+   if (glsl_type_is_double(type)) {
+      r = in_var(glsl_dvec_type(type->matrix_columns), "r");
+      c = in_var(glsl_dvec_type(type->vector_elements), "c");
    } else {
-      r = in_var(glsl_type::vec(type->matrix_columns), "r");
-      c = in_var(glsl_type::vec(type->vector_elements), "c");
+      r = in_var(glsl_vec_type(type->matrix_columns), "r");
+      c = in_var(glsl_vec_type(type->vector_elements), "c");
    }
    MAKE_SIG(type, avail, 2, c, r);
 
@@ -6652,9 +6652,9 @@ ir_function_signature *
 builtin_builder::_transpose(builtin_available_predicate avail, const glsl_type *orig_type)
 {
    const glsl_type *transpose_type =
-      glsl_type::get_instance(orig_type->base_type,
-                              orig_type->matrix_columns,
-                              orig_type->vector_elements);
+      glsl_simple_type(orig_type->base_type,
+                       orig_type->matrix_columns,
+                       orig_type->vector_elements);
 
    ir_variable *m = in_var(orig_type, "m");
    MAKE_SIG(transpose_type, avail, 1, m);
@@ -6676,7 +6676,7 @@ ir_function_signature *
 builtin_builder::_determinant_mat2(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *m = in_var(type, "m");
-   MAKE_SIG(type->get_base_type(), avail, 1, m);
+   MAKE_SIG(glsl_get_base_glsl_type(type), avail, 1, m);
 
    body.emit(ret(sub(mul(matrix_elt(m, 0, 0), matrix_elt(m, 1, 1)),
                      mul(matrix_elt(m, 1, 0), matrix_elt(m, 0, 1)))));
@@ -6688,7 +6688,7 @@ ir_function_signature *
 builtin_builder::_determinant_mat3(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *m = in_var(type, "m");
-   MAKE_SIG(type->get_base_type(), avail, 1, m);
+   MAKE_SIG(glsl_get_base_glsl_type(type), avail, 1, m);
 
    ir_expression *f1 =
       sub(mul(matrix_elt(m, 1, 1), matrix_elt(m, 2, 2)),
@@ -6713,7 +6713,7 @@ ir_function_signature *
 builtin_builder::_determinant_mat4(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *m = in_var(type, "m");
-   const glsl_type *btype = type->get_base_type();
+   const glsl_type *btype = glsl_get_base_glsl_type(type);
    MAKE_SIG(btype, avail, 1, m);
 
    ir_variable *SubFactor00 = body.make_temp(btype, "SubFactor00");
@@ -6808,7 +6808,7 @@ ir_function_signature *
 builtin_builder::_inverse_mat3(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *m = in_var(type, "m");
-   const glsl_type *btype = type->get_base_type();
+   const glsl_type *btype = glsl_get_base_glsl_type(type);
    MAKE_SIG(type, avail, 1, m);
 
    ir_variable *f11_22_21_12 = body.make_temp(btype, "f11_22_21_12");
@@ -6870,7 +6870,7 @@ ir_function_signature *
 builtin_builder::_inverse_mat4(builtin_available_predicate avail, const glsl_type *type)
 {
    ir_variable *m = in_var(type, "m");
-   const glsl_type *btype = type->get_base_type();
+   const glsl_type *btype = glsl_get_base_glsl_type(type);
    MAKE_SIG(type, avail, 1, m);
 
    ir_variable *SubFactor00 = body.make_temp(btype, "SubFactor00");
@@ -7015,7 +7015,7 @@ builtin_builder::_lessThan(builtin_available_predicate avail,
                            const glsl_type *type)
 {
    return binop(avail, ir_binop_less,
-                glsl_type::bvec(type->vector_elements), type, type);
+                glsl_bvec_type(type->vector_elements), type, type);
 }
 
 ir_function_signature *
@@ -7023,7 +7023,7 @@ builtin_builder::_lessThanEqual(builtin_available_predicate avail,
                                 const glsl_type *type)
 {
    return binop(avail, ir_binop_gequal,
-                glsl_type::bvec(type->vector_elements), type, type,
+                glsl_bvec_type(type->vector_elements), type, type,
                 true);
 }
 
@@ -7032,7 +7032,7 @@ builtin_builder::_greaterThan(builtin_available_predicate avail,
                               const glsl_type *type)
 {
    return binop(avail, ir_binop_less,
-                glsl_type::bvec(type->vector_elements), type, type,
+                glsl_bvec_type(type->vector_elements), type, type,
                 true);
 }
 
@@ -7041,7 +7041,7 @@ builtin_builder::_greaterThanEqual(builtin_available_predicate avail,
                                    const glsl_type *type)
 {
    return binop(avail, ir_binop_gequal,
-                glsl_type::bvec(type->vector_elements), type, type);
+                glsl_bvec_type(type->vector_elements), type, type);
 }
 
 ir_function_signature *
@@ -7049,7 +7049,7 @@ builtin_builder::_equal(builtin_available_predicate avail,
                         const glsl_type *type)
 {
    return binop(avail, ir_binop_equal,
-                glsl_type::bvec(type->vector_elements), type, type);
+                glsl_bvec_type(type->vector_elements), type, type);
 }
 
 ir_function_signature *
@@ -7057,7 +7057,7 @@ builtin_builder::_notEqual(builtin_available_predicate avail,
                            const glsl_type *type)
 {
    return binop(avail, ir_binop_nequal,
-                glsl_type::bvec(type->vector_elements), type, type);
+                glsl_bvec_type(type->vector_elements), type, type);
 }
 
 ir_function_signature *
@@ -7089,7 +7089,7 @@ UNOP(not, ir_unop_logic_not, always_available)
 static bool
 has_lod(const glsl_type *sampler_type)
 {
-   assert(sampler_type->is_sampler());
+   assert(glsl_type_is_sampler(sampler_type));
 
    switch (sampler_type->sampler_dimensionality) {
    case GLSL_SAMPLER_DIM_RECT:
@@ -7183,7 +7183,7 @@ builtin_builder::_texture(ir_texture_opcode opcode,
    ir_texture *tex = new(mem_ctx) ir_texture(opcode, flags & TEX_SPARSE);
    tex->set_sampler(var_ref(s), return_type);
 
-   const int coord_size = sampler_type->coordinate_components();
+   const int coord_size = glsl_get_sampler_coordinate_components(sampler_type);
 
    if (coord_size == coord_type->vector_elements) {
       tex->coordinate = var_ref(P);
@@ -7220,8 +7220,8 @@ builtin_builder::_texture(ir_texture_opcode opcode,
       tex->lod_info.lod = var_ref(lod);
    } else if (opcode == ir_txd) {
       int grad_size = coord_size - (sampler_type->sampler_array ? 1 : 0);
-      ir_variable *dPdx = in_var(glsl_type::vec(grad_size), "dPdx");
-      ir_variable *dPdy = in_var(glsl_type::vec(grad_size), "dPdy");
+      ir_variable *dPdx = in_var(glsl_vec_type(grad_size), "dPdx");
+      ir_variable *dPdy = in_var(glsl_vec_type(grad_size), "dPdy");
       sig->parameters.push_tail(dPdx);
       sig->parameters.push_tail(dPdy);
       tex->lod_info.grad.dPdx = var_ref(dPdx);
@@ -7231,7 +7231,7 @@ builtin_builder::_texture(ir_texture_opcode opcode,
    if (flags & (TEX_OFFSET | TEX_OFFSET_NONCONST)) {
       int offset_size = coord_size - (sampler_type->sampler_array ? 1 : 0);
       ir_variable *offset =
-         new(mem_ctx) ir_variable(glsl_type::ivec(offset_size), "offset",
+         new(mem_ctx) ir_variable(glsl_ivec_type(offset_size), "offset",
                                   (flags & TEX_OFFSET) ? ir_var_const_in : ir_var_function_in);
       sig->parameters.push_tail(offset);
       tex->offset = var_ref(offset);
@@ -7239,7 +7239,7 @@ builtin_builder::_texture(ir_texture_opcode opcode,
 
    if (flags & TEX_OFFSET_ARRAY) {
       ir_variable *offsets =
-         new(mem_ctx) ir_variable(glsl_type::get_array_instance(&glsl_type_builtin_ivec2, 4),
+         new(mem_ctx) ir_variable(glsl_array_type(&glsl_type_builtin_ivec2, 4, 0),
                                   "offsets", ir_var_const_in);
       sig->parameters.push_tail(offsets);
       tex->offset = var_ref(offsets);
@@ -7673,7 +7673,7 @@ ir_function_signature *
 builtin_builder::_bitCount(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
-   MAKE_SIG(glsl_type::ivec(type->vector_elements), gpu_shader5_or_es31_or_integer_functions, 1, x);
+   MAKE_SIG(glsl_ivec_type(type->vector_elements), gpu_shader5_or_es31_or_integer_functions, 1, x);
    sig->return_precision = GLSL_PRECISION_LOW;
    body.emit(ret(expr(ir_unop_bit_count, x)));
    return sig;
@@ -7683,7 +7683,7 @@ ir_function_signature *
 builtin_builder::_findLSB(const glsl_type *type)
 {
    ir_variable *x = in_highp_var(type, "x");
-   MAKE_SIG(glsl_type::ivec(type->vector_elements), gpu_shader5_or_es31_or_integer_functions, 1, x);
+   MAKE_SIG(glsl_ivec_type(type->vector_elements), gpu_shader5_or_es31_or_integer_functions, 1, x);
    sig->return_precision = GLSL_PRECISION_LOW;
    body.emit(ret(expr(ir_unop_find_lsb, x)));
    return sig;
@@ -7693,7 +7693,7 @@ ir_function_signature *
 builtin_builder::_findMSB(const glsl_type *type)
 {
    ir_variable *x = in_highp_var(type, "x");
-   MAKE_SIG(glsl_type::ivec(type->vector_elements), gpu_shader5_or_es31_or_integer_functions, 1, x);
+   MAKE_SIG(glsl_ivec_type(type->vector_elements), gpu_shader5_or_es31_or_integer_functions, 1, x);
    sig->return_precision = GLSL_PRECISION_LOW;
    body.emit(ret(expr(ir_unop_find_msb, x)));
    return sig;
@@ -7704,7 +7704,7 @@ builtin_builder::_countLeadingZeros(builtin_available_predicate avail,
                                     const glsl_type *type)
 {
    return unop(avail, ir_unop_clz,
-               glsl_type::uvec(type->vector_elements), type);
+               glsl_uvec_type(type->vector_elements), type);
 }
 
 ir_function_signature *
@@ -7712,7 +7712,7 @@ builtin_builder::_countTrailingZeros(builtin_available_predicate avail,
                                      const glsl_type *type)
 {
    ir_variable *a = in_var(type, "a");
-   MAKE_SIG(glsl_type::uvec(type->vector_elements), avail, 1, a);
+   MAKE_SIG(glsl_uvec_type(type->vector_elements), avail, 1, a);
 
    body.emit(ret(ir_builder::min2(
                     ir_builder::i2u(ir_builder::expr(ir_unop_find_lsb, a)),
@@ -7739,7 +7739,7 @@ builtin_builder::_ldexp(const glsl_type *x_type, const glsl_type *exp_type)
 {
    ir_variable *x = in_highp_var(x_type, "x");
    ir_variable *y = in_highp_var(exp_type, "y");
-   MAKE_SIG(x_type, x_type->is_double() ? fp64 : gpu_shader5_or_es31_or_integer_functions, 2, x, y);
+   MAKE_SIG(x_type, glsl_type_is_double(x_type) ? fp64 : gpu_shader5_or_es31_or_integer_functions, 2, x, y);
    sig->return_precision = GLSL_PRECISION_HIGH;
    body.emit(ret(expr(ir_binop_ldexp, x, y)));
    return sig;
@@ -7750,7 +7750,7 @@ builtin_builder::_frexp(const glsl_type *x_type, const glsl_type *exp_type)
 {
    ir_variable *x = in_highp_var(x_type, "x");
    ir_variable *exponent = out_var(exp_type, "exp");
-   MAKE_SIG(x_type, x_type->is_double() ? fp64 : gpu_shader5_or_es31_or_integer_functions,
+   MAKE_SIG(x_type, glsl_type_is_double(x_type) ? fp64 : gpu_shader5_or_es31_or_integer_functions,
             2, x, exponent);
    sig->return_precision = GLSL_PRECISION_HIGH;
 
@@ -7812,8 +7812,8 @@ builtin_builder::_absoluteDifference(builtin_available_predicate avail,
     * bits and number of vector elements as the type of the operands.
     */
    return binop(avail, ir_binop_abs_sub,
-                glsl_type::get_instance(glsl_unsigned_base_type_of(type->base_type),
-                                        type->vector_elements, 1),
+                glsl_simple_type(glsl_unsigned_base_type_of(type->base_type),
+                                 type->vector_elements, 1),
                 type, type);
 }
 
@@ -7842,11 +7842,11 @@ builtin_builder::_mulExtended(const glsl_type *type)
 
    if (type->base_type == GLSL_TYPE_INT) {
       unpack_op = ir_unop_unpack_int_2x32;
-      mul_type = glsl_type::get_instance(GLSL_TYPE_INT64, type->vector_elements, 1);
+      mul_type = glsl_simple_type(GLSL_TYPE_INT64, type->vector_elements, 1);
       unpack_type = &glsl_type_builtin_ivec2;
    } else {
       unpack_op = ir_unop_unpack_uint_2x32;
-      mul_type = glsl_type::get_instance(GLSL_TYPE_UINT64, type->vector_elements, 1);
+      mul_type = glsl_simple_type(GLSL_TYPE_UINT64, type->vector_elements, 1);
       unpack_type = &glsl_type_builtin_uvec2;
    }
 
@@ -8161,7 +8161,7 @@ builtin_builder::_image_prototype(const glsl_type *image_type,
                                   unsigned num_arguments,
                                   unsigned flags)
 {
-   const glsl_type *data_type = glsl_type::get_instance(
+   const glsl_type *data_type = glsl_simple_type(
       image_type->sampled_type,
       (flags & IMAGE_FUNCTION_HAS_VECTOR_DATA_TYPE ? 4 : 1),
       1);
@@ -8178,7 +8178,7 @@ builtin_builder::_image_prototype(const glsl_type *image_type,
             glsl_struct_field(&glsl_type_builtin_int, "code"),
             glsl_struct_field(data_type, "texel"),
          };
-         ret_type = glsl_type::get_struct_instance(fields, 2, "struct");
+         ret_type = glsl_struct_type(fields, 2, "struct", false /* packed */);
       }
    } else
       ret_type = data_type;
@@ -8186,7 +8186,7 @@ builtin_builder::_image_prototype(const glsl_type *image_type,
    /* Addressing arguments that are always present. */
    ir_variable *image = in_var(image_type, "image");
    ir_variable *coord = in_var(
-      glsl_type::ivec(image_type->coordinate_components()), "coord");
+      glsl_ivec_type(glsl_get_sampler_coordinate_components(image_type)), "coord");
 
    ir_function_signature *sig = new_sig(
       ret_type, get_image_available_predicate(image_type, flags),
@@ -8225,7 +8225,7 @@ builtin_builder::_image_size_prototype(const glsl_type *image_type,
                                        unsigned /* flags */)
 {
    const glsl_type *ret_type;
-   unsigned num_components = image_type->coordinate_components();
+   unsigned num_components = glsl_get_sampler_coordinate_components(image_type);
 
    /* From the ARB_shader_image_size extension:
     * "Cube images return the dimensions of one face."
@@ -8238,7 +8238,7 @@ builtin_builder::_image_size_prototype(const glsl_type *image_type,
    /* FIXME: Add the highp precision qualifier for GLES 3.10 when it is
     * supported by mesa.
     */
-   ret_type = glsl_type::get_instance(GLSL_TYPE_INT, num_components, 1);
+   ret_type = glsl_simple_type(GLSL_TYPE_INT, num_components, 1);
 
    ir_variable *image = in_var(image_type, "image");
    ir_function_signature *sig = new_sig(ret_type, shader_image_size, 1, image);
