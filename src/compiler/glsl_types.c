@@ -1722,6 +1722,14 @@ glsl_get_field_index(const struct glsl_type *t, const char *name)
    return -1;
 }
 
+const struct glsl_type *
+glsl_get_field_type(const struct glsl_type *t, const char *name)
+{
+   const int idx = glsl_get_field_index(t, name);
+   if (idx == -1)
+      return &glsl_type_builtin_error;
+   return glsl_get_struct_field(t, (unsigned)idx);
+}
 
 unsigned
 glsl_get_component_slots(const struct glsl_type *t)

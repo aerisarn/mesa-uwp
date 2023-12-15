@@ -89,7 +89,7 @@ enum glsl_base_type {
    GLSL_TYPE_ERROR
 };
 
-/* Return the bit size of a type. Note that this differs from 
+/* Return the bit size of a type. Note that this differs from
  * glsl_get_bit_size in that it returns 32 bits for bools, whereas at
  * the NIR level we would want to return 1 bit for bools.
  */
@@ -704,6 +704,7 @@ static inline bool glsl_type_is_void(const struct glsl_type *t) { return t->base
 static inline bool glsl_type_is_subroutine(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_SUBROUTINE; }
 static inline bool glsl_type_is_error(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_ERROR; }
 static inline bool glsl_type_is_double(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_DOUBLE; }
+static inline bool glsl_type_is_float(const struct glsl_type *t) { return t->base_type == GLSL_TYPE_FLOAT; }
 
 static inline bool
 glsl_type_is_numeric(const struct glsl_type *t)
@@ -748,6 +749,90 @@ static inline bool
 glsl_type_is_64bit(const struct glsl_type *t)
 {
    return glsl_base_type_is_64bit(t->base_type);
+}
+
+static inline bool
+glsl_type_is_integer_16(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_UINT16 || t->base_type == GLSL_TYPE_INT16;
+}
+
+static inline bool
+glsl_type_is_integer_32(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_UINT || t->base_type == GLSL_TYPE_INT;
+}
+
+static inline bool
+glsl_type_is_integer_64(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_UINT64 || t->base_type == GLSL_TYPE_INT64;
+}
+
+static inline bool
+glsl_type_is_integer_32_64(const struct glsl_type *t)
+{
+   return glsl_type_is_integer_32(t) || glsl_type_is_integer_64(t);
+}
+
+static inline bool
+glsl_type_is_integer_16_32(const struct glsl_type *t)
+{
+   return glsl_type_is_integer_16(t) || glsl_type_is_integer_32(t);
+}
+
+static inline bool
+glsl_type_is_integer_16_32_64(const struct glsl_type *t)
+{
+   return glsl_type_is_integer_16(t) || glsl_type_is_integer_32(t) || glsl_type_is_integer_64(t);
+}
+
+static inline bool
+glsl_type_is_float_16_32(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_FLOAT16 || glsl_type_is_float(t);
+}
+
+static inline bool
+glsl_type_is_float_16_32_64(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_FLOAT16 || glsl_type_is_float(t) || glsl_type_is_double(t);
+}
+
+static inline bool
+glsl_type_is_float_32_64(const struct glsl_type *t)
+{
+   return glsl_type_is_float(t) || glsl_type_is_double(t);
+}
+
+static inline bool
+glsl_type_is_int_16_32_64(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_INT16 ||
+          t->base_type == GLSL_TYPE_INT ||
+          t->base_type == GLSL_TYPE_INT64;
+}
+
+static inline bool
+glsl_type_is_uint_16_32_64(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_UINT16 ||
+          t->base_type == GLSL_TYPE_UINT ||
+          t->base_type == GLSL_TYPE_UINT64;
+}
+
+static inline bool
+glsl_type_is_int_16_32(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_INT ||
+          t->base_type == GLSL_TYPE_INT16;
+}
+
+static inline bool
+glsl_type_is_uint_16_32(const struct glsl_type *t)
+{
+   return t->base_type == GLSL_TYPE_UINT ||
+          t->base_type == GLSL_TYPE_UINT16;
 }
 
 static inline bool
@@ -989,6 +1074,15 @@ unsigned glsl_get_struct_location_offset(const struct glsl_type *t, unsigned len
  * Get the location of a field within a record type
  */
 int glsl_get_field_index(const struct glsl_type *t, const char *name);
+
+/**
+ * Get the type of a structure field
+ *
+ * \return
+ * Pointer to the type of the named field.  If the type is not a structure
+ * or the named field does not exist, \c &glsl_type_builtin_error is returned.
+ */
+const struct glsl_type *glsl_get_field_type(const struct glsl_type *t, const char *name);
 
 static inline int
 glsl_get_struct_field_offset(const struct glsl_type *t, unsigned index)
