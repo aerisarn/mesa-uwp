@@ -782,23 +782,6 @@ void radv_queue_finish(struct radv_queue *queue);
 
 enum radeon_ctx_priority radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *pObj);
 
-struct radv_shader_free_list {
-   uint8_t size_mask;
-   struct list_head free_lists[RADV_SHADER_ALLOC_NUM_FREE_LISTS];
-};
-
-struct radv_shader_dma_submission {
-   struct list_head list;
-
-   struct radeon_cmdbuf *cs;
-   struct radeon_winsys_bo *bo;
-   uint64_t bo_size;
-   char *ptr;
-
-   /* The semaphore value to wait for before reusing this submission. */
-   uint64_t seq;
-};
-
 #define RADV_BORDER_COLOR_COUNT       4096
 #define RADV_BORDER_COLOR_BUFFER_SIZE (sizeof(VkClearColorValue) * RADV_BORDER_COLOR_COUNT)
 
@@ -1265,21 +1248,6 @@ enum radv_cmd_flush_bits {
 
    RADV_CMD_FLUSH_ALL_COMPUTE = (RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE |
                                  RADV_CMD_FLAG_INV_L2 | RADV_CMD_FLAG_WB_L2 | RADV_CMD_FLAG_CS_PARTIAL_FLUSH),
-};
-
-enum radv_nggc_settings {
-   radv_nggc_none = 0,
-   radv_nggc_front_face = 1 << 0,
-   radv_nggc_back_face = 1 << 1,
-   radv_nggc_face_is_ccw = 1 << 2,
-   radv_nggc_small_primitives = 1 << 3,
-};
-
-enum radv_shader_query_state {
-   radv_shader_query_none = 0,
-   radv_shader_query_pipeline_stat = 1 << 0,
-   radv_shader_query_prim_gen = 1 << 1,
-   radv_shader_query_prim_xfb = 1 << 2,
 };
 
 struct radv_vertex_binding {
@@ -2000,18 +1968,6 @@ bool radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipeline
 
 bool radv_emulate_rt(const struct radv_physical_device *pdevice);
 
-enum {
-   RADV_RT_STAGE_BITS =
-      (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-       VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR)
-};
-
-#define RADV_STAGE_MASK ((1 << MESA_VULKAN_SHADER_STAGES) - 1)
-
-#define radv_foreach_stage(stage, stage_bits)                                                                          \
-   for (gl_shader_stage stage, __tmp = (gl_shader_stage)((stage_bits)&RADV_STAGE_MASK); stage = ffs(__tmp) - 1, __tmp; \
-        __tmp &= ~(1 << (stage)))
-
 struct radv_prim_vertex_count {
    uint8_t min;
    uint8_t incr;
@@ -2039,13 +1995,6 @@ struct radv_pipeline_group_handle {
       uint32_t intersection_index;
       uint32_t any_hit_index;
    };
-};
-
-struct radv_serialized_shader_arena_block {
-   uint32_t offset;
-   uint32_t size;
-   uint64_t arena_va;
-   uint32_t arena_size;
 };
 
 struct radv_rt_capture_replay_handle {
@@ -2885,19 +2834,6 @@ struct radv_shader_info;
 void llvm_compile_shader(const struct radv_nir_compiler_options *options, const struct radv_shader_info *info,
                          unsigned shader_count, struct nir_shader *const *shaders, struct radv_shader_binary **binary,
                          const struct radv_shader_args *args);
-
-/* radv_shader_info.h */
-struct radv_shader_info;
-
-void radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
-                               const struct radv_shader_layout *layout, const struct radv_pipeline_key *pipeline_key,
-                               const enum radv_pipeline_type pipeline_type, bool consider_force_vrs,
-                               struct radv_shader_info *info);
-
-void radv_nir_shader_info_init(gl_shader_stage stage, gl_shader_stage next_stage, struct radv_shader_info *info);
-
-void radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                               struct radv_shader_stage *stages);
 
 bool radv_sqtt_init(struct radv_device *device);
 void radv_sqtt_finish(struct radv_device *device);
