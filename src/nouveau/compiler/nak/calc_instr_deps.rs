@@ -362,7 +362,7 @@ impl BarAlloc {
     }
 }
 
-fn assign_barriers(f: &mut Function) {
+fn assign_barriers(f: &mut Function, sm: u8) {
     let mut uses = RegTracker::new_with(&|| RegUse::None);
     let mut deps = DepGraph::new();
 
@@ -380,7 +380,7 @@ fn assign_barriers(f: &mut Function) {
                     waits.extend_from_slice(u.deps());
                 });
 
-                if instr.has_fixed_latency() {
+                if instr.has_fixed_latency(sm) {
                     // Delays will cover us here.  We just need to make sure
                     // that we wait on any uses that we consume.
                     uses.for_each_instr_src_mut(instr, |u| {
@@ -437,7 +437,7 @@ fn assign_barriers(f: &mut Function) {
                 instr.deps.set_yield(true);
             }
 
-            if instr.has_fixed_latency() {
+            if instr.has_fixed_latency(sm) {
                 continue;
             }
 
@@ -464,7 +464,7 @@ fn assign_barriers(f: &mut Function) {
     }
 }
 
-fn calc_delays(f: &mut Function) {
+fn calc_delays(f: &mut Function, sm: u8) {
     for b in f.blocks.iter_mut().rev() {
         let mut cycle = 0_u32;
         let mut ready = RegTracker::new(0_u32);
@@ -478,10 +478,10 @@ fn calc_delays(f: &mut Function) {
             if let Some(bar) = instr.deps.wr_bar() {
                 min_start = max(min_start, bars_ready[usize::from(bar)] + 2);
             }
-            if instr.has_fixed_latency() {
+            if instr.has_fixed_latency(sm) {
                 for (idx, dst) in instr.dsts().iter().enumerate() {
                     if let Dst::Reg(reg) = dst {
-                        let latency = instr.get_dst_latency(idx);
+                        let latency = instr.get_dst_latency(sm, idx);
                         for c in &ready[*reg] {
                             min_start = max(min_start, *c + latency);
                         }
@@ -542,8 +542,8 @@ impl Shader {
             self.assign_deps_serial();
         } else {
             for f in &mut self.functions {
-                assign_barriers(f);
-                calc_delays(f);
+                assign_barriers(f, self.info.sm);
+                calc_delays(f, self.info.sm);
             }
         }
     }

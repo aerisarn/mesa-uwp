@@ -5034,7 +5034,7 @@ impl Instr {
         }
     }
 
-    pub fn has_fixed_latency(&self) -> bool {
+    pub fn has_fixed_latency(&self, _sm: u8) -> bool {
         match &self.op {
             // Float ALU
             Op::FAdd(_)
@@ -5142,8 +5142,8 @@ impl Instr {
         }
     }
 
-    pub fn get_dst_latency(&self, dst_idx: usize) -> u32 {
-        debug_assert!(self.has_fixed_latency());
+    pub fn get_dst_latency(&self, sm: u8, dst_idx: usize) -> u32 {
+        debug_assert!(self.has_fixed_latency(sm));
         let file = match self.dsts()[dst_idx] {
             Dst::None => return 0,
             Dst::SSA(vec) => vec.file(),
