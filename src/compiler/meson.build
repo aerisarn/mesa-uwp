@@ -45,7 +45,6 @@ astc_decoder_glsl_file = files('glsl/astc_decoder.glsl')
 files_libcompiler = files(
   'glsl_types.c',
   'glsl_types.h',
-  'glsl_types_impl.h',
   'nir_types.h',
   'shader_enums.c',
   'shader_enums.h',
