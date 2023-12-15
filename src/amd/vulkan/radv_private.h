@@ -3616,9 +3616,6 @@ radv_normalize_blend_factor(VkBlendOp op, VkBlendFactor *src_factor, VkBlendFact
 void si_blend_remove_dst(VkBlendOp *func, VkBlendFactor *src_factor, VkBlendFactor *dst_factor,
                          VkBlendFactor expected_dst, VkBlendFactor replacement_src);
 
-uint32_t radv_get_tess_output_topology(const struct radv_graphics_pipeline *pipeline,
-                                       VkTessellationDomainOrigin domain_origin);
-
 ALWAYS_INLINE static bool
 radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
 {
