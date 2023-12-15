@@ -782,7 +782,7 @@ wsi_GetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice physicalDevice,
    VkResult res = iface->get_support(surface, wsi_device,
                                      queueFamilyIndex, pSupported);
    if (res == VK_SUCCESS) {
-      bool blit = wsi_device->queue_supports_blit & BITFIELD64_BIT(queueFamilyIndex);
+      bool blit = (wsi_device->queue_supports_blit & BITFIELD64_BIT(queueFamilyIndex)) != 0;
       *pSupported = (bool)*pSupported && blit;
    }
 

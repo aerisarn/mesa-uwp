@@ -114,7 +114,7 @@ wsi_GetPhysicalDeviceWin32PresentationSupportKHR(VkPhysicalDevice physicalDevice
 {
    VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
    struct wsi_device *wsi_device = pdevice->wsi_device;
-   return wsi_device->queue_supports_blit & BITFIELD64_BIT(queueFamilyIndex);
+   return (wsi_device->queue_supports_blit & BITFIELD64_BIT(queueFamilyIndex)) != 0;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
