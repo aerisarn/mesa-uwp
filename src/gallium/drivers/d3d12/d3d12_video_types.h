@@ -40,6 +40,8 @@
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
+#define D3D12_VIDEO_ANY_DECODER_ENABLED (VIDEO_CODEC_H264DEC || VIDEO_CODEC_H265DEC || VIDEO_CODEC_AV1DEC || VIDEO_CODEC_VP9DEC)
+
 #if !defined(_WIN32) || defined(_MSC_VER)
 inline D3D12_VIDEO_DECODER_HEAP_DESC
 GetDesc(ID3D12VideoDecoderHeap *heap)

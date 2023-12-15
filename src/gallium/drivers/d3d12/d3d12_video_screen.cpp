@@ -150,6 +150,7 @@ d3d12_has_video_decode_support(struct pipe_screen *pscreen, enum pipe_video_prof
 
    // Supported profiles below
    bool supportsProfile = false;
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    switch (profile) {
 #if VIDEO_CODEC_H264DEC
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE:
@@ -185,7 +186,7 @@ d3d12_has_video_decode_support(struct pipe_screen *pscreen, enum pipe_video_prof
       default:
          supportsProfile = false;
    }
-
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
    return VideoFeatureAreaSupport.VideoDecodeSupport && supportsProfile;
 }
 

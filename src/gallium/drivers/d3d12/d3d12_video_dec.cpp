@@ -354,6 +354,7 @@ d3d12_video_decoder_store_upper_layer_references(struct d3d12_video_decoder *pD3
                                                  struct pipe_video_buffer *target,
                                                  struct pipe_picture_desc *picture)
 {
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    pD3D12Dec->m_pCurrentDecodeTarget = target;
    switch (pD3D12Dec->m_d3d12DecProfileType) {
 #if VIDEO_CODEC_H264DEC
@@ -389,6 +390,7 @@ d3d12_video_decoder_store_upper_layer_references(struct d3d12_video_decoder *pD3
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 }
 
 /**
@@ -1075,6 +1077,7 @@ d3d12_video_decoder_prepare_for_decode_frame(struct d3d12_video_decoder *pD3D12D
    // otherwise, use the standard output resource
    [[maybe_unused]] ID3D12Resource *pCurrentFrameDPBEntry = fReferenceOnly ? *ppRefOnlyOutTexture2D : *ppOutTexture2D;
    [[maybe_unused]] uint32_t currentFrameDPBEntrySubresource = fReferenceOnly ? *pRefOnlyOutSubresourceIndex : *pOutSubresourceIndex;
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    switch (pD3D12Dec->m_d3d12DecProfileType) {
 #if VIDEO_CODEC_H264DEC
       case d3d12_video_decode_profile_type_h264:
@@ -1113,7 +1116,7 @@ d3d12_video_decoder_prepare_for_decode_frame(struct d3d12_video_decoder *pD3D12D
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
-
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
    return true;
 }
 
@@ -1215,6 +1218,7 @@ d3d12_video_decoder_reconfigure_dpb(struct d3d12_video_decoder *pD3D12Dec,
 void
 d3d12_video_decoder_refresh_dpb_active_references(struct d3d12_video_decoder *pD3D12Dec)
 {
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    switch (pD3D12Dec->m_d3d12DecProfileType) {
 #if VIDEO_CODEC_H264DEC
       case d3d12_video_decode_profile_type_h264:
@@ -1245,6 +1249,7 @@ d3d12_video_decoder_refresh_dpb_active_references(struct d3d12_video_decoder *pD
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 }
 
 void
@@ -1256,6 +1261,7 @@ d3d12_video_decoder_get_frame_info(
    *pMaxDPB = 0;
    isInterlaced = false;
 
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    switch (pD3D12Dec->m_d3d12DecProfileType) {
 #if VIDEO_CODEC_H264DEC
       case d3d12_video_decode_profile_type_h264:
@@ -1286,6 +1292,7 @@ d3d12_video_decoder_get_frame_info(
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 
    if (pD3D12Dec->m_ConfigDecoderSpecificFlags & d3d12_video_decode_config_specific_flag_alignment_height) {
       const uint32_t AlignmentMask = 31;
@@ -1301,6 +1308,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
    struct d3d12_video_buffer *pD3D12VideoBuffer   // input argument, target video buffer
 )
 {
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    assert(picture);
    assert(codec);
    struct d3d12_video_decoder *pD3D12Dec = (struct d3d12_video_decoder *) codec;
@@ -1388,6 +1396,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 }
 
 void
@@ -1395,6 +1404,7 @@ d3d12_video_decoder_prepare_dxva_slices_control(
    struct d3d12_video_decoder *pD3D12Dec,   // input argument, current decoder
    struct pipe_picture_desc *picture)
 {
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    [[maybe_unused]] auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
    d3d12_video_decode_profile_type profileType =
       d3d12_video_decoder_convert_pipe_video_profile_to_profile_type(pD3D12Dec->base.profile);
@@ -1436,6 +1446,7 @@ d3d12_video_decoder_prepare_dxva_slices_control(
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 }
 
 void
@@ -1471,6 +1482,7 @@ d3d12_video_decoder_supports_aot_dpb(D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT dec
                                      d3d12_video_decode_profile_type profileType)
 {
    bool supportedProfile = false;
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    switch (profileType) {
 #if VIDEO_CODEC_H264DEC
       case d3d12_video_decode_profile_type_h264:
@@ -1500,6 +1512,7 @@ d3d12_video_decoder_supports_aot_dpb(D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT dec
          supportedProfile = false;
          break;
    }
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 
    return (decodeSupport.DecodeTier >= D3D12_VIDEO_DECODE_TIER_2) && supportedProfile;
 }
@@ -1559,6 +1572,7 @@ d3d12_video_decoder_convert_pipe_video_profile_to_d3d12_profile(enum pipe_video_
 GUID
 d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType, DXGI_FORMAT decode_format)
 {
+#if D3D12_VIDEO_ANY_DECODER_ENABLED
    switch (profileType) {
 #if VIDEO_CODEC_H264DEC
       case d3d12_video_decode_profile_type_h264:
@@ -1604,6 +1618,9 @@ d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType,
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
+#else
+   return {};
+#endif // D3D12_VIDEO_ANY_DECODER_ENABLED
 }
 
 bool
