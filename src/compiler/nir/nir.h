@@ -6555,6 +6555,18 @@ nir_next_decl_reg(nir_intrinsic_instr *prev, nir_function_impl *impl)
                             *next_ = nir_next_decl_reg(reg, NULL); \
         reg; reg = next_, next_ = nir_next_decl_reg(next_, NULL))
 
+static inline nir_cursor
+nir_after_reg_decls(nir_function_impl *impl)
+{
+   nir_intrinsic_instr *last_reg_decl = NULL;
+   nir_foreach_reg_decl(reg_decl, impl)
+      last_reg_decl = reg_decl;
+
+   if (last_reg_decl != NULL)
+      return nir_after_instr(&last_reg_decl->instr);
+   return nir_before_impl(impl);
+}
+
 static inline bool
 nir_is_load_reg(nir_intrinsic_instr *intr)
 {
