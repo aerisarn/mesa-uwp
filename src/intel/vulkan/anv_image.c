@@ -2369,7 +2369,7 @@ VkResult anv_BindImageMemory2(
             continue;
 
          /* Do nothing if flat CCS requirements are satisfied. */
-         if (device->info->has_flat_ccs && bo->vram_only)
+         if (device->info->has_flat_ccs && anv_bo_is_vram_only(bo))
             continue;
 
          /* Add the plane to the aux map when applicable. */

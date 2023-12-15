@@ -1531,8 +1531,6 @@ anv_device_alloc_bo(struct anv_device *device,
       .actual_size = actual_size,
       .flags = bo_flags,
       .alloc_flags = alloc_flags,
-      .vram_only = nregions == 1 &&
-                   regions[0] == device->physical->vram_non_mappable.region,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {

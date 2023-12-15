@@ -497,15 +497,21 @@ struct anv_bo {
 
    /** True if this BO wraps a host pointer */
    bool from_host_ptr:1;
-
-   /** True if this BO can only live in VRAM */
-   bool vram_only:1;
 };
 
 static inline bool
 anv_bo_is_external(const struct anv_bo *bo)
 {
    return bo->alloc_flags & ANV_BO_ALLOC_EXTERNAL;
+}
+
+static inline bool
+anv_bo_is_vram_only(const struct anv_bo *bo)
+{
+   return !(bo->alloc_flags & (ANV_BO_ALLOC_NO_LOCAL_MEM |
+                               ANV_BO_ALLOC_MAPPED |
+                               ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE |
+                               ANV_BO_ALLOC_IMPORTED));
 }
 
 static inline struct anv_bo *
