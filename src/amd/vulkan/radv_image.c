@@ -2473,6 +2473,23 @@ radv_image_queue_family_mask(const struct radv_image *image, enum radv_queue_fam
    return 1u << family;
 }
 
+bool
+radv_image_is_renderable(const struct radv_device *device, const struct radv_image *image)
+{
+   if (image->vk.format == VK_FORMAT_R32G32B32_UINT || image->vk.format == VK_FORMAT_R32G32B32_SINT ||
+       image->vk.format == VK_FORMAT_R32G32B32_SFLOAT)
+      return false;
+
+   if (device->physical_device->rad_info.gfx_level >= GFX9 && image->vk.image_type == VK_IMAGE_TYPE_3D &&
+       vk_format_get_blocksizebits(image->vk.format) == 128 && vk_format_is_compressed(image->vk.format))
+      return false;
+
+   if (image->planes[0].surface.flags & RADEON_SURF_NO_RENDER_TARGET)
+      return false;
+
+   return true;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateImage(VkDevice _device, const VkImageCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator,
                  VkImage *pImage)
