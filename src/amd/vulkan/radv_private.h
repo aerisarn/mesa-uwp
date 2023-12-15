@@ -2699,6 +2699,11 @@ void radv_image_view_finish(struct radv_image_view *iview);
 
 VkFormat radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask);
 
+void radv_compose_swizzle(const struct util_format_description *desc, const VkComponentMapping *mapping,
+                          enum pipe_swizzle swizzle[4]);
+
+unsigned radv_map_swizzle(unsigned swizzle);
+
 struct radv_buffer_view {
    struct vk_buffer_view vk;
    struct radeon_winsys_bo *bo;
