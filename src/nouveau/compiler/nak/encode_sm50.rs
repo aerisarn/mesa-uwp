@@ -1917,6 +1917,37 @@ impl SM50Instr {
         // TODO: subop?
     }
 
+    fn encode_suld(&mut self, op: &OpSuLd) {
+        self.set_opcode(0xeb00);
+
+        assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
+        self.set_field(20..24, op.mask);
+        self.set_image_dim(33..36, op.image_dim);
+
+        // mem_eviction_policy not a thing for sm < 70
+
+        let scope = match op.mem_order {
+            MemOrder::Constant => MemScope::System,
+            MemOrder::Weak => MemScope::CTA,
+            MemOrder::Strong(s) => s,
+        };
+
+        self.set_field(
+            24..26,
+            match scope {
+                MemScope::CTA => 0_u8,
+                /* SM => 1_u8, */
+                MemScope::GPU => 2_u8,
+                MemScope::System => 3_u8,
+            },
+        );
+
+        self.set_dst(op.dst);
+
+        self.set_reg_src(8..16, op.coord);
+        self.set_reg_src(39..47, op.handle);
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1981,6 +2012,7 @@ impl SM50Instr {
             Op::Bra(op) => si.encode_bra(&op, ip, labels),
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
+            Op::SuLd(op) => si.encode_suld(&op),
             _ => panic!("Unhandled instruction {}", instr.op),
         }
 

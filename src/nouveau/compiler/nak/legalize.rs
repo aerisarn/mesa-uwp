@@ -343,6 +343,10 @@ fn legalize_sm50_instr(
         Op::Ldc(_) => (),  // Nothing to do
         Op::Copy(_) => (), // Nothing to do
         Op::INeg(_) => (), /* we unconditionally lower this */
+        Op::SuLd(op) => {
+            copy_alu_src_if_not_reg(b, &mut op.handle, SrcType::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.coord, SrcType::GPR);
+        }
         _ => {
             let src_types = instr.src_types();
             for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
