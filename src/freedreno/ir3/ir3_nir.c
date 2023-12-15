@@ -722,6 +722,13 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    /* Lower scratch writemasks */
    progress |= OPT(s, nir_lower_wrmasks, should_split_wrmask, s);
 
+   if (OPT(s, nir_lower_locals_to_regs, 1)) {
+      progress = true;
+
+      /* Split 64b registers into two 32b ones. */
+      OPT_V(s, ir3_nir_lower_64b_regs);
+   }
+
    progress |= OPT(s, ir3_nir_lower_wide_load_store);
    progress |= OPT(s, ir3_nir_lower_64b_global);
    progress |= OPT(s, ir3_nir_lower_64b_intrinsics);
