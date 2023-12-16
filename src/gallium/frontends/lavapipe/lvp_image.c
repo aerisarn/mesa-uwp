@@ -42,7 +42,7 @@ lvp_image_create(VkDevice _device,
    if (image == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   image->alignment = 16;
+   image->alignment = 64;
    image->plane_count = vk_format_get_plane_count(pCreateInfo->format);
    image->disjoint = image->plane_count > 1 &&
                      (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
