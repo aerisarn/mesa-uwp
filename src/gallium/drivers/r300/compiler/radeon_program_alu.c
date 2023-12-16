@@ -212,21 +212,6 @@ static void transform_DP2(struct radeon_compiler* c,
 	rc_remove_instruction(inst);
 }
 
-static void transform_LRP(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	struct rc_dst_register dst = new_dst_reg(c, inst);
-
-	emit3(c, inst->Prev, RC_OPCODE_MAD, NULL,
-		dst,
-		negate(inst->U.I.SrcReg[0]), inst->U.I.SrcReg[2], inst->U.I.SrcReg[2]);
-	emit3(c, inst->Prev, RC_OPCODE_MAD, &inst->U.I,
-		inst->U.I.DstReg,
-		inst->U.I.SrcReg[0], inst->U.I.SrcReg[1], srcreg(RC_FILE_TEMPORARY, dst.Index));
-
-	rc_remove_instruction(inst);
-}
-
 static void transform_RSQ(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
@@ -341,7 +326,6 @@ int radeonTransformALU(
 	switch(inst->U.I.Opcode) {
 	case RC_OPCODE_DP2: transform_DP2(c, inst); return 1;
 	case RC_OPCODE_KILP: transform_KILP(c, inst); return 1;
-	case RC_OPCODE_LRP: transform_LRP(c, inst); return 1;
 	case RC_OPCODE_RSQ: transform_RSQ(c, inst); return 1;
 	case RC_OPCODE_SEQ: transform_SEQ(c, inst); return 1;
 	case RC_OPCODE_SGE: transform_SGE(c, inst); return 1;
@@ -499,7 +483,6 @@ int r300_transform_vertex_alu(
 	case RC_OPCODE_DP2: transform_r300_vertex_DP2(c, inst); return 1;
 	case RC_OPCODE_DP3: transform_r300_vertex_DP3(c, inst); return 1;
 	case RC_OPCODE_LIT: transform_r300_vertex_fix_LIT(c, inst); return 1;
-	case RC_OPCODE_LRP: transform_LRP(c, inst); return 1;
 	case RC_OPCODE_SEQ:
 		if (!c->is_r500) {
 			transform_r300_vertex_SEQ(c, inst);

@@ -98,9 +98,6 @@ typedef enum {
 	/** special instruction, see ARB_vertex_program */
 	RC_OPCODE_LOG,
 
-	/** vec4 instruction: dst.c = src0.c*src1.c + (1 - src0.c)*src2.c */
-	RC_OPCODE_LRP,
-
 	/** vec4 instruction: dst.c = src0.c*src1.c + src2.c */
 	RC_OPCODE_MAD,
 

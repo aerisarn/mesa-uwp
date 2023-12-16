@@ -164,13 +164,6 @@ const struct rc_opcode_info rc_opcodes[MAX_RC_OPCODE] = {
 		.HasDstReg = 1
 	},
 	{
-		.Opcode = RC_OPCODE_LRP,
-		.Name = "LRP",
-		.NumSrcRegs = 3,
-		.HasDstReg = 1,
-		.IsComponentwise = 1
-	},
-	{
 		.Opcode = RC_OPCODE_MAD,
 		.Name = "MAD",
 		.NumSrcRegs = 3,
