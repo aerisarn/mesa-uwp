@@ -444,6 +444,10 @@ nvk_cmd_buffer_dirty_render_pass(struct nvk_cmd_buffer *cmd)
 {
    struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;
 
+   /* These depend on color attachment count */
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
+
+   /* These depend on the depth/stencil format */
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE);
@@ -1588,6 +1592,7 @@ nvk_mme_set_write_mask(struct mme_builder *b)
 static void
 nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
 {
+   struct nvk_rendering_state *render = &cmd->state.gfx.render;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
@@ -1602,23 +1607,17 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
-      /* We intentionally ignore cb.attachment_count here and just fill out
-       * whatever is in the mask.  This ensures that what we set to the MME
-       * scratch reg exactly matches the CPU side state.
-       *
-       * If attachment count is wrong (or changes), that will show up in the
-       * pipeline and the MME_SET_WRITE_MASK will be invoked again with the
-       * correct write mask.
-       */
       uint32_t color_write_enables = 0x0;
-      u_foreach_bit(a, dyn->cb.color_write_enables)
-         color_write_enables |= 0xf << (4 * a);
+      for (uint8_t a = 0; a < render->color_att_count; a++) {
+         if (dyn->cb.color_write_enables & BITFIELD_BIT(a))
+            color_write_enables |= 0xf << (4 * a);
+      }
 
       P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_WRITE_MASK_DYN),
              color_write_enables);
 
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_WRITE_MASK));
-      P_INLINE_DATA(p, dyn->cb.attachment_count);
+      P_INLINE_DATA(p, render->color_att_count);
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
