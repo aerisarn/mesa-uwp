@@ -1,19 +1,15 @@
 include:
   - local: 'src/broadcom/ci/gitlab-ci-inc.yml'
 
-
 vc4-rpi3-gl:arm32:
   extends:
+    - .igalia-bcm2837-rpi-3-b:arm64
     - .broadcom-test:arm32
     - .vc4-rules
-  tags:
-    - igalia-rpi3
   parallel: 4
   variables:
-    GPU_VERSION: broadcom-rpi3
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
-    DEVICE_TYPE: rpi3
 
 vc4-rpi3-gl-piglit-full:arm32:
   extends:
@@ -24,22 +20,18 @@ vc4-rpi3-gl-piglit-full:arm32:
     - igalia-fullrun
   variables:
     DEQP_SUITE: broadcom-rpi3-piglit-full
-    DEVICE_TYPE: rpi3
 
 
 v3d-rpi4-gl:arm64:
   extends:
+    - .igalia-bcm2711-rpi-4:arm64
     - .broadcom-test:arm64
     - .v3d-rules
-  tags:
-    - igalia-rpi4
   parallel: 10
   variables:
-    GPU_VERSION: broadcom-rpi4
     HWCI_START_WESTON: 1
     DEQP_SUITE: broadcom-rpi4
     DEQP_FRACTION: 2
-    DEVICE_TYPE: rpi4
 
 v3d-rpi4-gl-full:arm64:
   extends:
@@ -53,27 +45,24 @@ v3d-rpi4-gl-full:arm64:
   variables:
     TEST_PHASE_TIMEOUT: 40
     DEQP_FRACTION: 1
-    DEVICE_TYPE: rpi4
 
 
 v3d-rpi4-traces:arm64:
   extends:
+    - .igalia-bcm2711-rpi-4:arm64
     - .piglit-traces-test
     - .broadcom-test:arm64
     - .v3d-rules
   variables:
-    GPU_VERSION: broadcom-rpi4
     HWCI_TEST_SCRIPT: "/install/piglit/piglit-traces.sh"
     PIGLIT_TRACES_FILE: traces-broadcom.yml
     PIGLIT_REPLAY_DEVICE_NAME: "broadcom-rpi4"
     PIGLIT_RESULTS: "broadcom-rpi4-replay"
-    DEVICE_TYPE: rpi4
-  tags:
-    - igalia-rpi4
 
 
 v3dv-rpi4-vk:arm64:
   extends:
+    - .igalia-bcm2711-rpi-4:arm64
     - .broadcom-test:arm64
     - .v3dv-rules
   parallel: 10
@@ -83,11 +72,6 @@ v3dv-rpi4-vk:arm64:
     DEQP_FRACTION: 9
     DEQP_VER: vk
     FLAKES_CHANNEL: "#videocore-ci"
-    GPU_VERSION: broadcom-rpi4
-    VK_DRIVER: broadcom
-    DEVICE_TYPE: rpi4
-  tags:
-    - igalia-rpi4
 
 v3dv-rpi4-vk-full:arm64:
   extends:
@@ -101,4 +85,3 @@ v3dv-rpi4-vk-full:arm64:
   variables:
     TEST_PHASE_TIMEOUT: 80
     DEQP_FRACTION: 1
-    DEVICE_TYPE: rpi4

@@ -100,6 +100,26 @@
     - changes: *v3dv_file_list
       when: manual
 
+# 8 devices (2023-12-18)
+.igalia-bcm2837-rpi-3-b:arm64:
+  variables:
+    DEVICE_TYPE: rpi3
+    GPU_VERSION: broadcom-rpi3
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  tags:
+    - igalia-rpi3
+
+# 21 devices (2023-12-18)
+.igalia-bcm2711-rpi-4:arm64:
+  variables:
+    DEVICE_TYPE: rpi4
+    GPU_VERSION: broadcom-rpi4
+    VK_DRIVER: broadcom
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  tags:
+    - igalia-rpi4
 
 .broadcom-test:
   script:
