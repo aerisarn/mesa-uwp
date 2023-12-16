@@ -48,7 +48,7 @@ lib = static_library(
   'proc_macro2',
   'src/lib.rs',
   rust_args : rust_args,
-  override_options : ['rust_std=2018', 'build.rust_std=2018'],
+  override_options : ['rust_std=2021', 'build.rust_std=2021'],
   link_with : u_ind,
   rust_abi : 'rust',
   native : true,

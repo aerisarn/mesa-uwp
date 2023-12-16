@@ -1,6 +1,6 @@
 [wrap-file]
-directory = quote-1.0.25
-source_url = https://crates.io/api/v1/crates/quote/1.0.25/download
-source_filename = quote-1.0.25.tar.gz
-source_hash = 5308e8208729c3e1504a6cfad0d5daacc4614c9a2e65d1ea312a34b5cb00fe84
+directory = quote-1.0.33
+source_url = https://crates.io/api/v1/crates/quote/1.0.33/download
+source_filename = quote-1.0.33.tar.gz
+source_hash = 5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae
 patch_directory = quote
