@@ -94,6 +94,8 @@ struct build_config {
 struct acceleration_structure_layout {
    uint32_t geometry_info_offset;
    uint32_t bvh_offset;
+   uint32_t leaf_nodes_offset;
+   uint32_t internal_nodes_offset;
    uint32_t size;
 };
 
@@ -190,7 +192,15 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       offset = ALIGN(offset, 64);
       accel_struct->bvh_offset = offset;
 
-      offset += bvh_size;
+      /* root node */
+      offset += sizeof(struct radv_bvh_box32_node);
+
+      accel_struct->leaf_nodes_offset = offset;
+      offset += bvh_leaf_size * leaf_count;
+
+      accel_struct->internal_nodes_offset = offset;
+      /* Factor out the root node. */
+      offset += sizeof(struct radv_bvh_box32_node) * (internal_count - 1);
 
       accel_struct->size = offset;
    }
@@ -1054,22 +1064,7 @@ encode_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
             pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType : pInfos[i].ppGeometries[0]->geometryType;
 
       if (bvh_states[i].config.compact) {
-         uint32_t leaf_node_size = 0;
-         switch (geometry_type) {
-         case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
-            leaf_node_size = sizeof(struct radv_bvh_triangle_node);
-            break;
-         case VK_GEOMETRY_TYPE_AABBS_KHR:
-            leaf_node_size = sizeof(struct radv_bvh_aabb_node);
-            break;
-         case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-            leaf_node_size = sizeof(struct radv_bvh_instance_node);
-            break;
-         default:
-            unreachable("");
-         }
-
-         uint32_t dst_offset = sizeof(struct radv_bvh_box32_node) + bvh_states[i].leaf_node_count * leaf_node_size;
+         uint32_t dst_offset = bvh_states[i].accel_struct.internal_nodes_offset - bvh_states[i].accel_struct.bvh_offset;
          radv_update_buffer_cp(cmd_buffer,
                                pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset +
                                   offsetof(struct radv_ir_header, dst_node_offset),
