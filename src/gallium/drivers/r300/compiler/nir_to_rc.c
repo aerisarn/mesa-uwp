@@ -2451,6 +2451,7 @@ const void *nir_to_rc_options(struct nir_shader *s,
    if (s->info.stage == MESA_SHADER_VERTEX) {
       if (is_r500)
          NIR_PASS_V(s, r300_nir_lower_fcsel_r500);
+      NIR_PASS_V(s, r300_nir_lower_flrp);
    }
    NIR_PASS_V(s, nir_opt_dce);
 

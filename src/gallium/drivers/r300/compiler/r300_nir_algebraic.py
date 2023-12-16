@@ -94,6 +94,11 @@ r300_nir_clean_double_fneg = [
         (('fneg', ('fneg', a)), a)
 ]
 
+# This is very late flrp lowering to clean up after bcsel->fcsel->flrp.
+r300_nir_lower_flrp = [
+        (('flrp', a, b, c), ('ffma', b, c, ('ffma', ('fneg', a), c, a)))
+]
+
 r300_nir_post_integer_lowering = [
         # If ffloor result is used only for indirect constant load, we can get rid of it
         # completelly as ntt emits ARL by default which already does the flooring.
@@ -159,6 +164,9 @@ def main():
 
         f.write(nir_algebraic.AlgebraicPass("r300_nir_post_integer_lowering",
                                             r300_nir_post_integer_lowering).render())
+
+        f.write(nir_algebraic.AlgebraicPass("r300_nir_lower_flrp",
+                                            r300_nir_lower_flrp).render())
 
 if __name__ == '__main__':
     main()
