@@ -157,18 +157,14 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
    }
 
    uint32_t bvh_leaf_size;
-   uint32_t ir_leaf_size;
    switch (geometry_type) {
    case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
-      ir_leaf_size = sizeof(struct radv_ir_triangle_node);
       bvh_leaf_size = sizeof(struct radv_bvh_triangle_node);
       break;
    case VK_GEOMETRY_TYPE_AABBS_KHR:
-      ir_leaf_size = sizeof(struct radv_ir_aabb_node);
       bvh_leaf_size = sizeof(struct radv_bvh_aabb_node);
       break;
    case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-      ir_leaf_size = sizeof(struct radv_ir_instance_node);
       bvh_leaf_size = sizeof(struct radv_bvh_instance_node);
       break;
    default:
@@ -242,7 +238,7 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       offset += MAX3(requirements.internal_size, ploc_scratch_space, lbvh_node_space);
 
       scratch->ir_offset = offset;
-      offset += ir_leaf_size * leaf_count;
+      offset += sizeof(struct radv_ir_node) * leaf_count;
 
       scratch->internal_node_offset = offset;
       offset += sizeof(struct radv_ir_box_node) * internal_count;
@@ -639,8 +635,11 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.leaf_pipeline);
    for (uint32_t i = 0; i < infoCount; ++i) {
+      RADV_FROM_HANDLE(vk_acceleration_structure, accel_struct, pInfos[i].dstAccelerationStructure);
+
       struct leaf_args leaf_consts = {
-         .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
+         .ir = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
+         .bvh = vk_acceleration_structure_get_va(accel_struct) + bvh_states[i].accel_struct.leaf_nodes_offset,
          .header = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset,
          .ids = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.sort_buffer_offset[0],
       };

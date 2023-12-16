@@ -240,9 +240,6 @@ TYPE(radv_bvh_box32_node, 4);
 TYPE(radv_ir_header, 4);
 TYPE(radv_ir_node, 4);
 TYPE(radv_ir_box_node, 4);
-TYPE(radv_ir_triangle_node, 4);
-TYPE(radv_ir_aabb_node, 4);
-TYPE(radv_ir_instance_node, 8);
 
 TYPE(radv_global_sync_data, 4);
 
@@ -311,25 +308,6 @@ ir_type_to_bvh_type(uint32_t type)
    }
    /* unreachable in valid nodes */
    return RADV_BVH_INVALID_NODE;
-}
-
-radv_aabb
-calculate_instance_node_bounds(uint64_t base_ptr, mat3x4 otw_matrix)
-{
-   radv_aabb aabb;
-   radv_accel_struct_header header = DEREF(REF(radv_accel_struct_header)(base_ptr));
-
-   for (uint32_t comp = 0; comp < 3; ++comp) {
-      aabb.min[comp] = otw_matrix[comp][3];
-      aabb.max[comp] = otw_matrix[comp][3];
-      for (uint32_t col = 0; col < 3; ++col) {
-         aabb.min[comp] +=
-            min(otw_matrix[comp][col] * header.aabb.min[col], otw_matrix[comp][col] * header.aabb.max[col]);
-         aabb.max[comp] +=
-            max(otw_matrix[comp][col] * header.aabb.min[col], otw_matrix[comp][col] * header.aabb.max[col]);
-      }
-   }
-   return aabb;
 }
 
 float

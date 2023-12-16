@@ -33,6 +33,7 @@
 #endif
 
 struct leaf_args {
+   VOID_REF ir;
    VOID_REF bvh;
    REF(radv_ir_header) header;
    REF(key_id_pair) ids;

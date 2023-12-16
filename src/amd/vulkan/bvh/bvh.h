@@ -120,30 +120,6 @@ struct radv_ir_box_node {
    uint32_t bvh_offset;
 };
 
-struct radv_ir_aabb_node {
-   radv_ir_node base;
-   uint32_t primitive_id;
-   uint32_t geometry_id_and_flags;
-};
-
-struct radv_ir_triangle_node {
-   radv_ir_node base;
-   float coords[3][3];
-   uint32_t triangle_id;
-   uint32_t id;
-   uint32_t geometry_id_and_flags;
-};
-
-struct radv_ir_instance_node {
-   radv_ir_node base;
-   /* See radv_bvh_instance_node */
-   uint64_t base_ptr;
-   uint32_t custom_instance_and_mask;
-   uint32_t sbt_offset_and_flags;
-   mat3x4 otw_matrix;
-   uint32_t instance_id;
-};
-
 struct radv_global_sync_data {
    uint32_t task_counts[2];
    uint32_t task_started_counter;
