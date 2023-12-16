@@ -542,7 +542,7 @@ vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
    }
 #endif
 
-   const char *str = (char *)words;
+   const char *str = (const char *)words;
    const char *end = memchr(str, 0, word_count * 4);
    vtn_fail_if(end == NULL, "String is not null-terminated");
 
