@@ -608,6 +608,61 @@ pack_geometry_id_and_flags(uint32_t geometry_id, uint32_t flags)
    return geometry_id_and_flags;
 }
 
+static struct radv_bvh_geometry_data
+fill_geometry_data(VkAccelerationStructureTypeKHR type, struct bvh_state *bvh_state, uint32_t geom_index,
+                   const VkAccelerationStructureGeometryKHR *geometry,
+                   const VkAccelerationStructureBuildRangeInfoKHR *build_range_info)
+{
+   struct radv_bvh_geometry_data data = {
+      .first_id = bvh_state->node_count,
+      .geometry_id = pack_geometry_id_and_flags(geom_index, geometry->flags),
+      .geometry_type = geometry->geometryType,
+   };
+
+   switch (geometry->geometryType) {
+   case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
+      assert(type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
+
+      data.data = geometry->geometry.triangles.vertexData.deviceAddress +
+                  build_range_info->firstVertex * geometry->geometry.triangles.vertexStride;
+      data.indices = geometry->geometry.triangles.indexData.deviceAddress;
+
+      if (geometry->geometry.triangles.indexType == VK_INDEX_TYPE_NONE_KHR)
+         data.data += build_range_info->primitiveOffset;
+      else
+         data.indices += build_range_info->primitiveOffset;
+
+      data.transform = geometry->geometry.triangles.transformData.deviceAddress;
+      if (data.transform)
+         data.transform += build_range_info->transformOffset;
+
+      data.stride = geometry->geometry.triangles.vertexStride;
+      data.vertex_format = geometry->geometry.triangles.vertexFormat;
+      data.index_format = geometry->geometry.triangles.indexType;
+      break;
+   case VK_GEOMETRY_TYPE_AABBS_KHR:
+      assert(type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
+
+      data.data = geometry->geometry.aabbs.data.deviceAddress + build_range_info->primitiveOffset;
+      data.stride = geometry->geometry.aabbs.stride;
+      break;
+   case VK_GEOMETRY_TYPE_INSTANCES_KHR:
+      assert(type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR);
+
+      data.data = geometry->geometry.instances.data.deviceAddress + build_range_info->primitiveOffset;
+
+      if (geometry->geometry.instances.arrayOfPointers)
+         data.stride = 8;
+      else
+         data.stride = sizeof(VkAccelerationStructureInstanceKHR);
+      break;
+   default:
+      unreachable("Unknown geometryType");
+   }
+
+   return data;
+}
+
 static void
 build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
              const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
@@ -631,60 +686,16 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
          const VkAccelerationStructureGeometryKHR *geom =
             pInfos[i].pGeometries ? &pInfos[i].pGeometries[j] : pInfos[i].ppGeometries[j];
 
-         const VkAccelerationStructureBuildRangeInfoKHR *buildRangeInfo = &ppBuildRangeInfos[i][j];
+         const VkAccelerationStructureBuildRangeInfoKHR *build_range_info = &ppBuildRangeInfos[i][j];
 
-         leaf_consts.first_id = bvh_states[i].node_count;
-
-         leaf_consts.geometry_type = geom->geometryType;
-         leaf_consts.geometry_id = pack_geometry_id_and_flags(j, geom->flags);
-
-         switch (geom->geometryType) {
-         case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
-            assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
-
-            leaf_consts.data = geom->geometry.triangles.vertexData.deviceAddress +
-                               buildRangeInfo->firstVertex * geom->geometry.triangles.vertexStride;
-            leaf_consts.indices = geom->geometry.triangles.indexData.deviceAddress;
-
-            if (geom->geometry.triangles.indexType == VK_INDEX_TYPE_NONE_KHR)
-               leaf_consts.data += buildRangeInfo->primitiveOffset;
-            else
-               leaf_consts.indices += buildRangeInfo->primitiveOffset;
-
-            leaf_consts.transform = geom->geometry.triangles.transformData.deviceAddress;
-            if (leaf_consts.transform)
-               leaf_consts.transform += buildRangeInfo->transformOffset;
-
-            leaf_consts.stride = geom->geometry.triangles.vertexStride;
-            leaf_consts.vertex_format = geom->geometry.triangles.vertexFormat;
-            leaf_consts.index_format = geom->geometry.triangles.indexType;
-            break;
-         case VK_GEOMETRY_TYPE_AABBS_KHR:
-            assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
-
-            leaf_consts.data = geom->geometry.aabbs.data.deviceAddress + buildRangeInfo->primitiveOffset;
-            leaf_consts.stride = geom->geometry.aabbs.stride;
-            break;
-         case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-            assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR);
-
-            leaf_consts.data = geom->geometry.instances.data.deviceAddress + buildRangeInfo->primitiveOffset;
-
-            if (geom->geometry.instances.arrayOfPointers)
-               leaf_consts.stride = 8;
-            else
-               leaf_consts.stride = sizeof(VkAccelerationStructureInstanceKHR);
-            break;
-         default:
-            unreachable("Unknown geometryType");
-         }
+         leaf_consts.geom_data = fill_geometry_data(pInfos[i].type, &bvh_states[i], j, geom, build_range_info);
 
          vk_common_CmdPushConstants(commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.leaf_p_layout,
                                     VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(leaf_consts), &leaf_consts);
-         radv_unaligned_dispatch(cmd_buffer, buildRangeInfo->primitiveCount, 1, 1);
+         radv_unaligned_dispatch(cmd_buffer, build_range_info->primitiveCount, 1, 1);
 
-         bvh_states[i].leaf_node_count += buildRangeInfo->primitiveCount;
-         bvh_states[i].node_count += buildRangeInfo->primitiveCount;
+         bvh_states[i].leaf_node_count += build_range_info->primitiveCount;
+         bvh_states[i].node_count += build_range_info->primitiveCount;
       }
    }
 

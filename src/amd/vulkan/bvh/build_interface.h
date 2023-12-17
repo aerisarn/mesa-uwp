@@ -28,6 +28,7 @@
 #include "build_helpers.h"
 #else
 #include <stdint.h>
+#include "bvh.h"
 #define REF(type) uint64_t
 #define VOID_REF  uint64_t
 #endif
@@ -38,17 +39,7 @@ struct leaf_args {
    REF(radv_ir_header) header;
    REF(key_id_pair) ids;
 
-   VOID_REF data;
-   VOID_REF indices;
-   VOID_REF transform;
-
-   uint32_t first_id;
-   uint32_t geometry_type;
-   uint32_t geometry_id;
-
-   uint32_t stride;
-   uint32_t vertex_format;
-   uint32_t index_format;
+   radv_bvh_geometry_data geom_data;
 };
 
 struct morton_args {
