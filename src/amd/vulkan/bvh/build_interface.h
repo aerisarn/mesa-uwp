@@ -118,4 +118,14 @@ struct header_args {
    uint32_t instance_count;
 };
 
+struct update_args {
+   REF(radv_accel_struct_header) src;
+   REF(radv_accel_struct_header) dst;
+   REF(radv_aabb) leaf_bounds;
+   REF(uint32_t) internal_ready_count;
+   uint32_t leaf_node_count;
+
+   radv_bvh_geometry_data geom_data;
+};
+
 #endif

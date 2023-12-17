@@ -65,6 +65,11 @@ bvh_shaders = [
     'ploc_internal',
     [],
   ],
+  [
+    'update.comp',
+    'update',
+    [],
+  ],
 ]
 
 bvh_include_dir = dir_source_root + '/src/amd/vulkan/bvh'
