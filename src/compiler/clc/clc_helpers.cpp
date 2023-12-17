@@ -893,6 +893,12 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
    c->getPreprocessorOpts().addMacroUndef("__SPIR__");
    c->getPreprocessorOpts().addMacroUndef("__SPIRV__");
 
+   // clang defines those unconditionally, we need to fix that.
+   if (!args->features.int64)
+      c->getPreprocessorOpts().addMacroUndef("__opencl_c_int64");
+   if (!args->features.images)
+      c->getPreprocessorOpts().addMacroUndef("__IMAGE_SUPPORT__");
+
 #if LLVM_VERSION_MAJOR >= 14
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-all");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_byte_addressable_store");
