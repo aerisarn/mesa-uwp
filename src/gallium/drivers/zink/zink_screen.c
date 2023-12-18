@@ -55,7 +55,12 @@
 #include <xf86drm.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
 #include <sys/sysmacros.h>
+#endif
 #endif
 
 static int num_screens = 0;
