@@ -68,6 +68,7 @@ d3d12_debug_options[] = {
    { "res",          D3D12_DEBUG_RESOURCE,      "Debug resources" },
    { "debuglayer",   D3D12_DEBUG_DEBUG_LAYER,   "Enable debug layer" },
    { "gpuvalidator", D3D12_DEBUG_GPU_VALIDATOR, "Enable GPU validator" },
+   { "singleton",    D3D12_DEBUG_SINGLETON,     "Disallow use of device factory" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -1393,6 +1394,9 @@ try_find_d3d12core_next_to_self(char *path, size_t path_arr_size)
 static ID3D12DeviceFactory *
 try_create_device_factory(util_dl_library *d3d12_mod)
 {
+   if (d3d12_debug & D3D12_DEBUG_SINGLETON)
+      return nullptr;
+
    /* A device factory allows us to isolate things like debug layer enablement from other callers,
     * and can potentially even refer to a different D3D12 redist implementation from others.
     */
