@@ -2868,6 +2868,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 #endif
 
    void *mem_ctx = ralloc_context(NULL); // temporary linker context
+   unsigned prev = MESA_SHADER_STAGES;
 
    /* Separate the shaders into groups based on their type.
     */
@@ -3032,17 +3033,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    if (!prog->data->LinkStatus)
       goto done;
 
-   unsigned first, prev;
-
-   first = MESA_SHADER_STAGES;
-   /* Determine first and last stage. */
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (!prog->_LinkedShaders[i])
-         continue;
-      if (first == MESA_SHADER_STAGES)
-         first = i;
-   }
-
    check_explicit_uniform_locations(&ctx->Extensions, prog);
    link_assign_subroutine_types(prog);
    verify_subroutine_associated_funcs(prog);
@@ -3055,10 +3045,14 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    /* Validate the inputs of each stage with the output of the preceding
     * stage.
     */
-   prev = first;
-   for (unsigned i = prev + 1; i <= MESA_SHADER_FRAGMENT; i++) {
+   for (unsigned i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
       if (prog->_LinkedShaders[i] == NULL)
          continue;
+
+      if (prev == MESA_SHADER_STAGES) {
+         prev = i;
+         continue;
+      }
 
       validate_interstage_inout_blocks(prog, prog->_LinkedShaders[prev],
                                        prog->_LinkedShaders[i]);
