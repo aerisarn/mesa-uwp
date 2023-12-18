@@ -3,6 +3,7 @@
   <import name="gen125.xml">
     <exclude name="3DSTATE_CLEAR_PARAMS" />
     <exclude name="CLEAR_COLOR" />
+    <exclude name="L3ALLOC" />
   </import>
   <enum name="PREF_SLM_ALLOCATION_SIZE">
     <value name="SLM_ENCODES_0K" value="0" />

@@ -833,6 +833,7 @@ static void
 iris_emit_l3_config(struct iris_batch *batch,
                     const struct intel_l3_config *cfg)
 {
+#if GFX_VER < 20
    assert(cfg || GFX_VER >= 12);
 
 #if GFX_VER >= 12
@@ -870,6 +871,7 @@ iris_emit_l3_config(struct iris_batch *batch,
 #endif
       }
    }
+#endif /* GFX_VER < 20 */
 }
 
 #if GFX_VER == 9

@@ -900,6 +900,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
                      const struct anv_device *device,
                      const struct intel_l3_config *cfg)
 {
+#if GFX_VER < 20
    UNUSED const struct intel_device_info *devinfo = device->info;
 
 #if GFX_VER >= 12
@@ -942,6 +943,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
          l3cr.AllAllocation = cfg->n[INTEL_L3P_ALL];
       }
    }
+#endif /* GFX_VER < 20 */
 }
 
 void
