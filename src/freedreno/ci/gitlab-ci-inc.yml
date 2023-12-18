@@ -299,6 +299,8 @@
     FREEDRENO_HANGCHECK_MS: 2000
     GPU_VERSION: freedreno-a618
     VK_DRIVER: freedreno
+    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
+    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 .a618-test-kingoftown:
   extends:
@@ -307,8 +309,6 @@
     DEVICE_TYPE: sc7180-trogdor-kingoftown
     DTB: sc7180-trogdor-kingoftown
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-kingoftown
-    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
-    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 .a618-test-limozeen-nots-r5:
   extends:
@@ -317,8 +317,6 @@
     DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
     DTB: sc7180-trogdor-lazor-limozeen-nots-r5
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
-    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
-    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 .lava-sm8350-hdk:
   variables:
@@ -333,6 +331,8 @@
     GPU_VERSION: freedreno-a660
     RUNNER_TAG: mesa-ci-x86-64-lava-sm8350-hdk
     VK_DRIVER: freedreno
+    FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
+    KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
 
 # 6 devices (2023-07-06)
 .a630-test:
