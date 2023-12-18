@@ -71,6 +71,8 @@ window::window(uint32_t width, uint32_t height)
 
    _hdc = ::GetDC(_window);
 
+   putenv("D3D12_DEBUG=singleton,debuglayer");
+
    PIXELFORMATDESCRIPTOR pfd = {
        sizeof(PIXELFORMATDESCRIPTOR),  /* size */
        1,                              /* version */
