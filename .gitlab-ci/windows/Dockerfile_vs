@@ -12,8 +12,8 @@ RUN powershell -ExecutionPolicy RemoteSigned -Command "$ErrorActionPreference = 
 SHELL ["pwsh", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop';"]
 RUN Write-Output $PSVersionTable $ErrorActionPreference
 
-COPY mesa_deps_vs2019.ps1 C:\
-RUN C:\mesa_deps_vs2019.ps1
+COPY mesa_deps_msvc.ps1 C:\
+RUN C:\mesa_deps_msvc.ps1
 
 COPY mesa_deps_choco.ps1 C:\
 RUN C:\mesa_deps_choco.ps1

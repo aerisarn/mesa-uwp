@@ -553,10 +553,10 @@ debian-clang-release:
       -D opencl-spirv=true
       -D shared-glapi=disabled
 
-windows-vs2019:
+windows-msvc:
   extends:
     - .build-windows
-    - .use-windows_build_vs2019
+    - .use-windows_build_msvc
     - .windows-build-rules
   stage: build-misc
   script:
