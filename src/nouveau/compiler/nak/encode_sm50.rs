@@ -1948,6 +1948,54 @@ impl SM50Instr {
         self.set_reg_src(39..47, op.handle);
     }
 
+    fn encode_suatom(&mut self, op: &OpSuAtom) {
+        if matches!(op.atom_op, AtomOp::CmpExch) {
+            self.set_opcode(0xeac0);
+        } else {
+            self.set_opcode(0xea60);
+        }
+
+        let atom_type: u8 = match op.atom_type {
+            AtomType::U32 => 0,
+            AtomType::I32 => 1,
+            AtomType::F32 => 3,
+            AtomType::U64 => 2,
+            AtomType::I64 => 5,
+            _ => panic!("Unsupported atom type {}", op.atom_type),
+        };
+
+        let atom_op: u8 = match op.atom_op {
+            AtomOp::Add => 0,
+            AtomOp::Min => 1,
+            AtomOp::Max => 2,
+            AtomOp::Inc => 3,
+            AtomOp::Dec => 4,
+            AtomOp::And => 5,
+            AtomOp::Or => 6,
+            AtomOp::Xor => 7,
+            AtomOp::Exch => 8,
+            AtomOp::CmpExch => 0,
+        };
+
+        self.set_image_dim(33..36, op.image_dim);
+        self.set_field(36..39, atom_type);
+        self.set_field(29..33, atom_op);
+
+        // The hardware requires that we set .D on atomics.  This is safe to do
+        // in in the emit code because it only affects format conversion, not
+        // surface coordinates and atomics are required to be performed with
+        // image formats that that exactly match the shader data type.  So, for
+        // instance, a uint32_t atomic has to happen on an R32_UINT or R32_SINT
+        // image.
+        self.set_bit(52, true); // .D
+
+        self.set_dst(op.dst);
+
+        self.set_reg_src(20..28, op.data);
+        self.set_reg_src(8..16, op.coord);
+        self.set_reg_src(39..47, op.handle);
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -2013,6 +2061,7 @@ impl SM50Instr {
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::SuLd(op) => si.encode_suld(&op),
+            Op::SuAtom(op) => si.encode_suatom(&op),
             _ => panic!("Unhandled instruction {}", instr.op),
         }
 

@@ -347,6 +347,11 @@ fn legalize_sm50_instr(
             copy_alu_src_if_not_reg(b, &mut op.handle, SrcType::GPR);
             copy_alu_src_if_not_reg(b, &mut op.coord, SrcType::GPR);
         }
+        Op::SuAtom(op) => {
+            copy_alu_src_if_not_reg(b, &mut op.coord, SrcType::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.handle, SrcType::GPR);
+            copy_alu_src_if_not_reg(b, &mut op.data, SrcType::GPR);
+        }
         _ => {
             let src_types = instr.src_types();
             for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
