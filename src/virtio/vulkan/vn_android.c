@@ -28,8 +28,8 @@
 #include "vn_queue.h"
 
 /* perform options supported by CrOS Gralloc */
-#define CROS_GRALLOC_DRM_GET_BUFFER_INFO 4
-#define CROS_GRALLOC_DRM_GET_USAGE 5
+#define CROS_GRALLOC_DRM_GET_BUFFER_INFO               4
+#define CROS_GRALLOC_DRM_GET_USAGE                     5
 #define CROS_GRALLOC_DRM_GET_USAGE_FRONT_RENDERING_BIT 0x1
 
 struct vn_android_gralloc {

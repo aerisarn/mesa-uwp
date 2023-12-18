@@ -1305,7 +1305,8 @@ vn_fix_graphics_pipeline_create_infos(
       if (fix_descs[i].erase.multisample_state_sample_mask) {
          /* Swap original pMultisampleState with temporary state. */
          fix_tmp->multisample_state_infos[i] = *infos[i].pMultisampleState;
-         fix_tmp->infos[i].pMultisampleState = &fix_tmp->multisample_state_infos[i];
+         fix_tmp->infos[i].pMultisampleState =
+            &fix_tmp->multisample_state_infos[i];
 
          fix_tmp->multisample_state_infos[i].pSampleMask = NULL;
       }
