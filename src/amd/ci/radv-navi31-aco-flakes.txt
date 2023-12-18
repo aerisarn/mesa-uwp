@@ -3,3 +3,5 @@ dEQP-VK.ray_tracing_pipeline.pipeline_library.configurations.multithreaded_compi
 dEQP-VK.ray_tracing_pipeline.pipeline_library.configurations.multithreaded_compilation.*_check_capture_replay_handles
 dEQP-VK.ray_tracing_pipeline.pipeline_library.configurations.singlethreaded_compilation.*_check_all_handles
 dEQP-VK.ray_tracing_pipeline.pipeline_library.configurations.singlethreaded_compilation.*_check_capture_replay_handles
+
+dEQP-VK.dynamic_rendering.primary_cmd_buff.*
