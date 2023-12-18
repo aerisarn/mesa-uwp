@@ -1110,109 +1110,6 @@ cross_validate_uniforms(const struct gl_constants *consts,
 }
 
 /**
- * Accumulates the array of buffer blocks and checks that all definitions of
- * blocks agree on their contents.
- */
-static bool
-interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
-                                         bool validate_ssbo)
-{
-   int *ifc_blk_stage_idx[MESA_SHADER_STAGES];
-   struct gl_uniform_block *blks = NULL;
-   unsigned *num_blks = validate_ssbo ? &prog->data->NumShaderStorageBlocks :
-      &prog->data->NumUniformBlocks;
-
-   unsigned max_num_buffer_blocks = 0;
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i]) {
-         if (validate_ssbo) {
-            max_num_buffer_blocks +=
-               prog->_LinkedShaders[i]->Program->info.num_ssbos;
-         } else {
-            max_num_buffer_blocks +=
-               prog->_LinkedShaders[i]->Program->info.num_ubos;
-         }
-      }
-   }
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct gl_linked_shader *sh = prog->_LinkedShaders[i];
-
-      ifc_blk_stage_idx[i] =
-         (int *) malloc(sizeof(int) * max_num_buffer_blocks);
-      for (unsigned int j = 0; j < max_num_buffer_blocks; j++)
-         ifc_blk_stage_idx[i][j] = -1;
-
-      if (sh == NULL)
-         continue;
-
-      unsigned sh_num_blocks;
-      struct gl_uniform_block **sh_blks;
-      if (validate_ssbo) {
-         sh_num_blocks = prog->_LinkedShaders[i]->Program->info.num_ssbos;
-         sh_blks = sh->Program->sh.ShaderStorageBlocks;
-      } else {
-         sh_num_blocks = prog->_LinkedShaders[i]->Program->info.num_ubos;
-         sh_blks = sh->Program->sh.UniformBlocks;
-      }
-
-      for (unsigned int j = 0; j < sh_num_blocks; j++) {
-         int index = link_cross_validate_uniform_block(prog->data, &blks,
-                                                       num_blks, sh_blks[j]);
-
-         if (index == -1) {
-            linker_error(prog, "buffer block `%s' has mismatching "
-                         "definitions\n", sh_blks[j]->name.string);
-
-            for (unsigned k = 0; k <= i; k++) {
-               free(ifc_blk_stage_idx[k]);
-            }
-
-            /* Reset the block count. This will help avoid various segfaults
-             * from api calls that assume the array exists due to the count
-             * being non-zero.
-             */
-            *num_blks = 0;
-            return false;
-         }
-
-         ifc_blk_stage_idx[i][index] = j;
-      }
-   }
-
-   /* Update per stage block pointers to point to the program list.
-    * FIXME: We should be able to free the per stage blocks here.
-    */
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      for (unsigned j = 0; j < *num_blks; j++) {
-         int stage_index = ifc_blk_stage_idx[i][j];
-
-         if (stage_index != -1) {
-            struct gl_linked_shader *sh = prog->_LinkedShaders[i];
-
-            struct gl_uniform_block **sh_blks = validate_ssbo ?
-               sh->Program->sh.ShaderStorageBlocks :
-               sh->Program->sh.UniformBlocks;
-
-            blks[j].stageref |= sh_blks[stage_index]->stageref;
-            sh_blks[stage_index] = &blks[j];
-         }
-      }
-   }
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      free(ifc_blk_stage_idx[i]);
-   }
-
-   if (validate_ssbo)
-      prog->data->ShaderStorageBlocks = blks;
-   else
-      prog->data->UniformBlocks = blks;
-
-   return true;
-}
-
-/**
  * Verifies the invariance of built-in special variables.
  */
 static bool
@@ -3085,14 +2982,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
          lower_discard_flow(sh->ir);
       }
    }
-
-   /* Process UBOs */
-   if (!interstage_cross_validate_uniform_blocks(prog, false))
-      goto done;
-
-   /* Process SSBOs */
-   if (!interstage_cross_validate_uniform_blocks(prog, true))
-      goto done;
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (prog->_LinkedShaders[i] == NULL)

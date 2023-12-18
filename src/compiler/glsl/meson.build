@@ -190,7 +190,6 @@ files_libglsl = files(
   'linker_util.cpp',
   'link_functions.cpp',
   'link_interface_blocks.cpp',
-  'link_uniform_blocks.cpp',
   'list.h',
   'lower_builtins.cpp',
   'lower_discard_flow.cpp',
