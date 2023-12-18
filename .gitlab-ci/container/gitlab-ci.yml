@@ -440,9 +440,9 @@ windows_msvc:
   extends:
     - .windows_container_build
   variables:
-    MESA_IMAGE_PATH: &windows_vs_image_path ${WINDOWS_X64_VS_PATH}
-    MESA_IMAGE_TAG: &windows_vs_image_tag ${WINDOWS_X64_VS_TAG}
-    DOCKERFILE: Dockerfile_vs
+    MESA_IMAGE_PATH: &windows_msvc_image_path ${WINDOWS_X64_MSVC_PATH}
+    MESA_IMAGE_TAG: &windows_msvc_image_tag ${WINDOWS_X64_MSVC_TAG}
+    DOCKERFILE: Dockerfile_msvc
     MESA_BASE_IMAGE: "mcr.microsoft.com/windows/server:ltsc2022"
 
 windows_build_msvc:
@@ -457,8 +457,8 @@ windows_build_msvc:
     MESA_IMAGE_PATH: &windows_build_image_path ${WINDOWS_X64_BUILD_PATH}
     MESA_IMAGE_TAG: &windows_build_image_tag ${MESA_BASE_IMAGE_TAG}--${WINDOWS_X64_BUILD_TAG}
     DOCKERFILE: Dockerfile_build
-    MESA_BASE_IMAGE_PATH: *windows_vs_image_path
-    MESA_BASE_IMAGE_TAG: *windows_vs_image_tag
+    MESA_BASE_IMAGE_PATH: *windows_msvc_image_path
+    MESA_BASE_IMAGE_TAG: *windows_msvc_image_tag
     MESA_BASE_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_BASE_IMAGE_PATH}:${MESA_BASE_IMAGE_TAG}"
   timeout: 2h 30m # LLVM takes ages
   needs:
@@ -476,8 +476,8 @@ windows_test_msvc:
     MESA_IMAGE_PATH: &windows_test_image_path ${WINDOWS_X64_TEST_PATH}
     MESA_IMAGE_TAG: &windows_test_image_tag ${MESA_BASE_IMAGE_TAG}--${WINDOWS_X64_TEST_TAG}
     DOCKERFILE: Dockerfile_test
-    MESA_BASE_IMAGE_PATH: *windows_vs_image_path
-    MESA_BASE_IMAGE_TAG: *windows_vs_image_tag
+    MESA_BASE_IMAGE_PATH: *windows_msvc_image_path
+    MESA_BASE_IMAGE_TAG: *windows_msvc_image_tag
     MESA_BASE_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_BASE_IMAGE_PATH}:${MESA_BASE_IMAGE_TAG}"
   timeout: 2h 30m
   needs:
@@ -491,7 +491,7 @@ windows_test_msvc:
   variables:
     MESA_IMAGE_PATH: *windows_build_image_path
     MESA_IMAGE_TAG: *windows_build_image_tag
-    MESA_BASE_IMAGE_TAG: *windows_vs_image_tag
+    MESA_BASE_IMAGE_TAG: *windows_msvc_image_tag
   needs:
     - windows_build_msvc
 
@@ -503,4 +503,4 @@ windows_test_msvc:
   variables:
     MESA_IMAGE_PATH: *windows_test_image_path
     MESA_IMAGE_TAG: *windows_test_image_tag
-    MESA_BASE_IMAGE_TAG: *windows_vs_image_tag
+    MESA_BASE_IMAGE_TAG: *windows_msvc_image_tag

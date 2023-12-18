@@ -30,7 +30,7 @@ Write-Output installdir:$installdir
 Write-Output sourcedir:$sourcedir
 
 $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
-. "$MyPath\mesa_vs_init.ps1"
+. "$MyPath\mesa_init_msvc.ps1"
 
 $depsInstallPath="C:\mesa-deps"
 

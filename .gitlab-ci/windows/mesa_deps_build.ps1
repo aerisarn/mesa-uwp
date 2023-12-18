@@ -1,6 +1,6 @@
 
 $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
-. "$MyPath\mesa_vs_init.ps1"
+. "$MyPath\mesa_init_msvc.ps1"
 
 # we want more secure TLS 1.2 for most things, but it breaks SourceForge
 # downloads so must be done after Chocolatey use

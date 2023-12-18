@@ -2,7 +2,7 @@ Get-Date
 Write-Host "Cloning Waffle"
 
 $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
-. "$MyPath\mesa_vs_init.ps1"
+. "$MyPath\mesa_init_msvc.ps1"
 
 git clone --no-progress --single-branch --no-checkout https://gitlab.freedesktop.org/mesa/waffle.git 'C:\src\waffle'
 if (!$?) {
