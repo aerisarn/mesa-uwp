@@ -175,6 +175,22 @@ os_get_android_option(const char *name)
 }
 #endif
 
+#if DETECT_OS_WINDOWS
+
+/* getenv doesn't necessarily reflect changes to the environment
+ * that have been made during the process lifetime, if either the
+ * setter uses a different CRT (e.g. due to static linking) or the
+ * setter used the Win32 API directly. */
+const char *
+os_get_option(const char *name)
+{
+   static thread_local char value[_MAX_ENV];
+   DWORD size = GetEnvironmentVariableA(name, value, _MAX_ENV);
+   return (size > 0 && size < _MAX_ENV) ? value : NULL;
+}
+
+#else
+
 const char *
 os_get_option(const char *name)
 {
@@ -186,6 +202,8 @@ os_get_option(const char *name)
 #endif
    return opt;
 }
+
+#endif
 
 static struct hash_table *options_tbl;
 static bool options_tbl_exited = false;
