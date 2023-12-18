@@ -217,6 +217,18 @@ pub trait SSABuilder: Builder {
         dst
     }
 
+    fn dsetp(&mut self, cmp_op: FloatCmpOp, x: Src, y: Src) -> SSARef {
+        let dst = self.alloc_ssa(RegFile::Pred, 1);
+        self.push_op(OpDSetP {
+            dst: dst.into(),
+            set_op: PredSetOp::And,
+            cmp_op: cmp_op,
+            srcs: [x, y],
+            accum: SrcRef::True.into(),
+        });
+        dst
+    }
+
     fn iabs(&mut self, i: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
         self.push_op(OpIAbs {

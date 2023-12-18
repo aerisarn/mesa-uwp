@@ -885,10 +885,20 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             nir_op_fsign => {
-                assert!(alu.def.bit_size() == 32);
-                let lz = b.fset(FloatCmpOp::OrdLt, srcs[0], 0.into());
-                let gz = b.fset(FloatCmpOp::OrdGt, srcs[0], 0.into());
-                b.fadd(gz.into(), Src::from(lz).fneg())
+                if alu.def.bit_size() == 64 {
+                    let lz = b.dsetp(FloatCmpOp::OrdLt, srcs[0], 0.into());
+                    let gz = b.dsetp(FloatCmpOp::OrdGt, srcs[0], 0.into());
+                    let hi = b.sel(lz.into(), 0xbff00000.into(), 0.into());
+                    let hi = b.sel(gz.into(), 0x3ff00000.into(), hi.into());
+                    let lo = b.copy(0.into());
+                    [lo[0], hi[0]].into()
+                } else if alu.def.bit_size() == 32 {
+                    let lz = b.fset(FloatCmpOp::OrdLt, srcs[0], 0.into());
+                    let gz = b.fset(FloatCmpOp::OrdGt, srcs[0], 0.into());
+                    b.fadd(gz.into(), Src::from(lz).fneg())
+                } else {
+                    panic!("Unsupported float type: f{}", alu.def.bit_size());
+                }
             }
             nir_op_fsin => {
                 let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
