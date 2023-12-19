@@ -217,6 +217,18 @@ struct vn_graphics_pipeline_fix_tmp {
    VkGraphicsPipelineCreateInfo *infos;
    VkPipelineMultisampleStateCreateInfo *multisample_state_infos;
    VkPipelineViewportStateCreateInfo *viewport_state_infos;
+
+   /* Fixing the pNext chain
+    *
+    * TODO: extend when below or more extensions are supported:
+    * - VK_KHR_maintenance5
+    * - VK_KHR_fragment_shading_rate
+    * - VK_EXT_pipeline_robustness
+    */
+   VkGraphicsPipelineLibraryCreateInfoEXT *gpl_infos;
+   VkPipelineCreationFeedbackCreateInfo *feedback_infos;
+   VkPipelineLibraryCreateInfoKHR *library_infos;
+   VkPipelineRenderingCreateInfo *rendering_infos;
 };
 
 /* shader module commands */
@@ -608,12 +620,19 @@ vn_destroy_failed_pipelines(struct vn_device *dev,
 
 static struct vn_graphics_pipeline_fix_tmp *
 vn_graphics_pipeline_fix_tmp_alloc(const VkAllocationCallbacks *alloc,
-                                   uint32_t info_count)
+                                   uint32_t info_count,
+                                   bool alloc_pnext)
 {
    struct vn_graphics_pipeline_fix_tmp *tmp;
    VkGraphicsPipelineCreateInfo *infos;
    VkPipelineMultisampleStateCreateInfo *multisample_state_infos;
    VkPipelineViewportStateCreateInfo *viewport_state_infos;
+
+   /* for pNext */
+   VkGraphicsPipelineLibraryCreateInfoEXT *gpl_infos;
+   VkPipelineCreationFeedbackCreateInfo *feedback_infos;
+   VkPipelineLibraryCreateInfoKHR *library_infos;
+   VkPipelineRenderingCreateInfo *rendering_infos;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &tmp, __typeof__(*tmp), 1);
@@ -623,12 +642,29 @@ vn_graphics_pipeline_fix_tmp_alloc(const VkAllocationCallbacks *alloc,
    vk_multialloc_add(&ma, &viewport_state_infos,
                      __typeof__(*viewport_state_infos), info_count);
 
+   if (alloc_pnext) {
+      vk_multialloc_add(&ma, &gpl_infos, __typeof__(*gpl_infos), info_count);
+      vk_multialloc_add(&ma, &feedback_infos, __typeof__(*feedback_infos),
+                        info_count);
+      vk_multialloc_add(&ma, &library_infos, __typeof__(*library_infos),
+                        info_count);
+      vk_multialloc_add(&ma, &rendering_infos, __typeof__(*rendering_infos),
+                        info_count);
+   }
+
    if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
       return NULL;
 
    tmp->infos = infos;
    tmp->multisample_state_infos = multisample_state_infos;
    tmp->viewport_state_infos = viewport_state_infos;
+
+   if (alloc_pnext) {
+      tmp->gpl_infos = gpl_infos;
+      tmp->feedback_infos = feedback_infos;
+      tmp->library_infos = library_infos;
+      tmp->rendering_infos = rendering_infos;
+   }
 
    return tmp;
 }
@@ -1316,27 +1352,66 @@ vn_fix_graphics_pipeline_create_info_self(
 }
 
 static void
+vn_graphics_pipeline_create_info_pnext_init(
+   const VkGraphicsPipelineCreateInfo *info,
+   struct vn_graphics_pipeline_fix_tmp *fix_tmp,
+   uint32_t index)
+{
+   VkGraphicsPipelineLibraryCreateInfoEXT *gpl = &fix_tmp->gpl_infos[index];
+   VkPipelineCreationFeedbackCreateInfo *feedback =
+      &fix_tmp->feedback_infos[index];
+   VkPipelineLibraryCreateInfoKHR *library = &fix_tmp->library_infos[index];
+   VkPipelineRenderingCreateInfo *rendering =
+      &fix_tmp->rendering_infos[index];
+
+   VkBaseOutStructure *cur = (void *)&fix_tmp->infos[index];
+
+   vk_foreach_struct_const(src, info->pNext) {
+      void *next = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT:
+         memcpy(gpl, src, sizeof(*gpl));
+         next = gpl;
+         break;
+      case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+         memcpy(feedback, src, sizeof(*feedback));
+         next = feedback;
+         break;
+      case VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR:
+         memcpy(library, src, sizeof(*library));
+         next = library;
+         break;
+      case VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO:
+         memcpy(rendering, src, sizeof(*rendering));
+         next = rendering;
+         break;
+      default:
+         break;
+      }
+
+      if (next) {
+         cur->pNext = next;
+         cur = next;
+      }
+   }
+
+   cur->pNext = NULL;
+}
+
+static void
 vn_fix_graphics_pipeline_create_info_pnext(
    const struct vn_graphics_pipeline_info_pnext *ignore,
    const VkGraphicsPipelineCreateInfo *info,
    struct vn_graphics_pipeline_fix_tmp *fix_tmp,
    uint32_t index)
 {
+   /* initialize pNext chain with allocated tmp storage */
+   vn_graphics_pipeline_create_info_pnext_init(info, fix_tmp, index);
+
    /* VkPipelineRenderingCreateInfo */
    if (ignore->rendering_info_formats) {
-      /* All format fields are invalid, but the only field that must be
-       * erased is pColorAttachmentFormats because the other
-       * fields are merely VkFormat values. Encoding invalid pointers is
-       * unsafe; encoding invalid VkFormat values is not unsafe.
-       *
-       * However, the fix is difficult because it requires a deep
-       * rewrite of the pNext chain.
-       *
-       * TODO: Fix invalid
-       * VkPipelineRenderingCreateInfo::pColorAttachmentFormats.
-       */
-      vn_log(NULL, "venus may encode array from invalid pointer "
-                   "VkPipelineRenderingCreateInfo::pColorAttachmentFormats");
+      fix_tmp->rendering_infos[index].colorAttachmentCount = 0;
+      fix_tmp->rendering_infos[index].pColorAttachmentFormats = NULL;
    }
 }
 
@@ -1349,8 +1424,6 @@ vn_fix_graphics_pipeline_create_infos(
    struct vn_graphics_pipeline_fix_tmp **out_fix_tmp,
    const VkAllocationCallbacks *alloc)
 {
-   VN_TRACE_SCOPE("apply_fixes");
-
    uint32_t self_mask = 0;
    uint32_t pnext_mask = 0;
    for (uint32_t i = 0; i < info_count; i++) {
@@ -1364,8 +1437,11 @@ vn_fix_graphics_pipeline_create_infos(
       return infos;
    }
 
+   /* tell whether fixes are applied in tracing */
+   VN_TRACE_SCOPE("apply_fixes");
+
    struct vn_graphics_pipeline_fix_tmp *fix_tmp =
-      vn_graphics_pipeline_fix_tmp_alloc(alloc, info_count);
+      vn_graphics_pipeline_fix_tmp_alloc(alloc, info_count, pnext_mask);
    if (!fix_tmp)
       return NULL;
 
@@ -1435,18 +1511,14 @@ vn_CreateGraphicsPipelines(VkDevice device,
 
    STACK_ARRAY(struct vn_graphics_pipeline_fix_desc, fix_descs,
                createInfoCount);
-   struct vn_graphics_pipeline_fix_tmp *fix_tmp = NULL;
-
-   {
-      VN_TRACE_SCOPE("fill_states");
-      for (uint32_t i = 0; i < createInfoCount; i++) {
-         struct vn_graphics_pipeline *pipeline =
-            vn_graphics_pipeline_from_handle(pPipelines[i]);
-         vn_graphics_pipeline_state_fill(&pCreateInfos[i], &pipeline->state,
-                                         &fix_descs[i]);
-      }
+   for (uint32_t i = 0; i < createInfoCount; i++) {
+      struct vn_graphics_pipeline *pipeline =
+         vn_graphics_pipeline_from_handle(pPipelines[i]);
+      vn_graphics_pipeline_state_fill(&pCreateInfos[i], &pipeline->state,
+                                      &fix_descs[i]);
    }
 
+   struct vn_graphics_pipeline_fix_tmp *fix_tmp = NULL;
    pCreateInfos = vn_fix_graphics_pipeline_create_infos(
       dev, createInfoCount, pCreateInfos, fix_descs, &fix_tmp, alloc);
    if (!pCreateInfos) {
