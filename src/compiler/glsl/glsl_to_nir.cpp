@@ -145,88 +145,7 @@ private:
    nir_visitor *visitor;
 };
 
-/* glsl_to_nir can only handle converting certain function paramaters
- * to NIR. This visitor checks for parameters it can't currently handle.
- */
-class ir_function_param_visitor : public ir_hierarchical_visitor
-{
-public:
-   ir_function_param_visitor()
-      : unsupported(false)
-   {
-   }
-
-   virtual ir_visitor_status visit_enter(ir_function_signature *ir)
-   {
-
-      if (ir->is_intrinsic())
-         return visit_continue;
-
-      foreach_in_list(ir_variable, param, &ir->parameters) {
-         if (!glsl_type_is_vector_or_scalar(param->type)) {
-            unsupported = true;
-            return visit_stop;
-         }
-
-         if (param->data.mode == ir_var_function_inout) {
-            unsupported = true;
-            return visit_stop;
-         }
-
-         if (param->data.mode != ir_var_function_in &&
-             param->data.mode != ir_var_const_in)
-            continue;
-
-         /* SSBO and shared vars might be passed to a built-in such as an
-          * atomic memory function, where copying these to a temp before
-          * passing to the atomic function is not valid so we must replace
-          * these instead. Also, shader inputs for interpolateAt functions
-          * also need to be replaced.
-          *
-          * We have no way to handle this in NIR or the glsl to nir pass
-          * currently so let the GLSL IR lowering handle it.
-          */
-         if (ir->is_builtin()) {
-            unsupported = true;
-            return visit_stop;
-         }
-
-         /* For opaque types, we want the inlined variable references
-          * referencing the passed in variable, since that will have
-          * the location information, which an assignment of an opaque
-          * variable wouldn't.
-          *
-          * We have no way to handle this in NIR or the glsl to nir pass
-          * currently so let the GLSL IR lowering handle it.
-          */
-         if (param->type->contains_opaque()) {
-            unsupported = true;
-            return visit_stop;
-         }
-      }
-
-      if (!glsl_type_is_vector_or_scalar(ir->return_type) &&
-          !ir->return_type->is_void()) {
-         unsupported = true;
-         return visit_stop;
-      }
-
-      return visit_continue;
-   }
-
-   bool unsupported;
-};
-
 } /* end of anonymous namespace */
-
-
-static bool
-has_unsupported_function_param(exec_list *ir)
-{
-   ir_function_param_visitor visitor;
-   visit_list_elements(&visitor, ir);
-   return visitor.unsupported;
-}
 
 nir_shader *
 glsl_to_nir(const struct gl_constants *consts,
@@ -236,26 +155,7 @@ glsl_to_nir(const struct gl_constants *consts,
 {
    struct gl_linked_shader *sh = shader_prog->_LinkedShaders[stage];
 
-   const struct gl_shader_compiler_options *gl_options =
-      &consts->ShaderCompilerOptions[stage];
-
    MESA_TRACE_FUNC();
-
-   /* NIR cannot handle instructions after a break so we use the GLSL IR do
-    * lower jumps pass to clean those up for now.
-    */
-   do_lower_jumps(sh->ir, true, true, gl_options->EmitNoMainReturn,
-                  gl_options->EmitNoCont);
-
-   /* glsl_to_nir can only handle converting certain function paramaters
-    * to NIR. If we find something we can't handle then we get the GLSL IR
-    * opts to remove it before we continue on.
-    *
-    * TODO: add missing glsl ir to nir support and remove this loop.
-    */
-   while (has_unsupported_function_param(sh->ir)) {
-      do_common_optimization(sh->ir, true, gl_options, consts->NativeIntegers);
-   }
 
    nir_shader *shader = nir_shader_create(NULL, stage, options,
                                           &sh->Program->info);
