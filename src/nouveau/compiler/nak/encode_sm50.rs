@@ -1798,7 +1798,7 @@ impl SM50Instr {
 
             self.set_dst(op.dst);
             self.set_reg_ineg_src(8..16, 56, op.srcs[0]);
-            self.set_src_imm32(20..56, imm32);
+            self.set_src_imm32(20..52, imm32);
 
             self.set_bit(53, carry_in);
             self.set_bit(52, carry_out);
