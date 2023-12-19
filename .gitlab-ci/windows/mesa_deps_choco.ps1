@@ -17,12 +17,12 @@ Import-Module "$env:ProgramData\chocolatey\helpers\chocolateyProfile.psm1"
 Update-SessionEnvironment
 Write-Host "Installing Chocolatey packages"
 
-# Chocolatey tries to download winflexbison from SourceForge, which is not super reliable, and has no retry
+# Chocolatey tries to download winflexbison3 from github, which is not super reliable, and has no retry
 # loop of its own - so we give it a helping hand here
 For ($i = 0; $i -lt 5; $i++) {
   choco install --no-progress -y python3 --params="/InstallDir:C:\python3"
   $python_install = $?
-  choco install --allow-empty-checksums --no-progress -y cmake git git-lfs ninja pkgconfiglite winflexbison --installargs "ADD_CMAKE_TO_PATH=System"
+  choco install --allow-empty-checksums --no-progress -y cmake git git-lfs ninja pkgconfiglite winflexbison3 --installargs "ADD_CMAKE_TO_PATH=System"
   $other_install = $?
   $choco_installed = $other_install -and $python_install
   if ($choco_installed) {
