@@ -1635,6 +1635,7 @@ nir_visitor::visit(ir_call *ir)
       if (sig_param->data.mode == ir_var_function_out) {
          nir_variable *out_param =
             nir_local_variable_create(this->impl, sig_param->type, "param");
+         out_param->data.precision = sig_param->data.precision;
          nir_deref_instr *out_param_deref = nir_build_deref_var(&b, out_param);
          call->params[i] = nir_src_for_ssa(&out_param_deref->def);
       } else if (sig_param->data.mode == ir_var_function_in) {
