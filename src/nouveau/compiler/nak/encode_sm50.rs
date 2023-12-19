@@ -1691,6 +1691,28 @@ impl SM50Instr {
         self.set_rnd_mode(50..52, op.rnd_mode);
     }
 
+    fn encode_dmnmx(&mut self, op: &OpDMnMx) {
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c50);
+                self.set_reg_fmod_src(20..28, 49, 45, op.srcs[1]);
+            }
+            SrcRef::Imm32(imm32) => {
+                self.set_opcode(0x3850);
+                self.set_src_imm_f20(20..39, 56, *imm32);
+            }
+            SrcRef::CBuf(_) => {
+                self.set_opcode(0x4c50);
+                self.set_cb_fmod_src(20..39, 49, 45, op.srcs[1]);
+            }
+            src => panic!("Unsupported src type for FMNMX: {src}"),
+        }
+
+        self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
+        self.set_dst(op.dst);
+        self.set_pred_src(39..42, 42, op.min);
+    }
+
     fn encode_dmul(&mut self, op: &OpDMul) {
         match &op.srcs[1].src_ref {
             SrcRef::Zero | SrcRef::Reg(_) => {
@@ -1872,6 +1894,7 @@ impl SM50Instr {
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::DAdd(op) => si.encode_dadd(&op),
             Op::DFma(op) => si.encode_dfma(&op),
+            Op::DMnMx(op) => si.encode_dmnmx(&op),
             Op::DMul(op) => si.encode_dmul(&op),
             Op::DSetP(op) => si.encode_dsetp(&op),
             Op::IAbs(op) => si.encode_iabs(&op),

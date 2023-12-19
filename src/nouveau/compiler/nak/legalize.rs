@@ -241,6 +241,12 @@ fn legalize_sm50_instr(
             copy_alu_src_if_f20_overflow(b, src1, SrcType::F64);
             copy_alu_src_if_not_reg(b, src2, SrcType::F64);
         }
+        Op::DMnMx(op) => {
+            let [ref mut src0, ref mut src1] = op.srcs;
+            swap_srcs_if_not_reg(src0, src1);
+            copy_alu_src_if_not_reg(b, src0, SrcType::F64);
+            copy_alu_src_if_f20_overflow(b, src1, SrcType::F64);
+        }
         Op::DMul(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             copy_alu_src_if_fabs(b, src0, SrcType::F64);

@@ -782,14 +782,25 @@ impl<'a> ShaderFromNir<'a> {
                 b.mufu(MuFuOp::Log2, srcs[0])
             }
             nir_op_fmax | nir_op_fmin => {
-                assert!(alu.def.bit_size() == 32);
-                let dst = b.alloc_ssa(RegFile::GPR, 1);
-                b.push_op(OpFMnMx {
-                    dst: dst.into(),
-                    srcs: [srcs[0], srcs[1]],
-                    min: (alu.op == nir_op_fmin).into(),
-                    ftz: self.float_ctl.fp32.ftz,
-                });
+                let dst;
+                if alu.def.bit_size() == 64 {
+                    dst = b.alloc_ssa(RegFile::GPR, 2);
+                    b.push_op(OpDMnMx {
+                        dst: dst.into(),
+                        srcs: [srcs[0], srcs[1]],
+                        min: (alu.op == nir_op_fmin).into(),
+                    });
+                } else if alu.def.bit_size() == 32 {
+                    dst = b.alloc_ssa(RegFile::GPR, 1);
+                    b.push_op(OpFMnMx {
+                        dst: dst.into(),
+                        srcs: [srcs[0], srcs[1]],
+                        min: (alu.op == nir_op_fmin).into(),
+                        ftz: self.float_ctl.fp32.ftz,
+                    });
+                } else {
+                    panic!("Unsupported float type: f{}", alu.def.bit_size());
+                }
                 dst
             }
             nir_op_fmul => {

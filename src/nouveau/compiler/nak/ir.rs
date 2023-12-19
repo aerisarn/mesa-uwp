@@ -2531,6 +2531,25 @@ impl_display_for_op!(OpDFma);
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpDMnMx {
+    pub dst: Dst,
+
+    #[src_type(F64)]
+    pub srcs: [Src; 2],
+
+    #[src_type(Pred)]
+    pub min: Src,
+}
+
+impl DisplayOp for OpDMnMx {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "dmnmx {} {} {}", self.srcs[0], self.srcs[1], self.min)
+    }
+}
+impl_display_for_op!(OpDMnMx);
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpDSetP {
     pub dst: Dst,
 
@@ -4698,6 +4717,7 @@ pub enum Op {
     FSwzAdd(OpFSwzAdd),
     DAdd(OpDAdd),
     DFma(OpDFma),
+    DMnMx(OpDMnMx),
     DMul(OpDMul),
     DSetP(OpDSetP),
     Brev(OpBrev),
@@ -5137,7 +5157,11 @@ impl Instr {
             Op::MuFu(_) => false,
 
             // Double-precision float ALU
-            Op::DAdd(_) | Op::DFma(_) | Op::DMul(_) | Op::DSetP(_) => false,
+            Op::DAdd(_)
+            | Op::DFma(_)
+            | Op::DMnMx(_)
+            | Op::DMul(_)
+            | Op::DSetP(_) => false,
 
             // Integer ALU
             Op::Brev(_) | Op::Flo(_) | Op::PopC(_) => false,
