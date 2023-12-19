@@ -1626,6 +1626,130 @@ impl SM50Instr {
         );
     }
 
+    fn encode_dadd(&mut self, op: &OpDAdd) {
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c70);
+                self.set_reg_fmod_src(20..28, 49, 45, op.srcs[1]);
+            }
+            SrcRef::Imm32(imm) => {
+                self.set_opcode(0x3870);
+                self.set_src_imm_f20(20..39, 56, *imm);
+                assert!(op.srcs[1].src_mod.is_none());
+            }
+            SrcRef::CBuf(_) => {
+                self.set_opcode(0x4c70);
+                self.set_cb_fmod_src(20..39, 49, 45, op.srcs[1]);
+            }
+            _ => panic!("Unsupported src type"),
+        }
+
+        self.set_dst(op.dst);
+        self.set_reg_fmod_src(8..16, 46, 48, op.srcs[0]);
+        self.set_rnd_mode(39..41, op.rnd_mode);
+    }
+
+    fn encode_dfma(&mut self, op: &OpDFma) {
+        match &op.srcs[2].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                match &op.srcs[1].src_ref {
+                    SrcRef::Zero | SrcRef::Reg(_) => {
+                        self.set_opcode(0x5b70);
+                        self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
+                    }
+                    SrcRef::Imm32(imm) => {
+                        self.set_opcode(0x3670);
+                        self.set_src_imm_f20(20..39, 56, *imm);
+                        assert!(op.srcs[1].src_mod.is_none());
+                    }
+                    SrcRef::CBuf(cb) => {
+                        self.set_opcode(0x4b70);
+                        self.set_src_cb(20..39, cb);
+                    }
+                    _ => panic!("Invalid dfma src1: {}", op.srcs[1]),
+                }
+                self.set_reg_src_ref(39..47, op.srcs[2].src_ref);
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x5370);
+                self.set_reg_src_ref(39..47, op.srcs[1].src_ref);
+                self.set_src_cb(20..39, cb);
+            }
+            _ => panic!("Invalid dfma src2: {}", op.srcs[2]),
+        }
+
+        self.set_dst(op.dst);
+        self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+
+        assert!(!op.srcs[0].src_mod.has_fabs());
+        assert!(!op.srcs[1].src_mod.has_fabs());
+        assert!(!op.srcs[2].src_mod.has_fabs());
+        self.set_bit(
+            48,
+            op.srcs[0].src_mod.has_fneg() ^ op.srcs[1].src_mod.has_fneg(),
+        );
+        self.set_bit(49, op.srcs[2].src_mod.has_fneg());
+
+        self.set_rnd_mode(50..52, op.rnd_mode);
+    }
+
+    fn encode_dmul(&mut self, op: &OpDMul) {
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5c80);
+                self.set_reg_src_ref(20..28, op.srcs[1].src_ref);
+            }
+            SrcRef::Imm32(imm) => {
+                self.set_opcode(0x3880);
+                self.set_src_imm_f20(20..39, 56, *imm);
+                assert!(op.srcs[1].src_mod.is_none());
+            }
+            SrcRef::CBuf(cb) => {
+                self.set_opcode(0x4c80);
+                self.set_src_cb(20..39, cb);
+            }
+            _ => panic!("Invalid dmul src1: {}", op.srcs[1]),
+        }
+
+        self.set_dst(op.dst);
+        self.set_reg_src_ref(8..16, op.srcs[0].src_ref);
+
+        self.set_rnd_mode(39..41, op.rnd_mode);
+
+        assert!(!op.srcs[0].src_mod.has_fabs());
+        assert!(!op.srcs[1].src_mod.has_fabs());
+        self.set_bit(
+            48,
+            op.srcs[0].src_mod.has_fneg() ^ op.srcs[1].src_mod.has_fneg(),
+        );
+    }
+
+    fn encode_dsetp(&mut self, op: &OpDSetP) {
+        match &op.srcs[1].src_ref {
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5b80);
+                self.set_reg_fmod_src(20..28, 44, 6, op.srcs[1]);
+            }
+            SrcRef::Imm32(imm) => {
+                self.set_opcode(0x3680);
+                self.set_src_imm_f20(20..39, 56, *imm);
+                assert!(op.srcs[1].src_mod.is_none());
+            }
+            SrcRef::CBuf(_) => {
+                self.set_opcode(0x4b80);
+                self.set_reg_fmod_src(20..39, 44, 6, op.srcs[1]);
+            }
+            _ => panic!("Invalid dmul src1: {}", op.srcs[1]),
+        }
+
+        self.set_pred_dst(3..6, op.dst);
+        self.set_pred_dst(0..3, Dst::None); // dst1
+        self.set_pred_src(39..42, 42, op.accum);
+        self.set_pred_set_op(45..47, op.set_op);
+        self.set_float_cmp_op(48..52, op.cmp_op);
+        self.set_reg_fmod_src(8..16, 7, 43, op.srcs[0]);
+    }
+
     fn encode_iabs(&mut self, op: &OpIAbs) {
         assert!(op.src.is_reg_or_zero());
 
@@ -1748,6 +1872,10 @@ impl SM50Instr {
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
+            Op::DAdd(op) => si.encode_dadd(&op),
+            Op::DFma(op) => si.encode_dfma(&op),
+            Op::DMul(op) => si.encode_dmul(&op),
+            Op::DSetP(op) => si.encode_dsetp(&op),
             Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd2(op) => si.encode_iadd2(&op),
             Op::Mov(op) => si.encode_mov(&op),
