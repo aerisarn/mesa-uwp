@@ -42,6 +42,10 @@ d3d12_video_encoder_update_current_rate_control_h264(struct d3d12_video_encoder 
       picture->rate_ctrl[0].frame_rate_den;
    pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags = D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_NONE;
 
+   if (picture->roi.num > 0)
+      pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags |=
+         D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_DELTA_QP;
+
    switch (picture->rate_ctrl[0].rate_ctrl_method) {
       case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
       case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE:
@@ -344,6 +348,21 @@ d3d12_video_encoder_update_current_frame_pic_params_info_h264(struct d3d12_video
       picParams.pH264PicData->pList0ReferenceFrames = h264Pic->ref_idx_l0_list;
       picParams.pH264PicData->List1ReferenceFramesCount = h264Pic->num_ref_idx_l1_active_minus1 + 1;
       picParams.pH264PicData->pList1ReferenceFrames = h264Pic->ref_idx_l1_list;
+   }
+
+   if ((pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags & D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_DELTA_QP) != 0)
+   {
+      // Use 8 bit qpmap array for H264 picparams (-51, 51 range and int8_t pRateControlQPMap type)
+      const int32_t h264_min_delta_qp = -51;
+      const int32_t h264_max_delta_qp = 51;
+      d3d12_video_encoder_update_picparams_region_of_interest_qpmap(
+         pD3D12Enc,
+         &h264Pic->roi,
+         h264_min_delta_qp,
+         h264_max_delta_qp,
+         pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_pRateControlQPMap8Bit);
+      picParams.pH264PicData->pRateControlQPMap = pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_pRateControlQPMap8Bit.data();
+      picParams.pH264PicData->QPMapValuesCount = pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_pRateControlQPMap8Bit.size();
    }
 }
 

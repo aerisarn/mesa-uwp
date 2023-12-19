@@ -1093,6 +1093,12 @@ d3d12_video_encoder_disable_rc_qualitylevels(struct D3D12EncodeRateControlState 
 }
 
 static void
+d3d12_video_encoder_disable_rc_deltaqp(struct D3D12EncodeRateControlState & rcState)
+{
+   rcState.m_Flags &= ~D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_DELTA_QP;
+}
+
+static void
 d3d12_video_encoder_disable_rc_minmaxqp(struct D3D12EncodeRateControlState & rcState)
 {
    rcState.m_Flags &= ~D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_QP_RANGE;
@@ -1175,6 +1181,14 @@ bool d3d12_video_encoder_negotiate_requested_features_and_d3d12_driver_caps(stru
       if(isClientRequestingQPRanges && !isRequestingQPRangesSupported) {
          debug_printf("[d3d12_video_encoder] WARNING: Requested D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_QP_RANGE with QPMin QPMax but the feature is not supported, will continue encoding unsetting this feature as fallback.\n");
          d3d12_video_encoder_disable_rc_minmaxqp(pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc);
+      }
+
+      bool isRequestingDeltaQPSupported = ((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_DELTA_QP_AVAILABLE) != 0);
+      bool isClientRequestingDeltaQP = ((pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Flags & D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_DELTA_QP) != 0);
+
+      if(isClientRequestingDeltaQP && !isRequestingDeltaQPSupported) {
+         debug_printf("[d3d12_video_encoder] WARNING: Requested D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_DELTA_QP but the feature is not supported, will continue encoding unsetting this feature as fallback.\n");
+         d3d12_video_encoder_disable_rc_deltaqp(pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc);
       }
 
       bool isRequestingExtended1RCSupported = ((capEncoderSupportData1.SupportFlags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_EXTENSION1_SUPPORT) != 0);
@@ -2653,3 +2667,58 @@ int d3d12_video_encoder_get_encode_headers([[maybe_unused]] struct pipe_video_co
    return ENOTSUP;
 #endif
 }
+
+template void
+d3d12_video_encoder_update_picparams_region_of_interest_qpmap(struct d3d12_video_encoder *pD3D12Enc,
+                                                              const struct pipe_enc_roi *roi_config,
+                                                              int32_t min_delta_qp,
+                                                              int32_t max_delta_qp,
+                                                              std::vector<int16_t>& pQPMap);
+
+template void
+d3d12_video_encoder_update_picparams_region_of_interest_qpmap(struct d3d12_video_encoder *pD3D12Enc,
+                                                              const struct pipe_enc_roi *roi_config,
+                                                              int32_t min_delta_qp,
+                                                              int32_t max_delta_qp,
+                                                              std::vector<int8_t>& pQPMap);
+
+template<typename T>
+void
+d3d12_video_encoder_update_picparams_region_of_interest_qpmap(struct d3d12_video_encoder *pD3D12Enc,
+                                                              const struct pipe_enc_roi *roi_config,
+                                                              int32_t min_delta_qp,
+                                                              int32_t max_delta_qp,
+                                                              std::vector<T>& pQPMap)
+{
+   static_assert(ARRAY_SIZE(roi_config->region) == PIPE_ENC_ROI_REGION_NUM_MAX);
+   assert(roi_config->num > 0);
+   assert(roi_config->num <= PIPE_ENC_ROI_REGION_NUM_MAX);
+   assert(min_delta_qp < 0);
+   assert(max_delta_qp > 0);
+
+   // Set all the QP blocks with zero QP Delta, then only fill in the regions that have a non-zero delta value
+   uint32_t QPMapRegionPixelsSize = pD3D12Enc->m_currentEncodeCapabilities.m_currentResolutionSupportCaps.QPMapRegionPixelsSize;
+   uint64_t pic_width_in_qpmap_block_units = static_cast<uint64_t>(std::ceil(pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Width /
+      static_cast<double>(QPMapRegionPixelsSize)));
+   uint64_t pic_height_in_qpmap_block_units = static_cast<uint64_t>(std::ceil(pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height /
+      static_cast<double>(QPMapRegionPixelsSize)));
+   uint64_t total_picture_qpmap_block_units = pic_width_in_qpmap_block_units * pic_height_in_qpmap_block_units;
+   pQPMap.resize(total_picture_qpmap_block_units, 0u);
+
+   // Loop in reverse for priority of overlapping regions as per p_video_state roi parameter docs
+   for (int32_t i = (roi_config->num - 1); i >= 0 ; i--)
+   {
+      auto& cur_region = roi_config->region[i];
+      if (cur_region.valid)
+      {
+         uint32_t bucket_start_block_x = cur_region.x / QPMapRegionPixelsSize;
+         uint32_t bucket_start_block_y = cur_region.y / QPMapRegionPixelsSize;
+         uint32_t bucket_end_block_x = std::ceil((cur_region.x + cur_region.width) / static_cast<double>(QPMapRegionPixelsSize)) - 1;
+         uint32_t bucket_end_block_y = std::ceil((cur_region.y + cur_region.height) / static_cast<double>(QPMapRegionPixelsSize)) - 1;
+         for (uint32_t i = bucket_start_block_x; i <= bucket_end_block_x; i++)
+            for (uint32_t j = bucket_start_block_y; j <= bucket_end_block_y; j++)
+               pQPMap[(j * pic_width_in_qpmap_block_units) + i] = CLAMP(cur_region.qp_value, min_delta_qp, max_delta_qp);
+      }
+   }
+}
+

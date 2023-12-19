@@ -191,6 +191,10 @@ struct D3D12EncodeRateControlState
       D3D12_VIDEO_ENCODER_RATE_CONTROL_VBR1  m_Configuration_VBR1;
       D3D12_VIDEO_ENCODER_RATE_CONTROL_QVBR1 m_Configuration_QVBR1;  
    } m_Config;
+
+   // AV1 uses 16 bit integers, H26x uses 8 bit integers
+   std::vector<int8_t> m_pRateControlQPMap8Bit;
+   std::vector<int16_t> m_pRateControlQPMap16Bit;
 };
 
 struct D3D12EncodeConfiguration
@@ -496,6 +500,15 @@ void
 d3d12_video_encoder_store_current_picture_references(d3d12_video_encoder *pD3D12Enc,
                                                      uint64_t current_metadata_slot);
 
+
+// Implementation here to prevent template linker issues
+template<typename T>
+void
+d3d12_video_encoder_update_picparams_region_of_interest_qpmap(struct d3d12_video_encoder *pD3D12Enc,
+                                                              const struct pipe_enc_roi *roi_config,
+                                                              int32_t min_delta_qp,
+                                                              int32_t max_delta_qp,
+                                                              std::vector<T>& pQPMap);
 ///
 /// d3d12_video_encoder functions ends
 ///
