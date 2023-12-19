@@ -210,7 +210,7 @@ impl SM50Instr {
         f: u32,
     ) {
         assert!(range.len() == 19);
-        assert!((f & 0xfffff000) == 0);
+        assert!((f & 0x00000fff) == 0);
 
         self.set_field(range, (f >> 12) & 0x7ffff);
         self.set_field(sign_bit..sign_bit + 1, f >> 31);
