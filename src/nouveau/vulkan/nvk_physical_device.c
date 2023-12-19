@@ -71,7 +71,8 @@ nvk_get_vk_version(const struct nv_device_info *info)
 }
 
 static void
-nvk_get_device_extensions(const struct nv_device_info *info,
+nvk_get_device_extensions(const struct nvk_instance *instance,
+                          const struct nv_device_info *info,
                           struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
@@ -107,6 +108,15 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_map_memory2 = true,
       .KHR_multiview = true,
       .KHR_pipeline_executable_properties = true,
+      /* Hide these behind dri configs for now since we cannot implement it reliably on
+       * all surfaces yet. There is no surface capability query for present wait/id,
+       * but the feature is useful enough to hide behind an opt-in mechanism for now.
+       * If the instance only enables surface extensions that unconditionally support present wait,
+       * we can also expose the extension that way. */
+      .KHR_present_id = driQueryOptionb(&instance->dri_options, "vk_khr_present_wait") ||
+                        wsi_common_vk_instance_supports_present_wait(&instance->vk),
+      .KHR_present_wait = driQueryOptionb(&instance->dri_options, "vk_khr_present_wait") ||
+                          wsi_common_vk_instance_supports_present_wait(&instance->vk),
       .KHR_push_descriptor = true,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
@@ -193,6 +203,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
 
 static void
 nvk_get_device_features(const struct nv_device_info *info,
+                        const struct vk_device_extension_table *supported_extensions,
                         struct vk_features *features)
 {
    *features = (struct vk_features) {
@@ -329,6 +340,12 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VK_KHR_pipeline_executable_properties */
       .pipelineExecutableInfo = true,
+
+      /* VK_KHR_present_id */
+      .presentId = supported_extensions->KHR_present_id,
+
+      /* VK_KHR_present_wait */
+      .presentWait = supported_extensions->KHR_present_wait,
 
       /* VK_KHR_shader_clock */
       .shaderSubgroupClock = true,
@@ -955,10 +972,10 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
    struct vk_device_extension_table supported_extensions;
-   nvk_get_device_extensions(&info, &supported_extensions);
+   nvk_get_device_extensions(instance, &info, &supported_extensions);
 
    struct vk_features supported_features;
-   nvk_get_device_features(&info, &supported_features);
+   nvk_get_device_features(&info, &supported_extensions, &supported_features);
 
    struct vk_properties properties;
    nvk_get_device_properties(instance, &info, &properties);
