@@ -412,7 +412,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
                           const struct pipe_sampler_state *state)
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
-   struct zink_context *zink = zink_context(pctx);
+   ASSERTED struct zink_context *zink = zink_context(pctx);
    bool need_custom = false;
    bool need_clamped_border_color = false;
    VkSamplerCreateInfo sci = {0};
@@ -5097,7 +5097,7 @@ zink_flush_dgc(struct zink_context *ctx)
          strides
       };
       VkIndirectCommandsLayoutNV iclayout;
-      VkResult res = VKSCR(CreateIndirectCommandsLayoutNV)(screen->dev, &lci, NULL, &iclayout);
+      ASSERTED VkResult res = VKSCR(CreateIndirectCommandsLayoutNV)(screen->dev, &lci, NULL, &iclayout);
       assert(res == VK_SUCCESS);
       util_dynarray_append(&bs->dgc.layouts, VkIndirectCommandsLayoutNV, iclayout);
 
