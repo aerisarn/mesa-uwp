@@ -29,11 +29,11 @@ variables:
    KERNEL_TAG: "v6.6.4-for-mesa-ci-e4f4c500f7fb"
    KERNEL_REPO: "gfx-ci/linux"
 
-   WINDOWS_X64_MSVC_PATH: "windows/x64_vs"
-   WINDOWS_X64_MSVC_TAG: "2022-10-20-upgrade-zlib"
+   WINDOWS_X64_MSVC_PATH: "windows/x86_64_msvc"
+   WINDOWS_X64_MSVC_TAG: "2023-12-22-msvc"
 
-   WINDOWS_X64_BUILD_PATH: "windows/x64_build"
-   WINDOWS_X64_BUILD_TAG: "2023-12-07-directx-headers-611"
+   WINDOWS_X64_BUILD_PATH: "windows/x86_64_build"
+   WINDOWS_X64_BUILD_TAG: "2023-12-22-msvc"
 
-   WINDOWS_X64_TEST_PATH: "windows/x64_test"
-   WINDOWS_X64_TEST_TAG: "2023-05-30-warp-1.0.7.1"
+   WINDOWS_X64_TEST_PATH: "windows/x86_64_test"
+   WINDOWS_X64_TEST_TAG: "2023-12-22-msvc"
