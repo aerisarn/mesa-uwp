@@ -613,22 +613,25 @@ impl SM70Instr {
     }
 
     fn encode_dsetp(&mut self, op: &OpDSetP) {
-        if op.srcs[1].src_ref.as_reg().is_some() {
-            self.encode_alu(
-                0x02a,
-                None,
-                ALUSrc::from_src(&op.srcs[0]),
-                ALUSrc::from_src(&op.srcs[1]),
-                ALUSrc::None,
-            );
-        } else {
-            self.encode_alu(
-                0x02a,
-                None,
-                ALUSrc::from_src(&op.srcs[0]),
-                ALUSrc::None,
-                ALUSrc::from_src(&op.srcs[1]),
-            );
+        match op.srcs[1].src_ref {
+            SrcRef::Reg(_) | SrcRef::Zero => {
+                self.encode_alu(
+                    0x02a,
+                    None,
+                    ALUSrc::from_src(&op.srcs[0]),
+                    ALUSrc::from_src(&op.srcs[1]),
+                    ALUSrc::None,
+                );
+            }
+            _ => {
+                self.encode_alu(
+                    0x02a,
+                    None,
+                    ALUSrc::from_src(&op.srcs[0]),
+                    ALUSrc::None,
+                    ALUSrc::from_src(&op.srcs[1]),
+                );
+            }
         }
 
         self.set_pred_set_op(74..76, op.set_op);
