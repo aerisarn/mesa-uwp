@@ -544,7 +544,7 @@ fn lower_and_optimize_nir(
         internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::ConstantBuffer,
             offset: 0,
-            size: 8,
+            size: (dev.address_bits() / 8) as usize,
         });
         lower_state.const_buf_loc = args.len() + internal_args.len() - 1;
         nir.add_var(
@@ -558,7 +558,7 @@ fn lower_and_optimize_nir(
         internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::PrintfBuffer,
             offset: 0,
-            size: 8,
+            size: (dev.address_bits() / 8) as usize,
         });
         lower_state.printf_buf_loc = args.len() + internal_args.len() - 1;
         nir.add_var(
