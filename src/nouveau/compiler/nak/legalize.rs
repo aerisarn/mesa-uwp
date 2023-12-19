@@ -261,7 +261,12 @@ fn legalize_sm50_instr(
             copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
         }
         Op::Sel(op) => {
-            copy_alu_src_if_not_reg(b, &mut op.srcs[1], SrcType::GPR);
+            let [ref mut src0, ref mut src1] = op.srcs;
+            if swap_srcs_if_not_reg(src0, src1) {
+                op.cond = op.cond.bnot();
+            }
+            copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
+            copy_alu_src_if_i20_overflow(b, src1, SrcType::ALU);
         }
         Op::Shfl(op) => {
             copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
@@ -529,9 +534,8 @@ fn legalize_sm70_instr(
         }
         Op::Sel(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
-            if !src_is_reg(src0) && src_is_reg(src1) {
-                std::mem::swap(src0, src1);
-                op.cond.src_mod = op.cond.src_mod.bnot();
+            if swap_srcs_if_not_reg(src0, src1) {
+                op.cond = op.cond.bnot();
             }
             copy_alu_src_if_not_reg(b, src0, SrcType::ALU);
         }

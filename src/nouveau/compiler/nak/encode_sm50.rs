@@ -285,8 +285,6 @@ impl SM50Instr {
     }
 
     fn encode_sel(&mut self, op: &OpSel) {
-        assert!(op.srcs[1].is_reg_or_zero());
-
         match &op.srcs[1].src_ref {
             SrcRef::Imm32(imm32) => {
                 self.set_opcode(0x38a0);
