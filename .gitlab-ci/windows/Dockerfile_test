@@ -3,5 +3,8 @@
 ARG base_image
 FROM ${base_image}
 
+COPY mesa_deps_vulkan_sdk.ps1 C:\
+RUN C:\mesa_deps_vulkan_sdk.ps1
+
 COPY mesa_deps_test.ps1 C:\
 RUN C:\mesa_deps_test.ps1
