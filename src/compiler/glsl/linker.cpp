@@ -2756,11 +2756,6 @@ public:
             return visit_stop;
          }
 
-         if (param->data.mode == ir_var_function_inout) {
-            unsupported = true;
-            return visit_stop;
-         }
-
          if (param->data.mode != ir_var_function_in &&
              param->data.mode != ir_var_const_in)
             continue;

@@ -1532,17 +1532,23 @@ nir_visitor::visit(ir_call *ir)
       ir_rvalue *param_rvalue = (ir_rvalue *) actual_node;
       ir_variable *sig_param = (ir_variable *) formal_node;
 
-      if (sig_param->data.mode == ir_var_function_out) {
+      if (sig_param->data.mode == ir_var_function_out ||
+          sig_param->data.mode == ir_var_function_inout) {
          nir_variable *out_param =
             nir_local_variable_create(this->impl, sig_param->type, "param");
          out_param->data.precision = sig_param->data.precision;
          nir_deref_instr *out_param_deref = nir_build_deref_var(&b, out_param);
+
+         if (sig_param->data.mode == ir_var_function_inout) {
+            nir_store_deref(&b, out_param_deref,
+                            nir_load_deref(&b, evaluate_deref(param_rvalue)),
+                            ~0);
+         }
+
          call->params[i] = nir_src_for_ssa(&out_param_deref->def);
       } else if (sig_param->data.mode == ir_var_function_in) {
          nir_def *val = evaluate_rvalue(param_rvalue);
          call->params[i] = nir_src_for_ssa(val);
-      } else if (sig_param->data.mode == ir_var_function_inout) {
-         unreachable("unimplemented: inout parameters");
       }
 
       i++;
@@ -1559,7 +1565,8 @@ nir_visitor::visit(ir_call *ir)
       ir_rvalue *param_rvalue = (ir_rvalue *) actual_node;
       ir_variable *sig_param = (ir_variable *) formal_node;
 
-      if (sig_param->data.mode == ir_var_function_out) {
+      if (sig_param->data.mode == ir_var_function_out ||
+          sig_param->data.mode == ir_var_function_inout) {
          nir_store_deref(&b, evaluate_deref(param_rvalue),
                          nir_load_deref(&b, nir_src_as_deref(call->params[i])),
                          ~0);
@@ -2491,7 +2498,8 @@ nir_visitor::visit(ir_constant *ir)
 void
 nir_visitor::visit(ir_dereference_variable *ir)
 {
-   if (ir->variable_referenced()->data.mode == ir_var_function_out) {
+   if (ir->variable_referenced()->data.mode == ir_var_function_out ||
+       ir->variable_referenced()->data.mode == ir_var_function_inout) {
       unsigned i = (sig->return_type != &glsl_type_builtin_void) ? 1 : 0;
 
       foreach_in_list(ir_variable, param, &sig->parameters) {
@@ -2505,8 +2513,6 @@ nir_visitor::visit(ir_dereference_variable *ir)
                                          nir_var_function_temp, ir->type, 0);
       return;
    }
-
-   assert(ir->variable_referenced()->data.mode != ir_var_function_inout);
 
    struct hash_entry *entry =
       _mesa_hash_table_search(this->var_table, ir->var);
