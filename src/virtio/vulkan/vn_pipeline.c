@@ -24,7 +24,7 @@
  * Fields in the VkGraphicsPipelineCreateInfo pNext chain that we must track
  * to determine which fields are valid and which must be erased.
  */
-struct vn_graphics_pipeline_create_info_fields {
+struct vn_graphics_pipeline_info_self {
    union {
       /* Bitmask exists for testing if any field is set. */
       uint32_t mask;
@@ -65,17 +65,45 @@ struct vn_graphics_pipeline_create_info_fields {
 
          /** VkPipelineMultisampleStateCreateInfo::pSampleMask */
          bool multisample_state_sample_mask : 1;
+      };
+   };
+};
 
+static_assert(sizeof(struct vn_graphics_pipeline_info_self) ==
+                 sizeof(((struct vn_graphics_pipeline_info_self){}).mask),
+              "vn_graphics_pipeline_create_info_self::mask is too small");
+
+/**
+ * Fields in the VkGraphicsPipelineCreateInfo pNext chain that we must track
+ * to determine which fields are valid and which must be erased.
+ */
+struct vn_graphics_pipeline_info_pnext {
+   union {
+      /* Bitmask exists for testing if any field is set. */
+      uint32_t mask;
+
+      /* Group the fixes by Vulkan struct. Within each group, sort by struct
+       * order.
+       */
+      struct {
          /** VkPipelineRenderingCreateInfo, all format fields */
          bool rendering_info_formats : 1;
       };
    };
 };
 
-static_assert(
-   sizeof(struct vn_graphics_pipeline_create_info_fields) ==
-      sizeof(((struct vn_graphics_pipeline_create_info_fields){}).mask),
-   "vn_graphics_pipeline_create_info_fields::mask is too small");
+static_assert(sizeof(struct vn_graphics_pipeline_info_pnext) ==
+                 sizeof(((struct vn_graphics_pipeline_info_pnext){}).mask),
+              "vn_graphics_pipeline_create_info_pnext::mask is too small");
+
+/**
+ * Description of fixes needed for a single VkGraphicsPipelineCreateInfo
+ * pNext chain.
+ */
+struct vn_graphics_pipeline_fix_desc {
+   struct vn_graphics_pipeline_info_self self;
+   struct vn_graphics_pipeline_info_pnext pnext;
+};
 
 /**
  * Typesafe bitmask for VkGraphicsPipelineLibraryFlagsEXT. Named members
@@ -178,17 +206,6 @@ struct vn_graphics_pipeline_state {
 struct vn_graphics_pipeline {
    struct vn_pipeline base;
    struct vn_graphics_pipeline_state state;
-};
-
-/**
- * Description of fixes needed for a single VkGraphicsPipelineCreateInfo
- * pNext chain.
- */
-struct vn_graphics_pipeline_fix_desc {
-   /** Erase these fields to prevent the Venus encoder from reading invalid
-    * memory.
-    */
-   struct vn_graphics_pipeline_create_info_fields erase;
 };
 
 /**
@@ -751,7 +768,7 @@ static void
 vn_graphics_shader_stages_update(
    const VkGraphicsPipelineCreateInfo *info,
    struct vn_graphics_pipeline_library_state direct_gpl,
-   struct vn_graphics_pipeline_create_info_fields *restrict valid,
+   struct vn_graphics_pipeline_fix_desc *restrict valid,
    VkShaderStageFlags *restrict shader_stages)
 {
    /* From the Vulkan 1.3.251 spec:
@@ -767,7 +784,7 @@ vn_graphics_shader_stages_update(
    if (!direct_gpl.pre_raster_shaders && !direct_gpl.fragment_shader)
       return;
 
-   valid->shader_stages = true;
+   valid->self.shader_stages = true;
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
       /* We do not need to ignore the stages irrelevant to the GPL flags.
@@ -792,7 +809,7 @@ static void
 vn_render_pass_state_update(
    const VkGraphicsPipelineCreateInfo *info,
    struct vn_graphics_pipeline_library_state direct_gpl,
-   struct vn_graphics_pipeline_create_info_fields *restrict valid,
+   struct vn_graphics_pipeline_fix_desc *restrict valid,
    struct vn_render_pass_state *restrict state)
 {
    /* We must set validity before early returns, to ensure we don't erase
@@ -813,9 +830,9 @@ vn_render_pass_state_update(
     * renderPass is not VK_NULL_HANDLE, renderPass must be a valid
     * VkRenderPass handle
     */
-   valid->render_pass |= direct_gpl.pre_raster_shaders ||
-                         direct_gpl.fragment_shader ||
-                         direct_gpl.fragment_output;
+   valid->self.render_pass |= direct_gpl.pre_raster_shaders ||
+                              direct_gpl.fragment_shader ||
+                              direct_gpl.fragment_output;
 
    /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06579
     *
@@ -832,7 +849,7 @@ vn_render_pass_state_update(
     * VkPipelineRenderingCreateInfo::pColorAttachmentFormats must be a valid
     * VkFormat value
     */
-   valid->rendering_info_formats |=
+   valid->pnext.rendering_info_formats |=
       direct_gpl.fragment_output && !info->renderPass;
 
    if (state->attachment_aspects != VK_IMAGE_ASPECT_METADATA_BIT) {
@@ -851,7 +868,7 @@ vn_render_pass_state_update(
       return;
    }
 
-   if (valid->render_pass && info->renderPass) {
+   if (valid->self.render_pass && info->renderPass) {
       struct vn_render_pass *pass =
          vn_render_pass_from_handle(info->renderPass);
       state->attachment_aspects =
@@ -859,7 +876,7 @@ vn_render_pass_state_update(
       return;
    }
 
-   if (valid->rendering_info_formats) {
+   if (valid->pnext.rendering_info_formats) {
       state->attachment_aspects = 0;
 
       /* From the Vulkan 1.3.255 spec:
@@ -990,7 +1007,7 @@ vn_graphics_pipeline_state_fill(
     * type, it may be an invalid pointer. If foo has a Vulkan handle type, it
     * may be an invalid handle.
     */
-   struct vn_graphics_pipeline_create_info_fields valid = { 0 };
+   struct vn_graphics_pipeline_fix_desc valid = { 0 };
 
    /* Merge the linked pipeline libraries. */
    for (uint32_t i = 0; i < lib_count; i++) {
@@ -1027,12 +1044,12 @@ vn_graphics_pipeline_state_fill(
     * state because it influences how the other state is collected.
     */
    if (direct_gpl.pre_raster_shaders) {
-      valid.tessellation_state |=
+      valid.self.tessellation_state |=
          (bool)(state->shader_stages &
                 (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT));
-      valid.rasterization_state = true;
-      valid.pipeline_layout = true;
+      valid.self.rasterization_state = true;
+      valid.self.pipeline_layout = true;
 
       if (info->pRasterizationState) {
          state->rasterizer_discard_enable =
@@ -1044,12 +1061,12 @@ vn_graphics_pipeline_state_fill(
          state->rasterizer_discard_enable;
 
       if (!is_raster_statically_disabled) {
-         valid.viewport_state = true;
+         valid.self.viewport_state = true;
 
-         valid.viewport_state_viewports =
+         valid.self.viewport_state_viewports =
             !state->dynamic.viewport && !state->dynamic.viewport_with_count;
 
-         valid.viewport_state_scissors =
+         valid.self.viewport_state_scissors =
             !state->dynamic.scissor && !state->dynamic.scissor_with_count;
       }
 
@@ -1066,10 +1083,10 @@ vn_graphics_pipeline_state_fill(
          !state->gpl.pre_raster_shaders ||
          (state->shader_stages & VK_SHADER_STAGE_VERTEX_BIT);
 
-      valid.vertex_input_state |=
+      valid.self.vertex_input_state |=
          may_have_vertex_shader && !state->dynamic.vertex_input;
 
-      valid.input_assembly_state |= may_have_vertex_shader;
+      valid.self.input_assembly_state |= may_have_vertex_shader;
 
       /* Defer setting the flag until all its state is filled. */
       state->gpl.vertex_input = true;
@@ -1113,13 +1130,14 @@ vn_graphics_pipeline_state_fill(
           *    pMultisampleState must be NULL or a valid pointer to a valid
           *    VkPipelineMultisampleStateCreateInfo structure
           */
-         valid.multisample_state = true;
+         valid.self.multisample_state = true;
 
-         valid.multisample_state_sample_mask = !state->dynamic.sample_mask;
+         valid.self.multisample_state_sample_mask =
+            !state->dynamic.sample_mask;
 
          if ((state->render_pass.attachment_aspects &
               (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
-            valid.depth_stencil_state = true;
+            valid.self.depth_stencil_state = true;
          } else if (state->render_pass.attachment_aspects ==
                        VK_IMAGE_ASPECT_METADATA_BIT &&
                     (info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
@@ -1132,10 +1150,10 @@ vn_graphics_pipeline_state_fill(
              * VkPipelineDepthStencilStateCreateInfo. Therefore, we must not
              * ignore it.
              */
-            valid.depth_stencil_state = true;
+            valid.self.depth_stencil_state = true;
          }
 
-         valid.pipeline_layout = true;
+         valid.self.pipeline_layout = true;
       }
 
       /* Defer setting the flag until all its state is filled. */
@@ -1153,14 +1171,15 @@ vn_graphics_pipeline_state_fill(
           *    pMultisampleState must be a valid pointer to a valid
           *    VkPipelineMultisampleStateCreateInfo structure
           */
-         valid.multisample_state = true;
+         valid.self.multisample_state = true;
 
-         valid.multisample_state_sample_mask = !state->dynamic.sample_mask;
+         valid.self.multisample_state_sample_mask =
+            !state->dynamic.sample_mask;
 
-         valid.color_blend_state |=
+         valid.self.color_blend_state |=
             (bool)(state->render_pass.attachment_aspects &
                    VK_IMAGE_ASPECT_COLOR_BIT);
-         valid.depth_stencil_state |=
+         valid.self.depth_stencil_state |=
             (bool)(state->render_pass.attachment_aspects &
                    (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
       }
@@ -1170,67 +1189,67 @@ vn_graphics_pipeline_state_fill(
    }
 
    *out_fix_desc = (struct vn_graphics_pipeline_fix_desc) {
-      .erase = {
-         /* clang-format off
-          *
-          * Format this to resemble a table. (clang-format transforms it into
-          * a difficult-to-read wall of text).
-          */
+      .self = {
+         /* clang-format off */
          .shader_stages =
-            !valid.shader_stages &&
+            !valid.self.shader_stages &&
             info->pStages,
          .vertex_input_state =
-            !valid.vertex_input_state &&
+            !valid.self.vertex_input_state &&
             info->pVertexInputState,
          .input_assembly_state =
-            !valid.input_assembly_state &&
+            !valid.self.input_assembly_state &&
             info->pInputAssemblyState,
          .tessellation_state =
-            !valid.tessellation_state &&
+            !valid.self.tessellation_state &&
             info->pTessellationState,
          .viewport_state =
-            !valid.viewport_state &&
+            !valid.self.viewport_state &&
             info->pViewportState,
          .viewport_state_viewports =
-            !valid.viewport_state_viewports &&
-            valid.viewport_state &&
+            !valid.self.viewport_state_viewports &&
+            valid.self.viewport_state &&
             info->pViewportState &&
             info->pViewportState->pViewports &&
             info->pViewportState->viewportCount,
          .viewport_state_scissors =
-            !valid.viewport_state_scissors &&
-            valid.viewport_state &&
+            !valid.self.viewport_state_scissors &&
+            valid.self.viewport_state &&
             info->pViewportState &&
             info->pViewportState->pScissors &&
             info->pViewportState->scissorCount,
          .rasterization_state =
-            !valid.rasterization_state &&
+            !valid.self.rasterization_state &&
             info->pRasterizationState,
          .multisample_state =
-            !valid.multisample_state &&
+            !valid.self.multisample_state &&
             info->pMultisampleState,
          .multisample_state_sample_mask =
-            valid.multisample_state &&
-            !valid.multisample_state_sample_mask &&
+            !valid.self.multisample_state_sample_mask &&
+            valid.self.multisample_state &&
             info->pMultisampleState &&
             info->pMultisampleState->pSampleMask,
          .depth_stencil_state =
-            !valid.depth_stencil_state &&
+            !valid.self.depth_stencil_state &&
             info->pDepthStencilState,
          .color_blend_state =
-            !valid.color_blend_state &&
+            !valid.self.color_blend_state &&
             info->pColorBlendState,
          .pipeline_layout =
-            !valid.pipeline_layout &&
+            !valid.self.pipeline_layout &&
             info->layout,
          .render_pass =
-            !valid.render_pass &&
+            !valid.self.render_pass &&
             info->renderPass,
          .base_pipeline_handle =
-            !valid.base_pipeline_handle &&
+            !valid.self.base_pipeline_handle &&
             info->basePipelineHandle,
+         /* clang-format on */
+      },
+      .pnext = {
+         /* clang-format off */
          .rendering_info_formats =
-            !valid.rendering_info_formats &&
+            !valid.pnext.rendering_info_formats &&
             rendering_info &&
             rendering_info->pColorAttachmentFormats &&
             rendering_info->colorAttachmentCount,
@@ -1250,15 +1269,16 @@ vn_fix_graphics_pipeline_create_infos(
 {
    VN_TRACE_SCOPE("apply_fixes");
 
-   *out_fix_tmp = NULL;
-
-   uint32_t erase_mask = 0;
+   uint32_t self_mask = 0;
+   uint32_t pnext_mask = 0;
    for (uint32_t i = 0; i < info_count; i++) {
-      erase_mask |= fix_descs[i].erase.mask;
+      self_mask |= fix_descs[i].self.mask;
+      pnext_mask |= fix_descs[i].pnext.mask;
    }
 
-   if (!erase_mask) {
+   if (!self_mask && !pnext_mask) {
       /* No fix is needed. */
+      *out_fix_tmp = NULL;
       return infos;
    }
 
@@ -1270,76 +1290,76 @@ vn_fix_graphics_pipeline_create_infos(
    memcpy(fix_tmp->infos, infos, info_count * sizeof(infos[0]));
 
    for (uint32_t i = 0; i < info_count; i++) {
-      if (!fix_descs[i].erase.mask) {
-         /* No fix is needed for this VkGraphicsPipelineCreateInfo chain. */
-         continue;
+      if (fix_descs[i].self.mask) {
+         /* VkGraphicsPipelineCreateInfo */
+         if (fix_descs[i].self.shader_stages) {
+            fix_tmp->infos[i].stageCount = 0;
+            fix_tmp->infos[i].pStages = NULL;
+         }
+         if (fix_descs[i].self.vertex_input_state)
+            fix_tmp->infos[i].pVertexInputState = NULL;
+         if (fix_descs[i].self.input_assembly_state)
+            fix_tmp->infos[i].pInputAssemblyState = NULL;
+         if (fix_descs[i].self.tessellation_state)
+            fix_tmp->infos[i].pTessellationState = NULL;
+         if (fix_descs[i].self.viewport_state)
+            fix_tmp->infos[i].pViewportState = NULL;
+         if (fix_descs[i].self.rasterization_state)
+            fix_tmp->infos[i].pRasterizationState = NULL;
+         if (fix_descs[i].self.multisample_state)
+            fix_tmp->infos[i].pMultisampleState = NULL;
+         if (fix_descs[i].self.depth_stencil_state)
+            fix_tmp->infos[i].pDepthStencilState = NULL;
+         if (fix_descs[i].self.color_blend_state)
+            fix_tmp->infos[i].pColorBlendState = NULL;
+         if (fix_descs[i].self.pipeline_layout)
+            fix_tmp->infos[i].layout = VK_NULL_HANDLE;
+         if (fix_descs[i].self.base_pipeline_handle)
+            fix_tmp->infos[i].basePipelineHandle = VK_NULL_HANDLE;
+
+         /* VkPipelineMultisampleStateCreateInfo */
+         if (fix_descs[i].self.multisample_state_sample_mask) {
+            /* Swap original pMultisampleState with temporary state. */
+            fix_tmp->multisample_state_infos[i] = *infos[i].pMultisampleState;
+            fix_tmp->infos[i].pMultisampleState =
+               &fix_tmp->multisample_state_infos[i];
+
+            fix_tmp->multisample_state_infos[i].pSampleMask = NULL;
+         }
+
+         /* VkPipelineViewportStateCreateInfo */
+         if (fix_descs[i].self.viewport_state_viewports ||
+             fix_descs[i].self.viewport_state_scissors) {
+            /* Swap original pViewportState with temporary state. */
+            fix_tmp->viewport_state_infos[i] = *infos[i].pViewportState;
+            fix_tmp->infos[i].pViewportState =
+               &fix_tmp->viewport_state_infos[i];
+
+            if (fix_descs[i].self.viewport_state_viewports)
+               fix_tmp->viewport_state_infos[i].pViewports = NULL;
+            if (fix_descs[i].self.viewport_state_scissors)
+               fix_tmp->viewport_state_infos[i].pScissors = NULL;
+         }
       }
 
-      /* VkGraphicsPipelineCreateInfo */
-      if (fix_descs[i].erase.shader_stages) {
-         fix_tmp->infos[i].stageCount = 0;
-         fix_tmp->infos[i].pStages = NULL;
-      }
-      if (fix_descs[i].erase.vertex_input_state)
-         fix_tmp->infos[i].pVertexInputState = NULL;
-      if (fix_descs[i].erase.input_assembly_state)
-         fix_tmp->infos[i].pInputAssemblyState = NULL;
-      if (fix_descs[i].erase.tessellation_state)
-         fix_tmp->infos[i].pTessellationState = NULL;
-      if (fix_descs[i].erase.viewport_state)
-         fix_tmp->infos[i].pViewportState = NULL;
-      if (fix_descs[i].erase.rasterization_state)
-         fix_tmp->infos[i].pRasterizationState = NULL;
-      if (fix_descs[i].erase.multisample_state)
-         fix_tmp->infos[i].pMultisampleState = NULL;
-      if (fix_descs[i].erase.depth_stencil_state)
-         fix_tmp->infos[i].pDepthStencilState = NULL;
-      if (fix_descs[i].erase.color_blend_state)
-         fix_tmp->infos[i].pColorBlendState = NULL;
-      if (fix_descs[i].erase.pipeline_layout)
-         fix_tmp->infos[i].layout = VK_NULL_HANDLE;
-      if (fix_descs[i].erase.base_pipeline_handle)
-         fix_tmp->infos[i].basePipelineHandle = VK_NULL_HANDLE;
-
-      /* VkPipelineMultisampleStateCreateInfo */
-      if (fix_descs[i].erase.multisample_state_sample_mask) {
-         /* Swap original pMultisampleState with temporary state. */
-         fix_tmp->multisample_state_infos[i] = *infos[i].pMultisampleState;
-         fix_tmp->infos[i].pMultisampleState =
-            &fix_tmp->multisample_state_infos[i];
-
-         fix_tmp->multisample_state_infos[i].pSampleMask = NULL;
-      }
-
-      /* VkPipelineViewportStateCreateInfo */
-      if (fix_descs[i].erase.viewport_state_viewports ||
-          fix_descs[i].erase.viewport_state_scissors) {
-         /* Swap original pViewportState with temporary state. */
-         fix_tmp->viewport_state_infos[i] = *infos[i].pViewportState;
-         fix_tmp->infos[i].pViewportState = &fix_tmp->viewport_state_infos[i];
-
-         if (fix_descs[i].erase.viewport_state_viewports)
-            fix_tmp->viewport_state_infos[i].pViewports = NULL;
-         if (fix_descs[i].erase.viewport_state_scissors)
-            fix_tmp->viewport_state_infos[i].pScissors = NULL;
-      }
-
-      /* VkPipelineRenderingCreateInfo */
-      if (fix_descs[i].erase.rendering_info_formats) {
-         /* All format fields are invalid, but the only field that must be
-          * erased is pColorAttachmentFormats because the other
-          * fields are merely VkFormat values. Encoding invalid pointers is
-          * unsafe; encoding invalid VkFormat values is not unsafe.
-          *
-          * However, the fix is difficult because it requires a deep rewrite
-          * of the pNext chain.
-          *
-          * TODO: Fix invalid
-          * VkPipelineRenderingCreateInfo::pColorAttachmentFormats.
-          */
-         vn_log(dev->instance,
-                "venus may encode array from invalid pointer "
-                "VkPipelineRenderingCreateInfo::pColorAttachmentFormats");
+      if (fix_descs[i].pnext.mask) {
+         /* VkPipelineRenderingCreateInfo */
+         if (fix_descs[i].pnext.rendering_info_formats) {
+            /* All format fields are invalid, but the only field that must be
+             * erased is pColorAttachmentFormats because the other
+             * fields are merely VkFormat values. Encoding invalid pointers is
+             * unsafe; encoding invalid VkFormat values is not unsafe.
+             *
+             * However, the fix is difficult because it requires a deep
+             * rewrite of the pNext chain.
+             *
+             * TODO: Fix invalid
+             * VkPipelineRenderingCreateInfo::pColorAttachmentFormats.
+             */
+            vn_log(dev->instance,
+                   "venus may encode array from invalid pointer "
+                   "VkPipelineRenderingCreateInfo::pColorAttachmentFormats");
+         }
       }
    }
 
