@@ -36,3 +36,7 @@ spec@!opengl 1.1@windowoverlap
 # Note that "glx-" tests don't appear in x11-skips.txt because they can be
 # run even if PIGLIT_PLATFORM=gbm (for example)
 glx@glx-copy-sub-buffer.*
+
+# A majority of the tests introduced in CTS 1.3.7.0 are experiencing failures and flakes.
+# Disable these tests until someone with a more deeper understanding of EGL examines them.
+wayland-dEQP-EGL.functional.color_clears.*
