@@ -2328,6 +2328,8 @@ dri2_wl_swrast_allocate_buffer(struct dri2_egl_surface *dri2_surf, int format,
    int fd, stride, size_map;
    void *data_map;
 
+   assert(!*buffer);
+
    stride = dri2_wl_swrast_get_stride_for_format(format, w);
    size_map = h * stride;
 
@@ -2403,6 +2405,9 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
       for (int i = 0; i < ARRAY_SIZE(dri2_surf->color_buffers); i++) {
          if (!dri2_surf->color_buffers[i].locked) {
             dri2_surf->back = &dri2_surf->color_buffers[i];
+            if (dri2_surf->back->wl_buffer)
+               break;
+
             if (!dri2_wl_swrast_allocate_buffer(
                    dri2_surf, dri2_surf->format, dri2_surf->base.Width,
                    dri2_surf->base.Height, &dri2_surf->back->data,
