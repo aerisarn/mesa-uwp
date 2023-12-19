@@ -521,6 +521,12 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER >= 7
    s.ResourceMinLOD = info->view->min_lod_clamp;
+
+#if GFX_VERx10 >= 200
+   s.EnableSamplerRoutetoLSC = isl_format_support_sampler_route_to_lsc(info->view->format);
+   s.EnableSamplerRoutetoLSC &= (s.SurfaceType == SURFTYPE_2D);
+#endif /* if GFX_VERx10 >= 200 */
+
 #else
    assert(info->view->min_lod_clamp == 0);
 #endif
@@ -964,6 +970,10 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
 #else
    s.RenderCacheReadWriteMode = 0;
 #endif
+
+#if GFX_VERx10 >= 200
+   s.EnableSamplerRoutetoLSC = isl_format_support_sampler_route_to_lsc(info->format);
+#endif /* if GFX_VERx10 >= 200 */
 
    s.SurfaceBaseAddress = info->address;
 #if GFX_VER >= 6
