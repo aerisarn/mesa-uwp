@@ -25,7 +25,7 @@
 #include "bvh/bvh.h"
 #include "radv_debug.h"
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
 #include <llvm/Config/llvm-config.h>
 #endif
 

@@ -49,7 +49,7 @@ typedef void *drmDevicePtr;
 #include "winsys/null/radv_null_winsys_public.h"
 #include "git_sha1.h"
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
 #include "ac_llvm_util.h"
 #endif
 
@@ -132,7 +132,7 @@ radv_device_get_cache_uuid(struct radv_physical_device *pdevice, void *uuid)
       return -1;
 #endif
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    if (pdevice->use_llvm && !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx))
       return -1;
 #endif
@@ -1125,7 +1125,7 @@ radv_get_compiler_string(struct radv_physical_device *pdevice)
       return "";
    }
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    return " (LLVM " MESA_LLVM_VERSION_STRING ")";
 #else
    unreachable("LLVM is not available");
@@ -1855,7 +1855,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->ws->query_info(device->ws, &device->rad_info);
 
    device->use_llvm = instance->debug_flags & RADV_DEBUG_LLVM;
-#ifndef LLVM_AVAILABLE
+#if !LLVM_AVAILABLE
    if (device->use_llvm) {
       fprintf(stderr, "ERROR: LLVM compiler backend selected for radv, but LLVM support was not "
                       "enabled at build time.\n");

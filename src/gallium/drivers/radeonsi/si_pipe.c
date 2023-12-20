@@ -27,7 +27,7 @@
 
 #include "aco_interface.h"
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
 #include "ac_llvm_util.h"
 #endif
 
@@ -135,7 +135,7 @@ static const struct debug_named_value test_options[] = {
 
 struct ac_llvm_compiler *si_create_llvm_compiler(struct si_screen *sscreen)
 {
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    struct ac_llvm_compiler *compiler = CALLOC_STRUCT(ac_llvm_compiler);
    if (!compiler)
       return NULL;
@@ -179,7 +179,7 @@ void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
 
 static void si_destroy_llvm_compiler(struct ac_llvm_compiler *compiler)
 {
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    ac_destroy_llvm_compiler(compiler);
    FREE(compiler);
 #endif
@@ -1133,7 +1133,7 @@ static void si_disk_cache_create(struct si_screen *sscreen)
     * the LLVM function identifier. ACO is a built-in component in mesa, so no need
     * to add aco function here.
     */
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    if (!sscreen->use_aco &&
        !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx))
       return;
@@ -1207,7 +1207,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    if (sscreen->debug_flags & DBG(SHADOW_REGS))
       sscreen->info.register_shadowing_required = true;
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    sscreen->use_aco = (sscreen->debug_flags & DBG(USE_ACO));
 #else
    sscreen->use_aco = true;
@@ -1555,7 +1555,7 @@ struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_conf
    if (!version)
      return NULL;
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
    /* LLVM must be initialized before util_queue because both u_queue and LLVM call atexit,
     * and LLVM must call it first because its atexit handler executes C++ destructors,
     * which must be done after our compiler threads using LLVM in u_queue are finished

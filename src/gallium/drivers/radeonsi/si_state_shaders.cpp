@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
 #include "ac_llvm_util.h"
 #endif
 

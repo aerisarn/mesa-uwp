@@ -1325,7 +1325,7 @@ static void si_init_renderer_string(struct si_screen *sscreen)
       snprintf(kernel_version, sizeof(kernel_version), ", %s", uname_data.release);
 
    const char *compiler_name =
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
       !sscreen->use_aco ? "LLVM " MESA_LLVM_VERSION_STRING :
 #endif
       "ACO";

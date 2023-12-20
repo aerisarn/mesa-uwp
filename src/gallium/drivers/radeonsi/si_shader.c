@@ -2661,7 +2661,7 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
    }
 
    bool ok =
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
       !sscreen->use_aco ? si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir) :
 #endif
       si_aco_compile_shader(shader, &args, nir, debug);
@@ -2931,7 +2931,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       float_mode &= ~V_00B028_FP_16_64_DENORMS;
 
    ret =
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
       !sscreen->use_aco ? si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir) :
 #endif
       si_aco_compile_shader(shader, &args, nir, debug);
@@ -3097,7 +3097,7 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    result->key = *key;
 
    bool ok =
-#ifdef LLVM_AVAILABLE
+#if LLVM_AVAILABLE
       !sscreen->use_aco ? si_llvm_build_shader_part(sscreen, stage, prolog, compiler, debug, name, result) :
 #endif
       si_aco_build_shader_part(sscreen, stage, prolog, debug, name, result);

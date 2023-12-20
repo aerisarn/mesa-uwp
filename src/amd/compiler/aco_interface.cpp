@@ -98,7 +98,7 @@ get_disasm_string(aco::Program* program, std::vector<uint32_t>& code, unsigned e
          aco::print_asm(program, code, exec_size / 4u, memf);
       } else {
          fprintf(memf, "Shader disassembly is not supported in the current configuration"
-#ifndef LLVM_AVAILABLE
+#if !LLVM_AVAILABLE
                        " (LLVM not available)"
 #endif
                        ", falling back to print_program.\n\n");
