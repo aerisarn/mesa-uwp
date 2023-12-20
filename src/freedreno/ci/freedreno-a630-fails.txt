@@ -613,27 +613,6 @@ stale-regs-dEQP-VK.transform_feedback.primitives_generated_query.copy.host_reset
 stale-regs-dEQP-VK.transform_feedback.primitives_generated_query.copy.queue_reset.pgq_32bit_xfb_64bit.geom.xfb.rast.line_list_with_adjacency.pgq_default_xfb_0.two_draws.xfbq_first.before_2_queries,Fail
 stale-regs-dEQP-VK.transform_feedback.primitives_generated_query.copy.queue_reset.pgq_32bit_xfb_64bit.geom.xfb.rast.point_list.pgq_default_xfb_default.two_draws.pqg_first.none_2_queries,Fail
 stale-regs-dEQP-VK.transform_feedback.primitives_generated_query.get.host_reset.pgq_32bit_xfb_64bit.tese.xfb.rast.patch_list.pgq_default_xfb_default.single_draw.xfbq_first.after_2_queries_with_availability,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_context.gles1.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_context.gles1_gles2.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_context.gles1_gles2_gles3.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_context.gles2.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_context.gles3.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1_gles2.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1_gles2_gles3.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_thread.gles2.other,Fail
-wayland-dEQP-EGL.functional.color_clears.multi_thread.gles3.other,Fail
-wayland-dEQP-EGL.functional.color_clears.single_context.gles1.other,Fail
-wayland-dEQP-EGL.functional.color_clears.single_context.gles2.other,Fail
-wayland-dEQP-EGL.functional.color_clears.single_context.gles3.other,Fail
-wayland-dEQP-EGL.functional.render.multi_context.gles2.other,Fail
-wayland-dEQP-EGL.functional.render.multi_context.gles2_gles3.other,Fail
-wayland-dEQP-EGL.functional.render.multi_context.gles3.other,Fail
-wayland-dEQP-EGL.functional.render.multi_thread.gles2.other,Fail
-wayland-dEQP-EGL.functional.render.multi_thread.gles2_gles3.other,Fail
-wayland-dEQP-EGL.functional.render.multi_thread.gles3.other,Fail
-wayland-dEQP-EGL.functional.render.single_context.gles2.other,Fail
-wayland-dEQP-EGL.functional.render.single_context.gles3.other,Fail
 
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.32bit.triangle_strip.draw,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.concurrent.pipeline_statistics_3.64bit.line_strip.draw,Fail
