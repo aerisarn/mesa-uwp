@@ -2,14 +2,14 @@
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 
 # VS16.x is 2019
-$msvc_2019_url = 'https://aka.ms/vs/16/release/vs_buildtools.exe'
+$msvc_url = 'https://aka.ms/vs/16/release/vs_buildtools.exe'
 
+Write-Host "Downloading Visual Studio 2019 build tools at:"
 Get-Date
-Write-Host "Downloading Visual Studio 2019 build tools"
-Invoke-WebRequest -Uri $msvc_2019_url -OutFile C:\vs_buildtools.exe
+Invoke-WebRequest -Uri $msvc_url -OutFile C:\vs_buildtools.exe
 
+Write-Host "Installing Visual Studio 2019 at:"
 Get-Date
-Write-Host "Installing Visual Studio 2019"
 # Command line
 # https://docs.microsoft.com/en-us/visualstudio/install/command-line-parameter-examples?view=vs-2019
 # Component ids
@@ -36,4 +36,8 @@ if (!$?) {
   Exit 1
 }
 Remove-Item C:\vs_buildtools.exe -Force
+
+Write-Host "Installing Visual Studio 2019 finished at:"
 Get-Date
+
+Exit 0
