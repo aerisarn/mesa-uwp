@@ -128,7 +128,7 @@ Remove-Item C:\rustup-init.exe;
 Get-Date
 Write-Host "Installing deqp-runner"
 $env:Path += ";$($env:USERPROFILE)\.cargo\bin"
-cargo install --git https://gitlab.freedesktop.org/anholt/deqp-runner.git
+cargo install --git https://gitlab.freedesktop.org/anholt/deqp-runner.git --tag v0.16.1
 
 Get-Date
 Write-Host "Downloading DirectX 12 Agility SDK"
