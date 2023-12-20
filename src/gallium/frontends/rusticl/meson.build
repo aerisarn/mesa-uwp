@@ -90,9 +90,14 @@ rusticl_args = [
   '-Aclippy::redundant_field_names',
   '-Aclippy::too_many_arguments',
   '-Aclippy::type_complexity',
-  # Needs to be fixed
-  '-Aclippy::arc-with-non-send-sync',
 ]
+
+if rustc.version().version_compare('>=1.72')
+  rusticl_args += [
+    # Needs to be fixed
+    '-Aclippy::arc-with-non-send-sync'
+  ]
+endif
 
 if with_platform_x11
   rusticl_args += [
