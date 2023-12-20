@@ -1058,13 +1058,15 @@ si_vpe_create_processor(struct pipe_context *context, const struct pipe_video_co
    /* Allocate Vpblit Descriptor buffers
     * Descriptor buffer is used to store plane config and VPEP commands
     */
-   vpeproc->bufs_num = VPE_BUFFERS_NUM;
+   vpeproc->bufs_num = (uint8_t)debug_get_num_option("AMDGPU_SIVPE_BUF_NUM", VPE_BUFFERS_NUM);
    vpeproc->cur_buf = 0;
    vpeproc->emb_buffers = (struct rvid_buffer *)CALLOC(vpeproc->bufs_num, sizeof(struct rvid_buffer));
    if (!vpeproc->emb_buffers) {
       SIVPE_ERR("Allocate command buffer list failed\n");
       goto fail;
-   }
+   } else
+      SIVPE_INFO(vpeproc->log_level, "Number of emb_buf is %d\n", vpeproc->bufs_num);
+
    for (i = 0; i < vpeproc->bufs_num; i++) {
       if (!si_vid_create_buffer(vpeproc->screen, &vpeproc->emb_buffers[i], VPE_EMBBUF_SIZE, PIPE_USAGE_DEFAULT)) {
           SIVPE_ERR("Can't allocated emb_buf buffers.\n");
