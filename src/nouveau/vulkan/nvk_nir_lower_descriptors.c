@@ -142,7 +142,7 @@ record_vulkan_resource_cbuf_use(nir_intrinsic_instr *intrin,
    const VkDescriptorType desc_type = nir_intrinsic_desc_type(intrin);
 
    /* These we'll handle later */
-   if (desc_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER &&
+   if (desc_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
        desc_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
       return;
 
