@@ -54,4 +54,16 @@ glx@glx-copy-sub-buffer.*
 # more context from David Heidelberg on IRC: the deqp commit where these
 # started failing is: https://github.com/KhronosGroup/VK-GL-CTS/commit/79b25659bcbced0cfc2c3fe318951c585f682abe
 # prior to that they were skipping.
-wayland-dEQP-EGL.functional.color_clears.*
+wayland-dEQP-EGL.functional.color_clears.single_context.gles1.other
+wayland-dEQP-EGL.functional.color_clears.single_context.gles2.other
+wayland-dEQP-EGL.functional.color_clears.single_context.gles3.other
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles1.other
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles2.other
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles3.other
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles1_gles2.other
+wayland-dEQP-EGL.functional.color_clears.multi_context.gles1_gles2_gles3.other
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1.other
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles2.other
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles3.other
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1_gles2.other
+wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1_gles2_gles3.other
