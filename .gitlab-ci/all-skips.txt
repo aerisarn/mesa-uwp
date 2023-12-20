@@ -67,3 +67,13 @@ wayland-dEQP-EGL.functional.color_clears.multi_thread.gles2.other
 wayland-dEQP-EGL.functional.color_clears.multi_thread.gles3.other
 wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1_gles2.other
 wayland-dEQP-EGL.functional.color_clears.multi_thread.gles1_gles2_gles3.other
+
+# Seems to be the same is as wayland-dEQP-EGL.functional.color_clears.*
+wayland-dEQP-EGL.functional.render.single_context.gles2.other
+wayland-dEQP-EGL.functional.render.single_context.gles3.other
+wayland-dEQP-EGL.functional.render.multi_context.gles2.other
+wayland-dEQP-EGL.functional.render.multi_context.gles3.other
+wayland-dEQP-EGL.functional.render.multi_context.gles2_gles3.other
+wayland-dEQP-EGL.functional.render.multi_thread.gles2.other
+wayland-dEQP-EGL.functional.render.multi_thread.gles3.other
+wayland-dEQP-EGL.functional.render.multi_thread.gles2_gles3.other
