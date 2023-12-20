@@ -22,11 +22,10 @@ Start-Process -NoNewWindow -Wait -FilePath C:\vs_buildtools.exe `
 "--norestart", `
 "--nocache", `
 "--installPath", "C:\BuildTools", `
-"--add", "Microsoft.VisualStudio.Component.VC.ASAN", `
 "--add", "Microsoft.VisualStudio.Component.VC.Redist.14.Latest", `
-"--add", "Microsoft.VisualStudio.Component.VC.ATL", `
-"--add", "Microsoft.VisualStudio.Component.VC.ATLMFC", `
-"--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", `
+"--add", "Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL", `
+"--add", "Microsoft.VisualStudio.Component.VC.14.29.16.11.MFC", `
+"--add", "Microsoft.VisualStudio.ComponentGroup.VC.Tools.142.x86.x64", `
 "--add", "Microsoft.VisualStudio.Component.VC.Llvm.Clang", `
 "--add", "Microsoft.VisualStudio.Component.Graphics.Tools", `
 "--add", "Microsoft.VisualStudio.Component.Windows10SDK.20348"
