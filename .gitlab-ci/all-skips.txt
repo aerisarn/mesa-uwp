@@ -39,4 +39,19 @@ glx@glx-copy-sub-buffer.*
 
 # A majority of the tests introduced in CTS 1.3.7.0 are experiencing failures and flakes.
 # Disable these tests until someone with a more deeper understanding of EGL examines them.
+#
+# Note: on sc8280xp/a690 I get identical results (same passes and fails)
+# between freedreno, zink, and llvmpipe, so I believe this is either a
+# deqp bug or egl/wayland bug, rather than driver issue.
+#
+# With llvmpipe, the failing tests have the error message:
+#
+#   "Illegal sampler view creation without bind flag"
+#
+# which might be a hint.  (But some passing tests also have the same
+# error message.)
+#
+# more context from David Heidelberg on IRC: the deqp commit where these
+# started failing is: https://github.com/KhronosGroup/VK-GL-CTS/commit/79b25659bcbced0cfc2c3fe318951c585f682abe
+# prior to that they were skipping.
 wayland-dEQP-EGL.functional.color_clears.*
