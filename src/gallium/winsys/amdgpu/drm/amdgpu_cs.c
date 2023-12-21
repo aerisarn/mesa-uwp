@@ -16,17 +16,19 @@
 /* FENCES */
 
 static struct pipe_fence_handle *
-amdgpu_fence_create(struct amdgpu_ctx *ctx, unsigned ip_type)
+amdgpu_fence_create(struct amdgpu_cs *cs)
 {
    struct amdgpu_fence *fence = CALLOC_STRUCT(amdgpu_fence);
+   struct amdgpu_ctx *ctx = cs->ctx;
 
    fence->reference.count = 1;
    fence->ws = ctx->ws;
    fence->ctx = ctx;
    fence->fence.context = ctx->ctx;
-   fence->fence.ip_type = ip_type;
+   fence->fence.ip_type = cs->ip_type;
    util_queue_fence_init(&fence->submitted);
    util_queue_fence_reset(&fence->submitted);
+   fence->queue_index = cs->queue_index;
    p_atomic_inc(&ctx->refcount);
    return (struct pipe_fence_handle *)fence;
 }
@@ -244,8 +246,7 @@ amdgpu_cs_get_next_fence(struct radeon_cmdbuf *rcs)
       return fence;
    }
 
-   fence = amdgpu_fence_create(cs->ctx,
-                               cs->csc->chunk_ib[IB_MAIN].ip_type);
+   fence = amdgpu_fence_create(cs);
    if (!fence)
       return NULL;
 
@@ -925,6 +926,7 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs
       cs->buffer_lists[i].num_buffers = 0;
    }
 
+   cs->seq_no_dependencies.valid_fence_mask = 0;
    cleanup_fence_list(&cs->fence_dependencies);
    cleanup_fence_list(&cs->syncobj_dependencies);
    cleanup_fence_list(&cs->syncobj_to_signal);
@@ -1209,20 +1211,22 @@ static void add_fence_to_list(struct amdgpu_fence_list *fences,
    amdgpu_fence_reference(&fences->list[idx], (struct pipe_fence_handle*)fence);
 }
 
-static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
+static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rcs,
                                            struct pipe_fence_handle *pfence)
 {
-   struct amdgpu_cs *acs = amdgpu_cs(rws);
+   struct amdgpu_cs *acs = amdgpu_cs(rcs);
    struct amdgpu_cs_context *cs = acs->csc;
    struct amdgpu_fence *fence = (struct amdgpu_fence*)pfence;
 
    util_queue_fence_wait(&fence->submitted);
 
-   /* Ignore non-imported idle fences. This will only check the user fence in memory. */
-   if (!fence->imported && amdgpu_fence_wait((void *)fence, 0, false))
-      return;
-
-   if (amdgpu_fence_is_syncobj(fence))
+   if (!fence->imported) {
+      /* Ignore idle fences. This will only check the user fence in memory. */
+      if (!amdgpu_fence_wait((void *)fence, 0, false)) {
+         add_seq_no_to_list(acs->ws, &cs->seq_no_dependencies, fence->queue_index,
+                            fence->queue_seq_no);
+      }
+   } else if (amdgpu_fence_is_syncobj(fence))
       add_fence_to_list(&cs->syncobj_dependencies, fence);
    else
       add_fence_to_list(&cs->fence_dependencies, fence);
@@ -1350,7 +1354,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
     * sequence number per queue and removes all older ones.
     */
    struct amdgpu_seq_no_fences seq_no_dependencies;
-   seq_no_dependencies.valid_fence_mask = 0;
+   memcpy(&seq_no_dependencies, &cs->seq_no_dependencies, sizeof(seq_no_dependencies));
 
    /* Add a fence dependency on the previous IB if the IP has multiple physical queues to
     * make it appear as if it had only 1 queue, or if the previous IB comes from a different
@@ -1418,6 +1422,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    /* Finally, add the IB fence into the winsys queue. */
    amdgpu_fence_reference(&queue->fences[next_seq_no % AMDGPU_FENCE_RING_SIZE], cs->fence);
    queue->latest_seq_no = next_seq_no;
+   ((struct amdgpu_fence*)cs->fence)->queue_seq_no = next_seq_no;
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    struct drm_amdgpu_bo_list_entry *bo_list = NULL;
@@ -1744,8 +1749,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
          cur->fence = cs->next_fence;
          cs->next_fence = NULL;
       } else {
-         cur->fence = amdgpu_fence_create(cs->ctx,
-                                          cur->chunk_ib[IB_MAIN].ip_type);
+         cur->fence = amdgpu_fence_create(cs);
       }
       if (fence)
          amdgpu_fence_reference(fence, cur->fence);

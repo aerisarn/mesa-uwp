@@ -93,6 +93,7 @@ struct amdgpu_cs_context {
    struct amdgpu_winsys_bo     *last_added_bo;
    unsigned                    last_added_bo_usage;
 
+   struct amdgpu_seq_no_fences seq_no_dependencies;
    struct amdgpu_fence_list    fence_dependencies;
    struct amdgpu_fence_list    syncobj_dependencies;
    struct amdgpu_fence_list    syncobj_to_signal;
@@ -168,6 +169,8 @@ struct amdgpu_fence {
 
    volatile int signalled;              /* bool (int for atomicity) */
    bool imported;
+   uint8_t queue_index;       /* for non-imported fences */
+   uint_seq_no queue_seq_no;  /* winsys-generated sequence number */
 };
 
 static inline bool amdgpu_fence_is_syncobj(struct amdgpu_fence *fence)
