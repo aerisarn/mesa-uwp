@@ -75,6 +75,8 @@ static void do_winsys_deinit(struct amdgpu_winsys *ws)
    for (unsigned i = 0; i < ARRAY_SIZE(ws->queues); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(ws->queues[i].fences); j++)
          amdgpu_fence_reference(&ws->queues[i].fences[j], NULL);
+
+      amdgpu_ctx_reference(&ws->queues[i].last_ctx, NULL);
    }
 
    if (util_queue_is_initialized(&ws->cs_queue))

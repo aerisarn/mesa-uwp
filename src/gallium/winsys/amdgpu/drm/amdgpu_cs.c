@@ -1366,7 +1366,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    struct amdgpu_fence *prev_fence =
       (struct amdgpu_fence*)queue->fences[prev_seq_no % AMDGPU_FENCE_RING_SIZE];
 
-   if (prev_fence && (ws->info.ip[acs->ip_type].num_queues > 1 || prev_fence->ctx != acs->ctx))
+   if (prev_fence && (ws->info.ip[acs->ip_type].num_queues > 1 || queue->last_ctx != acs->ctx))
       add_seq_no_to_list(ws, &seq_no_dependencies, acs->queue_index, prev_seq_no);
 
    /* Since the kernel driver doesn't synchronize execution between different
@@ -1424,6 +1424,9 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    amdgpu_fence_reference(&queue->fences[next_seq_no % AMDGPU_FENCE_RING_SIZE], cs->fence);
    queue->latest_seq_no = next_seq_no;
    ((struct amdgpu_fence*)cs->fence)->queue_seq_no = next_seq_no;
+
+   /* Update the last used context in the queue. */
+   amdgpu_ctx_reference(&queue->last_ctx, acs->ctx);
    simple_mtx_unlock(&ws->bo_fence_lock);
 
    struct drm_amdgpu_bo_list_entry *bo_list = NULL;

@@ -117,6 +117,9 @@ struct amdgpu_queue {
     * never become idle in certain very unlucky scenarios and running out of memory.
     */
    uint_seq_no latest_seq_no;
+
+   /* The last context using this queue. */
+   struct amdgpu_ctx *last_ctx;
 };
 
 /* This is part of every BO. */
