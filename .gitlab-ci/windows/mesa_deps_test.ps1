@@ -81,6 +81,7 @@ if (!$?) {
 }
 
 Push-Location -Path $deqp_source
+git checkout 56114106d860c121cd6ff0c3b926ddc50c4c11fd
 # --insecure is due to SSL cert failures hitting sourceforge for zlib and
 # libpng (sigh).  The archives get their checksums checked anyway, and git
 # always goes through ssh or https.
