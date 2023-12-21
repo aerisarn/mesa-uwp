@@ -124,6 +124,16 @@ static bool amdgpu_bo_wait(struct radeon_winsys *rws,
    }
 }
 
+static inline unsigned get_slab_entry_offset(struct amdgpu_winsys_bo *bo)
+{
+   struct amdgpu_bo_slab_entry *slab_entry_bo = get_slab_entry_bo(bo);
+   struct amdgpu_bo_real_reusable_slab *slab_bo =
+      (struct amdgpu_bo_real_reusable_slab *)get_slab_entry_real_bo(bo);
+   unsigned entry_index = slab_entry_bo - slab_bo->entries;
+
+   return slab_bo->slab.entry_size * entry_index;
+}
+
 static enum radeon_bo_domain amdgpu_bo_get_initial_domain(
       struct pb_buffer *buf)
 {
@@ -360,7 +370,7 @@ void *amdgpu_bo_map(struct radeon_winsys *rws,
       real = get_real_bo(bo);
    } else {
       real = get_slab_entry_real_bo(bo);
-      offset = amdgpu_bo_get_va(buf) - real->gpu_address;
+      offset = get_slab_entry_offset(bo);
    }
 
    if (usage & RADEON_MAP_TEMPORARY) {
@@ -1755,12 +1765,10 @@ uint64_t amdgpu_bo_get_va(struct pb_buffer *buf)
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buf);
 
    if (bo->type == AMDGPU_BO_SLAB_ENTRY) {
-      struct amdgpu_bo_slab_entry *slab_entry_bo = get_slab_entry_bo(bo);
       struct amdgpu_bo_real_reusable_slab *slab_bo =
          (struct amdgpu_bo_real_reusable_slab *)get_slab_entry_real_bo(bo);
-      unsigned entry_index = slab_entry_bo - slab_bo->entries;
 
-      return slab_bo->b.b.gpu_address + slab_bo->slab.entry_size * entry_index;
+      return slab_bo->b.b.gpu_address + get_slab_entry_offset(bo);
    } else if (bo->type == AMDGPU_BO_SPARSE) {
       return get_sparse_bo(bo)->gpu_address;
    } else {
