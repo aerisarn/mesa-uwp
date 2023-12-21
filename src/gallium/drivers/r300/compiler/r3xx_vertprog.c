@@ -865,7 +865,7 @@ void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
 		{"add artificial outputs",	0, 1,		rc_vs_add_artificial_outputs,	NULL},
 		{"native rewrite",		1, 1,		rc_local_transform,		alu_rewrite},
 		{"emulate modifiers",		1, !is_r500,	rc_local_transform,		emulate_modifiers},
-		{"deadcode",			1, opt,		rc_dataflow_deadcode,		NULL},
+		{"unused channels",		1, opt,		rc_mark_unused_channels,	NULL},
 		{"dataflow optimize",		1, opt,		rc_optimize,			NULL},
 		/* This pass must be done after optimizations. */
 		{"source conflict resolve",	1, 1,		rc_local_transform,		resolve_src_conflicts},

@@ -809,9 +809,6 @@ spec@glsl-1.10@execution@built-in-functions@vs-pow-vec4-vec4,Fail
 spec@glsl-1.10@execution@clipping@clip-plane-transformation clipvert_pos,Fail
 spec@glsl-1.10@execution@clipping@clip-plane-transformation pos_clipvert,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/9279
-spec@glsl-1.10@execution@copy-propagation@glsl-vs-copy-propagation-1,Crash
-
 spec@glsl-1.10@execution@glsl-1.10-built-in-uniform-state,Fail
 
 spec@glsl-1.10@execution@interpolation@interpolation-none-gl_backcolor-flat-vertex,Fail
