@@ -1003,7 +1003,7 @@ static void amdgpu_bo_sparse_destroy(struct radeon_winsys *rws, struct pb_buffer
 
    r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0,
                            (uint64_t)bo->num_va_pages * RADEON_SPARSE_PAGE_SIZE,
-                           bo->gpu_address, 0, AMDGPU_VA_OP_CLEAR);
+                           amdgpu_va_get_start_addr(bo->va_handle), 0, AMDGPU_VA_OP_CLEAR);
    if (r) {
       fprintf(stderr, "amdgpu: clearing PRT VA region on destroy failed (%d)\n", r);
    }
@@ -1060,14 +1060,15 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    /* For simplicity, we always map a multiple of the page size. */
    map_size = align64(size, RADEON_SPARSE_PAGE_SIZE);
    va_gap_size = ws->check_vm ? 4 * RADEON_SPARSE_PAGE_SIZE : 0;
+
+   uint64_t gpu_address;
    r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
                              map_size + va_gap_size, RADEON_SPARSE_PAGE_SIZE,
-                             0, &bo->gpu_address, &bo->va_handle,
-			     AMDGPU_VA_RANGE_HIGH);
+                             0, &gpu_address, &bo->va_handle, AMDGPU_VA_RANGE_HIGH);
    if (r)
       goto error_va_alloc;
 
-   r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0, map_size, bo->gpu_address,
+   r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0, map_size, gpu_address,
                            AMDGPU_VM_PAGE_PRT, AMDGPU_VA_OP_MAP);
    if (r)
       goto error_va_map;
@@ -1140,7 +1141,8 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer_lean *buf,
             r = amdgpu_bo_va_op_raw(ws->dev, backing->bo->bo_handle,
                                     (uint64_t)backing_start * RADEON_SPARSE_PAGE_SIZE,
                                     (uint64_t)backing_size * RADEON_SPARSE_PAGE_SIZE,
-                                    bo->gpu_address + (uint64_t)span_va_page * RADEON_SPARSE_PAGE_SIZE,
+                                    amdgpu_va_get_start_addr(bo->va_handle) +
+                                    (uint64_t)span_va_page * RADEON_SPARSE_PAGE_SIZE,
                                     AMDGPU_VM_PAGE_READABLE |
                                     AMDGPU_VM_PAGE_WRITEABLE |
                                     AMDGPU_VM_PAGE_EXECUTABLE,
@@ -1165,7 +1167,8 @@ amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer_lean *buf,
    } else {
       r = amdgpu_bo_va_op_raw(ws->dev, NULL, 0,
                               (uint64_t)(end_va_page - va_page) * RADEON_SPARSE_PAGE_SIZE,
-                              bo->gpu_address + (uint64_t)va_page * RADEON_SPARSE_PAGE_SIZE,
+                              amdgpu_va_get_start_addr(bo->va_handle) +
+                              (uint64_t)va_page * RADEON_SPARSE_PAGE_SIZE,
                               AMDGPU_VM_PAGE_PRT, AMDGPU_VA_OP_REPLACE);
       if (r) {
          ok = false;
@@ -1746,7 +1749,7 @@ uint64_t amdgpu_bo_get_va(struct pb_buffer_lean *buf)
 
       return amdgpu_va_get_start_addr(slab_bo->b.b.va_handle) + get_slab_entry_offset(bo);
    } else if (bo->type == AMDGPU_BO_SPARSE) {
-      return get_sparse_bo(bo)->gpu_address;
+      return amdgpu_va_get_start_addr(get_sparse_bo(bo)->va_handle);
    } else {
       return amdgpu_va_get_start_addr(get_real_bo(bo)->va_handle);
    }

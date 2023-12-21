@@ -103,7 +103,6 @@ struct amdgpu_bo_real_reusable {
 struct amdgpu_bo_sparse {
    struct amdgpu_winsys_bo b;
    amdgpu_va_handle va_handle;
-   uint64_t gpu_address;
 
    uint32_t num_va_pages;
    uint32_t num_backing_pages;
