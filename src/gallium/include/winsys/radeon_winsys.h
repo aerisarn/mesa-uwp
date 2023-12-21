@@ -675,11 +675,8 @@ struct radeon_winsys {
    /**
     * Add a fence dependency to the CS, so that the CS will wait for
     * the fence before execution.
-    *
-    * \param dependency_flags  Bitmask of RADEON_DEPENDENCY_*
     */
-   void (*cs_add_fence_dependency)(struct radeon_cmdbuf *cs, struct pipe_fence_handle *fence,
-                                   unsigned dependency_flags);
+   void (*cs_add_fence_dependency)(struct radeon_cmdbuf *cs, struct pipe_fence_handle *fence);
 
    /**
     * Signal a syncobj when the CS finishes execution.

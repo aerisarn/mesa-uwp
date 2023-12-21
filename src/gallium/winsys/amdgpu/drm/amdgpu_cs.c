@@ -1210,8 +1210,7 @@ static void add_fence_to_list(struct amdgpu_fence_list *fences,
 }
 
 static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
-                                           struct pipe_fence_handle *pfence,
-                                           unsigned dependency_flags)
+                                           struct pipe_fence_handle *pfence)
 {
    struct amdgpu_cs *acs = amdgpu_cs(rws);
    struct amdgpu_cs_context *cs = acs->csc;

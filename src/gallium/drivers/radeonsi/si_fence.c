@@ -170,7 +170,7 @@ static void si_add_fence_dependency(struct si_context *sctx, struct pipe_fence_h
 {
    struct radeon_winsys *ws = sctx->ws;
 
-   ws->cs_add_fence_dependency(&sctx->gfx_cs, fence, 0);
+   ws->cs_add_fence_dependency(&sctx->gfx_cs, fence);
 }
 
 static void si_add_syncobj_signal(struct si_context *sctx, struct pipe_fence_handle *fence)
