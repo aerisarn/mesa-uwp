@@ -1048,7 +1048,13 @@ ntr_swizzle_for_write_mask(struct ureg_src src, uint32_t write_mask)
 static struct ureg_dst
 ntr_get_ssa_def_decl(struct ntr_compile *c, nir_def *ssa)
 {
-   uint32_t writemask = BITSET_MASK(ssa->num_components);
+   uint32_t writemask;
+   /* Fix writemask for nir_intrinsic_load_ubo_vec4 accoring to uses. */
+   if (ssa->parent_instr->type == nir_instr_type_intrinsic &&
+       nir_instr_as_intrinsic(ssa->parent_instr)->intrinsic == nir_intrinsic_load_ubo_vec4)
+      writemask = nir_def_components_read(ssa);
+   else
+      writemask = BITSET_MASK(ssa->num_components);
 
    struct ureg_dst dst;
    if (!ntr_try_store_ssa_in_tgsi_output(c, &dst, ssa))
