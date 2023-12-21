@@ -422,6 +422,17 @@ fs_nir_emit_if(nir_to_brw_state &ntb, nir_if *if_stmt)
       invert = true;
       cond_reg = get_nir_src(ntb, cond->src[0].src);
       cond_reg = offset(cond_reg, bld, cond->src[0].swizzle[0]);
+
+      if (devinfo->ver <= 5 &&
+	  (cond->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) == BRW_NIR_BOOLEAN_NEEDS_RESOLVE) {
+         /* redo boolean resolve on gen5 */
+         fs_reg masked = ntb.s.vgrf(glsl_int_type());
+         bld.AND(masked, cond_reg, brw_imm_d(1));
+         masked.negate = true;
+         fs_reg tmp = bld.vgrf(cond_reg.type);
+         bld.MOV(retype(tmp, BRW_REGISTER_TYPE_D), masked);
+         cond_reg = tmp;
+      }
    } else {
       invert = false;
       cond_reg = get_nir_src(ntb, if_stmt->condition);
