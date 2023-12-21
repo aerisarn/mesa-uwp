@@ -536,11 +536,11 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
 
 /* COMMAND SUBMISSION */
 
-static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
+static bool amdgpu_cs_has_user_fence(struct amdgpu_cs *acs)
 {
-   return cs->chunk_ib[IB_MAIN].ip_type == AMD_IP_GFX ||
-          cs->chunk_ib[IB_MAIN].ip_type == AMD_IP_COMPUTE ||
-          cs->chunk_ib[IB_MAIN].ip_type == AMD_IP_SDMA;
+   return acs->ip_type == AMD_IP_GFX ||
+          acs->ip_type == AMD_IP_COMPUTE ||
+          acs->ip_type == AMD_IP_SDMA;
 }
 
 static inline unsigned amdgpu_cs_epilog_dws(struct amdgpu_cs *cs)
@@ -847,63 +847,23 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
                                    struct amdgpu_cs_context *cs,
                                    enum amd_ip_type ip_type)
 {
-   switch (ip_type) {
-   case AMD_IP_SDMA:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_DMA;
-      break;
+   for (unsigned i = 0; i < ARRAY_SIZE(cs->chunk_ib); i++) {
+      cs->chunk_ib[i].ip_type = ip_type;
+      cs->chunk_ib[i].flags = 0;
 
-   case AMD_IP_UVD:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_UVD;
-      break;
-
-   case AMD_IP_UVD_ENC:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_UVD_ENC;
-      break;
-
-   case AMD_IP_VCE:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VCE;
-      break;
-
-   case AMD_IP_VCN_DEC:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VCN_DEC;
-      break;
-
-   case AMD_IP_VCN_ENC:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VCN_ENC;
-      break;
-
-   case AMD_IP_VCN_JPEG:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VCN_JPEG;
-      break;
-
-   case AMD_IP_VPE:
-      cs->chunk_ib[IB_MAIN].ip_type = AMDGPU_HW_IP_VPE;
-      break;
-
-   case AMD_IP_COMPUTE:
-   case AMD_IP_GFX:
-      cs->chunk_ib[IB_MAIN].ip_type = ip_type == AMD_IP_GFX ? AMDGPU_HW_IP_GFX :
-                                                              AMDGPU_HW_IP_COMPUTE;
-
-      /* The kernel shouldn't invalidate L2 and vL1. The proper place for cache
-       * invalidation is the beginning of IBs (the previous commit does that),
-       * because completion of an IB doesn't care about the state of GPU caches,
-       * but the beginning of an IB does. Draw calls from multiple IBs can be
-       * executed in parallel, so draw calls from the current IB can finish after
-       * the next IB starts drawing, and so the cache flush at the end of IB
-       * is always late.
-       */
-      cs->chunk_ib[IB_PREAMBLE].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
-      cs->chunk_ib[IB_MAIN].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
-      break;
-
-   default:
-      assert(0);
+      if (ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE) {
+         /* The kernel shouldn't invalidate L2 and vL1. The proper place for cache invalidation
+          * is the beginning of IBs because completion of an IB doesn't care about the state of
+          * GPU caches, only the beginning of an IB does. Draw calls from multiple IBs can be
+          * executed in parallel, so draw calls from the current IB can finish after the next IB
+          * starts drawing, and so the cache flush at the end of IBs is usually late and thus
+          * useless.
+          */
+         cs->chunk_ib[i].flags |= AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
+      }
    }
 
    cs->chunk_ib[IB_PREAMBLE].flags |= AMDGPU_IB_FLAG_PREAMBLE;
-   cs->chunk_ib[IB_PREAMBLE].ip_type = cs->chunk_ib[IB_MAIN].ip_type;
-
    cs->last_added_bo = NULL;
    return true;
 }
@@ -1314,7 +1274,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    struct amdgpu_cs_context *cs = acs->cst;
    int i, r;
    uint64_t seq_no = 0;
-   bool has_user_fence = amdgpu_cs_has_user_fence(cs);
+   bool has_user_fence = amdgpu_cs_has_user_fence(acs);
 
    simple_mtx_lock(&ws->bo_fence_lock);
    struct amdgpu_queue *queue = &ws->queues[acs->queue_index];
