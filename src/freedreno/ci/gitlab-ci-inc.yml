@@ -201,6 +201,7 @@
     # Increase the hangcheck timer for our spilling tests which bump up against
     # the .5s default.
     FREEDRENO_HANGCHECK_MS: 2000
+    FARM: collabora
     GPU_VERSION: freedreno-a618
     KERNEL_IMAGE_TYPE: ""
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-kingoftown
@@ -218,6 +219,7 @@
     # Increase the hangcheck timer for our spilling tests which bump up against
     # the .5s default.
     FREEDRENO_HANGCHECK_MS: 2000
+    FARM: collabora
     GPU_VERSION: freedreno-a618
     KERNEL_IMAGE_TYPE: ""
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
@@ -235,6 +237,7 @@
     # Increase the hangcheck timer for our spilling tests which bump up against
     # the .5s default.
     FREEDRENO_HANGCHECK_MS: 2000
+    FARM: collabora
     GPU_VERSION: freedreno-a660
     KERNEL_IMAGE_NAME: "Image.gz"
     KERNEL_IMAGE_TYPE: ""
@@ -253,6 +256,7 @@
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 $BM_KERNEL_EXTRA_ARGS root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
+    FARM: google
   script:
     - ./install/bare-metal/fastboot.sh
 
@@ -282,6 +286,7 @@
   variables:
     BM_KERNEL: Image.gz
     BM_DTB: apq8016-sbc
+    DEVICE_TYPE: apq8016-sbc
     GPU_VERSION: freedreno-a307
   timeout: 20m
   tags:
@@ -313,6 +318,7 @@
   variables:
     BM_KERNEL: Image.gz
     BM_DTB: apq8096-db820c
+    DEVICE_TYPE: apq8096-db820c
     GPU_VERSION: freedreno-a530
   timeout: 20m
   tags:
@@ -348,6 +354,7 @@
     FDO_CI_CONCURRENT: 10
     BM_KERNEL: cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
+    DEVICE_TYPE: sdm845-cheza-r3
     GPU_VERSION: freedreno-a630
     FORCE_KERNEL_TAG: "v6.4.12-for-mesa-ci-f6b4ad45f48d"  # 6.6 is slow and unstable
     KERNEL_IMAGE_BASE: https://${S3_HOST}/mesa-lava/${KERNEL_REPO}/${FORCE_KERNEL_TAG}
