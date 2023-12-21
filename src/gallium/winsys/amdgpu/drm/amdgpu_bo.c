@@ -152,7 +152,8 @@ void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer_lean *_buf)
    _mesa_hash_table_remove_key(ws->bo_export_table, bo->bo_handle);
 
    if (bo->b.base.placement & RADEON_DOMAIN_VRAM_GTT) {
-      amdgpu_bo_va_op(bo->bo_handle, 0, bo->b.base.size, bo->gpu_address, 0, AMDGPU_VA_OP_UNMAP);
+      amdgpu_bo_va_op(bo->bo_handle, 0, bo->b.base.size,
+                      amdgpu_va_get_start_addr(bo->va_handle), 0, AMDGPU_VA_OP_UNMAP);
       amdgpu_va_range_free(bo->va_handle);
    }
 
@@ -572,7 +573,6 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    bo->b.base.alignment_log2 = util_logbase2(alignment);
    bo->b.base.usage = flags;
    bo->b.base.size = size;
-   bo->gpu_address = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    bo->bo_handle = buf_handle;
    bo->va_handle = va_handle;
@@ -1544,7 +1544,6 @@ static struct pb_buffer_lean *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    bo->b.base.usage = flags;
    bo->b.base.size = result.alloc_size;
    bo->b.type = AMDGPU_BO_REAL;
-   bo->gpu_address = va;
    bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    simple_mtx_init(&bo->map_lock, mtx_plain);
    bo->bo_handle = result.buf_handle;
@@ -1698,7 +1697,6 @@ static struct pb_buffer_lean *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     bo->b.base.alignment_log2 = 0;
     bo->b.base.size = size;
     bo->b.type = AMDGPU_BO_REAL;
-    bo->gpu_address = va;
     bo->b.unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
     simple_mtx_init(&bo->map_lock, mtx_plain);
     bo->bo_handle = buf_handle;
@@ -1746,11 +1744,11 @@ uint64_t amdgpu_bo_get_va(struct pb_buffer_lean *buf)
       struct amdgpu_bo_real_reusable_slab *slab_bo =
          (struct amdgpu_bo_real_reusable_slab *)get_slab_entry_real_bo(bo);
 
-      return slab_bo->b.b.gpu_address + get_slab_entry_offset(bo);
+      return amdgpu_va_get_start_addr(slab_bo->b.b.va_handle) + get_slab_entry_offset(bo);
    } else if (bo->type == AMDGPU_BO_SPARSE) {
       return get_sparse_bo(bo)->gpu_address;
    } else {
-      return get_real_bo(bo)->gpu_address;
+      return amdgpu_va_get_start_addr(get_real_bo(bo)->va_handle);
    }
 }
 

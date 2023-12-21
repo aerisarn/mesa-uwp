@@ -73,7 +73,6 @@ struct amdgpu_bo_real {
 
    amdgpu_bo_handle bo_handle;
    amdgpu_va_handle va_handle;
-   uint64_t gpu_address;
    void *cpu_ptr; /* for user_ptr and permanent maps */
    int map_count;
    uint32_t kms_handle;
