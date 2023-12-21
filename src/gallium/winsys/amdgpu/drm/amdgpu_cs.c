@@ -23,13 +23,12 @@ amdgpu_fence_create(struct amdgpu_cs *cs)
 
    fence->reference.count = 1;
    fence->ws = ctx->ws;
-   fence->ctx = ctx;
+   amdgpu_ctx_reference(&fence->ctx, ctx);
    fence->fence.context = ctx->ctx;
    fence->fence.ip_type = cs->ip_type;
    util_queue_fence_init(&fence->submitted);
    util_queue_fence_reset(&fence->submitted);
    fence->queue_index = cs->queue_index;
-   p_atomic_inc(&ctx->refcount);
    return (struct pipe_fence_handle *)fence;
 }
 
@@ -287,7 +286,7 @@ static struct radeon_winsys_ctx *amdgpu_ctx_create(struct radeon_winsys *ws,
       return NULL;
 
    ctx->ws = amdgpu_winsys(ws);
-   ctx->refcount = 1;
+   ctx->reference.count = 1;
    ctx->allow_context_lost = allow_context_lost;
 
    r = amdgpu_cs_ctx_create2(ctx->ws->dev, amdgpu_priority, &ctx->ctx);
@@ -328,7 +327,9 @@ error_create:
 
 static void amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
 {
-   amdgpu_ctx_unref((struct amdgpu_ctx*)rwctx);
+   struct amdgpu_ctx *ctx = (struct amdgpu_ctx*)rwctx;
+
+   amdgpu_ctx_reference(&ctx, NULL);
 }
 
 static void amdgpu_pad_gfx_compute_ib(struct amdgpu_winsys *ws, enum amd_ip_type ip_type,

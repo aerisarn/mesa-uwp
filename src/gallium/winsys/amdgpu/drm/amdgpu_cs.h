@@ -19,11 +19,11 @@
 #define IB_MAX_SUBMIT_DWORDS (20 * 1024)
 
 struct amdgpu_ctx {
+   struct pipe_reference reference;
    struct amdgpu_winsys *ws;
    amdgpu_context_handle ctx;
    amdgpu_bo_handle user_fence_bo;
    uint64_t *user_fence_cpu_address_base;
-   int refcount;
 
    /* If true, report lost contexts and skip command submission.
     * If false, terminate the process.
@@ -178,13 +178,17 @@ static inline bool amdgpu_fence_is_syncobj(struct amdgpu_fence *fence)
    return fence->ctx == NULL;
 }
 
-static inline void amdgpu_ctx_unref(struct amdgpu_ctx *ctx)
+static inline void amdgpu_ctx_reference(struct amdgpu_ctx **dst, struct amdgpu_ctx *src)
 {
-   if (p_atomic_dec_zero(&ctx->refcount)) {
-      amdgpu_cs_ctx_free(ctx->ctx);
-      amdgpu_bo_free(ctx->user_fence_bo);
-      FREE(ctx);
+   struct amdgpu_ctx *old_dst = *dst;
+
+   if (pipe_reference(old_dst ? &old_dst->reference : NULL,
+                      src ? &src->reference : NULL)) {
+      amdgpu_cs_ctx_free(old_dst->ctx);
+      amdgpu_bo_free(old_dst->user_fence_bo);
+      FREE(old_dst);
    }
+   *dst = src;
 }
 
 static inline void amdgpu_fence_reference(struct pipe_fence_handle **dst,
@@ -199,7 +203,7 @@ static inline void amdgpu_fence_reference(struct pipe_fence_handle **dst,
       if (amdgpu_fence_is_syncobj(fence))
          amdgpu_cs_destroy_syncobj(fence->ws->dev, fence->syncobj);
       else
-         amdgpu_ctx_unref(fence->ctx);
+         amdgpu_ctx_reference(&fence->ctx, NULL);
 
       util_queue_fence_destroy(&fence->submitted);
       FREE(fence);
