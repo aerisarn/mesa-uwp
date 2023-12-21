@@ -115,6 +115,12 @@ def parse_args() -> None:
     )
     parser.add_argument("pipeline_url", type=str, help="URLs to the pipeline.")
     parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="Output file name. Use html ou image suffixes to choose the format.",
+    )
+    parser.add_argument(
         "--token",
         metavar="token",
         help="force GitLab token, otherwise it's read from ~/.config/gitlab-token",
@@ -131,4 +137,10 @@ if __name__ == "__main__":
 
     pipeline, _ = get_gitlab_pipeline_from_url(gl, args.pipeline_url)
     fig = generate_gantt_chart(pipeline)
-    fig.show()
+    if args.output and "htm" in args.output:
+        fig.write_html(args.output)
+    elif args.output:
+        fig.update_layout(width=1000)
+        fig.write_image(args.output)
+    else:
+        fig.show()
