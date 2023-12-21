@@ -147,7 +147,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_timeline_semaphore                = true,
       .KHR_uniform_buffer_standard_layout    = true,
       .EXT_descriptor_indexing               = pdev->shader_model >= D3D_SHADER_MODEL_6_6,
-#if defined(_WIN32) && D3D12_SDK_VERSION >= 611
+#if defined(_WIN32)
       .EXT_external_memory_host              = pdev->dev13,
 #endif
       .EXT_scalar_block_layout               = true,
@@ -207,10 +207,8 @@ dzn_physical_device_destroy(struct vk_physical_device *physical)
    if (pdev->dev12)
       ID3D12Device1_Release(pdev->dev12);
 
-#if D3D12_SDK_VERSION >= 611
    if (pdev->dev13)
       ID3D12Device1_Release(pdev->dev13);
-#endif
 
    if (pdev->adapter)
       IUnknown_Release(pdev->adapter);
@@ -1133,10 +1131,8 @@ dzn_physical_device_create(struct vk_instance *instance,
       pdev->dev11 = NULL;
    if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device12, (void **)&pdev->dev12)))
       pdev->dev12 = NULL;
-#if D3D12_SDK_VERSION >= 611
    if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device13, (void **)&pdev->dev13)))
       pdev->dev13 = NULL;
-#endif
    dzn_physical_device_cache_caps(pdev);
    dzn_physical_device_init_memory(pdev);
    dzn_physical_device_init_uuids(pdev);
@@ -1441,7 +1437,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
          external_props->externalMemoryProperties.exportFromImportedHandleTypes = d3d11_texture_handle_types;
          external_props->externalMemoryProperties.externalMemoryFeatures = import_export_feature_flags;
          break;
-#if defined(_WIN32) && D3D12_SDK_VERSION >= 611
+#if defined(_WIN32)
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
          if (pdev->dev13) {
             external_props->externalMemoryProperties.compatibleHandleTypes =
@@ -1664,7 +1660,7 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
                                               const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,
                                               VkExternalBufferProperties *pExternalBufferProperties)
 {
-#if defined(_WIN32) && D3D12_SDK_VERSION >= 611
+#if defined(_WIN32)
    VK_FROM_HANDLE(dzn_physical_device, pdev, physicalDevice);
 #endif
 
@@ -1696,7 +1692,7 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT | d3d12_resource_handle_types;
       pExternalBufferProperties->externalMemoryProperties.externalMemoryFeatures = import_export_feature_flags;
       break;
-#if defined(_WIN32) && D3D12_SDK_VERSION >= 611
+#if defined(_WIN32)
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
       if (pdev->dev13) {
          pExternalBufferProperties->externalMemoryProperties.compatibleHandleTypes =
@@ -2196,10 +2192,8 @@ dzn_device_destroy(struct dzn_device *device, const VkAllocationCallbacks *pAllo
    if (device->dev12)
       ID3D12Device1_Release(device->dev12);
 
-#if D3D12_SDK_VERSION >= 611
    if (device->dev13)
       ID3D12Device1_Release(device->dev13);
-#endif
 
    vk_device_finish(&device->vk);
    vk_free2(&instance->vk.alloc, pAllocator, device);
@@ -2302,12 +2296,10 @@ dzn_device_create(struct dzn_physical_device *pdev,
       ID3D12Device1_AddRef(device->dev12);
    }
 
-#if D3D12_SDK_VERSION >= 611
    if (pdev->dev13) {
       device->dev13 = pdev->dev13;
       ID3D12Device1_AddRef(device->dev13);
    }
-#endif
 
    ID3D12InfoQueue *info_queue;
    if (SUCCEEDED(ID3D12Device1_QueryInterface(device->dev,
@@ -2719,7 +2711,7 @@ dzn_device_memory_create(struct dzn_device *device,
    if (host_pointer) {
       error = VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
-#if defined(_WIN32) && D3D12_SDK_VERSION >= 611
+#if defined(_WIN32)
       if (!device->dev13)
          goto cleanup;
 
@@ -3824,7 +3816,7 @@ cleanup:
    return result;
 }
 
-#if defined(_WIN32) && D3D12_SDK_VERSION >= 611
+#if defined(_WIN32)
 VKAPI_ATTR VkResult VKAPI_CALL
 dzn_GetMemoryHostPointerPropertiesEXT(VkDevice _device,
                                       VkExternalMemoryHandleTypeFlagBits handleType,
