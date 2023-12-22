@@ -37,6 +37,12 @@ cts_commits_to_backport=(
 
     # Remove illegal mesh shader query tests
     2a87f7b25dc27188be0f0a003b2d7aef69d9002e
+
+    # Relax fragment shader invocations result verifications
+    0d8bf6a2715f95907e9cf86a86876ff1f26c66fe
+
+    # Fix several issues in dynamic rendering basic tests
+    c5453824b498c981c6ba42017d119f5de02a3e34
 )
 
 for commit in "${cts_commits_to_backport[@]}"
