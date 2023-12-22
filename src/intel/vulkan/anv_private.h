@@ -1004,16 +1004,6 @@ struct anv_physical_device {
     bool                                        uses_ex_bso;
 
     bool                                        always_flush_cache;
-
-    /**
-     * True if the generated indirect draw optimization is turned on.
-     *
-     * This optimization is currently only available on Gfx11+ to avoid
-     * dealing with the annoying Gfx8/9 tracking of vertex buffer for the VF
-     * cache workaround.
-     */
-    bool                                        generated_indirect_draws;
-
     /**
      * True if the descriptors buffers are holding one of the following :
      *    - anv_sampled_image_descriptor

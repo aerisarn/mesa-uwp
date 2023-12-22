@@ -2240,11 +2240,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (debug_get_bool_option("ANV_QUEUE_THREAD_DISABLE", false))
       device->has_exec_timeline = false;
 
-
-   device->generated_indirect_draws =
-      debug_get_bool_option("ANV_ENABLE_GENERATED_INDIRECT_DRAWS",
-                            true);
-
    device->has_cooperative_matrix =
       device->info.cooperative_matrix_configurations[0].scope != SCOPE_NONE;
 

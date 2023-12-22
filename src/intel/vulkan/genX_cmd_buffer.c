@@ -3332,8 +3332,7 @@ anv_use_generated_draws(const struct anv_cmd_buffer *cmd_buffer, uint32_t count)
        anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL))
       return false;
 
-   return device->physical->generated_indirect_draws &&
-          count >= device->physical->instance->generated_indirect_threshold;
+   return count >= device->physical->instance->generated_indirect_threshold;
 }
 
 VkResult
