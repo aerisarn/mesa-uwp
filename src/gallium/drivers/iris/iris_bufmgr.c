@@ -1407,6 +1407,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->bufmgr = bufmgr;
    bo->gem_handle = open_arg.handle;
    bo->name = name;
+   bo->index = -1;
    bo->real.global_name = handle;
    bo->real.prime_fd = -1;
    bo->real.reusable = false;
@@ -1931,6 +1932,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
 
    bo->bufmgr = bufmgr;
    bo->name = "prime";
+   bo->index = -1;
    bo->real.reusable = false;
    bo->real.imported = true;
    /* Xe KMD expects at least 1-way coherency for imports */
