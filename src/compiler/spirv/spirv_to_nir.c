@@ -6697,15 +6697,6 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
    /* Initialize the vtn_builder object */
    struct vtn_builder *b = rzalloc(NULL, struct vtn_builder);
 
-   /* Allocate all the data that can be dropped after parsing using
-    * a cheaper allocation strategy.
-    */
-   b->lin_ctx = linear_context(b);
-
-   struct spirv_to_nir_options *dup_options =
-      vtn_alloc(b, struct spirv_to_nir_options);
-   *dup_options = *options;
-
    b->spirv = words;
    b->spirv_word_count = word_count;
    b->file = NULL;
@@ -6714,7 +6705,6 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
    list_inithead(&b->functions);
    b->entry_point_stage = stage;
    b->entry_point_name = entry_point_name;
-   b->options = dup_options;
 
    /*
     * Handle the SPIR-V header (first 5 dwords).
@@ -6736,6 +6726,33 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
 
    b->generator_id = words[2] >> 16;
    uint16_t generator_version = words[2];
+
+   unsigned value_id_bound = words[3];
+   if (words[4] != 0) {
+      vtn_err("words[4] was %u, want 0", words[4]);
+      goto fail;
+   }
+
+   b->value_id_bound = value_id_bound;
+
+   /* Allocate all the data that can be dropped after parsing using
+    * a cheaper allocation strategy.  Use the value_id_bound and the
+    * size of the common internal structs to approximate a good
+    * buffer_size.
+    */
+   const linear_opts lin_opts = {
+      .min_buffer_size = 2 * value_id_bound * (sizeof(struct vtn_value) +
+                                               sizeof(struct vtn_ssa_value)),
+   };
+   b->lin_ctx = linear_context_with_opts(b, &lin_opts);
+
+   struct spirv_to_nir_options *dup_options =
+      vtn_alloc(b, struct spirv_to_nir_options);
+   *dup_options = *options;
+
+   b->options = dup_options;
+   b->values = vtn_zalloc_array(b, struct vtn_value, value_id_bound);
+
 
    /* In GLSLang commit 8297936dd6eb3, their handling of barrier() was fixed
     * to provide correct memory semantics on compute shader barrier()
@@ -6779,16 +6796,6 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
       (is_glslang(b) && generator_version < 11) ||
       (b->generator_id == vtn_generator_clay_shader_compiler &&
        generator_version < 18);
-
-   /* words[2] == generator magic */
-   unsigned value_id_bound = words[3];
-   if (words[4] != 0) {
-      vtn_err("words[4] was %u, want 0", words[4]);
-      goto fail;
-   }
-
-   b->value_id_bound = value_id_bound;
-   b->values = vtn_zalloc_array(b, struct vtn_value, value_id_bound);
 
    if (b->options->environment == NIR_SPIRV_VULKAN && b->version < 0x10400)
       b->vars_used_indirectly = _mesa_pointer_set_create(b);
