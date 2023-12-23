@@ -75,6 +75,7 @@ debian-testing:
     GALLIUM_ST: >
       -D dri3=enabled
       -D gallium-va=enabled
+      -D gallium-rusticl=true
     GALLIUM_DRIVERS: "swrast,virgl,radeonsi,zink,crocus,iris,i915"
     VULKAN_DRIVERS: "swrast,amd,intel,intel_hasvk,virtio,nouveau-experimental"
     BUILDTYPE: "debugoptimized"
@@ -123,28 +124,6 @@ debian-testing-msan:
     MESON_TEST_ARGS: "--suite glcpp --suite format"
     GALLIUM_DRIVERS: "freedreno,iris,nouveau,kmsro,r300,r600,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
     VULKAN_DRIVERS: intel,amd,broadcom,virtio
-
-debian-rusticl-testing:
-  extends:
-    - .meson-build
-    - .ci-deqp-artifacts
-  variables:
-    BUILDTYPE: "debugoptimized"
-    EXTRA_OPTION: >
-      -D valgrind=disabled
-    LLVM_VERSION: 15
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D egl=disabled
-      -D gbm=disabled
-    GALLIUM_DRIVERS: "swrast"
-    GALLIUM_ST: >
-      -D gallium-rusticl=true
-      -D opencl-spirv=true
-    UNWIND: "enabled"
-  script:
-    - .gitlab-ci/meson/build.sh
-    - .gitlab-ci/prepare-artifacts.sh
 
 debian-build-testing:
   extends: .meson-build
