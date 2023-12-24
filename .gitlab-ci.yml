@@ -210,6 +210,7 @@ include:
         # GitLab CI
         - .gitlab-ci.yml
         - .gitlab-ci/**/*
+        - .ci-farms/*
         # Meson
         - meson*
         - build-support/**/*
