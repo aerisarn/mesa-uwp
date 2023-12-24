@@ -26,9 +26,6 @@
  *       Control flow instructions (except else)
  *
  * Validate that this form is satisfied.
- *
- * XXX: This only applies before we delete the logical end instructions, maybe
- * that should be deferred though?
  */
 enum agx_block_state {
    AGX_BLOCK_STATE_CF_ELSE = 0,
