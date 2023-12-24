@@ -1127,7 +1127,7 @@ agx_ra(agx_context *ctx)
          unsigned v = I->dest[d].value;
          assert(ncomps[v] == 0 && "broken SSA");
          /* Round up vectors for easier live range splitting */
-         ncomps[v] = util_next_power_of_two(agx_write_registers(I, d));
+         ncomps[v] = util_next_power_of_two(agx_index_size_16(I->dest[d]));
          sizes[v] = I->dest[d].size;
 
          max_ncomps = MAX2(max_ncomps, ncomps[v]);
