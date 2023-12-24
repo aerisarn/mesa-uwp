@@ -129,13 +129,10 @@ image_write_source_can_be_immediate(agx_instr *I, unsigned s)
 }
 
 static void
-agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I, unsigned srcs,
-                         bool is_float)
+agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I, bool is_float)
 {
-   for (unsigned s = 0; s < srcs; ++s) {
+   agx_foreach_ssa_src(I, s) {
       agx_index src = I->src[s];
-      if (src.type != AGX_INDEX_NORMAL)
-         continue;
       if (src.neg)
          continue;
 
@@ -350,7 +347,7 @@ agx_optimizer_forward(agx_context *ctx)
           I->op != AGX_OPCODE_IMAGE_LOAD && I->op != AGX_OPCODE_TEXTURE_LOAD &&
           I->op != AGX_OPCODE_UNIFORM_STORE &&
           I->op != AGX_OPCODE_BLOCK_IMAGE_STORE)
-         agx_optimizer_inline_imm(defs, I, info.nr_srcs, info.is_float);
+         agx_optimizer_inline_imm(defs, I, info.is_float);
 
       if (I->op == AGX_OPCODE_IF_ICMP)
          agx_optimizer_if_cmp(defs, I);
