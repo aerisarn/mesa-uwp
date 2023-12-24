@@ -874,8 +874,7 @@ agx_validate(UNUSED agx_context *ctx, UNUSED const char *after_str)
 }
 #endif
 
-unsigned agx_read_registers(const agx_instr *I, unsigned s);
-unsigned agx_write_registers(const agx_instr *I, unsigned d);
+enum agx_size agx_split_width(const agx_instr *I);
 bool agx_allows_16bit_immediate(agx_instr *I);
 
 struct agx_copy {
