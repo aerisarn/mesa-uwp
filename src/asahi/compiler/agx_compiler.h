@@ -82,6 +82,12 @@ agx_channels(agx_index idx)
    return idx.channels_m1 + 1;
 }
 
+static inline unsigned
+agx_index_size_16(agx_index idx)
+{
+   return agx_size_align_16(idx.size) * agx_channels(idx);
+}
+
 static inline agx_index
 agx_get_vec_index(unsigned value, enum agx_size size, unsigned channels)
 {
