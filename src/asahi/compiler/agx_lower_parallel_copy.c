@@ -25,7 +25,12 @@
 static void
 do_copy(agx_builder *b, const struct agx_copy *copy)
 {
-   agx_mov_to(b, agx_register(copy->dest, copy->src.size), copy->src);
+   agx_index dst = agx_register(copy->dest, copy->src.size);
+
+   if (copy->src.type == AGX_INDEX_IMMEDIATE)
+      agx_mov_imm_to(b, dst, copy->src.value);
+   else
+      agx_mov_to(b, dst, copy->src);
 }
 
 static void
