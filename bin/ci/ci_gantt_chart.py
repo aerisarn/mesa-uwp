@@ -10,6 +10,7 @@
 import argparse
 import gitlab
 import plotly.express as px
+from gitlab_common import pretty_duration
 from datetime import datetime, timedelta
 from gitlab_common import read_token, GITLAB_URL, get_gitlab_pipeline_from_url
 
@@ -21,6 +22,17 @@ def calculate_queued_at(job):
     started_at = job.started_at.replace("Z", "+00:00")
     return datetime.fromisoformat(started_at) - timedelta(seconds=job.queued_duration)
 
+
+def calculate_time_difference(time1, time2):
+    if not time1 or not time2:
+        return None
+    if type(time1) is str:
+        time1 = datetime.fromisoformat(time1.replace("Z", "+00:00"))
+    if type(time2) is str:
+        time2 = datetime.fromisoformat(time2.replace("Z", "+00:00"))
+
+    diff = time2 - time1
+    return pretty_duration(diff.seconds)
 
 
 def create_task_name(job):
@@ -37,6 +49,7 @@ def add_gantt_bar(job, tasks):
             "Job": task_name,
             "Start": job.created_at,
             "Finish": queued_at,
+            "Duration": calculate_time_difference(job.created_at, queued_at),
             "Phase": "Waiting dependencies",
         }
     )
@@ -45,6 +58,7 @@ def add_gantt_bar(job, tasks):
             "Job": task_name,
             "Start": queued_at,
             "Finish": job.started_at,
+            "Duration": calculate_time_difference(queued_at, job.started_at),
             "Phase": "Queued",
         }
     )
@@ -53,6 +67,7 @@ def add_gantt_bar(job, tasks):
             "Job": task_name,
             "Start": job.started_at,
             "Finish": job.finished_at,
+            "Duration": calculate_time_difference(job.started_at, job.finished_at),
             "Phase": "Running",
         }
     )
@@ -86,6 +101,7 @@ def generate_gantt_chart(pipeline):
         y="Job",
         color="Phase",
         title=title,
+        hover_data=["Duration"],
     )
 
     # Calculate the height dynamically
