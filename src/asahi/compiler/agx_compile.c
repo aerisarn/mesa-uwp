@@ -2834,6 +2834,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       agx_print_shader(ctx, stdout);
 
    agx_ra(ctx);
+   agx_validate(ctx, "RA");
    agx_lower_64bit_postra(ctx);
 
    if (ctx->stage == MESA_SHADER_VERTEX && !impl->function->is_preamble)
