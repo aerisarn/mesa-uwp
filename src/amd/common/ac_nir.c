@@ -352,10 +352,19 @@ ac_nir_export_position(nir_builder *b,
    }
 
    for (int i = 0; i < 2; i++) {
-      if ((outputs_written & (VARYING_BIT_CLIP_DIST0 << i)) &&
-          (clip_cull_mask & BITFIELD_RANGE(i * 4, 4))) {
+      /* Do not check outputs_written to prevent unwritten clip/cull
+       * distance outputs by the shader, and export zero instead.
+       */
+      if (clip_cull_mask & BITFIELD_RANGE(i * 4, 4)) {
+         nir_def *clip_dist[4];
+         for (int j = 0; j < 4; j++) {
+            if (outputs[VARYING_SLOT_CLIP_DIST0 + i][j])
+               clip_dist[j] = nir_u2uN(b, outputs[VARYING_SLOT_CLIP_DIST0 + i][j], 32);
+            else
+               clip_dist[j] = nir_imm_zero(b, 1, 32);
+         }
          exp[exp_num] = export(
-            b, get_export_output(b, outputs[VARYING_SLOT_CLIP_DIST0 + i]), row,
+            b, nir_vec(b, clip_dist, ARRAY_SIZE(clip_dist)), row,
             V_008DFC_SQ_EXP_POS + exp_num + exp_pos_offset, 0,
             (clip_cull_mask >> (i * 4)) & 0xf);
          exp_num++;
