@@ -935,6 +935,9 @@ agx_insert_parallel_copies(agx_context *ctx, agx_block *block)
          agx_index dest = phi->dest[0];
          agx_index src = phi->src[pred_index];
 
+         if (src.type == AGX_INDEX_IMMEDIATE)
+            src.size = dest.size;
+
          assert(dest.type == AGX_INDEX_REGISTER);
          assert(dest.size == src.size);
 

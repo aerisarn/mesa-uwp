@@ -140,7 +140,7 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I, unsigned srcs,
          continue;
 
       agx_instr *def = defs[src.value];
-      if (def->op != AGX_OPCODE_MOV_IMM)
+      if (!def || def->op != AGX_OPCODE_MOV_IMM)
          continue;
 
       uint8_t value = def->imm;
