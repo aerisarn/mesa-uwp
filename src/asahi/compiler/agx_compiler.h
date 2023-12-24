@@ -56,7 +56,7 @@ agx_size_align_16(enum agx_size size)
 typedef struct {
    /* Sufficient for as many SSA values as we need. Immediates and uniforms fit
     * in 16-bits */
-   unsigned value : 22;
+   unsigned value : 19;
 
    /* Indicates that this source kills the referenced value (because it is the
     * last use in a block and the source is not live after the block). Set by
@@ -71,18 +71,32 @@ typedef struct {
    bool abs : 1;
    bool neg : 1;
 
+   unsigned channels_m1     : 3;
    enum agx_size size       : 2;
    enum agx_index_type type : 3;
 } agx_index;
 
+static inline unsigned
+agx_channels(agx_index idx)
+{
+   return idx.channels_m1 + 1;
+}
+
 static inline agx_index
-agx_get_index(unsigned value, enum agx_size size)
+agx_get_vec_index(unsigned value, enum agx_size size, unsigned channels)
 {
    return (agx_index){
       .value = value,
+      .channels_m1 = channels - 1,
       .size = size,
       .type = AGX_INDEX_NORMAL,
    };
+}
+
+static inline agx_index
+agx_get_index(unsigned value, enum agx_size size)
+{
+   return agx_get_vec_index(value, size, 1);
 }
 
 static inline agx_index
@@ -113,6 +127,19 @@ agx_register(uint32_t imm, enum agx_size size)
    return (agx_index){
       .value = imm,
       .size = size,
+      .type = AGX_INDEX_REGISTER,
+   };
+}
+
+static inline agx_index
+agx_register_like(uint32_t imm, agx_index like)
+{
+   assert(imm < AGX_NUM_REGS);
+
+   return (agx_index){
+      .value = imm,
+      .channels_m1 = like.channels_m1,
+      .size = like.size,
       .type = AGX_INDEX_REGISTER,
    };
 }
@@ -443,6 +470,12 @@ agx_remove_instruction(agx_instr *ins)
 }
 
 static inline agx_index
+agx_vec_temp(agx_context *ctx, enum agx_size size, unsigned channels)
+{
+   return agx_get_vec_index(ctx->alloc++, size, channels);
+}
+
+static inline agx_index
 agx_temp(agx_context *ctx, enum agx_size size)
 {
    return agx_get_index(ctx->alloc++, size);
@@ -468,7 +501,8 @@ agx_size_for_bits(unsigned bits)
 static inline agx_index
 agx_def_index(nir_def *ssa)
 {
-   return agx_get_index(ssa->index, agx_size_for_bits(ssa->bit_size));
+   return agx_get_vec_index(ssa->index, agx_size_for_bits(ssa->bit_size),
+                            ssa->num_components);
 }
 
 static inline agx_index
@@ -480,7 +514,8 @@ agx_src_index(nir_src *src)
 static inline agx_index
 agx_vec_for_def(agx_context *ctx, nir_def *def)
 {
-   return agx_temp(ctx, agx_size_for_bits(def->bit_size));
+   return agx_vec_temp(ctx, agx_size_for_bits(def->bit_size),
+                       def->num_components);
 }
 
 static inline agx_index

@@ -758,7 +758,7 @@ agx_set_sources(struct ra_ctx *rctx, agx_instr *I)
       assert(BITSET_TEST(rctx->visited, I->src[s].value) && "no phis");
 
       unsigned v = rctx->ssa_to_reg[I->src[s].value];
-      agx_replace_src(I, s, agx_register(v, I->src[s].size));
+      agx_replace_src(I, s, agx_register_like(v, I->src[s]));
    }
 }
 
@@ -768,7 +768,7 @@ agx_set_dests(struct ra_ctx *rctx, agx_instr *I)
    agx_foreach_ssa_dest(I, s) {
       unsigned v = rctx->ssa_to_reg[I->dest[s].value];
       I->dest[s] =
-         agx_replace_index(I->dest[s], agx_register(v, I->dest[s].size));
+         agx_replace_index(I->dest[s], agx_register_like(v, I->dest[s]));
    }
 }
 
@@ -1243,6 +1243,7 @@ agx_ra(agx_context *ctx)
 
             agx_index src = ins->src[0];
             src.size = ins->dest[i].size;
+            src.channels_m1 = 0;
             src.value += (i * width);
 
             copies[n++] = (struct agx_copy){

@@ -215,7 +215,7 @@ agx_emit_collect_to(agx_builder *b, agx_index dst, unsigned nr_srcs,
 static agx_index
 agx_emit_collect(agx_builder *b, unsigned nr_srcs, agx_index *srcs)
 {
-   agx_index dst = agx_temp(b->shader, srcs[0].size);
+   agx_index dst = agx_vec_temp(b->shader, srcs[0].size, nr_srcs);
    agx_emit_collect_to(b, dst, nr_srcs, srcs);
    return dst;
 }
@@ -667,6 +667,7 @@ agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
     * logically to ensure alignment.
     */
    offset = agx_vec2(b, offset, agx_undef(AGX_SIZE_16));
+   offset.channels_m1--;
    offset.size = AGX_SIZE_32;
 
    /* Modified coordinate descriptor */
@@ -944,6 +945,7 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
       assert(ms_index.size == AGX_SIZE_16);
       agx_index vec = agx_vec2(b, ms_index, layer);
       vec.size = AGX_SIZE_32;
+      vec.channels_m1 = 1 - 1;
       coord[coord_comps++] = vec;
    } else if (is_ms) {
       agx_index tmp = agx_temp(b->shader, AGX_SIZE_32);
@@ -960,7 +962,7 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
    }
 
    agx_index coords = agx_emit_collect(b, coord_comps, coord);
-   agx_index tmp = agx_temp(b->shader, dst.size);
+   agx_index tmp = agx_vec_temp(b->shader, dst.size, 4);
 
    agx_instr *I = agx_image_load_to(
       b, tmp, coords, lod, bindless, texture, agx_txf_sampler(b->shader),
@@ -1816,7 +1818,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          agx_index index2 = agx_src_index(&instr->src[y_idx].src);
 
          /* We explicitly don't cache about the split cache for this */
-         lod = agx_temp(b->shader, AGX_SIZE_32);
+         lod = agx_vec_temp(b->shader, AGX_SIZE_32, 2 * n);
          agx_instr *I = agx_collect_to(b, lod, 2 * n);
 
          for (unsigned i = 0; i < n; ++i) {
@@ -1848,7 +1850,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    else if (!agx_is_null(compare))
       compare_offset = compare;
 
-   agx_index tmp = agx_temp(b->shader, dst.size);
+   agx_index tmp = agx_vec_temp(b->shader, dst.size, 4);
    agx_instr *I = agx_texture_sample_to(
       b, tmp, coords, lod, bindless, texture, sampler, compare_offset,
       agx_tex_dim(instr->sampler_dim, instr->is_array),

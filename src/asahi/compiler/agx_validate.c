@@ -123,45 +123,45 @@ agx_validate_defs(agx_instr *I, BITSET_WORD *defs)
    return true;
 }
 
-/*
- * Type check the dimensionality of sources and destinations. This occurs in two
- * passes, first to gather all destination sizes, second to validate all source
- * sizes. Depends on SSA form.
- */
+/* Type check the dimensionality of sources and destinations. */
 static bool
 agx_validate_width(agx_context *ctx)
 {
    bool succ = true;
-   uint8_t *width = calloc(ctx->alloc, sizeof(uint8_t));
 
    agx_foreach_instr_global(ctx, I) {
       agx_foreach_dest(I, d) {
-         if (I->dest[d].type != AGX_INDEX_NORMAL)
+         unsigned exp = agx_write_registers(I, d);
+         unsigned act =
+            agx_channels(I->dest[d]) * agx_size_align_16(I->dest[d].size);
+
+         if (exp != act) {
+            succ = false;
+            fprintf(stderr, "destination %u, expected width %u, got width %u\n",
+                    d, exp, act);
+            agx_print_instr(I, stderr);
+            fprintf(stderr, "\n");
+         }
+      }
+
+      agx_foreach_src(I, s) {
+         if (I->src[s].type == AGX_INDEX_NULL)
             continue;
 
-         unsigned v = I->dest[d].value;
-         assert(width[v] == 0 && "broken SSA");
+         unsigned exp = agx_read_registers(I, s);
+         unsigned act =
+            agx_channels(I->src[s]) * agx_size_align_16(I->src[s].size);
 
-         width[v] = agx_write_registers(I, d);
-      }
-   }
-
-   agx_foreach_instr_global(ctx, I) {
-      agx_foreach_ssa_src(I, s) {
-         unsigned v = I->src[s].value;
-         unsigned n = agx_read_registers(I, s);
-
-         if (width[v] != n) {
+         if (exp != act) {
             succ = false;
             fprintf(stderr, "source %u, expected width %u, got width %u\n", s,
-                    n, width[v]);
+                    exp, act);
             agx_print_instr(I, stderr);
             fprintf(stderr, "\n");
          }
       }
    }
 
-   free(width);
    return succ;
 }
 
