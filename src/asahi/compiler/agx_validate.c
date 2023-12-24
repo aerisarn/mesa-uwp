@@ -289,8 +289,6 @@ agx_validate(agx_context *ctx, const char *after)
       fail = true;
    }
 
-   /* TODO: Validate more invariants */
-
    if (fail) {
       agx_print_shader(ctx, stderr);
       exit(1);
