@@ -9,13 +9,9 @@ dEQP-GLES2.functional.draw.draw_elements.indices.user_ptr.index_byte,Fail
 
 # "Framebuffer checked as complete, expected incomplete"
 dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb_half_float_oes,Fail
-dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgba_half_float_oes,Fail
 
 dEQP-GLES2.functional.fbo.render.repeated_clear.tex2d_rgb,Fail
 dEQP-GLES2.functional.fbo.render.repeated_clear.tex2d_rgba,Fail
-
-dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.43,Fail
-dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.74,Fail
 
 dEQP-GLES2.functional.polygon_offset.default_factor_1_slope,Fail
 dEQP-GLES2.functional.polygon_offset.fixed16_displacement_with_units,Fail
@@ -38,7 +34,6 @@ dEQP-GLES2.functional.texture.format.etc1_cube_npot,Fail
 
 dEQP-GLES2.functional.texture.mipmap.cube.basic.nearest_nearest,Fail
 dEQP-GLES2.functional.texture.mipmap.cube.basic.linear_nearest,Fail
-dEQP-GLES2.functional.texture.mipmap.cube.projected.linear_linear,Fail
 
 # Looks like minor sampling location errors for the NPOT case.
 dEQP-GLES2.functional.texture.size.cube.15x15_l8,Fail
