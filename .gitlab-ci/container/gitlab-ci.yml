@@ -259,7 +259,8 @@ debian/arm64_build:
     - .fdo.container-build@alpine
     - .container
   variables:
-    FDO_DISTRIBUTION_VERSION: "3.18"
+    FDO_DISTRIBUTION_VERSION: "edge"  # switch to 3.20 when gets released
+    FDO_BASE_IMAGE: alpine:$FDO_DISTRIBUTION_VERSION  # since cbuild ignores it
 
 # Alpine based x86_64 build image
 alpine/x86_64_build:
