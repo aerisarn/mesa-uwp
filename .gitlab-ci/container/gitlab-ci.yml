@@ -63,7 +63,7 @@ debian/x86_64_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &debian-x86_64_build-base ${DEBIAN_BASE_TAG}
+    MESA_IMAGE_TAG: &debian-x86_64_build-base "${DEBIAN_BASE_TAG}--${PKG_REPO_REV}"
 
 .use-debian/x86_64_build-base:
   extends:
@@ -171,7 +171,7 @@ debian/android_build:
 debian/x86_64_test-base:
   extends: debian/x86_64_build-base
   variables:
-    MESA_IMAGE_TAG: &debian-x86_64_test-base "${DEBIAN_BASE_TAG}--${KERNEL_TAG}"
+    MESA_IMAGE_TAG: &debian-x86_64_test-base "${DEBIAN_BASE_TAG}--${PKG_REPO_REV}--${KERNEL_TAG}"
 
 .use-debian/x86_64_test-base:
   extends:
@@ -240,7 +240,7 @@ debian/arm64_build:
   tags:
     - aarch64
   variables:
-    MESA_IMAGE_TAG: &debian-arm64_build ${DEBIAN_BASE_TAG}
+    MESA_IMAGE_TAG: &debian-arm64_build "${DEBIAN_BASE_TAG}--${PKG_REPO_REV}"
 
 .use-debian/arm64_build:
   extends:
@@ -369,7 +369,7 @@ debian/arm32_test:
   needs:
     - kernel+rootfs_arm32
   variables:
-    MESA_IMAGE_TAG: &debian-arm32_test ${DEBIAN_BASE_TAG}
+    MESA_IMAGE_TAG: &debian-arm32_test "${DEBIAN_BASE_TAG}--${PKG_REPO_REV}"
 
 debian/arm64_test:
   extends:
@@ -377,7 +377,7 @@ debian/arm64_test:
   needs:
     - kernel+rootfs_arm64
   variables:
-    MESA_IMAGE_TAG: &debian-arm64_test ${DEBIAN_BASE_TAG}
+    MESA_IMAGE_TAG: &debian-arm64_test "${DEBIAN_BASE_TAG}--${PKG_REPO_REV}"
 
 .use-debian/arm_test:
   variables:

@@ -147,6 +147,8 @@ CONTAINER_EPHEMERAL=(
     zstd
 )
 
+echo "deb [trusted=yes] https://gitlab.freedesktop.org/gfx-ci/ci-deb-repo/-/raw/${PKG_REPO_REV}/ ${FDO_DISTRIBUTION_VERSION%-*} main" | tee /etc/apt/sources.list.d/gfx-ci_.list
+
 apt-get update
 apt-get install -y --no-remove \
 		   -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' \
