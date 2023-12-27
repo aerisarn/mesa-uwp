@@ -2347,6 +2347,9 @@ isl_drm_modifier_has_aux(uint64_t modifier)
 static inline bool
 isl_drm_modifier_plane_is_clear_color(uint64_t modifier, uint32_t plane)
 {
+   if (modifier == DRM_FORMAT_MOD_INVALID)
+      return false;
+
    ASSERTED const struct isl_drm_modifier_info *mod_info =
       isl_drm_modifier_get_info(modifier);
    assert(mod_info);
