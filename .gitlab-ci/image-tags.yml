@@ -10,7 +10,7 @@ variables:
    DEBIAN_BASE_TAG: "2023-11-18-deqp-runner"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
-   DEBIAN_BUILD_TAG: "2023-12-05-directx-headers-dep-611"
+   DEBIAN_BUILD_TAG: "2023-12-27-libdrm"
 
    DEBIAN_X86_64_TEST_BASE_IMAGE: "debian/x86_64_test-base"
 
