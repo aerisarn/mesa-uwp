@@ -1315,8 +1315,19 @@ static unsigned
 get_main_plane_for_plane(enum pipe_format format,
                          unsigned plane)
 {
-   unsigned int n_planes = util_format_get_num_planes(format);
-   return plane % n_planes;
+   if (format == PIPE_FORMAT_NONE) {
+      /* Created dmabuf resources have this format. */
+      return 0;
+   } else if (isl_format_for_pipe_format(format) == ISL_FORMAT_UNSUPPORTED) {
+      /* This format has been lowered to more planes than are native to it.
+       * So, compression modifiers are not enabled and the plane index is used
+       * as-is.
+       */
+      return plane;
+   } else {
+      unsigned int n_planes = util_format_get_num_planes(format);
+      return plane % n_planes;
+   }
 }
 
 static struct pipe_resource *
@@ -1378,6 +1389,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
             main_res->aux.clear_color_unknown = true;
          } else if (plane > main_plane) {
             /* Fill out some aux surface fields. */
+            assert(isl_drm_modifier_has_aux(whandle->modifier));
             assert(!devinfo->has_flat_ccs);
             assert(plane_res->bo->size >= plane_res->offset +
                    main_res->aux.surf.size_B);
