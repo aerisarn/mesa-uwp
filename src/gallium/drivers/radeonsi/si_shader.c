@@ -1266,45 +1266,53 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
       si_shader_dump_disassembly(screen, &shader->binary, shader->selector->stage,
                                  shader->wave_size, debug, "main", NULL);
 
-   unsigned num_outputs = 0;
+   unsigned num_ls_outputs = 0;
+   unsigned num_hs_outputs = 0;
+   unsigned num_es_outputs = 0;
+   unsigned num_gs_outputs = 0;
+   unsigned num_vs_outputs = 0;
+   unsigned num_ps_outputs = 0;
 
    if (shader->selector->stage <= MESA_SHADER_GEOMETRY) {
       /* This doesn't include pos exports because only param exports are interesting
        * for performance and can be optimized.
        */
-      if (shader->gs_copy_shader)
-         num_outputs = shader->gs_copy_shader->info.nr_param_exports;
-      else if (shader->key.ge.as_es)
-         num_outputs = shader->selector->info.esgs_vertex_stride / 16;
-      else if (shader->key.ge.as_ls)
-         num_outputs = shader->selector->info.lshs_vertex_stride / 16;
-      else if (shader->selector->stage == MESA_SHADER_VERTEX ||
-               shader->selector->stage == MESA_SHADER_TESS_EVAL ||
-               shader->key.ge.as_ngg)
-         num_outputs = shader->info.nr_param_exports;
+      if (shader->key.ge.as_ls)
+         num_ls_outputs = shader->selector->info.lshs_vertex_stride / 16;
       else if (shader->selector->stage == MESA_SHADER_TESS_CTRL)
-         num_outputs = util_last_bit64(shader->selector->info.outputs_written_before_tes_gs);
+         num_hs_outputs = util_last_bit64(shader->selector->info.outputs_written_before_tes_gs);
+      else if (shader->key.ge.as_es)
+         num_es_outputs = shader->selector->info.esgs_vertex_stride / 16;
+      else if (shader->gs_copy_shader)
+         num_gs_outputs = shader->gs_copy_shader->info.nr_param_exports;
+      else if (shader->selector->stage == MESA_SHADER_GEOMETRY)
+         num_gs_outputs = shader->info.nr_param_exports;
+      else if (shader->selector->stage == MESA_SHADER_VERTEX ||
+               shader->selector->stage == MESA_SHADER_TESS_EVAL)
+         num_vs_outputs = shader->info.nr_param_exports;
       else
          unreachable("invalid shader key");
    } else if (shader->selector->stage == MESA_SHADER_FRAGMENT) {
-      num_outputs = util_bitcount(shader->selector->info.colors_written) +
-                    (shader->selector->info.writes_z ||
-                     shader->selector->info.writes_stencil ||
-                     shader->ps.writes_samplemask);
+      num_ps_outputs = util_bitcount(shader->selector->info.colors_written) +
+                       (shader->selector->info.writes_z ||
+                        shader->selector->info.writes_stencil ||
+                        shader->ps.writes_samplemask);
    }
 
    util_debug_message(debug, SHADER_INFO,
                       "Shader Stats: SGPRS: %d VGPRS: %d Code Size: %d "
                       "LDS: %d Scratch: %d Max Waves: %d Spilled SGPRs: %d "
-                      "Spilled VGPRs: %d PrivMem VGPRs: %d Outputs: %u PatchOutputs: %u DivergentLoop: %d "
-                      "InlineUniforms: %d (%s, W%u)",
+                      "Spilled VGPRs: %d PrivMem VGPRs: %d LSOutputs: %u HSOutputs: %u "
+                      "HSPatchOuts: %u ESOutputs: %u GSOutputs: %u VSOutputs: %u PSOutputs: %u "
+                      "InlineUniforms: %u DivergentLoop: %u (%s, W%u)",
                       conf->num_sgprs, conf->num_vgprs, si_get_shader_binary_size(screen, shader),
                       conf->lds_size, conf->scratch_bytes_per_wave, shader->info.max_simd_waves,
                       conf->spilled_sgprs, conf->spilled_vgprs, shader->info.private_mem_vgprs,
-                      num_outputs,
+                      num_ls_outputs, num_hs_outputs,
                       util_last_bit64(shader->selector->info.patch_outputs_written),
-                      shader->selector->info.has_divergent_loop,
+                      num_es_outputs, num_gs_outputs, num_vs_outputs, num_ps_outputs,
                       shader->selector->info.base.num_inlinable_uniforms,
+                      shader->selector->info.has_divergent_loop,
                       stages[shader->selector->stage], shader->wave_size);
 }
 
