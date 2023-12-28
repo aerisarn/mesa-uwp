@@ -210,11 +210,29 @@ struct vn_relax_state {
    const char *reason;
 };
 
+/* TLS ring
+ * - co-owned by TLS and VkInstance
+ * - initialized in TLS upon requested
+ * - teardown happens upon thread exit or instance destroy
+ * - teardown is split into 2 stages:
+ *   1. one owner locks and destroys the ring and mark destroyed
+ *   2. the other owner locks and frees up the tls ring storage
+ */
+struct vn_tls_ring {
+   mtx_t mutex;
+   struct vn_ring *ring;
+   struct vn_instance *instance;
+   struct list_head tls_head;
+   struct list_head vk_head;
+};
+
 struct vn_tls {
    /* Track the threads on which swapchain and command pool creations occur.
     * Pipeline create on those threads are forced async via the primary ring.
     */
    bool async_pipeline_create;
+   /* Track TLS rings owned across instances. */
+   struct list_head tls_rings;
 };
 
 void
@@ -500,5 +518,11 @@ vn_tls_get_async_pipeline_create(void)
       return tls->async_pipeline_create;
    return true;
 }
+
+struct vn_ring *
+vn_tls_get_ring(struct vn_instance *instance);
+
+void
+vn_tls_destroy_ring(struct vn_tls_ring *tls_ring);
 
 #endif /* VN_COMMON_H */
