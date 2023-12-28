@@ -567,7 +567,7 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       offset = agx_abs(offset);
 
    agx_device_load_to(b, dest, addr, offset, fmt,
-                      BITFIELD_MASK(instr->def.num_components), shift, 0);
+                      BITFIELD_MASK(instr->def.num_components), shift);
    agx_emit_cached_split(b, dest, instr->def.num_components);
 }
 
@@ -585,7 +585,7 @@ agx_emit_store(agx_builder *b, nir_intrinsic_instr *instr)
 
    agx_device_store(b, agx_recollect_vector(b, instr->src[0]), addr, offset,
                     fmt, BITFIELD_MASK(nir_src_num_components(instr->src[0])),
-                    shift, 0);
+                    shift);
 }
 
 /* Preambles write directly to uniform registers, so move from uniform to GPR */
@@ -764,7 +764,7 @@ agx_emit_atomic(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr,
       agx_local_atomic_to(b, dst, value, base, index, op);
    } else {
       assert(base.size == AGX_SIZE_64);
-      agx_atomic_to(b, dst, value, base, index, op, 0);
+      agx_atomic_to(b, dst, value, base, index, op);
    }
 }
 
@@ -964,7 +964,7 @@ agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
 
    agx_instr *I = agx_image_load_to(
       b, tmp, coords, lod, bindless, texture, agx_txf_sampler(b->shader),
-      agx_null(), agx_tex_dim(dim, is_array), lod_mode, 0, 0, false);
+      agx_null(), agx_tex_dim(dim, is_array), lod_mode, 0, false);
    I->mask = agx_expand_tex_to(b, &intr->def, tmp, true);
    return NULL;
 }
@@ -1854,7 +1854,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       agx_tex_dim(instr->sampler_dim, instr->is_array),
       agx_lod_mode_for_nir(
          instr->op, nir_tex_instr_src_index(instr, nir_tex_src_bias) >= 0),
-      0, 0, !agx_is_null(packed_offset), !agx_is_null(compare),
+      0, !agx_is_null(packed_offset), !agx_is_null(compare),
       instr->op == nir_texop_lod, agx_gather_for_nir(instr));
 
    if (txf)
