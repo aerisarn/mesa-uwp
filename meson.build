@@ -1657,11 +1657,7 @@ foreach d : _libdrm_checks
   if d[1]
     set_variable(
       'dep_libdrm_' + d[0],
-      dependency(
-        'libdrm_' + d[0],
-        version : '>=' + _drm_ver,
-        allow_fallback: true,
-      )
+      dependency('libdrm_' + d[0], version : '>=' + _drm_ver)
     )
   endif
 endforeach
@@ -1669,9 +1665,7 @@ endforeach
 with_gallium_drisw_kms = false
 if system_has_kms_drm
   dep_libdrm = dependency(
-    'libdrm',
-    version : '>=' + _drm_ver,
-    allow_fallback: true,
+    'libdrm', version : '>=' + _drm_ver,
     # GNU/Hurd includes egl_dri2, without drm.
     required : (with_dri2 and host_machine.system() != 'gnu') or with_dri3
   )
