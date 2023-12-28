@@ -31,9 +31,6 @@ struct vn_device {
    struct vn_renderer *renderer;
    struct vn_ring *primary_ring;
 
-   mtx_t ring_mutex;
-   struct vn_ring *secondary_ring;
-
    struct vn_device_memory_report *memory_reports;
    uint32_t memory_report_count;
 
@@ -84,8 +81,5 @@ vn_device_emit_device_memory_report(struct vn_device *dev,
    for (uint32_t i = 0; i < dev->memory_report_count; i++)
       dev->memory_reports[i].callback(&report, dev->memory_reports[i].data);
 }
-
-bool
-vn_device_secondary_ring_init_once(struct vn_device *dev);
 
 #endif /* VN_DEVICE_H */
