@@ -676,6 +676,35 @@ add_gpus([
     ))
 
 add_gpus([
+        GPUId(chip_id=0x6060201, name="FD644"),
+    ], A6xxGPUInfo(
+        CHIP.A6XX,
+        [a6xx_base, a6xx_gen4],
+        num_ccu = 3,
+        tile_align_w = 96,
+        tile_align_h = 16,
+        num_vsc_pipes = 32,
+        cs_shared_mem_size = 32 * 1024,
+        wave_granularity = 2,
+        fibers_per_sp = 128 * 4 * 16,
+        magic_regs = dict(
+            PC_POWER_CNTL = 2,
+            TPL1_DBG_ECO_CNTL = 0x05008000,
+            GRAS_DBG_ECO_CNTL = 0x0,
+            SP_CHICKEN_BITS = 0x00001400,
+            UCHE_CLIENT_PF = 0x00000084,
+            PC_MODE_CNTL = 0x1f,
+            SP_DBG_ECO_CNTL = 0x6,
+            RB_DBG_ECO_CNTL = 0x04100000,
+            RB_DBG_ECO_CNTL_blit = 0x04100000,
+            HLSQ_DBG_ECO_CNTL = 0x0,
+            RB_UNKNOWN_8E01 = 0x0,
+            VPC_DBG_ECO_CNTL = 0x02000000,
+            UCHE_UNKNOWN_0E12 = 0x00000001
+        )
+    ))
+
+add_gpus([
         GPUId(690),
         GPUId(chip_id=0xffff06090000, name="FD690"), # Default no-speedbin fallback
     ], A6xxGPUInfo(
