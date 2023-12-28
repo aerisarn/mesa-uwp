@@ -34,6 +34,7 @@
 #include "util/os_time.h"
 #include "util/perf/cpu_trace.h"
 #include "util/simple_mtx.h"
+#include "util/u_atomic.h"
 #include "util/u_math.h"
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
@@ -302,6 +303,14 @@ vn_refcount_dec(struct vn_refcount *ref)
    return old == 1;
 }
 
+extern uint64_t vn_next_obj_id;
+
+static inline uint64_t
+vn_get_next_obj_id(void)
+{
+   return p_atomic_fetch_add(&vn_next_obj_id, 1);
+}
+
 uint32_t
 vn_extension_get_spec_version(const char *name);
 
@@ -356,7 +365,7 @@ vn_instance_base_init(
 {
    VkResult result = vk_instance_init(&instance->base, supported_extensions,
                                       dispatch_table, info, alloc);
-   instance->id = (uintptr_t)instance;
+   instance->id = vn_get_next_obj_id();
    return result;
 }
 
@@ -376,7 +385,7 @@ vn_physical_device_base_init(
    VkResult result = vk_physical_device_init(
       &physical_dev->base, &instance->base, supported_extensions, NULL, NULL,
       dispatch_table);
-   physical_dev->id = (uintptr_t)physical_dev;
+   physical_dev->id = vn_get_next_obj_id();
    return result;
 }
 
@@ -395,7 +404,7 @@ vn_device_base_init(struct vn_device_base *dev,
 {
    VkResult result = vk_device_init(&dev->base, &physical_dev->base,
                                     dispatch_table, info, alloc);
-   dev->id = (uintptr_t)dev;
+   dev->id = vn_get_next_obj_id();
    return result;
 }
 
@@ -413,7 +422,7 @@ vn_queue_base_init(struct vn_queue_base *queue,
 {
    VkResult result =
       vk_queue_init(&queue->base, &dev->base, queue_info, queue_index);
-   queue->id = (uintptr_t)queue;
+   queue->id = vn_get_next_obj_id();
    return result;
 }
 
@@ -429,7 +438,7 @@ vn_object_base_init(struct vn_object_base *obj,
                     struct vn_device_base *dev)
 {
    vk_object_base_init(&dev->base, &obj->base, type);
-   obj->id = (uintptr_t)obj;
+   obj->id = vn_get_next_obj_id();
 }
 
 static inline void

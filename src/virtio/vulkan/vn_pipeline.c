@@ -461,8 +461,6 @@ vn_get_target_ring(struct vn_device *dev)
        * ready on the renderer side.
        *
        * TODO:
-       * - For pipeline objects, avoid object id re-use between async pipeline
-       *   destroy on the primary ring and sync pipeline create on TLS ring.
        * - For pipeline create, track ring seqnos of layout and renderpass
        *   objects it depends on, and only wait for those seqnos once.
        * - For pipeline cache retrieval, track ring seqno of pipeline cache

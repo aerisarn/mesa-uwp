@@ -448,7 +448,7 @@ vn_image_create(struct vn_device *dev,
    if (!img)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   vn_object_set_id(img, (uintptr_t)img, VK_OBJECT_TYPE_IMAGE);
+   vn_object_set_id(img, vn_get_next_obj_id(), VK_OBJECT_TYPE_IMAGE);
 
    VkResult result = vn_image_init(dev, create_info, img);
    if (result != VK_SUCCESS) {
@@ -482,7 +482,7 @@ vn_image_create_deferred(struct vn_device *dev,
    if (!img)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   vn_object_set_id(img, (uintptr_t)img, VK_OBJECT_TYPE_IMAGE);
+   vn_object_set_id(img, vn_get_next_obj_id(), VK_OBJECT_TYPE_IMAGE);
 
    VkResult result = vn_image_deferred_info_init(img, create_info, alloc);
    if (result != VK_SUCCESS) {

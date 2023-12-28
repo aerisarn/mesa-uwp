@@ -57,6 +57,7 @@ static const struct debug_control vn_perf_options[] = {
    /* clang-format on */
 };
 
+uint64_t vn_next_obj_id = 1;
 struct vn_env vn_env;
 
 static void

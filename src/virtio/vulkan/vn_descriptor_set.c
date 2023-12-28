@@ -411,10 +411,6 @@ vn_DestroyDescriptorPool(VkDevice device,
 
    alloc = pAllocator ? pAllocator : &pool->allocator;
 
-   /* We must emit vkDestroyDescriptorPool before freeing the sets in
-    * pool->descriptor_sets.  Otherwise, another thread might reuse their
-    * object ids while they still refer to the sets in the renderer.
-    */
    vn_async_vkDestroyDescriptorPool(dev->primary_ring, device, descriptorPool,
                                     NULL);
 
