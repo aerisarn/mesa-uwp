@@ -457,13 +457,16 @@ vn_get_target_ring(struct vn_device *dev)
       return NULL;
 
    if (ring != dev->primary_ring) {
-      /* Ensure pipeline create dependencies are ready on the renderer side.
+      /* Ensure pipeline create and pipeline cache retrieval dependencies are
+       * ready on the renderer side.
        *
        * TODO:
        * - For pipeline objects, avoid object id re-use between async pipeline
        *   destroy on the primary ring and sync pipeline create on TLS ring.
        * - For pipeline create, track ring seqnos of layout and renderpass
        *   objects it depends on, and only wait for those seqnos once.
+       * - For pipeline cache retrieval, track ring seqno of pipeline cache
+       *   object it depends on. Treat different sync mode separately.
        */
       vn_ring_wait_all(dev->primary_ring);
    }
@@ -479,7 +482,7 @@ vn_GetPipelineCacheData(VkDevice device,
    VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_physical_device *physical_dev = dev->physical_device;
-   struct vn_ring *target_ring = dev->primary_ring;
+   struct vn_ring *target_ring = vn_get_target_ring(dev);
 
    struct vk_pipeline_cache_header *header = pData;
    VkResult result;
