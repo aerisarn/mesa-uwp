@@ -441,8 +441,6 @@ vn_device_secondary_ring_init_once(struct vn_device *dev)
 {
    VN_TRACE_FUNC();
 
-   assert(!dev->force_primary_ring_submission);
-
    static bool ok = true;
    if (!ok)
       return ok;
@@ -488,9 +486,6 @@ vn_device_init(struct vn_device *dev,
    dev->physical_device = physical_dev;
    dev->renderer = instance->renderer;
    dev->primary_ring = instance->ring.ring;
-
-   /* can be extended for app compat purpose */
-   dev->force_primary_ring_submission = VN_PERF(NO_MULTI_RING);
 
    create_info =
       vn_device_fix_create_info(dev, create_info, alloc, &local_create_info);

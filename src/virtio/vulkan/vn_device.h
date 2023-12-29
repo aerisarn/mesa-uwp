@@ -30,7 +30,6 @@ struct vn_device {
    struct vn_physical_device *physical_device;
    struct vn_renderer *renderer;
    struct vn_ring *primary_ring;
-   bool force_primary_ring_submission;
 
    mtx_t ring_mutex;
    struct vn_ring *secondary_ring;

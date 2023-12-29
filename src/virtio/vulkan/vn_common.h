@@ -211,13 +211,10 @@ struct vn_relax_state {
 };
 
 struct vn_tls {
-   /* Track swapchain and command pool creations on threads so dispatch of the
-    * following on non-tracked threads can be routed as synchronous on the
-    * secondary ring:
-    * - pipeline creations
-    * - pipeline cache retrievals
+   /* Track the threads on which swapchain and command pool creations occur.
+    * Pipeline create on those threads are forced async via the primary ring.
     */
-   bool primary_ring_submission;
+   bool async_pipeline_create;
 };
 
 void
@@ -488,19 +485,19 @@ struct vn_tls *
 vn_tls_get(void);
 
 static inline void
-vn_tls_set_primary_ring_submission(void)
+vn_tls_set_async_pipeline_create(void)
 {
    struct vn_tls *tls = vn_tls_get();
    if (likely(tls))
-      tls->primary_ring_submission = true;
+      tls->async_pipeline_create = true;
 }
 
 static inline bool
-vn_tls_get_primary_ring_submission(void)
+vn_tls_get_async_pipeline_create(void)
 {
    const struct vn_tls *tls = vn_tls_get();
    if (likely(tls))
-      return tls->primary_ring_submission;
+      return tls->async_pipeline_create;
    return true;
 }
 

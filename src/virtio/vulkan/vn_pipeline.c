@@ -449,10 +449,10 @@ vn_DestroyPipelineCache(VkDevice device,
 static struct vn_ring *
 vn_get_target_ring(struct vn_device *dev)
 {
-   if (dev->force_primary_ring_submission)
+   if (VN_PERF(NO_MULTI_RING))
       return dev->primary_ring;
 
-   if (vn_tls_get_primary_ring_submission())
+   if (vn_tls_get_async_pipeline_create())
       return dev->primary_ring;
 
    if (!dev->secondary_ring) {
@@ -483,9 +483,7 @@ vn_GetPipelineCacheData(VkDevice device,
    VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_physical_device *physical_dev = dev->physical_device;
-
-   struct vn_ring *target_ring = vn_get_target_ring(dev);
-   assert(target_ring);
+   struct vn_ring *target_ring = dev->primary_ring;
 
    struct vk_pipeline_cache_header *header = pData;
    VkResult result;
