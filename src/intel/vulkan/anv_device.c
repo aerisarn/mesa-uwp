@@ -1376,15 +1376,7 @@ get_properties(const struct anv_physical_device *pdevice,
       props->fragmentShadingRateWithConservativeRasterization = true;
       props->fragmentShadingRateWithFragmentShaderInterlock = true;
       props->fragmentShadingRateWithCustomSampleLocations = true;
-
-      /* Fix in DG2_G10_C0 and DG2_G11_B0. Consider any other Sku as having
-       * the fix.
-       */
-      props->fragmentShadingRateStrictMultiplyCombiner =
-         pdevice->info.platform == INTEL_PLATFORM_DG2_G10 ?
-         pdevice->info.revision >= 8 :
-         pdevice->info.platform == INTEL_PLATFORM_DG2_G11 ?
-         pdevice->info.revision >= 4 : true;
+      props->fragmentShadingRateStrictMultiplyCombiner = true;
 
       if (pdevice->info.has_coarse_pixel_primitive_and_cb) {
          props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 8, 8 };
