@@ -2188,6 +2188,8 @@ agx_screen_create(int fd, struct renderonly *ro,
       return NULL;
    }
 
+   agx_screen->queue_id = agx_create_command_queue(&agx_screen->dev, 0);
+
    screen->destroy = agx_destroy_screen;
    screen->get_screen_fd = agx_screen_get_fd;
    screen->get_name = agx_get_name;

@@ -553,6 +553,7 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
                  void *cmdbuf)
 {
    struct agx_device *dev = agx_device(ctx->base.screen);
+   struct agx_screen *screen = agx_screen(ctx->base.screen);
 
    bool feedback = dev->debug & (AGX_DBG_TRACE | AGX_DBG_SYNC | AGX_DBG_STATS);
 
