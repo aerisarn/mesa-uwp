@@ -159,7 +159,7 @@ typedef struct {
 
    unsigned max_workgroup_size;
    unsigned wave_size;
-   uint32_t clipdist_enable_mask;
+   uint8_t clip_cull_dist_mask;
    const uint8_t *vs_output_param_offset; /* GFX11+ */
    bool has_param_exports;
    bool can_cull;

@@ -1918,7 +1918,7 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
    const union si_shader_key *key = &shader->key;
    assert(key->ge.as_ngg);
 
-   unsigned clipdist_mask =
+   uint8_t clip_cull_dist_mask =
       (sel->info.clipdist_mask & ~key->ge.opt.kill_clip_distances) |
       sel->info.culldist_mask;
 
@@ -1931,7 +1931,7 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       .disable_streamout = !si_shader_uses_streamout(shader),
       .vs_output_param_offset = shader->info.vs_output_param_offset,
       .has_param_exports = shader->info.nr_param_exports,
-      .clipdist_enable_mask = clipdist_mask,
+      .clip_cull_dist_mask = clip_cull_dist_mask,
       .kill_pointsize = key->ge.opt.kill_pointsize,
       .kill_layer = key->ge.opt.kill_layer,
       .force_vrs = sel->screen->options.vrs2x2,
