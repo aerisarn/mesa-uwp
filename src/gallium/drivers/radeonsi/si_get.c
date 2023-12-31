@@ -5,6 +5,7 @@
  */
 
 #include "compiler/nir/nir.h"
+#include "ac_shader_util.h"
 #include "radeon_uvd_enc.h"
 #include "radeon_vce.h"
 #include "radeon_video.h"
@@ -1375,122 +1376,74 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
 
    si_init_renderer_string(sscreen);
 
+   /*        |---------------------------------- Performance & Availability --------------------------------|
+    *        |MAD/MAC/MADAK/MADMK|MAD_LEGACY|MAC_LEGACY|    FMA     |FMAC/FMAAK/FMAMK|FMA_LEGACY|PK_FMA_F16,|Best choice
+    * Arch   |    F32,F16,F64    | F32,F16  | F32,F16  |F32,F16,F64 |    F32,F16     |   F32    |PK_FMAC_F16|F16,F32,F64
+    * ------------------------------------------------------------------------------------------------------------------
+    * gfx6,7 |     1 , - , -     |  1 , -   |  1 , -   |1/4, - ,1/16|     - , -      |    -     |   - , -   | - ,MAD,FMA
+    * gfx8   |     1 , 1 , -     |  1 , -   |  - , -   |1/4, 1 ,1/16|     - , -      |    -     |   - , -   |MAD,MAD,FMA
+    * gfx9   |     1 ,1|0, -     |  1 , -   |  - , -   | 1 , 1 ,1/16|    0|1, -      |    -     |   2 , -   |FMA,MAD,FMA
+    * gfx10  |     1 , - , -     |  1 , -   |  1 , -   | 1 , 1 ,1/16|     1 , 1      |    -     |   2 , 2   |FMA,MAD,FMA
+    * gfx10.3|     - , - , -     |  - , -   |  - , -   | 1 , 1 ,1/16|     1 , 1      |    1     |   2 , 2   |  all FMA
+    * gfx11  |     - , - , -     |  - , -   |  - , -   | 2 , 2 ,1/16|     2 , 2      |    2     |   2 , 2   |  all FMA
+    *
+    * Tahiti, Hawaii, Carrizo, Vega20: FMA_F32 is full rate, FMA_F64 is 1/4
+    * gfx9 supports MAD_F16 only on Vega10, Raven, Raven2, Renoir.
+    * gfx9 supports FMAC_F32 only on Vega20, but doesn't support FMAAK and FMAMK.
+    *
+    * gfx8 prefers MAD for F16 because of MAC/MADAK/MADMK.
+    * gfx9 and newer prefer FMA for F16 because of the packed instruction.
+    * gfx10 and older prefer MAD for F32 because of the legacy instruction.
+    */
    bool use_fma32 =
       sscreen->info.gfx_level >= GFX10_3 ||
       (sscreen->info.family >= CHIP_GFX940 && !sscreen->info.has_graphics) ||
       /* fma32 is too slow for gpu < gfx9, so apply the option only for gpu >= gfx9 */
       (sscreen->info.gfx_level >= GFX9 && sscreen->options.force_use_fma32);
 
-   const struct nir_shader_compiler_options nir_options = {
-      .vertex_id_zero_based = true,
-      .lower_scmp = true,
-      .lower_flrp16 = true,
-      .lower_flrp32 = true,
-      .lower_flrp64 = true,
-      .lower_fdiv = true,
-      .lower_bitfield_insert = true,
-      .lower_bitfield_extract = true,
-      /*        |---------------------------------- Performance & Availability --------------------------------|
-       *        |MAD/MAC/MADAK/MADMK|MAD_LEGACY|MAC_LEGACY|    FMA     |FMAC/FMAAK/FMAMK|FMA_LEGACY|PK_FMA_F16,|Best choice
-       * Arch   |    F32,F16,F64    | F32,F16  | F32,F16  |F32,F16,F64 |    F32,F16     | F32,F16  |PK_FMAC_F16|F16,F32,F64
-       * ------------------------------------------------------------------------------------------------------------------
-       * gfx6,7 |     1 , - , -     |  1 , -   |  1 , -   |1/4, - ,1/16|     - , -      |  - , -   |   - , -   | - ,MAD,FMA
-       * gfx8   |     1 , 1 , -     |  1 , -   |  - , -   |1/4, 1 ,1/16|     - , -      |  - , -   |   - , -   |MAD,MAD,FMA
-       * gfx9   |     1 ,1|0, -     |  1 , -   |  - , -   | 1 , 1 ,1/16|    0|1, -      |  - , 1   |   2 , -   |FMA,MAD,FMA
-       * gfx10  |     1 , - , -     |  1 , -   |  1 , -   | 1 , 1 ,1/16|     1 , 1      |  - , -   |   2 , 2   |FMA,MAD,FMA
-       * gfx10.3|     - , - , -     |  - , -   |  - , -   | 1 , 1 ,1/16|     1 , 1      |  1 , -   |   2 , 2   |  all FMA
-       *
-       * Tahiti, Hawaii, Carrizo, Vega20: FMA_F32 is full rate, FMA_F64 is 1/4
-       * gfx9 supports MAD_F16 only on Vega10, Raven, Raven2, Renoir.
-       * gfx9 supports FMAC_F32 only on Vega20, but doesn't support FMAAK and FMAMK.
-       *
-       * gfx8 prefers MAD for F16 because of MAC/MADAK/MADMK.
-       * gfx9 and newer prefer FMA for F16 because of the packed instruction.
-       * gfx10 and older prefer MAD for F32 because of the legacy instruction.
-       */
-      .lower_ffma16 = sscreen->info.gfx_level < GFX9,
-      .lower_ffma32 = !use_fma32,
-      .lower_ffma64 = false,
-      .fuse_ffma16 = sscreen->info.gfx_level >= GFX9,
-      .fuse_ffma32 = use_fma32,
-      .fuse_ffma64 = true,
-      .lower_fmod = true,
-      .lower_fpow = true,
-      .lower_ineg = true,
-      .lower_pack_snorm_4x8 = true,
-      .lower_pack_unorm_4x8 = true,
-      .lower_pack_half_2x16 = true,
-      .lower_pack_64_2x32 = true,
-      .lower_pack_64_4x16 = true,
-      .lower_pack_32_2x16 = true,
-      .lower_unpack_snorm_2x16 = true,
-      .lower_unpack_snorm_4x8 = true,
-      .lower_unpack_unorm_2x16 = true,
-      .lower_unpack_unorm_4x8 = true,
-      .lower_unpack_half_2x16 = true,
-      .lower_extract_byte = true,
-      .lower_extract_word = true,
-      .lower_insert_byte = true,
-      .lower_insert_word = true,
-      .lower_hadd = true,
-      .lower_hadd64 = true,
-      .lower_fisnormal = true,
-      .lower_rotate = true,
-      .lower_to_scalar = true,
-      .lower_to_scalar_filter = sscreen->info.has_packed_math_16bit ?
-                                   si_alu_to_scalar_packed_math_filter : NULL,
-      .has_sdot_4x8 = sscreen->info.has_accelerated_dot_product,
-      .has_sudot_4x8 = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level >= GFX11,
-      .has_udot_4x8 = sscreen->info.has_accelerated_dot_product,
-      .has_sdot_4x8_sat = sscreen->info.has_accelerated_dot_product,
-      .has_sudot_4x8_sat = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level >= GFX11,
-      .has_udot_4x8_sat = sscreen->info.has_accelerated_dot_product,
-      .has_dot_2x16 = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level < GFX11,
-      .has_bfe = true,
-      .has_bfm = true,
-      .has_bitfield_select = true,
-      .optimize_sample_mask_in = true,
-      .max_unroll_iterations = 128,
-      .max_unroll_iterations_aggressive = 128,
-      .use_interpolated_input_intrinsics = true,
-      .lower_uniforms_to_ubo = true,
-      .support_16bit_alu = sscreen->info.gfx_level >= GFX8,
-      .vectorize_vec2_16bit = sscreen->info.has_packed_math_16bit,
-      .pack_varying_options =
-         nir_pack_varying_interp_mode_none |
-         nir_pack_varying_interp_mode_smooth |
-         nir_pack_varying_interp_mode_noperspective |
-         nir_pack_varying_interp_loc_center |
-         nir_pack_varying_interp_loc_sample |
-         nir_pack_varying_interp_loc_centroid,
-      .lower_io_variables = true,
-      /* HW supports indirect indexing for: | Enabled in driver
-       * -------------------------------------------------------
-       * TCS inputs                         | Yes
-       * TES inputs                         | Yes
-       * GS inputs                          | No
-       * -------------------------------------------------------
-       * VS outputs before TCS              | No
-       * TCS outputs                        | Yes
-       * VS/TES outputs before GS           | No
-       */
-      .support_indirect_inputs = BITFIELD_BIT(MESA_SHADER_TESS_CTRL) |
-                                 BITFIELD_BIT(MESA_SHADER_TESS_EVAL),
-      .support_indirect_outputs = BITFIELD_BIT(MESA_SHADER_TESS_CTRL),
-      .lower_int64_options =
-         nir_lower_imul64 | nir_lower_imul_high64 | nir_lower_imul_2x32_64 |
-         nir_lower_divmod64 | nir_lower_minmax64 | nir_lower_iabs64 |
-         nir_lower_iadd_sat64 | nir_lower_conv64,
+   nir_shader_compiler_options *options = sscreen->nir_options;
+   ac_set_nir_options(&sscreen->info, !sscreen->use_aco, options);
 
-      /* For OpenGL, rounding mode is undefined. We want fast packing with v_cvt_pkrtz_f16,
-       * but if we use it, all f32->f16 conversions have to round towards zero,
-       * because both scalar and vec2 down-conversions have to round equally.
-       *
-       * For OpenCL, rounding mode is explicit. This will only lower f2f16 to f2f16_rtz
-       * when execution mode is rtz instead of rtne.
-       */
-      .force_f2f16_rtz = true,
-      .lower_layer_fs_input_to_sysval = true,
-   };
-   *sscreen->nir_options = nir_options;
+   options->lower_ffma16 = sscreen->info.gfx_level < GFX9;
+   options->lower_ffma32 = !use_fma32;
+   options->lower_ffma64 = false;
+   options->fuse_ffma16 = sscreen->info.gfx_level >= GFX9;
+   options->fuse_ffma32 = use_fma32;
+   options->fuse_ffma64 = true;
+   options->lower_uniforms_to_ubo = true;
+   options->lower_layer_fs_input_to_sysval = true;
+   options->optimize_sample_mask_in = true;
+   options->lower_to_scalar = true;
+   options->lower_to_scalar_filter =
+      sscreen->info.has_packed_math_16bit ? si_alu_to_scalar_packed_math_filter : NULL;
+   options->max_unroll_iterations = 128;
+   options->max_unroll_iterations_aggressive = 128;
+   /* For OpenGL, rounding mode is undefined. We want fast packing with v_cvt_pkrtz_f16,
+    * but if we use it, all f32->f16 conversions have to round towards zero,
+    * because both scalar and vec2 down-conversions have to round equally.
+    *
+    * For OpenCL, rounding mode is explicit. This will only lower f2f16 to f2f16_rtz
+    * when execution mode is rtz instead of rtne.
+    */
+   options->force_f2f16_rtz = true;
+   options->pack_varying_options = nir_pack_varying_interp_mode_none |
+                                   nir_pack_varying_interp_mode_smooth |
+                                   nir_pack_varying_interp_mode_noperspective |
+                                   nir_pack_varying_interp_loc_center |
+                                   nir_pack_varying_interp_loc_sample |
+                                   nir_pack_varying_interp_loc_centroid;
+   options->lower_io_variables = true;
+   /* HW supports indirect indexing for: | Enabled in driver
+    * -------------------------------------------------------
+    * TCS inputs                         | Yes
+    * TES inputs                         | Yes
+    * GS inputs                          | No
+    * -------------------------------------------------------
+    * VS outputs before TCS              | No
+    * TCS outputs                        | Yes
+    * VS/TES outputs before GS           | No
+    */
+   options->support_indirect_inputs = BITFIELD_BIT(MESA_SHADER_TESS_CTRL) |
+                                      BITFIELD_BIT(MESA_SHADER_TESS_EVAL);
+   options->support_indirect_outputs = BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
 }
