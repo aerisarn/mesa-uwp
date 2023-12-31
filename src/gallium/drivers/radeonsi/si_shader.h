@@ -253,7 +253,7 @@ enum
  * in the shader via vs_state_bits in legacy GS, the GS copy shader, and any NGG shader.
  */
 /* bit gap */
-#define GS_STATE_ESGS_VERTEX_STRIDE__SHIFT      10
+#define GS_STATE_ESGS_VERTEX_STRIDE__SHIFT      11
 #define GS_STATE_ESGS_VERTEX_STRIDE__MASK       0xff /* max 32 * 4 + 1 */
 /* Small prim filter precision = num_samples / quant_mode, which can only be equal to 1/2^n
  * where n is between 4 and 12. Knowing that, we only need to store 4 bits of the FP32 exponent.
@@ -262,14 +262,14 @@ enum
  * With 0x70 = 112, we get 2^(112 + value - 127) = 2^(value - 15), which is always a negative
  * exponent and it's equal to 1/2^(15 - value).
  */
-#define GS_STATE_SMALL_PRIM_PRECISION_NO_AA__SHIFT 18
+#define GS_STATE_SMALL_PRIM_PRECISION_NO_AA__SHIFT 19
 #define GS_STATE_SMALL_PRIM_PRECISION_NO_AA__MASK  0xf
-#define GS_STATE_SMALL_PRIM_PRECISION__SHIFT    22
+#define GS_STATE_SMALL_PRIM_PRECISION__SHIFT    23
 #define GS_STATE_SMALL_PRIM_PRECISION__MASK     0xf
-#define GS_STATE_STREAMOUT_QUERY_ENABLED__SHIFT 26
+#define GS_STATE_STREAMOUT_QUERY_ENABLED__SHIFT 27
 #define GS_STATE_STREAMOUT_QUERY_ENABLED__MASK  0x1
-#define GS_STATE_PROVOKING_VTX_INDEX__SHIFT     27
-#define GS_STATE_PROVOKING_VTX_INDEX__MASK      0x3
+#define GS_STATE_PROVOKING_VTX_FIRST__SHIFT     28
+#define GS_STATE_PROVOKING_VTX_FIRST__MASK      0x1
 #define GS_STATE_OUTPRIM__SHIFT                 29
 #define GS_STATE_OUTPRIM__MASK                  0x3
 #define GS_STATE_PIPELINE_STATS_EMU__SHIFT      31

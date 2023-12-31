@@ -3585,9 +3585,11 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
         shader->key.ge.mono.u.vs_export_prim_id));
 
    shader->uses_gs_state_outprim = sscreen->use_ngg &&
-                                   /* Only used by streamout in vertex shaders. */
+                                   /* Only used by streamout and the PrimID export in vertex
+                                    * shaders. */
                                    sel->stage == MESA_SHADER_VERTEX &&
-                                   si_shader_uses_streamout(shader);
+                                   (si_shader_uses_streamout(shader) ||
+                                    shader->uses_vs_state_provoking_vertex);
 
    if (sel->stage == MESA_SHADER_VERTEX) {
       shader->uses_base_instance = sel->info.uses_base_instance ||

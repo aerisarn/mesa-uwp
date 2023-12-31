@@ -277,6 +277,17 @@ static void preload_reusable_variables(nir_builder *b, struct lower_abi_state *s
    build_gsvs_ring_desc(b, s);
 }
 
+static nir_def *get_num_vertices_per_prim(nir_builder *b, struct lower_abi_state *s)
+{
+   struct si_shader_args *args = s->args;
+   unsigned num_vertices = gfx10_ngg_get_vertices_per_prim(s->shader);
+
+   if (num_vertices)
+      return nir_imm_int(b, num_vertices);
+   else
+      return nir_iadd_imm(b, GET_FIELD_NIR(GS_STATE_OUTPRIM), 1);
+}
+
 static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_state *s)
 {
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
@@ -379,14 +390,9 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_load_smem_amd(b, 4, addr, nir_imm_int(b, offset));
       break;
    }
-   case nir_intrinsic_load_num_vertices_per_primitive_amd: {
-      unsigned num_vertices = gfx10_ngg_get_vertices_per_prim(shader);
-      if (num_vertices)
-         replacement = nir_imm_int(b, num_vertices);
-      else
-         replacement = nir_iadd_imm(b, GET_FIELD_NIR(GS_STATE_OUTPRIM), 1);
+   case nir_intrinsic_load_num_vertices_per_primitive_amd:
+      replacement = get_num_vertices_per_prim(b, s);
       break;
-   }
    case nir_intrinsic_load_cull_ccw_amd:
       /* radeonsi embed cw/ccw info into front/back face enabled */
       replacement = nir_imm_false(b);
@@ -417,7 +423,9 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       break;
    }
    case nir_intrinsic_load_provoking_vtx_in_prim_amd:
-      replacement = GET_FIELD_NIR(GS_STATE_PROVOKING_VTX_INDEX);
+      replacement = nir_bcsel(b, nir_i2b(b, GET_FIELD_NIR(GS_STATE_PROVOKING_VTX_FIRST)),
+                              nir_imm_int(b, 0),
+                              nir_iadd_imm(b, get_num_vertices_per_prim(b, s), -1));
       break;
    case nir_intrinsic_load_pipeline_stat_query_enabled_amd:
       replacement = nir_i2b(b, GET_FIELD_NIR(GS_STATE_PIPELINE_STATS_EMU));

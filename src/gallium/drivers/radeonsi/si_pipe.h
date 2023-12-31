@@ -2158,9 +2158,8 @@ si_update_ngg_prim_state_sgpr(struct si_context *sctx, struct si_shader *hw_vs, 
       return;
 
    if (hw_vs->uses_vs_state_provoking_vertex) {
-      unsigned vtx_index = sctx->queued.named.rasterizer->flatshade_first ? 0 : sctx->gs_out_prim;
-
-      SET_FIELD(sctx->current_gs_state, GS_STATE_PROVOKING_VTX_INDEX, vtx_index);
+      SET_FIELD(sctx->current_gs_state, GS_STATE_PROVOKING_VTX_FIRST,
+                sctx->queued.named.rasterizer->flatshade_first);
    }
 
    if (hw_vs->uses_gs_state_outprim) {
