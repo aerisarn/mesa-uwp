@@ -614,10 +614,9 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
    agx_add_sync(in_syncs, &in_sync_count, agx_get_in_sync(ctx));
 
    /* Submit! */
-   agx_submit_single(
-      dev, cmd_type, barriers, in_syncs, in_sync_count, &out_sync, 1, cmdbuf,
-      feedback ? ctx->result_buf->handle : 0, feedback ? batch->result_off : 0,
-      feedback ? sizeof(union agx_batch_result) : 0);
+   /* TODO: UAPI */
+   (void)screen;
+   (void)out_sync;
 
    /* Now stash our batch fence into any shared BOs. */
    if (shared_bo_count) {
