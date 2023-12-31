@@ -1330,7 +1330,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       si_update_vrs_flat_shading(sctx);
 
    if (old_rs->flatshade_first != rs->flatshade_first)
-      si_update_ngg_prim_state_sgpr(sctx, si_get_vs(sctx)->current, sctx->ngg);
+      si_update_ngg_sgpr_state_provoking_vtx(sctx, si_get_vs(sctx)->current, sctx->ngg);
 }
 
 static void si_delete_rs_state(struct pipe_context *ctx, void *state)

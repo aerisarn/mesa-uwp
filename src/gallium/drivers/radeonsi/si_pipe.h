@@ -2152,19 +2152,19 @@ static inline void si_set_clip_discard_distance(struct si_context *sctx, float d
  * It's expected that hw_vs and ngg are inline constants in draw_vbo after optimizations.
  */
 static inline void
-si_update_ngg_prim_state_sgpr(struct si_context *sctx, struct si_shader *hw_vs, bool ngg)
+si_update_ngg_sgpr_state_provoking_vtx(struct si_context *sctx, struct si_shader *hw_vs, bool ngg)
 {
-   if (!ngg || !hw_vs)
-      return;
-
-   if (hw_vs->uses_vs_state_provoking_vertex) {
+   if (ngg && hw_vs && hw_vs->uses_vs_state_provoking_vertex) {
       SET_FIELD(sctx->current_gs_state, GS_STATE_PROVOKING_VTX_FIRST,
                 sctx->queued.named.rasterizer->flatshade_first);
    }
+}
 
-   if (hw_vs->uses_gs_state_outprim) {
+static inline void
+si_update_ngg_sgpr_state_out_prim(struct si_context *sctx, struct si_shader *hw_vs, bool ngg)
+{
+   if (ngg && hw_vs && hw_vs->uses_gs_state_outprim)
       SET_FIELD(sctx->current_gs_state, GS_STATE_OUTPRIM, sctx->gs_out_prim);
-   }
 }
 
 /* Set the primitive type seen by the rasterizer. GS and tessellation affect this.
@@ -2195,7 +2195,7 @@ si_set_rasterized_prim(struct si_context *sctx, enum mesa_prim rast_prim,
 
       sctx->current_rast_prim = rast_prim;
       si_vs_ps_key_update_rast_prim_smooth_stipple(sctx);
-      si_update_ngg_prim_state_sgpr(sctx, hw_vs, ngg);
+      si_update_ngg_sgpr_state_out_prim(sctx, hw_vs, ngg);
    }
 }
 
