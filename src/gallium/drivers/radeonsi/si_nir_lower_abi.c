@@ -360,9 +360,12 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       break;
    case nir_intrinsic_load_esgs_vertex_stride_amd:
       assert(sel->screen->info.gfx_level >= GFX9);
-      replacement = shader->is_monolithic ?
-         nir_imm_int(b, key->ge.part.gs.es->info.esgs_vertex_stride / 4) :
-         GET_FIELD_NIR(GS_STATE_ESGS_VERTEX_STRIDE);
+      if (shader->is_monolithic) {
+         replacement = nir_imm_int(b, key->ge.part.gs.es->info.esgs_vertex_stride / 4);
+      } else {
+         nir_def *num_es_outputs = GET_FIELD_NIR(GS_STATE_NUM_ES_OUTPUTS);
+         replacement = nir_iadd_imm(b, nir_imul_imm(b, num_es_outputs, 4), 1);
+      }
       break;
    case nir_intrinsic_load_tcs_num_patches_amd: {
       nir_def *tmp = ac_nir_unpack_arg(b, &args->ac, args->tcs_offchip_layout, 0, 6);
