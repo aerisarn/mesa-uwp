@@ -645,6 +645,14 @@ write_xfb(nir_builder *b, struct lower_gs_state *state, unsigned stream,
          unsigned v = (verts - 1) - vert;
          nir_def *value = nir_load_var(b, state->outputs[output.location][v]);
 
+         /* In case output.component_mask contains invalid components, write
+          * out zeroes instead of blowing up validation.
+          *
+          * KHR-Single-GL44.enhanced_layouts.xfb_capture_inactive_output_component
+          * hits this.
+          */
+         value = nir_pad_vector_imm_int(b, value, 0, 4);
+
          nir_store_global(b, addr, 4,
                           nir_channels(b, value, output.component_mask),
                           nir_component_mask(count));
