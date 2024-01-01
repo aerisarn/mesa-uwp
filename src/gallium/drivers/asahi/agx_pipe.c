@@ -1835,8 +1835,12 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
       return shader == PIPE_SHADER_VERTEX ? 16 : 32;
 
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
+      /* For vertex, the spec min/max is 16. We need more to handle dmat3
+       * correctly, though. The full 32 is undesirable since it would require
+       * shenanigans to handle.
+       */
       return shader == PIPE_SHADER_FRAGMENT ? 8
-             : shader == PIPE_SHADER_VERTEX ? 16
+             : shader == PIPE_SHADER_VERTEX ? 24
                                             : 32;
 
    case PIPE_SHADER_CAP_MAX_TEMPS:
