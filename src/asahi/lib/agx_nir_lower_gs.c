@@ -641,9 +641,13 @@ write_xfb(nir_builder *b, struct lower_gs_state *state, unsigned stream,
 
          /* We write out the vertices backwards, since 0 is the current
           * emitted vertex (which is actually the last vertex).
+          *
+          * We handle NULL var for
+          * KHR-Single-GL44.enhanced_layouts.xfb_capture_struct.
           */
          unsigned v = (verts - 1) - vert;
-         nir_def *value = nir_load_var(b, state->outputs[output.location][v]);
+         nir_variable *var = state->outputs[output.location][v];
+         nir_def *value = var ? nir_load_var(b, var) : nir_undef(b, 4, 32);
 
          /* In case output.component_mask contains invalid components, write
           * out zeroes instead of blowing up validation.
