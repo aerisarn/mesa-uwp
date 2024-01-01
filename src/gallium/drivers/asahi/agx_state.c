@@ -2321,7 +2321,6 @@ agx_update_fs(struct agx_batch *batch)
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
       .nr_samples = nr_samples,
       .layered = util_framebuffer_get_num_layers(&batch->key) > 1,
-      .multisample = msaa,
 
       /* Only lower sample mask if at least one sample is masked out */
       .api_sample_mask =
@@ -2340,7 +2339,7 @@ agx_update_fs(struct agx_batch *batch)
    memcpy(&key.blend, ctx->blend, sizeof(key.blend));
 
    /* Normalize key */
-   if (!key.multisample)
+   if (!msaa)
       key.blend.alpha_to_coverage = false;
 
    return agx_update_shader(ctx, &ctx->fs, PIPE_SHADER_FRAGMENT,
