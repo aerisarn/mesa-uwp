@@ -120,6 +120,9 @@ struct PACKED agx_draw_uniforms {
    /* gl_DrawID for a direct multidraw */
    uint32_t draw_id;
 
+   /* Sprite coord replacement mask */
+   uint16_t sprite_mask;
+
    /* glSampleMask */
    uint16_t sample_mask;
 
@@ -381,9 +384,6 @@ struct asahi_vs_shader_key {
 struct asahi_fs_shader_key {
    struct agx_blend blend;
    unsigned nr_cbufs;
-
-   /* From rasterizer state, to lower point sprites */
-   uint16_t sprite_coord_enable;
 
    /* Set if glSampleMask() is used with a mask other than all-1s. If not, we
     * don't want to emit lowering code for it, since it would disable early-Z.

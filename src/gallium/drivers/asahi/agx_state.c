@@ -1580,6 +1580,7 @@ agx_num_general_outputs(struct agx_varyings_vs *vs)
 static uint32_t
 agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
                         struct agx_varyings_fs *fs, bool first_provoking_vertex,
+                        uint8_t sprite_coord_enable,
                         bool *generate_primitive_id)
 {
    *generate_primitive_id = false;
@@ -1609,7 +1610,8 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
          cfg.shade_model =
             agx_translate_shade_model(fs, i, first_provoking_vertex);
 
-         if (fs->bindings[i].slot == VARYING_SLOT_PNTC) {
+         if (util_varying_is_point_coord(fs->bindings[i].slot,
+                                         sprite_coord_enable)) {
             assert(fs->bindings[i].offset == 0);
             cfg.source = AGX_COEFFICIENT_SOURCE_POINT_COORD;
          } else if (fs->bindings[i].slot == VARYING_SLOT_PRIMITIVE_ID &&
@@ -1671,6 +1673,56 @@ agx_nir_lower_clip_m1_1(nir_builder *b, nir_intrinsic_instr *intr,
 
    nir_def *new_z = nir_fmul_imm(b, nir_fadd(b, z, w), 0.5f);
    nir_src_rewrite(&intr->src[0], nir_vector_insert_imm(b, pos, new_z, 2));
+   return true;
+}
+
+static nir_def *
+nir_channel_or_undef(nir_builder *b, nir_def *def, signed int channel)
+{
+   if (channel >= 0 && channel < def->num_components)
+      return nir_channel(b, def, channel);
+   else
+      return nir_undef(b, def->bit_size, 1);
+}
+
+/*
+ * To implement point sprites, we'll replace TEX0...7 with point coordinate
+ * reads as required. However, the .zw needs to read back 0.0/1.0. This pass
+ * fixes up TEX loads of Z and W according to a uniform passed in a sideband,
+ * eliminating shader variants.
+ */
+static bool
+agx_nir_lower_point_sprite_zw(nir_builder *b, nir_intrinsic_instr *intr,
+                              UNUSED void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_input &&
+       intr->intrinsic != nir_intrinsic_load_interpolated_input)
+      return false;
+
+   gl_varying_slot loc = nir_intrinsic_io_semantics(intr).location;
+   if (!(loc >= VARYING_SLOT_TEX0 && loc <= VARYING_SLOT_TEX7))
+      return false;
+
+   b->cursor = nir_after_instr(&intr->instr);
+   unsigned component = nir_intrinsic_component(intr);
+
+   nir_def *mask = nir_load_tex_sprite_mask_agx(b);
+   nir_def *location = nir_iadd_imm(b, nir_get_io_offset_src(intr)->ssa,
+                                    loc - VARYING_SLOT_TEX0);
+   nir_def *bit = nir_ishl(b, nir_imm_intN_t(b, 1, 16), location);
+   nir_def *replace = nir_i2b(b, nir_iand(b, mask, bit));
+
+   nir_def *vec = nir_pad_vec4(b, &intr->def);
+   nir_def *chans[4] = {NULL, NULL, nir_imm_float(b, 0.0),
+                        nir_imm_float(b, 1.0)};
+
+   for (unsigned i = 0; i < 4; ++i) {
+      nir_def *chan = nir_channel_or_undef(b, vec, i - component);
+      chans[i] = chans[i] ? nir_bcsel(b, replace, chans[i], chan) : chan;
+   }
+
+   nir_def *new_vec = nir_vec(b, &chans[component], intr->def.num_components);
+   nir_def_rewrite_uses_after(&intr->def, new_vec, new_vec->parent_instr);
    return true;
 }
 
@@ -1871,12 +1923,6 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
                     .api_sample_mask = key->api_sample_mask,
                  });
 
-      if (key->sprite_coord_enable) {
-         NIR_PASS_V(nir, nir_lower_texcoord_replace_late,
-                    key->sprite_coord_enable,
-                    false /* point coord is sysval */);
-      }
-
       NIR_PASS_V(nir, agx_nir_predicate_layer_id);
    }
 
@@ -2003,6 +2049,13 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
    bool allow_mediump = !(dev->debug & AGX_DBG_NO16);
    agx_preprocess_nir(nir, dev->libagx, allow_mediump, &so->info);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+       (nir->info.inputs_read & VARYING_BITS_TEX_ANY)) {
+
+      NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_nir_lower_point_sprite_zw,
+                 nir_metadata_block_index | nir_metadata_dominance, NULL);
+   }
 
    blob_init(&so->serialized_nir);
    nir_serialize(&so->serialized_nir, nir, true);
@@ -2326,9 +2379,6 @@ agx_update_fs(struct agx_batch *batch)
       .api_sample_mask =
          msaa && (~ctx->sample_mask & BITFIELD_MASK(nr_samples)),
    };
-
-   if (batch->reduced_prim == MESA_PRIM_POINTS)
-      key.sprite_coord_enable = ctx->rast->base.sprite_coord_enable;
 
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
       struct pipe_surface *surf = batch->key.cbufs[i];
@@ -3135,10 +3185,14 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
 
    bool varyings_dirty = false;
 
-   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
+   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS) ||
+       IS_DIRTY(PRIM)) {
       batch->varyings = agx_link_varyings_vs_fs(
          &batch->pipeline_pool, &vs->info.varyings.vs,
          &ctx->fs->info.varyings.fs, ctx->rast->base.flatshade_first,
+         (batch->reduced_prim == MESA_PRIM_POINTS)
+            ? ctx->rast->base.sprite_coord_enable
+            : 0,
          &batch->generate_primitive_id);
 
       varyings_dirty = true;
@@ -4247,7 +4301,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    if (IS_DIRTY(VS) || IS_DIRTY(FS) || ctx->gs || IS_DIRTY(VERTEX) ||
-       IS_DIRTY(BLEND_COLOR) || IS_DIRTY(RS)) {
+       IS_DIRTY(BLEND_COLOR) || IS_DIRTY(RS) || IS_DIRTY(PRIM)) {
 
       agx_upload_uniforms(batch);
    }

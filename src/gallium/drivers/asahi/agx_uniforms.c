@@ -69,6 +69,10 @@ agx_upload_uniforms(struct agx_batch *batch)
    batch->uniforms.tables[AGX_SYSVAL_TABLE_ROOT] = root_ptr.gpu;
    batch->uniforms.sample_mask = ctx->sample_mask;
 
+   batch->uniforms.sprite_mask = (batch->reduced_prim == MESA_PRIM_POINTS)
+                                    ? ctx->rast->base.sprite_coord_enable
+                                    : 0;
+
    memcpy(root_ptr.cpu, &batch->uniforms, sizeof(batch->uniforms));
 }
 

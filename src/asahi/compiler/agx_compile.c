@@ -100,12 +100,13 @@ agx_get_cf(agx_context *ctx, bool smooth, bool perspective,
     * Y alone.
     */
    bool is_pntc = (slot == VARYING_SLOT_PNTC);
+   bool is_tex = slot >= VARYING_SLOT_TEX0 && slot <= VARYING_SLOT_TEX7;
    unsigned cf_offset = 0;
 
-   if (is_pntc) {
+   if (is_pntc || is_tex) {
       cf_offset = offset;
       offset = 0;
-      count = MAX2(2, count + offset);
+      count = is_tex ? 4 : MAX2(2, count + offset);
    }
 
    /* First, search for an appropriate binding. This is O(n) to the number of
