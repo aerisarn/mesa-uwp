@@ -1234,7 +1234,7 @@ target_is_array(enum pipe_texture_target target)
 static void
 agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
                      struct pipe_image_view *view, bool block_access,
-                     bool arrays_as_2d)
+                     bool arrays_as_2d, bool force_2d_array)
 {
    struct agx_resource *tex = agx_resource(view->resource);
    const struct util_format_description *desc =
@@ -1252,7 +1252,8 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
     *
     * Likewise, cubes are accessed as arrays for consistency with NIR.
     */
-   if ((arrays_as_2d && target_is_array(target)) || target_is_cube(target))
+   if ((arrays_as_2d && target_is_array(target)) || target_is_cube(target) ||
+       force_2d_array)
       target = PIPE_TEXTURE_2D_ARRAY;
 
    unsigned level = is_buffer ? 0 : view->u.tex.level;
@@ -1780,7 +1781,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
       struct asahi_fs_shader_key *key = &key_->fs;
 
       struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
-         key->rt_formats, key->nr_cbufs, key->nr_samples, key->layered);
+         key->rt_formats, key->nr_cbufs, key->nr_samples, true);
 
       if (dev->debug & AGX_DBG_SMALLTILE)
          tib.tile_size = (struct agx_tile_size){16, 16};
@@ -2320,7 +2321,6 @@ agx_update_fs(struct agx_batch *batch)
          ctx->stage[MESA_SHADER_VERTEX].shader->info.cull_distance_size,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
       .nr_samples = nr_samples,
-      .layered = util_framebuffer_get_num_layers(&batch->key) > 1,
 
       /* Only lower sample mask if at least one sample is masked out */
       .api_sample_mask =
@@ -2517,9 +2517,10 @@ agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
       struct agx_resource *rsrc = agx_resource(surf->texture);
       struct pipe_image_view view = image_view_for_surface(surf);
       struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
+      sampler_view.target = PIPE_TEXTURE_2D_ARRAY;
 
       agx_pack_texture(texture, rsrc, surf->format, &sampler_view);
-      agx_batch_upload_pbe(batch, pbe, &view, false, true);
+      agx_batch_upload_pbe(batch, pbe, &view, false, false, true);
    }
 }
 
@@ -2588,7 +2589,7 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
 
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
                        &sampler_view);
-      agx_batch_upload_pbe(batch, pbe, view, false, false);
+      agx_batch_upload_pbe(batch, pbe, view, false, false, false);
    }
 
    if (stage == PIPE_SHADER_FRAGMENT &&
@@ -2878,7 +2879,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          /* The tilebuffer is already in sRGB space if needed. Do not convert */
          view.format = util_format_linear(view.format);
 
-         agx_batch_upload_pbe(batch, pbe.cpu, &view, true, true);
+         agx_batch_upload_pbe(batch, pbe.cpu, &view, true, true, false);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
