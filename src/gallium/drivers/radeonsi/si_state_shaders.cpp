@@ -2131,14 +2131,14 @@ void si_vs_key_update_inputs(struct si_context *sctx)
    if (vs->info.base.vs.blit_sgprs_amd) {
       si_clear_vs_key_inputs(sctx, key, &key->ge.part.vs.prolog);
       key->ge.opt.prefer_mono = 0;
-      sctx->uses_nontrivial_vs_prolog = false;
+      sctx->uses_nontrivial_vs_inputs = false;
       return;
    }
 
-   bool uses_nontrivial_vs_prolog = false;
+   bool uses_nontrivial_vs_inputs = false;
 
    if (elts->instance_divisor_is_one || elts->instance_divisor_is_fetched)
-      uses_nontrivial_vs_prolog = true;
+      uses_nontrivial_vs_inputs = true;
 
    key->ge.part.vs.prolog.instance_divisor_is_one = elts->instance_divisor_is_one;
    key->ge.part.vs.prolog.instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
@@ -2171,24 +2171,24 @@ void si_vs_key_update_inputs(struct si_context *sctx)
 
       key->ge.mono.vs_fix_fetch[i].bits = fix_fetch;
       if (fix_fetch)
-         uses_nontrivial_vs_prolog = true;
+         uses_nontrivial_vs_inputs = true;
    }
    key->ge.mono.vs_fetch_opencode = opencode;
    if (opencode)
-      uses_nontrivial_vs_prolog = true;
+      uses_nontrivial_vs_inputs = true;
 
-   sctx->uses_nontrivial_vs_prolog = uses_nontrivial_vs_prolog;
+   sctx->uses_nontrivial_vs_inputs = uses_nontrivial_vs_inputs;
 
    /* draw_vertex_state (display lists) requires a trivial VS prolog that ignores
     * the current vertex buffers and vertex elements.
     *
-    * We just computed the prolog key because we needed to set uses_nontrivial_vs_prolog,
+    * We just computed the prolog key because we needed to set uses_nontrivial_vs_inputs,
     * so that we know whether the VS prolog should be updated when we switch from
     * draw_vertex_state to draw_vbo. Now clear the VS prolog for draw_vertex_state.
     * This should happen rarely because the VS prolog should be trivial in most
     * cases.
     */
-   if (uses_nontrivial_vs_prolog && sctx->force_trivial_vs_prolog)
+   if (uses_nontrivial_vs_inputs && sctx->force_trivial_vs_inputs)
       si_clear_vs_key_inputs(sctx, key, &key->ge.part.vs.prolog);
 }
 

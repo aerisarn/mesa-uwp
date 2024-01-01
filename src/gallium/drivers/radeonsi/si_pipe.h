@@ -1122,8 +1122,8 @@ struct si_context {
    struct si_vertex_elements *vertex_elements;
    unsigned num_vertex_elements;
    unsigned cs_max_waves_per_sh;
-   bool uses_nontrivial_vs_prolog;
-   bool force_trivial_vs_prolog;
+   bool uses_nontrivial_vs_inputs;
+   bool force_trivial_vs_inputs;
    bool do_update_shaders;
    bool compute_shaderbuf_sgprs_dirty;
    bool compute_image_sgprs_dirty;
