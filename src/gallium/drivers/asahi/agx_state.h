@@ -382,7 +382,6 @@ struct asahi_vs_shader_key {
 
 struct asahi_fs_shader_key {
    struct agx_blend blend;
-   unsigned nr_cbufs;
 
    /* Set if glSampleMask() is used with a mask other than all-1s. If not, we
     * don't want to emit lowering code for it, since it would disable early-Z.

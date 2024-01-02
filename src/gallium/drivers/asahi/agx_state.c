@@ -1829,7 +1829,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
       struct asahi_fs_shader_key *key = &key_->fs;
 
       struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
-         key->rt_formats, key->nr_cbufs, key->nr_samples, true);
+         key->rt_formats, ARRAY_SIZE(key->rt_formats), key->nr_samples, true);
 
       if (dev->debug & AGX_DBG_SMALLTILE)
          tib.tile_size = (struct agx_tile_size){16, 16};
@@ -1871,9 +1871,8 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
           * care of this for its own colormasks input.
           */
          unsigned comps = util_format_get_nr_components(key->rt_formats[i]);
-         if (i < key->nr_cbufs &&
-             (opts.rt[i].colormask & BITFIELD_MASK(comps)) !=
-                BITFIELD_MASK(comps))
+         if ((opts.rt[i].colormask & BITFIELD_MASK(comps)) !=
+             BITFIELD_MASK(comps))
             force_translucent = true;
       }
 
@@ -2121,10 +2120,9 @@ agx_create_shader_state(struct pipe_context *pctx,
          return so;
 
       case PIPE_SHADER_FRAGMENT:
-         key.fs.nr_cbufs = 1;
          key.fs.nr_samples = 1;
          key.fs.blend.logicop_func = PIPE_LOGICOP_COPY;
-         for (unsigned i = 0; i < key.fs.nr_cbufs; ++i) {
+         for (unsigned i = 0; i < 1; ++i) {
             key.fs.rt_formats[i] = PIPE_FORMAT_R8G8B8A8_UNORM;
             key.fs.blend.rt[i].colormask = 0xF;
 
@@ -2366,7 +2364,6 @@ agx_update_fs(struct agx_batch *batch)
    bool msaa = ctx->rast->base.multisample;
 
    struct asahi_fs_shader_key key = {
-      .nr_cbufs = batch->key.nr_cbufs,
       .cull_distance_size =
          ctx->stage[MESA_SHADER_VERTEX].shader->info.cull_distance_size,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
@@ -2377,7 +2374,7 @@ agx_update_fs(struct agx_batch *batch)
          msaa && (~ctx->sample_mask & BITFIELD_MASK(nr_samples)),
    };
 
-   for (unsigned i = 0; i < key.nr_cbufs; ++i) {
+   for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
       struct pipe_surface *surf = batch->key.cbufs[i];
 
       key.rt_formats[i] = surf ? surf->format : PIPE_FORMAT_NONE;
