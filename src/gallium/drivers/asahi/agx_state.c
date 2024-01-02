@@ -32,6 +32,7 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 #include "util/bitset.h"
+#include "util/blend.h"
 #include "util/blob.h"
 #include "util/compiler.h"
 #include "util/format/u_format.h"
@@ -192,18 +193,15 @@ agx_create_blend_state(struct pipe_context *ctx,
    so->alpha_to_coverage = state->alpha_to_coverage;
    so->alpha_to_one = state->alpha_to_one;
 
-   if (state->logicop_enable) {
-      so->logicop_enable = true;
-      so->logicop_func = state->logicop_func;
-   }
+   so->logicop_func =
+      state->logicop_enable ? state->logicop_func : PIPE_LOGICOP_COPY;
 
    for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
       unsigned rti = state->independent_blend_enable ? i : 0;
       struct pipe_rt_blend_state rt = state->rt[rti];
 
-      if (state->logicop_enable) {
+      if (state->logicop_enable || !rt.blend_enable) {
          /* No blending, but we get the colour mask below */
-      } else if (!rt.blend_enable) {
          static const nir_lower_blend_channel replace = {
             .func = PIPE_BLEND_ADD,
             .src_factor = PIPE_BLENDFACTOR_ONE,
@@ -1838,7 +1836,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
 
       nir_lower_blend_options opts = {
          .scalar_blend_const = true,
-         .logicop_enable = key->blend.logicop_enable,
+         .logicop_enable = key->blend.logicop_func != PIPE_LOGICOP_COPY,
          .logicop_func = key->blend.logicop_func,
       };
 
@@ -2125,6 +2123,7 @@ agx_create_shader_state(struct pipe_context *pctx,
       case PIPE_SHADER_FRAGMENT:
          key.fs.nr_cbufs = 1;
          key.fs.nr_samples = 1;
+         key.fs.blend.logicop_func = PIPE_LOGICOP_COPY;
          for (unsigned i = 0; i < key.fs.nr_cbufs; ++i) {
             key.fs.rt_formats[i] = PIPE_FORMAT_R8G8B8A8_UNORM;
             key.fs.blend.rt[i].colormask = 0xF;
