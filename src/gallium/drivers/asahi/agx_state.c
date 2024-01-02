@@ -1787,7 +1787,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       struct asahi_vs_shader_key *key = &key_->vs;
 
-      NIR_PASS_V(nir, agx_nir_lower_vbo, &key->vbuf);
+      NIR_PASS_V(nir, agx_nir_lower_vbo, key->attribs);
       NIR_PASS_V(nir, agx_nir_lower_point_size, key->program_point_size);
 
       if (should_lower_clip_m1_1(dev, key->clip_halfz)) {
@@ -1810,7 +1810,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
       nir_shader *vs = nir_deserialize(NULL, &agx_nir_options, &vs_reader);
 
       /* Apply the VS key to the VS before linking it in */
-      NIR_PASS_V(vs, agx_nir_lower_vbo, &key->vbuf);
+      NIR_PASS_V(vs, agx_nir_lower_vbo, key->attribs);
       NIR_PASS_V(vs, agx_nir_lower_ia, &key->ia);
 
       NIR_PASS_V(vs, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
@@ -2105,7 +2105,7 @@ agx_create_shader_state(struct pipe_context *pctx,
       switch (so->type) {
       case PIPE_SHADER_VERTEX: {
          for (unsigned i = 0; i < AGX_MAX_VBUFS; ++i) {
-            key.vs.vbuf.attributes[i] = (struct agx_attribute){
+            key.vs.attribs[i] = (struct agx_attribute){
                .buf = i,
                .stride = 16,
                .format = PIPE_FORMAT_R32G32B32A32_FLOAT,
@@ -2267,8 +2267,8 @@ agx_update_vs(struct agx_context *ctx)
          ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_linear_shaded,
    };
 
-   memcpy(key.vbuf.attributes, ctx->attributes,
-          sizeof(key.vbuf.attributes[0]) * AGX_MAX_ATTRIBS);
+   memcpy(key.attribs, ctx->attributes,
+          sizeof(key.attribs[0]) * AGX_MAX_ATTRIBS);
 
    return agx_update_shader(ctx, &ctx->vs, PIPE_SHADER_VERTEX,
                             (union asahi_shader_key *)&key);
@@ -2325,8 +2325,8 @@ agx_update_gs(struct agx_context *ctx, const struct pipe_draw_info *info,
       .rasterizer_discard = ctx->rast->base.rasterizer_discard,
    };
 
-   memcpy(key.vbuf.attributes, ctx->attributes,
-          sizeof(key.vbuf.attributes[0]) * AGX_MAX_ATTRIBS);
+   memcpy(key.attribs, ctx->attributes,
+          sizeof(key.attribs[0]) * AGX_MAX_ATTRIBS);
 
    static_assert(sizeof(key.input_nir_sha1) ==
                     sizeof(ctx->stage[PIPE_SHADER_VERTEX].shader->nir_sha1),

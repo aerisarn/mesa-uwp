@@ -376,7 +376,7 @@ struct agx_blend {
 };
 
 struct asahi_vs_shader_key {
-   struct agx_vbufs vbuf;
+   struct agx_attribute attribs[AGX_MAX_VBUFS];
    bool clip_halfz;
    bool program_point_size;
    uint64_t outputs_flat_shaded;
@@ -402,7 +402,7 @@ struct asahi_gs_shader_key {
    struct agx_ia_key ia;
 
    /* Vertex shader key */
-   struct agx_vbufs vbuf;
+   struct agx_attribute attribs[AGX_MAX_VBUFS];
 
    /* If true, this GS is run only for its side effects (including XFB) */
    bool rasterizer_discard;
