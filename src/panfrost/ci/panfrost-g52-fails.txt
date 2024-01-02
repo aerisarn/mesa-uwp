@@ -88,8 +88,6 @@ spec@arb_sample_shading@samplemask 4,Fail
 spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
 spec@arb_separate_shader_objects@atomic counter,Fail
-spec@arb_shader_atomic_counters@semantics,Fail
-spec@arb_shader_atomic_counters@semantics@Fragment shader atomic built-in semantics,Fail
 spec@arb_shader_draw_parameters@drawid-indirect-baseinstance,Fail
 spec@arb_shader_draw_parameters@drawid-indirect-basevertex,Fail
 spec@arb_shader_draw_parameters@drawid-indirect,Fail
@@ -512,6 +510,10 @@ spec@!opengl 3.1@primitive-restart-xfb flush,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail
 spec@!opengl 3.1@primitive-restart-xfb written,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
+
+# https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/858
+spec@arb_shader_atomic_counters@semantics,Fail
+spec@arb_shader_atomic_counters@semantics@Fragment shader atomic built-in semantics,Fail
 
 # The following tests started to fail after CI fix, see
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/16325
