@@ -362,14 +362,17 @@ struct agx_zsa {
    uint32_t load, store;
 };
 
-struct agx_blend {
+struct agx_blend_key {
    nir_lower_blend_rt rt[8];
    unsigned logicop_func;
+   bool alpha_to_coverage, alpha_to_one;
+};
+
+struct agx_blend {
+   struct agx_blend_key key;
 
    /* PIPE_CLEAR_* bitmask corresponding to this blend state */
    uint32_t store;
-
-   bool alpha_to_coverage, alpha_to_one;
 };
 
 struct asahi_vs_shader_key {
@@ -381,7 +384,7 @@ struct asahi_vs_shader_key {
 };
 
 struct asahi_fs_shader_key {
-   struct agx_blend blend;
+   struct agx_blend_key blend;
 
    /* Set if glSampleMask() is used with a mask other than all-1s. If not, we
     * don't want to emit lowering code for it, since it would disable early-Z.

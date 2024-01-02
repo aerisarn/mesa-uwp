@@ -189,11 +189,12 @@ agx_create_blend_state(struct pipe_context *ctx,
                        const struct pipe_blend_state *state)
 {
    struct agx_blend *so = CALLOC_STRUCT(agx_blend);
+   struct agx_blend_key *key = &so->key;
 
-   so->alpha_to_coverage = state->alpha_to_coverage;
-   so->alpha_to_one = state->alpha_to_one;
+   key->alpha_to_coverage = state->alpha_to_coverage;
+   key->alpha_to_one = state->alpha_to_one;
 
-   so->logicop_func =
+   key->logicop_func =
       state->logicop_enable ? state->logicop_func : PIPE_LOGICOP_COPY;
 
    for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
@@ -208,19 +209,19 @@ agx_create_blend_state(struct pipe_context *ctx,
             .dst_factor = PIPE_BLENDFACTOR_ZERO,
          };
 
-         so->rt[i].rgb = replace;
-         so->rt[i].alpha = replace;
+         key->rt[i].rgb = replace;
+         key->rt[i].alpha = replace;
       } else {
-         so->rt[i].rgb.func = rt.rgb_func;
-         so->rt[i].rgb.src_factor = rt.rgb_src_factor;
-         so->rt[i].rgb.dst_factor = rt.rgb_dst_factor;
+         key->rt[i].rgb.func = rt.rgb_func;
+         key->rt[i].rgb.src_factor = rt.rgb_src_factor;
+         key->rt[i].rgb.dst_factor = rt.rgb_dst_factor;
 
-         so->rt[i].alpha.func = rt.alpha_func;
-         so->rt[i].alpha.src_factor = rt.alpha_src_factor;
-         so->rt[i].alpha.dst_factor = rt.alpha_dst_factor;
+         key->rt[i].alpha.func = rt.alpha_func;
+         key->rt[i].alpha.src_factor = rt.alpha_src_factor;
+         key->rt[i].alpha.dst_factor = rt.alpha_dst_factor;
       }
 
-      so->rt[i].colormask = rt.colormask;
+      key->rt[i].colormask = rt.colormask;
 
       if (rt.colormask)
          so->store |= (PIPE_CLEAR_COLOR0 << i);
