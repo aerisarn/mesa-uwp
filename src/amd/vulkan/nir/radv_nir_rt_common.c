@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "radv_rt_common.h"
+#include "nir/radv_nir_rt_common.h"
 #include "bvh/bvh.h"
 #include "radv_debug.h"
 

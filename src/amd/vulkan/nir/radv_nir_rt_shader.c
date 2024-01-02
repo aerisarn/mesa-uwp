@@ -27,9 +27,9 @@
 #include "bvh/bvh.h"
 #include "meta/radv_meta.h"
 #include "nir/radv_nir.h"
+#include "nir/radv_nir_rt_common.h"
 #include "ac_nir.h"
 #include "radv_private.h"
-#include "radv_rt_common.h"
 #include "radv_shader.h"
 
 #include "vk_pipeline.h"
