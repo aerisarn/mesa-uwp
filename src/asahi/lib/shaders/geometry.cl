@@ -35,6 +35,12 @@ libagx_vertex_id_for_topology(enum mesa_prim mode, bool flatshade_first,
          return prim + vert;
    }
 
+   case MESA_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINE_STRIP_ADJACENCY: {
+      /* (i, i + 1) or (i, ..., i + 3) */
+      return prim + vert;
+   }
+
    case MESA_PRIM_TRIANGLE_STRIP: {
       /* Order depends on the provoking vert.
        *
