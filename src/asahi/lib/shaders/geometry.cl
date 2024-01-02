@@ -12,6 +12,17 @@ align(uint x, uint y)
    return (x + 1) & ~(y - 1);
 }
 
+uint64_t
+libagx_xfb_vertex_address(global struct agx_geometry_params *p, uint base_index,
+                          uint vert, uint buffer, uint stride,
+                          uint output_offset)
+{
+   uint index = base_index + vert;
+   uint xfb_offset = (index * stride) + output_offset;
+
+   return (uintptr_t)(p->xfb_base[buffer]) + xfb_offset;
+}
+
 /* TODO: Primitive restart */
 uint
 libagx_vertex_id_for_topology(enum mesa_prim mode, bool flatshade_first,

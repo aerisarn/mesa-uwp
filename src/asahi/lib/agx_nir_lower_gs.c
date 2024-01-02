@@ -631,14 +631,6 @@ write_xfb(nir_builder *b, struct lower_gs_state *state, unsigned stream,
       unsigned count = util_bitcount(output.component_mask);
 
       for (unsigned vert = 0; vert < verts; ++vert) {
-         nir_def *index = nir_iadd_imm(b, base_index, vert);
-
-         nir_def *xfb_offset =
-            nir_iadd_imm(b, nir_imul_imm(b, index, stride), output.offset);
-
-         nir_def *buf = load_geometry_param(b, xfb_base[buffer]);
-         nir_def *addr = nir_iadd(b, buf, nir_u2u64(b, xfb_offset));
-
          /* We write out the vertices backwards, since 0 is the current
           * emitted vertex (which is actually the last vertex).
           *
@@ -656,6 +648,11 @@ write_xfb(nir_builder *b, struct lower_gs_state *state, unsigned stream,
           * hits this.
           */
          value = nir_pad_vector_imm_int(b, value, 0, 4);
+
+         nir_def *addr = libagx_xfb_vertex_address(
+            b, nir_load_geometry_param_buffer_agx(b), base_index,
+            nir_imm_int(b, vert), nir_imm_int(b, buffer),
+            nir_imm_int(b, stride), nir_imm_int(b, output.offset));
 
          nir_store_global(b, addr, 4,
                           nir_channels(b, value, output.component_mask),
