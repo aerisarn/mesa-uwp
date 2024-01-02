@@ -1390,6 +1390,7 @@ struct radv_rendering_state {
    uint32_t color_att_count;
    struct radv_attachment color_att[MAX_RTS];
    struct radv_attachment ds_att;
+   VkImageAspectFlags ds_att_aspects;
    struct radv_attachment vrs_att;
    VkExtent2D vrs_texel_size;
 };
