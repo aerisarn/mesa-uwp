@@ -31,7 +31,7 @@
 
 static nir_def *build_node_to_addr(struct radv_device *device, nir_builder *b, nir_def *node, bool skip_type_and);
 
-void
+static void
 nir_sort_hit_pair(nir_builder *b, nir_variable *var_distances, nir_variable *var_indices, uint32_t chan_1,
                   uint32_t chan_2)
 {
@@ -54,7 +54,7 @@ nir_sort_hit_pair(nir_builder *b, nir_variable *var_distances, nir_variable *var
    nir_pop_if(b, NULL);
 }
 
-nir_def *
+static nir_def *
 intersect_ray_amd_software_box(struct radv_device *device, nir_builder *b, nir_def *bvh_node, nir_def *ray_tmax,
                                nir_def *origin, nir_def *dir, nir_def *inv_dir)
 {
@@ -151,7 +151,7 @@ intersect_ray_amd_software_box(struct radv_device *device, nir_builder *b, nir_d
    return nir_load_var(b, child_indices);
 }
 
-nir_def *
+static nir_def *
 intersect_ray_amd_software_tri(struct radv_device *device, nir_builder *b, nir_def *bvh_node, nir_def *ray_tmax,
                                nir_def *origin, nir_def *dir, nir_def *inv_dir)
 {
@@ -325,7 +325,7 @@ hit_is_opaque(nir_builder *b, nir_def *sbt_offset_and_flags, const struct radv_r
    return opaque;
 }
 
-nir_def *
+static nir_def *
 create_bvh_descriptor(nir_builder *b)
 {
    /* We create a BVH descriptor that covers the entire memory range. That way we can always
