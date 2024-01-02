@@ -41,17 +41,12 @@ extern "C" {
 
 typedef struct glsl_type glsl_type;
 typedef struct glsl_struct_field glsl_struct_field;
-struct _mesa_glsl_parse_state;
-struct glsl_symbol_table;
 
 extern void
 glsl_type_singleton_init_or_ref(void);
 
 extern void
 glsl_type_singleton_decref(void);
-
-extern void
-_mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state);
 
 void encode_type_to_blob(struct blob *blob, const glsl_type *type);
 
