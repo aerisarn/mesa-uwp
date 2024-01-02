@@ -220,8 +220,6 @@ agx_create_blend_state(struct pipe_context *ctx,
          so->rt[i].alpha.func = rt.alpha_func;
          so->rt[i].alpha.src_factor = rt.alpha_src_factor;
          so->rt[i].alpha.dst_factor = rt.alpha_dst_factor;
-
-         so->blend_enable = true;
       }
 
       so->rt[i].colormask = rt.colormask;

@@ -363,7 +363,7 @@ struct agx_zsa {
 };
 
 struct agx_blend {
-   bool logicop_enable, blend_enable;
+   bool logicop_enable;
    nir_lower_blend_rt rt[8];
    unsigned logicop_func;
 
