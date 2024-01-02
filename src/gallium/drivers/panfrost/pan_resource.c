@@ -864,7 +864,7 @@ pan_blit_from_staging(struct pipe_context *pctx,
    blit.mask = util_format_get_mask(blit.src.format);
    blit.filter = PIPE_TEX_FILTER_NEAREST;
 
-   panfrost_blit(pctx, &blit);
+   panfrost_blit_no_afbc_legalization(pctx, &blit);
 }
 
 static void
@@ -884,7 +884,7 @@ pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_transfer *trans)
    blit.mask = util_format_get_mask(blit.dst.format);
    blit.filter = PIPE_TEX_FILTER_NEAREST;
 
-   panfrost_blit(pctx, &blit);
+   panfrost_blit_no_afbc_legalization(pctx, &blit);
 }
 
 static void
@@ -1342,7 +1342,7 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
                   &blit.dst.box);
          blit.src.box = blit.dst.box;
 
-         panfrost_blit(&ctx->base, &blit);
+         panfrost_blit_no_afbc_legalization(&ctx->base, &blit);
       }
    }
 
