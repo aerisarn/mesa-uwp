@@ -22,6 +22,7 @@
 
 #include "r300_nir.h"
 
+#include "compiler/nir/nir_builder.h"
 #include "r300_screen.h"
 
 static unsigned char
@@ -57,6 +58,16 @@ r300_should_vectorize_io(unsigned align, unsigned bit_size,
    return true;
 }
 
+static bool
+set_speculate(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *_)
+{
+   if (intr->intrinsic == nir_intrinsic_load_ubo_vec4) {
+      nir_intrinsic_set_access(intr, nir_intrinsic_access(intr) | ACCESS_CAN_SPECULATE);
+      return true;
+   }
+   return false;
+}
+
 static void
 r300_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
 {
@@ -86,6 +97,10 @@ r300_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
       NIR_PASS(progress, s, nir_opt_dead_write_vars);
 
       NIR_PASS(progress, s, nir_opt_if, nir_opt_if_optimize_phi_true_false);
+      if (is_r500)
+         nir_shader_intrinsics_pass(s, set_speculate,
+                                    nir_metadata_block_index |
+                                    nir_metadata_dominance, NULL);
       NIR_PASS(progress, s, nir_opt_peephole_select, is_r500 ? 8 : ~0, true, true);
       NIR_PASS(progress, s, nir_opt_algebraic);
       NIR_PASS(progress, s, nir_opt_constant_folding);
