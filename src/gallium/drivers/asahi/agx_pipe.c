@@ -1869,10 +1869,13 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
    case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
-   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
       return !is_no16;
    case PIPE_SHADER_CAP_INT16:
       /* GLSL compiler is broken. Flip this on when Panfrost does. */
+      return false;
+   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
+      /* This cap is broken, see 9a38dab2d18 ("zink: disable
+       * PIPE_SHADER_CAP_FP16_CONST_BUFFERS") */
       return false;
 
    case PIPE_SHADER_CAP_INT64_ATOMICS:
