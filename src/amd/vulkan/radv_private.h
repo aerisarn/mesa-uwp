@@ -1847,7 +1847,6 @@ bool radv_cmd_buffer_upload_data(struct radv_cmd_buffer *cmd_buffer, unsigned si
 void radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
                                    const struct radv_graphics_pipeline *pipeline, bool full_null_descriptors,
                                    void *vb_ptr);
-void radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs);
 
 void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples);
 unsigned radv_get_default_max_sample_dist(int log_samples);
