@@ -1625,7 +1625,7 @@ emit_query_flush(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
           * path. Small pools don't need any cache flushes
           * because we use a CP dma clear.
           */
-         si_emit_cache_flush(cmd_buffer);
+         radv_emit_cache_flush(cmd_buffer);
       }
    }
 }
@@ -1935,7 +1935,7 @@ gfx10_copy_gds_query_gfx(struct radv_cmd_buffer *cmd_buffer, uint32_t gds_offset
 {
    /* Make sure GDS is idle before copying the value. */
    cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
-   si_emit_cache_flush(cmd_buffer);
+   radv_emit_cache_flush(cmd_buffer);
 
    gfx10_copy_gds_query(cmd_buffer->cs, gds_offset, va);
 }
@@ -2269,9 +2269,9 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
       }
 
-      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
-                                 V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT, avail_va, 1,
-                                 cmd_buffer->gfx9_eop_bug_va);
+      radv_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                   V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_VALUE_32BIT, avail_va,
+                                   1, cmd_buffer->gfx9_eop_bug_va);
       break;
    }
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
@@ -2432,9 +2432,9 @@ radv_write_timestamp(struct radv_cmd_buffer *cmd_buffer, uint64_t va, VkPipeline
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
    } else {
-      si_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
-                                 V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_TIMESTAMP, va, 0,
-                                 cmd_buffer->gfx9_eop_bug_va);
+      radv_cs_emit_write_event_eop(cs, cmd_buffer->device->physical_device->rad_info.gfx_level, cmd_buffer->qf,
+                                   V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_DATA_SEL_TIMESTAMP, va, 0,
+                                   cmd_buffer->gfx9_eop_bug_va);
    }
 }
 
@@ -2471,7 +2471,7 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
    }
 
-   si_emit_cache_flush(cmd_buffer);
+   radv_emit_cache_flush(cmd_buffer);
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 28 * num_queries);
 
@@ -2502,7 +2502,7 @@ radv_CmdWriteAccelerationStructuresPropertiesKHR(VkCommandBuffer commandBuffer, 
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
 
-   si_emit_cache_flush(cmd_buffer);
+   radv_emit_cache_flush(cmd_buffer);
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 6 * accelerationStructureCount);
 

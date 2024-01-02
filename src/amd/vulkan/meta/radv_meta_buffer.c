@@ -248,7 +248,7 @@ radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
       flush_bits = RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE |
                    radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT, image);
    } else if (size)
-      si_cp_dma_clear_buffer(cmd_buffer, va, size, value);
+      radv_cp_dma_clear_buffer(cmd_buffer, va, size, value);
 
    return flush_bits;
 }
@@ -271,7 +271,7 @@ radv_copy_buffer(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *sr
    else if (use_compute)
       copy_buffer_shader(cmd_buffer, src_va, dst_va, size);
    else if (size)
-      si_cp_dma_buffer_copy(cmd_buffer, src_va, dst_va, size);
+      radv_cp_dma_buffer_copy(cmd_buffer, src_va, dst_va, size);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -326,7 +326,7 @@ radv_update_buffer_cp(struct radv_cmd_buffer *cmd_buffer, uint64_t va, const voi
 
    assert(size < RADV_BUFFER_UPDATE_THRESHOLD);
 
-   si_emit_cache_flush(cmd_buffer);
+   radv_emit_cache_flush(cmd_buffer);
    radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, words + 4);
 
    radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + words, 0));

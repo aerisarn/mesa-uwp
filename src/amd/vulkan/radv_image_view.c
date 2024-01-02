@@ -94,11 +94,11 @@ radv_tex_dim(VkImageType image_type, VkImageViewType view_type, unsigned nr_laye
 }
 
 void
-si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *image,
-                               const struct legacy_surf_level *base_level_info, unsigned plane_id, unsigned base_level,
-                               unsigned first_level, unsigned block_width, bool is_stencil, bool is_storage_image,
-                               bool disable_compression, bool enable_write_compression, uint32_t *state,
-                               const struct ac_surf_nbc_view *nbc_view)
+radv_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *image,
+                                 const struct legacy_surf_level *base_level_info, unsigned plane_id,
+                                 unsigned base_level, unsigned first_level, unsigned block_width, bool is_stencil,
+                                 bool is_storage_image, bool disable_compression, bool enable_write_compression,
+                                 uint32_t *state, const struct ac_surf_nbc_view *nbc_view)
 {
    struct radv_image_plane *plane = &image->planes[plane_id];
    struct radv_image_binding *binding = image->disjoint ? &image->bindings[plane_id] : &image->bindings[0];
@@ -224,7 +224,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
    } else {
       /* GFX6-GFX8 */
       unsigned pitch = base_level_info->nblk_x * block_width;
-      unsigned index = si_tile_mode_index(plane, base_level, is_stencil);
+      unsigned index = radv_tile_mode_index(plane, base_level, is_stencil);
 
       state[3] &= C_008F1C_TILING_INDEX;
       state[3] |= S_008F1C_TILING_INDEX(index);
@@ -696,10 +696,10 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
    bool enable_write_compression = radv_image_use_dcc_image_stores(device, image);
    if (is_storage_image && !(enable_write_compression || enable_compression))
       disable_compression = true;
-   si_set_mutable_tex_desc_fields(device, image, base_level_info, plane_id, iview->vk.base_mip_level,
-                                  iview->vk.base_mip_level, blk_w, is_stencil, is_storage_image, disable_compression,
-                                  enable_write_compression, descriptor->plane_descriptors[descriptor_plane_id],
-                                  nbc_view);
+   radv_set_mutable_tex_desc_fields(device, image, base_level_info, plane_id, iview->vk.base_mip_level,
+                                    iview->vk.base_mip_level, blk_w, is_stencil, is_storage_image, disable_compression,
+                                    enable_write_compression, descriptor->plane_descriptors[descriptor_plane_id],
+                                    nbc_view);
 }
 
 /**

@@ -426,7 +426,7 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device, struct radv_image
 }
 
 static uint32_t
-si_get_bo_metadata_word1(const struct radv_device *device)
+radv_get_bo_metadata_word1(const struct radv_device *device)
 {
    return (ATI_VENDOR_ID << 16) | device->physical_device->rad_info.pci_id;
 }
@@ -434,7 +434,7 @@ si_get_bo_metadata_word1(const struct radv_device *device)
 static bool
 radv_is_valid_opaque_metadata(const struct radv_device *device, const struct radeon_bo_metadata *md)
 {
-   if (md->metadata[0] != 1 || md->metadata[1] != si_get_bo_metadata_word1(device))
+   if (md->metadata[0] != 1 || md->metadata[1] != radv_get_bo_metadata_word1(device))
       return false;
 
    if (md->size_metadata < 40)
@@ -749,8 +749,8 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
                                 &fixedmapping, 0, image->vk.mip_levels - 1, 0, image->vk.array_layers - 1, plane_width,
                                 plane_height, image->vk.extent.depth, 0.0f, desc, NULL, 0, NULL, NULL);
 
-   si_set_mutable_tex_desc_fields(device, image, base_level_info, plane_id, 0, 0, surface->blk_w, false, false, false,
-                                  false, desc, NULL);
+   radv_set_mutable_tex_desc_fields(device, image, base_level_info, plane_id, 0, 0, surface->blk_w, false, false, false,
+                                    false, desc, NULL);
 
    ac_surface_compute_umd_metadata(&device->physical_device->rad_info, surface, image->vk.mip_levels, desc,
                                    &md->size_metadata, md->metadata,
@@ -1547,7 +1547,7 @@ radv_image_is_renderable(const struct radv_device *device, const struct radv_ima
 }
 
 unsigned
-si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil)
+radv_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil)
 {
    if (stencil)
       return plane->surface.u.legacy.zs.stencil_tiling_index[level];

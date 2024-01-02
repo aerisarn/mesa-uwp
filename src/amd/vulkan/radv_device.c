@@ -1561,7 +1561,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 
       pitch_tile_max = level_info->nblk_x / 8 - 1;
       slice_tile_max = (level_info->nblk_x * level_info->nblk_y) / 64 - 1;
-      tile_mode_index = si_tile_mode_index(plane, iview->vk.base_mip_level, false);
+      tile_mode_index = radv_tile_mode_index(plane, iview->vk.base_mip_level, false);
 
       cb->cb_color_pitch = S_028C64_TILE_MAX(pitch_tile_max);
       cb->cb_color_slice = S_028C68_TILE_MAX(slice_tile_max);
@@ -1937,9 +1937,9 @@ radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds_buff
          ds->db_z_info |= S_028040_TILE_SPLIT(G_009910_TILE_SPLIT(tile_mode));
          ds->db_stencil_info |= S_028044_TILE_SPLIT(G_009910_TILE_SPLIT(stencil_tile_mode));
       } else {
-         unsigned tile_mode_index = si_tile_mode_index(&iview->image->planes[0], level, false);
+         unsigned tile_mode_index = radv_tile_mode_index(&iview->image->planes[0], level, false);
          ds->db_z_info |= S_028040_TILE_MODE_INDEX(tile_mode_index);
-         tile_mode_index = si_tile_mode_index(&iview->image->planes[0], level, true);
+         tile_mode_index = radv_tile_mode_index(&iview->image->planes[0], level, true);
          ds->db_stencil_info |= S_028044_TILE_MODE_INDEX(tile_mode_index);
          if (stencil_only)
             ds->db_z_info |= S_028040_TILE_MODE_INDEX(tile_mode_index);
