@@ -12,6 +12,23 @@ align(uint x, uint y)
    return (x + 1) & ~(y - 1);
 }
 
+/* Swap the two non-provoking vertices third vert in odd triangles. This
+ * generates a vertex ID list with a consistent winding order.
+ *
+ * With prim and flatshade_first, the map : [0, 1, 2] -> [0, 1, 2] is its own
+ * inverse. This lets us reuse it for both vertex fetch and transform feedback.
+ */
+uint
+libagx_map_vertex_in_tri_strip(uint prim, uint vert, bool flatshade_first)
+{
+   unsigned pv = flatshade_first ? 0 : 2;
+
+   bool even = (prim & 1) == 0;
+   bool provoking = vert == pv;
+
+   return (provoking || even) ? vert : ((3 - pv) - vert);
+}
+
 uint64_t
 libagx_xfb_vertex_address(global struct agx_geometry_params *p, uint base_index,
                           uint vert, uint buffer, uint stride,
@@ -57,16 +74,10 @@ libagx_vertex_id_for_topology(enum mesa_prim mode, bool flatshade_first,
        *
        * First: (0, 1, 2), (1, 3, 2), (2, 3, 4).
        * Last:  (0, 1, 2), (2, 1, 3), (2, 3, 4).
+       *
+       * Pull the (maybe swapped) vert from the corresponding primitive
        */
-      unsigned pv = flatshade_first ? 0 : 2;
-
-      /* Swap the two non-provoking vertices third vert in odd triangles */
-      bool even = (prim & 1) == 0;
-      bool provoking = vert == pv;
-      uint off = (provoking || even) ? vert : ((3 - pv) - vert);
-
-      /* Pull the (maybe swapped) vert from the corresponding primitive */
-      return prim + off;
+      return prim + libagx_map_vertex_in_tri_strip(prim, vert, flatshade_first);
    }
 
    case MESA_PRIM_TRIANGLE_FAN: {
