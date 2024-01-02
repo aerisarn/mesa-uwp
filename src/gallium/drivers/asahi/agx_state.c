@@ -2104,7 +2104,6 @@ agx_create_shader_state(struct pipe_context *pctx,
 
       switch (so->type) {
       case PIPE_SHADER_VERTEX: {
-         key.vs.vbuf.count = AGX_MAX_VBUFS;
          for (unsigned i = 0; i < AGX_MAX_VBUFS; ++i) {
             key.vs.vbuf.attributes[i] = (struct agx_attribute){
                .buf = i,
@@ -2254,7 +2253,6 @@ agx_update_vs(struct agx_context *ctx)
       rast_prim(ctx->batch->reduced_prim, ctx->rast->base.fill_front);
 
    struct asahi_vs_shader_key key = {
-      .vbuf.count = util_last_bit(ctx->vb_mask),
       .clip_halfz = ctx->rast->base.clip_halfz,
 
       /* If we are not rasterizing points, set program_point_size to eliminate
@@ -2317,8 +2315,6 @@ agx_update_gs(struct agx_context *ctx, const struct pipe_draw_info *info,
 
    /* XXX: Deduplicate this code from regular vertex */
    struct asahi_gs_shader_key key = {
-      .vbuf.count = util_last_bit(ctx->vb_mask),
-
       .ia.index_size = info->index_size,
       .ia.mode = translate_ia_mode(info->mode),
       .ia.flatshade_first =

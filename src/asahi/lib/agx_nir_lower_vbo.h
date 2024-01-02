@@ -32,7 +32,6 @@ struct agx_attribute {
 };
 
 struct agx_vbufs {
-   unsigned count;
    struct agx_attribute attributes[AGX_MAX_ATTRIBS];
 };
 
