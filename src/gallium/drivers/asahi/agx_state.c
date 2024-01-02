@@ -55,6 +55,7 @@
 #include "nir_builder_opcodes.h"
 #include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
+#include "nir_xfb_info.h"
 #include "pool.h"
 
 void
@@ -2059,6 +2060,18 @@ agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
                       so->nir_sha1);
 
    so->has_xfb_info = (nir->xfb_info != NULL);
+
+   static_assert(
+      ARRAY_SIZE(so->xfb_strides) == ARRAY_SIZE(nir->info.xfb_stride),
+      "known target count");
+
+   if (so->has_xfb_info) {
+      struct nir_xfb_info *xfb = nir->xfb_info;
+
+      for (unsigned i = 0; i < ARRAY_SIZE(so->xfb_strides); ++i) {
+         so->xfb_strides[i] = xfb->buffers[i].stride;
+      }
+   }
 }
 
 static void *
@@ -4201,6 +4214,22 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    } else if (ctx->stage[PIPE_SHADER_VERTEX].dirty ||
               (ctx->dirty & AGX_DIRTY_VERTEX))
       ctx->dirty |= AGX_DIRTY_VS;
+
+   /* Transform feedback always happens via the geometry shader, so look there
+    * to get the XFB strides.
+    */
+   if (ctx->stage[PIPE_SHADER_GEOMETRY].shader) {
+      struct agx_uncompiled_shader *gs =
+         ctx->stage[PIPE_SHADER_GEOMETRY].shader;
+
+      for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+         struct agx_streamout_target *tgt =
+            agx_so_target(ctx->streamout.targets[i]);
+
+         if (tgt != NULL)
+            tgt->stride = gs->xfb_strides[i];
+      }
+   }
 
    agx_update_gs(ctx, info, indirect);
 

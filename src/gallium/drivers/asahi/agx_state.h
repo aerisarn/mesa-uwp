@@ -42,6 +42,9 @@
 struct agx_streamout_target {
    struct pipe_stream_output_target base;
    struct pipe_resource *offset;
+
+   /* Current stride (bytes per vertex) */
+   uint32_t stride;
 };
 
 static inline struct agx_streamout_target *
@@ -206,6 +209,8 @@ struct agx_uncompiled_shader {
    struct agx_uncompiled_shader_info info;
    struct hash_table *variants;
    struct agx_uncompiled_shader *passthrough_progs[MESA_PRIM_COUNT][3][2];
+
+   uint32_t xfb_strides[4];
    bool has_xfb_info;
 
    /* Whether the shader accesses indexed samplers via the bindless heap */
