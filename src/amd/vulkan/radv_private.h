@@ -2630,6 +2630,8 @@ unsigned radv_image_queue_family_mask(const struct radv_image *image, enum radv_
 
 bool radv_image_is_renderable(const struct radv_device *device, const struct radv_image *image);
 
+unsigned si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil);
+
 struct radeon_bo_metadata;
 void radv_init_metadata(struct radv_device *device, struct radv_image *image, struct radeon_bo_metadata *metadata);
 

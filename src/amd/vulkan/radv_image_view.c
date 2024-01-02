@@ -93,15 +93,6 @@ radv_tex_dim(VkImageType image_type, VkImageViewType view_type, unsigned nr_laye
    }
 }
 
-static inline unsigned
-si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil)
-{
-   if (stencil)
-      return plane->surface.u.legacy.zs.stencil_tiling_index[level];
-   else
-      return plane->surface.u.legacy.tiling_index[level];
-}
-
 void
 si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *image,
                                const struct legacy_surf_level *base_level_info, unsigned plane_id, unsigned base_level,
