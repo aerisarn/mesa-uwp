@@ -406,11 +406,11 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
  * Build the sampler view descriptor for a texture (SI-GFX9)
  */
 static void
-si_make_texture_descriptor(struct radv_device *device, struct radv_image *image, bool is_storage_image,
-                           VkImageViewType view_type, VkFormat vk_format, const VkComponentMapping *mapping,
-                           unsigned first_level, unsigned last_level, unsigned first_layer, unsigned last_layer,
-                           unsigned width, unsigned height, unsigned depth, float min_lod, uint32_t *state,
-                           uint32_t *fmask_state, VkImageCreateFlags img_create_flags)
+gfx6_make_texture_descriptor(struct radv_device *device, struct radv_image *image, bool is_storage_image,
+                             VkImageViewType view_type, VkFormat vk_format, const VkComponentMapping *mapping,
+                             unsigned first_level, unsigned last_level, unsigned first_layer, unsigned last_layer,
+                             unsigned width, unsigned height, unsigned depth, float min_lod, uint32_t *state,
+                             uint32_t *fmask_state, VkImageCreateFlags img_create_flags)
 {
    const struct util_format_description *desc;
    enum pipe_swizzle swizzle[4];
@@ -619,9 +619,9 @@ radv_make_texture_descriptor(struct radv_device *device, struct radv_image *imag
                                     last_level, first_layer, last_layer, width, height, depth, min_lod, state,
                                     fmask_state, img_create_flags, nbc_view, sliced_3d);
    } else {
-      si_make_texture_descriptor(device, image, is_storage_image, view_type, vk_format, mapping, first_level,
-                                 last_level, first_layer, last_layer, width, height, depth, min_lod, state, fmask_state,
-                                 img_create_flags);
+      gfx6_make_texture_descriptor(device, image, is_storage_image, view_type, vk_format, mapping, first_level,
+                                   last_level, first_layer, last_layer, width, height, depth, min_lod, state,
+                                   fmask_state, img_create_flags);
    }
 }
 
