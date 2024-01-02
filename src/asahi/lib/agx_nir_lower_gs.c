@@ -46,6 +46,9 @@ struct lower_gs_state {
     */
    int count_index[MAX_VERTEX_STREAMS][GS_NUM_COUNTERS];
 
+   /* Provoking vertex mode, required for transform feedback calculations */
+   nir_def *flatshade_first;
+
    bool rasterizer_discard;
 };
 
@@ -597,7 +600,7 @@ verts_in_output_prim(nir_shader *gs)
 
 static void
 write_xfb(nir_builder *b, struct lower_gs_state *state, unsigned stream,
-          nir_def *prim_id_in_invocation)
+          nir_def *index_in_strip, nir_def *prim_id_in_invocation)
 {
    /* If there is no XFB info, there is no XFB */
    struct nir_xfb_info *xfb = b->shader->xfb_info;
@@ -649,10 +652,23 @@ write_xfb(nir_builder *b, struct lower_gs_state *state, unsigned stream,
           */
          value = nir_pad_vector_imm_int(b, value, 0, 4);
 
+         nir_def *rotated_vert = nir_imm_int(b, vert);
+         if (verts == 3) {
+            /* Map vertices for output so we get consistent winding order. For
+             * the primitive index, we use the index_in_strip. This is actually
+             * the vertex index in the strip, hence
+             * offset by 2 relative to the true primitive index (#2 for the
+             * first triangle in the strip, #3 for the second). That's ok
+             * because only the parity matters.
+             */
+            rotated_vert = libagx_map_vertex_in_tri_strip(
+               b, index_in_strip, rotated_vert, state->flatshade_first);
+         }
+
          nir_def *addr = libagx_xfb_vertex_address(
-            b, nir_load_geometry_param_buffer_agx(b), base_index,
-            nir_imm_int(b, vert), nir_imm_int(b, buffer),
-            nir_imm_int(b, stride), nir_imm_int(b, output.offset));
+            b, nir_load_geometry_param_buffer_agx(b), base_index, rotated_vert,
+            nir_imm_int(b, buffer), nir_imm_int(b, stride),
+            nir_imm_int(b, output.offset));
 
          nir_store_global(b, addr, 4,
                           nir_channels(b, value, output.component_mask),
@@ -726,7 +742,8 @@ lower_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
 
    nir_push_if(b, nir_uge_imm(b, index_in_strip, first_prim));
    {
-      write_xfb(b, state, nir_intrinsic_stream_id(intr), intr->src[3].ssa);
+      write_xfb(b, state, nir_intrinsic_stream_id(intr), index_in_strip,
+                intr->src[3].ssa);
    }
    nir_pop_if(b, NULL);
 
@@ -1150,6 +1167,16 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
 
    NIR_PASS_V(gs, nir_shader_instructions_pass, lower_output_to_var,
               nir_metadata_block_index | nir_metadata_dominance, &state);
+
+   /* Set flatshade_first. For now this is always a constant, but in the future
+    * we will want this to be dynamic.
+    */
+   {
+      nir_builder b =
+         nir_builder_at(nir_before_impl(nir_shader_get_entrypoint(gs)));
+
+      gs_state.flatshade_first = nir_imm_bool(&b, ia->flatshade_first);
+   }
 
    NIR_PASS_V(gs, nir_shader_intrinsics_pass, lower_gs_instr, nir_metadata_none,
               &gs_state);
