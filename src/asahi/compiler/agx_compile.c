@@ -3047,6 +3047,20 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    /* Late tilebuffer lowering creates multisampled image stores */
    NIR_PASS(needs_libagx, nir, agx_nir_lower_multisampled_image_store);
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS(needs_libagx, nir, agx_nir_lower_interpolation);
+
+   if (needs_libagx) {
+      link_libagx(nir, key->libagx);
+
+      NIR_PASS_V(nir, nir_opt_deref);
+      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+      NIR_PASS_V(nir, nir_lower_explicit_io,
+                 nir_var_shader_temp | nir_var_function_temp |
+                    nir_var_mem_shared | nir_var_mem_global,
+                 nir_address_format_62bit_generic);
+   }
+
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
    nir_lower_mem_access_bit_sizes_options lower_mem_access_options = {
       .modes = nir_var_mem_ssbo | nir_var_mem_constant |
@@ -3071,20 +3085,6 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    /* Late blend lowering creates vectors */
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
-
-   if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS(needs_libagx, nir, agx_nir_lower_interpolation);
-
-   if (needs_libagx) {
-      link_libagx(nir, key->libagx);
-
-      NIR_PASS_V(nir, nir_opt_deref);
-      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-      NIR_PASS_V(nir, nir_lower_explicit_io,
-                 nir_var_shader_temp | nir_var_function_temp |
-                    nir_var_mem_shared | nir_var_mem_global,
-                 nir_address_format_62bit_generic);
-   }
 
    /* Late VBO lowering creates constant udiv instructions */
    NIR_PASS_V(nir, nir_opt_idiv_const, 16);
