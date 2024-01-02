@@ -1788,7 +1788,7 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
       struct asahi_vs_shader_key *key = &key_->vs;
 
       NIR_PASS_V(nir, agx_nir_lower_vbo, key->attribs);
-      NIR_PASS_V(nir, agx_nir_lower_point_size, key->program_point_size);
+      NIR_PASS_V(nir, agx_nir_lower_point_size, key->fixed_point_size);
 
       if (should_lower_clip_m1_1(dev, key->clip_halfz)) {
          NIR_PASS_V(nir, nir_shader_intrinsics_pass, agx_nir_lower_clip_m1_1,
@@ -2255,11 +2255,11 @@ agx_update_vs(struct agx_context *ctx)
    struct asahi_vs_shader_key key = {
       .clip_halfz = ctx->rast->base.clip_halfz,
 
-      /* If we are not rasterizing points, set program_point_size to eliminate
-       * the useless point size write.
+      /* If we are not rasterizing points, don't set fixed_point_size to
+       * eliminate the useless point size write.
        */
-      .program_point_size = ctx->rast->base.point_size_per_vertex ||
-                            rasterized_prim != MESA_PRIM_POINTS,
+      .fixed_point_size = !ctx->rast->base.point_size_per_vertex &&
+                          rasterized_prim == MESA_PRIM_POINTS,
 
       .outputs_flat_shaded =
          ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_flat_shaded,
