@@ -166,6 +166,8 @@ typedef struct {
    bool disable_streamout;
    bool has_gen_prim_query;
    bool has_xfb_prim_query;
+   bool has_gs_invocations_query;
+   bool has_gs_primitives_query;
    bool kill_pointsize;
    bool kill_layer;
    bool force_vrs;
@@ -268,7 +270,8 @@ ac_nir_lower_legacy_vs(nir_shader *nir,
 bool
 ac_nir_gs_shader_query(nir_builder *b,
                        bool has_gen_prim_query,
-                       bool has_pipeline_stats_query,
+                       bool has_gs_invocations_query,
+                       bool has_gs_primitives_query,
                        unsigned num_vertices_per_primitive,
                        unsigned wave_size,
                        nir_def *vertex_count[4],

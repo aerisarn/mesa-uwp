@@ -1976,6 +1976,8 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       options.gs_out_vtx_bytes = sel->info.gsvs_vertex_size;
       options.has_gen_prim_query = options.has_xfb_prim_query =
          sel->screen->info.gfx_level >= GFX11;
+      options.has_gs_invocations_query = sel->screen->info.gfx_level < GFX11;
+      options.has_gs_primitives_query = true;
 
       /* For monolithic ES/GS to add vscnt wait when GS export pos0. */
       if (key->ge.part.gs.es)

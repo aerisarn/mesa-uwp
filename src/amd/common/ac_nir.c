@@ -898,7 +898,8 @@ ac_nir_accum_ior(nir_builder *b, nir_def *accum_result, nir_def *new_term)
 bool
 ac_nir_gs_shader_query(nir_builder *b,
                        bool has_gen_prim_query,
-                       bool has_pipeline_stats_query,
+                       bool has_gs_invocations_query,
+                       bool has_gs_primitives_query,
                        unsigned num_vertices_per_primitive,
                        unsigned wave_size,
                        nir_def *vertex_count[4],
@@ -913,7 +914,7 @@ ac_nir_gs_shader_query(nir_builder *b,
       any_query_enabled = ac_nir_accum_ior(b, any_query_enabled, prim_gen_query_enabled);
    }
 
-   if (has_pipeline_stats_query) {
+   if (has_gs_invocations_query || has_gs_primitives_query) {
       pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
       any_query_enabled = ac_nir_accum_ior(b, any_query_enabled, pipeline_query_enabled);
    }
@@ -959,7 +960,7 @@ ac_nir_gs_shader_query(nir_builder *b,
    /* Store the query result to query result using an atomic add. */
    nir_if *if_first_lane = nir_push_if(b, nir_elect(b, 1));
    {
-      if (has_pipeline_stats_query) {
+      if (has_gs_invocations_query || has_gs_primitives_query) {
          nir_if *if_pipeline_query = nir_push_if(b, pipeline_query_enabled);
          {
             nir_def *count = NULL;
@@ -974,10 +975,11 @@ ac_nir_gs_shader_query(nir_builder *b,
                }
             }
 
-            if (count)
+            if (has_gs_primitives_query && count)
                nir_atomic_add_gs_emit_prim_count_amd(b, count);
 
-            nir_atomic_add_shader_invocation_count_amd(b, num_active_threads);
+            if (has_gs_invocations_query)
+               nir_atomic_add_shader_invocation_count_amd(b, num_active_threads);
          }
          nir_pop_if(b, if_pipeline_query);
       }
@@ -1236,6 +1238,7 @@ ac_nir_lower_legacy_gs(nir_shader *nir,
    /* Emit shader query for mix use legacy/NGG GS */
    bool progress = ac_nir_gs_shader_query(b,
                                           has_gen_prim_query,
+                                          has_pipeline_stats_query,
                                           has_pipeline_stats_query,
                                           num_vertices_per_primitive,
                                           64,

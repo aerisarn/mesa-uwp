@@ -3573,7 +3573,8 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
    b->cursor = nir_after_cf_list(&if_gs_thread->then_list);
    ac_nir_gs_shader_query(b,
                           state.options->has_gen_prim_query,
-                          state.options->gfx_level < GFX11,
+                          state.options->has_gs_invocations_query,
+                          state.options->has_gs_primitives_query,
                           state.num_vertices_per_primitive,
                           state.options->wave_size,
                           state.vertex_count,

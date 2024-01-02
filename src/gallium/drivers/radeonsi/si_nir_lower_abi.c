@@ -470,12 +470,17 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    }
    case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
    case nir_intrinsic_atomic_add_shader_invocation_count_amd: {
-      nir_def *buf =
-         si_nir_load_internal_binding(b, args, SI_GS_QUERY_EMULATED_COUNTERS_BUF, 4);
-
       enum pipe_statistics_query_index index =
          intrin->intrinsic == nir_intrinsic_atomic_add_gs_emit_prim_count_amd ?
          PIPE_STAT_QUERY_GS_PRIMITIVES : PIPE_STAT_QUERY_GS_INVOCATIONS;
+
+      /* GFX11 only needs to emulate PIPE_STAT_QUERY_GS_PRIMITIVES because GS culls,
+       * which makes the pipeline statistic incorrect.
+       */
+      assert(sel->screen->info.gfx_level < GFX11 || index == PIPE_STAT_QUERY_GS_PRIMITIVES);
+
+      nir_def *buf =
+         si_nir_load_internal_binding(b, args, SI_GS_QUERY_EMULATED_COUNTERS_BUF, 4);
       unsigned offset = si_query_pipestat_end_dw_offset(sel->screen, index) * 4;
 
       nir_def *count = intrin->src[0].ssa;
