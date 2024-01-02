@@ -36,6 +36,8 @@ Third party/extra tools.
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 - `Python <https://www.python.org/>`__ - Python 3.6 or newer is required.
+- Python package ``packaging`` is required on Python 3.12+:
+  ``pip install packaging``
 - `Python Mako module <https://www.makotemplates.org/>`__ - Python Mako
   module is required. Version 0.8.0 or later should work.
 - Lex / Yacc - for building the Mesa IR and GLSL compiler.
