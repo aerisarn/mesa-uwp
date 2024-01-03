@@ -1258,6 +1258,88 @@ vn_graphics_pipeline_state_fill(
    };
 }
 
+static void
+vn_fix_graphics_pipeline_create_info_self(
+   const struct vn_graphics_pipeline_info_self *ignore,
+   const VkGraphicsPipelineCreateInfo *info,
+   struct vn_graphics_pipeline_fix_tmp *fix_tmp,
+   uint32_t index)
+{
+   /* VkGraphicsPipelineCreateInfo */
+   if (ignore->shader_stages) {
+      fix_tmp->infos[index].stageCount = 0;
+      fix_tmp->infos[index].pStages = NULL;
+   }
+   if (ignore->vertex_input_state)
+      fix_tmp->infos[index].pVertexInputState = NULL;
+   if (ignore->input_assembly_state)
+      fix_tmp->infos[index].pInputAssemblyState = NULL;
+   if (ignore->tessellation_state)
+      fix_tmp->infos[index].pTessellationState = NULL;
+   if (ignore->viewport_state)
+      fix_tmp->infos[index].pViewportState = NULL;
+   if (ignore->rasterization_state)
+      fix_tmp->infos[index].pRasterizationState = NULL;
+   if (ignore->multisample_state)
+      fix_tmp->infos[index].pMultisampleState = NULL;
+   if (ignore->depth_stencil_state)
+      fix_tmp->infos[index].pDepthStencilState = NULL;
+   if (ignore->color_blend_state)
+      fix_tmp->infos[index].pColorBlendState = NULL;
+   if (ignore->pipeline_layout)
+      fix_tmp->infos[index].layout = VK_NULL_HANDLE;
+   if (ignore->base_pipeline_handle)
+      fix_tmp->infos[index].basePipelineHandle = VK_NULL_HANDLE;
+
+   /* VkPipelineMultisampleStateCreateInfo */
+   if (ignore->multisample_state_sample_mask) {
+      /* Swap original pMultisampleState with temporary state. */
+      fix_tmp->multisample_state_infos[index] = *info->pMultisampleState;
+      fix_tmp->infos[index].pMultisampleState =
+         &fix_tmp->multisample_state_infos[index];
+
+      fix_tmp->multisample_state_infos[index].pSampleMask = NULL;
+   }
+
+   /* VkPipelineViewportStateCreateInfo */
+   if (ignore->viewport_state_viewports || ignore->viewport_state_scissors) {
+      /* Swap original pViewportState with temporary state. */
+      fix_tmp->viewport_state_infos[index] = *info->pViewportState;
+      fix_tmp->infos[index].pViewportState =
+         &fix_tmp->viewport_state_infos[index];
+
+      if (ignore->viewport_state_viewports)
+         fix_tmp->viewport_state_infos[index].pViewports = NULL;
+      if (ignore->viewport_state_scissors)
+         fix_tmp->viewport_state_infos[index].pScissors = NULL;
+   }
+}
+
+static void
+vn_fix_graphics_pipeline_create_info_pnext(
+   const struct vn_graphics_pipeline_info_pnext *ignore,
+   const VkGraphicsPipelineCreateInfo *info,
+   struct vn_graphics_pipeline_fix_tmp *fix_tmp,
+   uint32_t index)
+{
+   /* VkPipelineRenderingCreateInfo */
+   if (ignore->rendering_info_formats) {
+      /* All format fields are invalid, but the only field that must be
+       * erased is pColorAttachmentFormats because the other
+       * fields are merely VkFormat values. Encoding invalid pointers is
+       * unsafe; encoding invalid VkFormat values is not unsafe.
+       *
+       * However, the fix is difficult because it requires a deep
+       * rewrite of the pNext chain.
+       *
+       * TODO: Fix invalid
+       * VkPipelineRenderingCreateInfo::pColorAttachmentFormats.
+       */
+      vn_log(NULL, "venus may encode array from invalid pointer "
+                   "VkPipelineRenderingCreateInfo::pColorAttachmentFormats");
+   }
+}
+
 static const VkGraphicsPipelineCreateInfo *
 vn_fix_graphics_pipeline_create_infos(
    struct vn_device *dev,
@@ -1291,75 +1373,12 @@ vn_fix_graphics_pipeline_create_infos(
 
    for (uint32_t i = 0; i < info_count; i++) {
       if (fix_descs[i].self.mask) {
-         /* VkGraphicsPipelineCreateInfo */
-         if (fix_descs[i].self.shader_stages) {
-            fix_tmp->infos[i].stageCount = 0;
-            fix_tmp->infos[i].pStages = NULL;
-         }
-         if (fix_descs[i].self.vertex_input_state)
-            fix_tmp->infos[i].pVertexInputState = NULL;
-         if (fix_descs[i].self.input_assembly_state)
-            fix_tmp->infos[i].pInputAssemblyState = NULL;
-         if (fix_descs[i].self.tessellation_state)
-            fix_tmp->infos[i].pTessellationState = NULL;
-         if (fix_descs[i].self.viewport_state)
-            fix_tmp->infos[i].pViewportState = NULL;
-         if (fix_descs[i].self.rasterization_state)
-            fix_tmp->infos[i].pRasterizationState = NULL;
-         if (fix_descs[i].self.multisample_state)
-            fix_tmp->infos[i].pMultisampleState = NULL;
-         if (fix_descs[i].self.depth_stencil_state)
-            fix_tmp->infos[i].pDepthStencilState = NULL;
-         if (fix_descs[i].self.color_blend_state)
-            fix_tmp->infos[i].pColorBlendState = NULL;
-         if (fix_descs[i].self.pipeline_layout)
-            fix_tmp->infos[i].layout = VK_NULL_HANDLE;
-         if (fix_descs[i].self.base_pipeline_handle)
-            fix_tmp->infos[i].basePipelineHandle = VK_NULL_HANDLE;
-
-         /* VkPipelineMultisampleStateCreateInfo */
-         if (fix_descs[i].self.multisample_state_sample_mask) {
-            /* Swap original pMultisampleState with temporary state. */
-            fix_tmp->multisample_state_infos[i] = *infos[i].pMultisampleState;
-            fix_tmp->infos[i].pMultisampleState =
-               &fix_tmp->multisample_state_infos[i];
-
-            fix_tmp->multisample_state_infos[i].pSampleMask = NULL;
-         }
-
-         /* VkPipelineViewportStateCreateInfo */
-         if (fix_descs[i].self.viewport_state_viewports ||
-             fix_descs[i].self.viewport_state_scissors) {
-            /* Swap original pViewportState with temporary state. */
-            fix_tmp->viewport_state_infos[i] = *infos[i].pViewportState;
-            fix_tmp->infos[i].pViewportState =
-               &fix_tmp->viewport_state_infos[i];
-
-            if (fix_descs[i].self.viewport_state_viewports)
-               fix_tmp->viewport_state_infos[i].pViewports = NULL;
-            if (fix_descs[i].self.viewport_state_scissors)
-               fix_tmp->viewport_state_infos[i].pScissors = NULL;
-         }
+         vn_fix_graphics_pipeline_create_info_self(&fix_descs[i].self,
+                                                   &infos[i], fix_tmp, i);
       }
-
       if (fix_descs[i].pnext.mask) {
-         /* VkPipelineRenderingCreateInfo */
-         if (fix_descs[i].pnext.rendering_info_formats) {
-            /* All format fields are invalid, but the only field that must be
-             * erased is pColorAttachmentFormats because the other
-             * fields are merely VkFormat values. Encoding invalid pointers is
-             * unsafe; encoding invalid VkFormat values is not unsafe.
-             *
-             * However, the fix is difficult because it requires a deep
-             * rewrite of the pNext chain.
-             *
-             * TODO: Fix invalid
-             * VkPipelineRenderingCreateInfo::pColorAttachmentFormats.
-             */
-            vn_log(dev->instance,
-                   "venus may encode array from invalid pointer "
-                   "VkPipelineRenderingCreateInfo::pColorAttachmentFormats");
-         }
+         vn_fix_graphics_pipeline_create_info_pnext(&fix_descs[i].pnext,
+                                                    &infos[i], fix_tmp, i);
       }
    }
 
