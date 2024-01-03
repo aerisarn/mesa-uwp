@@ -148,8 +148,7 @@ rm -rf /deqp/external/openglcts/modules/cts-runner
 rm -rf /deqp/modules/internal
 rm -rf /deqp/execserver
 rm -rf /deqp/framework
-# shellcheck disable=SC2038,SC2185 # TODO: rewrite find
-find -iname '*cmake*' -o -name '*ninja*' -o -name '*.o' -o -name '*.a' | xargs rm -rf
+find . -depth \( -iname '*cmake*' -o -name '*ninja*' -o -name '*.o' -o -name '*.a' \) -exec rm -rf {} \;
 ${STRIP_CMD:-strip} external/vulkancts/modules/vulkan/deqp-vk
 ${STRIP_CMD:-strip} external/openglcts/modules/glcts
 ${STRIP_CMD:-strip} modules/*/deqp-*
