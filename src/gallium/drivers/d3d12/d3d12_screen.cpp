@@ -766,10 +766,6 @@ d3d12_deinit_screen(struct d3d12_screen *screen)
       screen->dev->Release();
       screen->dev = nullptr;
    }
-   if (screen->winsys) {
-      screen->winsys->destroy(screen->winsys);
-      screen->winsys = nullptr;
-   }
 }
 
 void
