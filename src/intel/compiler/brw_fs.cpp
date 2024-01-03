@@ -6634,7 +6634,7 @@ save_instruction_order(const struct cfg_t *cfg)
 static void
 restore_instruction_order(struct cfg_t *cfg, fs_inst **inst_arr)
 {
-   int num_insts = cfg->last_block()->end_ip + 1;
+   ASSERTED int num_insts = cfg->last_block()->end_ip + 1;
 
    int ip = 0;
    foreach_block (block, cfg) {
