@@ -98,7 +98,7 @@ if [ "${DEQP_TARGET}" != 'android' ]; then
 fi
 
 cmake -S /VK-GL-CTS -B . -G Ninja \
-      -DDEQP_TARGET=${DEQP_TARGET:-x11_glx} \
+      -DDEQP_TARGET=${DEQP_TARGET:-default} \
       -DCMAKE_BUILD_TYPE=Release \
       $EXTRA_CMAKE_ARGS
 mold --run ninja
