@@ -1680,6 +1680,7 @@ struct zink_sampler_view {
    union {
       struct zink_surface *image_view;
       struct zink_buffer_view *buffer_view;
+      unsigned tbo_size;
    };
    struct zink_surface *cube_array;
    /* Optional sampler view returning red (depth) in all channels, for shader rewrites. */

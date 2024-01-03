@@ -722,7 +722,7 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
       if (res->obj->is_buffer) {
          if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
             ctx->di.db.tbos[shader][slot].address = res->obj->bda + ctx->sampler_views[shader][slot]->u.buf.offset;
-            ctx->di.db.tbos[shader][slot].range = ctx->sampler_views[shader][slot]->u.buf.size;
+            ctx->di.db.tbos[shader][slot].range = zink_sampler_view(ctx->sampler_views[shader][slot])->tbo_size;
             ctx->di.db.tbos[shader][slot].format = zink_get_format(screen, ctx->sampler_views[shader][slot]->format);
          } else {
             struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
@@ -1212,8 +1212,12 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       }
       err = !sampler_view->image_view;
    } else {
-      if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+      if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
+         /* always enforce limit clamping */
+         unsigned blocksize = util_format_get_blocksize(state->format);
+         sampler_view->tbo_size = MIN2(state->u.buf.size / blocksize, screen->info.props.limits.maxTexelBufferElements) * blocksize;
          return &sampler_view->base;
+      }
       VkBufferViewCreateInfo bvci = create_bvci(ctx, res, state->format, state->u.buf.offset, state->u.buf.size);
       sampler_view->buffer_view = get_buffer_view(ctx, res, &bvci);
       err = !sampler_view->buffer_view;
@@ -1251,9 +1255,10 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
                           struct pipe_sampler_view *pview)
 {
    struct zink_sampler_view *view = zink_sampler_view(pview);
-   if (pview->texture->target == PIPE_BUFFER)
-      zink_buffer_view_reference(zink_screen(pctx->screen), &view->buffer_view, NULL);
-   else {
+   if (pview->texture->target == PIPE_BUFFER) {
+      if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_DB)
+         zink_buffer_view_reference(zink_screen(pctx->screen), &view->buffer_view, NULL);
+   } else {
       zink_surface_reference(zink_screen(pctx->screen), &view->image_view, NULL);
       zink_surface_reference(zink_screen(pctx->screen), &view->cube_array, NULL);
       zink_surface_reference(zink_screen(pctx->screen), &view->zs_view, NULL);
@@ -1934,6 +1939,11 @@ zink_set_shader_images(struct pipe_context *pctx,
                                           zink_resource_access_is_write(access), false);
          }
          memcpy(&a->base, images + i, sizeof(struct pipe_image_view));
+         if (b->resource->target == PIPE_BUFFER) {
+            /* always enforce limit clamping */
+            unsigned blocksize = util_format_get_blocksize(a->base.format);
+            a->base.u.buf.size = MIN2(a->base.u.buf.size / blocksize, screen->info.props.limits.maxTexelBufferElements) * blocksize;
+         }
          update = true;
          res->image_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
       } else if (a->base.resource) {
