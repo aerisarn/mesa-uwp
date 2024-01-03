@@ -2019,6 +2019,11 @@ vec4_instruction_scheduler::run()
          n->issue_time = 2;
       }
 
+      calculate_deps();
+
+      compute_delays();
+      compute_exits();
+
       assert(current.available.is_empty());
       for (schedule_node *n = current.start; n < current.end; n++) {
          reset_node_tmp(n);
