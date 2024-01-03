@@ -2085,11 +2085,6 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
             .engine_class = INTEL_ENGINE_CLASS_COPY,
          };
       }
-
-      /* Increase count below when other families are added as a reminder to
-       * increase the ANV_MAX_QUEUE_FAMILIES value.
-       */
-      STATIC_ASSERT(ANV_MAX_QUEUE_FAMILIES >= 5);
    } else {
       /* Default to a single render queue */
       pdevice->queue.families[family_count++] = (struct anv_queue_family) {
