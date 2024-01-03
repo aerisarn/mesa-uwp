@@ -2032,6 +2032,7 @@ struct zink_context {
    bool unordered_blitting : 1;
    bool vertex_state_changed : 1;
    bool blend_state_changed : 1;
+   bool blend_color_changed : 1;
    bool sample_mask_changed : 1;
    bool rast_state_changed : 1;
    bool line_width_changed : 1;

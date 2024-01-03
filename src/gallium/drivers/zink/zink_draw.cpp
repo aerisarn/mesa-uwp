@@ -874,10 +874,11 @@ zink_draw(struct pipe_context *pctx,
       ctx->sample_locations_changed = false;
    }
 
-   if (BATCH_CHANGED || ctx->blend_state_changed) {
+   if (BATCH_CHANGED || ctx->blend_color_changed) {
       VKCTX(CmdSetBlendConstants)(batch->state->cmdbuf, ctx->blend_constants);
    }
    ctx->blend_state_changed = false;
+   ctx->blend_color_changed = false;
 
    if (!DRAW_STATE) {
       if (BATCH_CHANGED || ctx->vertex_buffers_dirty) {

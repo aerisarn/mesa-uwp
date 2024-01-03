@@ -3713,6 +3713,8 @@ zink_set_blend_color(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    memcpy(ctx->blend_constants, color->color, sizeof(float) * 4);
+
+   ctx->blend_color_changed = true;
    zink_flush_dgc_if_enabled(ctx);
 }
 
