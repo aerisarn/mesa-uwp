@@ -112,8 +112,9 @@ anv_measure_start_snapshot(struct anv_cmd_buffer *cmd_buffer,
    struct anv_physical_device *device = cmd_buffer->device->physical;
    struct intel_measure_device *measure_device = &device->measure_device;
    struct intel_measure_config *config = config_from_command_buffer(cmd_buffer);
-
+   enum anv_timestamp_capture_type capture_type;
    unsigned index = measure->base.index++;
+
    if (event_name == NULL)
       event_name = intel_measure_snapshot_string(type);
 
@@ -128,11 +129,18 @@ anv_measure_start_snapshot(struct anv_cmd_buffer *cmd_buffer,
       return;
    }
 
+
+   if ((batch->engine_class == INTEL_ENGINE_CLASS_COPY) ||
+       (batch->engine_class == INTEL_ENGINE_CLASS_VIDEO))
+      capture_type = ANV_TIMESTAMP_CAPTURE_TOP_OF_PIPE;
+   else
+      capture_type = ANV_TIMESTAMP_CAPTURE_AT_CS_STALL;
+
    (*device->cmd_emit_timestamp)(batch, cmd_buffer->device,
                                  (struct anv_address) {
                                     .bo = measure->bo,
                                     .offset = index * sizeof(uint64_t) },
-                                 ANV_TIMESTAMP_CAPTURE_AT_CS_STALL,
+                                 capture_type,
                                  NULL);
 
    struct intel_measure_snapshot *snapshot = &(measure->base.snapshots[index]);
@@ -169,17 +177,24 @@ anv_measure_end_snapshot(struct anv_cmd_buffer *cmd_buffer,
    struct anv_measure_batch *measure = cmd_buffer->measure;
    struct anv_physical_device *device = cmd_buffer->device->physical;
    struct intel_measure_config *config = config_from_command_buffer(cmd_buffer);
-
+   enum anv_timestamp_capture_type capture_type;
    unsigned index = measure->base.index++;
    assert(index % 2 == 1);
+
    if (config->cpu_measure)
       return;
+
+   if ((batch->engine_class == INTEL_ENGINE_CLASS_COPY) ||
+       (batch->engine_class == INTEL_ENGINE_CLASS_VIDEO))
+      capture_type = ANV_TIMESTAMP_CAPTURE_END_OF_PIPE;
+   else
+      capture_type = ANV_TIMESTAMP_CAPTURE_AT_CS_STALL;
 
    (*device->cmd_emit_timestamp)(batch, cmd_buffer->device,
                                  (struct anv_address) {
                                     .bo = measure->bo,
                                     .offset = index * sizeof(uint64_t) },
-                                 ANV_TIMESTAMP_CAPTURE_AT_CS_STALL,
+                                 capture_type,
                                  NULL);
 
    struct intel_measure_snapshot *snapshot = &(measure->base.snapshots[index]);
