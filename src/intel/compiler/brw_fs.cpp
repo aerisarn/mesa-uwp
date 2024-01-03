@@ -7757,7 +7757,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
                                " pixel shading.\n");
    }
 
-   if (nir->info.ray_queries > 0)
+   if (nir->info.ray_queries > 0 && v8)
       v8->limit_dispatch_width(16, "SIMD32 with ray queries.\n");
 
    if (!has_spilled &&
