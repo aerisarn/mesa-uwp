@@ -24,6 +24,7 @@
 #include "xe/anv_batch_chain.h"
 
 #include "anv_private.h"
+#include "anv_measure.h"
 
 #include "drm-uapi/xe_drm.h"
 
@@ -304,6 +305,7 @@ xe_companion_rcs_queue_exec_locked(struct anv_queue *queue,
                        struct anv_batch_bo, link);
    exec.address = batch_bo->bo->offset;
 
+   anv_measure_submit(companion_rcs_cmd_buffer);
    xe_exec_print_debug(queue, 1, &companion_rcs_cmd_buffer, NULL, 0, &exec);
 
    if (!device->info->no_hw) {
@@ -355,6 +357,11 @@ xe_queue_exec_locked(struct anv_queue *queue,
    };
 
    if (cmd_buffer_count) {
+      if (unlikely(device->physical->measure_device.config)) {
+         for (uint32_t i = 0; i < cmd_buffer_count; i++)
+            anv_measure_submit(cmd_buffers[i]);
+      }
+
       anv_cmd_buffer_chain_command_buffers(cmd_buffers, cmd_buffer_count);
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
