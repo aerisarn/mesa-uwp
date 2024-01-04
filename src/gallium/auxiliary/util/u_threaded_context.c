@@ -829,7 +829,7 @@ threaded_context_flush(struct pipe_context *_pipe,
 }
 
 static void
-tc_add_to_buffer_list(struct threaded_context *tc, struct tc_buffer_list *next, struct pipe_resource *buf)
+tc_add_to_buffer_list(struct tc_buffer_list *next, struct pipe_resource *buf)
 {
    uint32_t id = threaded_resource(buf)->buffer_id_unique;
    BITSET_SET(next->buffer_list, id & TC_BUFFER_ID_MASK);
@@ -837,7 +837,7 @@ tc_add_to_buffer_list(struct threaded_context *tc, struct tc_buffer_list *next, 
 
 /* Set a buffer binding and add it to the buffer list. */
 static void
-tc_bind_buffer(struct threaded_context *tc, uint32_t *binding, struct tc_buffer_list *next, struct pipe_resource *buf)
+tc_bind_buffer(uint32_t *binding, struct tc_buffer_list *next, struct pipe_resource *buf)
 {
    uint32_t id = threaded_resource(buf)->buffer_id_unique;
    *binding = id;
@@ -1359,7 +1359,7 @@ tc_get_query_result_resource(struct pipe_context *_pipe,
    p->result_type = result_type;
    p->index = index;
    tc_set_resource_reference(&p->resource, resource);
-   tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], resource);
+   tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], resource);
    p->offset = offset;
 }
 
@@ -1733,7 +1733,7 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
       tc_set_resource_reference(&p->cb.buffer, buffer);
 
    if (buffer) {
-      tc_bind_buffer(tc, &tc->const_buffers[shader][index],
+      tc_bind_buffer(&tc->const_buffers[shader][index],
                      &tc->buffer_lists[tc->next_buf_list], buffer);
    } else {
       tc_unbind_buffer(&tc->const_buffers[shader][index]);
@@ -1934,7 +1934,7 @@ tc_set_sampler_views(struct pipe_context *_pipe,
          for (unsigned i = 0; i < count; i++) {
             if (views[i]) {
                if (views[i]->target == PIPE_BUFFER)
-                  tc_bind_buffer(tc, &tc->sampler_buffers[shader][start + i], next,
+                  tc_bind_buffer(&tc->sampler_buffers[shader][start + i], next,
                                  views[i]->texture);
                else
                   tc_set_resource_batch_usage(tc, views[i]->texture);
@@ -1949,7 +1949,7 @@ tc_set_sampler_views(struct pipe_context *_pipe,
 
             if (views[i]) {
                if (views[i]->target == PIPE_BUFFER)
-                  tc_bind_buffer(tc, &tc->sampler_buffers[shader][start + i], next,
+                  tc_bind_buffer(&tc->sampler_buffers[shader][start + i], next,
                                  views[i]->texture);
                else
                   tc_set_resource_batch_usage(tc, views[i]->texture);
@@ -2031,7 +2031,7 @@ tc_set_shader_images(struct pipe_context *_pipe,
 
          if (resource) {
             if (resource->target == PIPE_BUFFER) {
-               tc_bind_buffer(tc, &tc->image_buffers[shader][start + i], next, resource);
+               tc_bind_buffer(&tc->image_buffers[shader][start + i], next, resource);
 
                if (images[i].access & PIPE_IMAGE_ACCESS_WRITE) {
                   struct threaded_resource *tres = threaded_resource(resource);
@@ -2129,7 +2129,7 @@ tc_set_shader_buffers(struct pipe_context *_pipe,
          if (src->buffer) {
             struct threaded_resource *tres = threaded_resource(src->buffer);
 
-            tc_bind_buffer(tc, &tc->shader_buffers[shader][start + i], next, &tres->b);
+            tc_bind_buffer(&tc->shader_buffers[shader][start + i], next, &tres->b);
 
             if (writable_bitmask & BITFIELD_BIT(i)) {
                tc_buffer_disable_cpu_storage(src->buffer);
@@ -2202,7 +2202,7 @@ tc_set_vertex_buffers(struct pipe_context *_pipe,
             struct pipe_resource *buf = buffers[i].buffer.resource;
 
             if (buf) {
-               tc_bind_buffer(tc, &tc->vertex_buffers[i], next, buf);
+               tc_bind_buffer(&tc->vertex_buffers[i], next, buf);
             } else {
                tc_unbind_buffer(&tc->vertex_buffers[i]);
             }
@@ -2219,7 +2219,7 @@ tc_set_vertex_buffers(struct pipe_context *_pipe,
             dst->buffer_offset = src->buffer_offset;
 
             if (buf) {
-               tc_bind_buffer(tc, &tc->vertex_buffers[i], next, buf);
+               tc_bind_buffer(&tc->vertex_buffers[i], next, buf);
             } else {
                tc_unbind_buffer(&tc->vertex_buffers[i]);
             }
@@ -2275,7 +2275,7 @@ tc_set_stream_output_targets(struct pipe_context *_pipe,
       pipe_so_target_reference(&p->targets[i], tgs[i]);
       if (tgs[i]) {
          tc_buffer_disable_cpu_storage(tgs[i]->buffer);
-         tc_bind_buffer(tc, &tc->streamout_buffers[i], next, tgs[i]->buffer);
+         tc_bind_buffer(&tc->streamout_buffers[i], next, tgs[i]->buffer);
       } else {
          tc_unbind_buffer(&tc->streamout_buffers[i]);
       }
@@ -3195,7 +3195,7 @@ tc_buffer_subdata(struct pipe_context *_pipe,
    /* This is will always be busy because if it wasn't, tc_improve_map_buffer-
     * _flags would set UNSYNCHRONIZED and we wouldn't get here.
     */
-   tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], resource);
+   tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], resource);
    p->usage = usage;
    p->offset = offset;
    p->size = size;
@@ -3915,7 +3915,7 @@ tc_draw_single(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          tc_set_resource_reference(&p->info.index.resource,
                                    info->index.resource);
       }
-      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
+      tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], info->index.resource);
    }
    memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
    /* u_threaded_context stores start/count in min/max_index for single draws. */
@@ -3943,7 +3943,7 @@ tc_draw_single_draw_id(struct pipe_context *_pipe,
          tc_set_resource_reference(&p->info.index.resource,
                                    info->index.resource);
       }
-      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
+      tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], info->index.resource);
    }
    ((struct tc_draw_single_drawid*)p)->drawid_offset = drawid_offset;
    memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
@@ -4073,7 +4073,7 @@ tc_draw_multi(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             tc_set_resource_reference(&p->info.index.resource,
                                       info->index.resource);
          }
-         tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->index.resource);
+         tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], info->index.resource);
       }
       take_index_buffer_ownership = false;
       memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
@@ -4193,7 +4193,7 @@ tc_draw_indirect(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          tc_set_resource_reference(&p->info.index.resource,
                                    info->index.resource);
       }
-      tc_add_to_buffer_list(tc, next, info->index.resource);
+      tc_add_to_buffer_list(next, info->index.resource);
    }
    memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
 
@@ -4205,11 +4205,11 @@ tc_draw_indirect(struct pipe_context *_pipe, const struct pipe_draw_info *info,
                             indirect->count_from_stream_output);
 
    if (indirect->buffer)
-      tc_add_to_buffer_list(tc, next, indirect->buffer);
+      tc_add_to_buffer_list(next, indirect->buffer);
    if (indirect->indirect_draw_count)
-      tc_add_to_buffer_list(tc, next, indirect->indirect_draw_count);
+      tc_add_to_buffer_list(next, indirect->indirect_draw_count);
    if (indirect->count_from_stream_output)
-      tc_add_to_buffer_list(tc, next, indirect->count_from_stream_output->buffer);
+      tc_add_to_buffer_list(next, indirect->count_from_stream_output->buffer);
 
    memcpy(&p->indirect, indirect, sizeof(*indirect));
    p->draw.start = draws[0].start;
@@ -4278,7 +4278,7 @@ tc_add_draw_single_call(struct pipe_context *_pipe,
       tc_add_call(tc, TC_CALL_draw_single, tc_draw_single);
 
    if (index_bo)
-      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], index_bo);
+      tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], index_bo);
 
    /* This must be after tc_add_*call, which can flush the batch. */
    if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
@@ -4481,7 +4481,7 @@ tc_launch_grid(struct pipe_context *_pipe,
    memcpy(&p->info, info, sizeof(*info));
 
    if (info->indirect)
-      tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], info->indirect);
+      tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], info->indirect);
 
    /* This must be after tc_add_*call, which can flush the batch. */
    if (unlikely(tc->add_all_compute_bindings_to_buffer_list))
@@ -4530,8 +4530,8 @@ tc_resource_copy_region(struct pipe_context *_pipe,
    if (dst->target == PIPE_BUFFER) {
       struct tc_buffer_list *next = &tc->buffer_lists[tc->next_buf_list];
 
-      tc_add_to_buffer_list(tc, next, src);
-      tc_add_to_buffer_list(tc, next, dst);
+      tc_add_to_buffer_list(next, src);
+      tc_add_to_buffer_list(next, dst);
 
       util_range_add(&tdst->b, &tdst->valid_buffer_range,
                      dstx, dstx + src_box->width);
@@ -4877,7 +4877,7 @@ tc_clear_buffer(struct pipe_context *_pipe, struct pipe_resource *res,
    tc_buffer_disable_cpu_storage(res);
 
    tc_set_resource_reference(&p->res, res);
-   tc_add_to_buffer_list(tc, &tc->buffer_lists[tc->next_buf_list], res);
+   tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], res);
    p->offset = offset;
    p->size = size;
    memcpy(p->clear_value, clear_value, clear_value_size);
