@@ -125,7 +125,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
               bool is_multiview,
               const struct vk_pipeline_layout *layout,
-              struct nvk_shader *shader);
+              struct nvk_cbuf_map *cbuf_map_out);
 
 VkResult
 nvk_compile_nir(struct nvk_device *dev, nir_shader *nir,

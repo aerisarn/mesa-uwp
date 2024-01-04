@@ -303,7 +303,7 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
               bool is_multiview,
               const struct vk_pipeline_layout *layout,
-              struct nvk_shader *shader)
+              struct nvk_cbuf_map *cbuf_map_out)
 {
    struct nvk_physical_device *pdev = nvk_device_physical(dev);
 
@@ -357,13 +357,13 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
    struct nvk_cbuf_map *cbuf_map = NULL;
    if (use_nak(pdev, nir->info.stage) &&
        !(pdev->debug_flags & NVK_DEBUG_NO_CBUF)) {
-      cbuf_map = &shader->cbuf_map;
+      cbuf_map = cbuf_map_out;
    } else {
       /* Codegen sometimes puts stuff in cbuf 1 and adds 1 to our cbuf indices
        * so we can't really rely on it for lowering to cbufs and instead place
        * the root descriptors in both cbuf 0 and cbuf 1.
        */
-      shader->cbuf_map = (struct nvk_cbuf_map) {
+      *cbuf_map_out = (struct nvk_cbuf_map) {
          .cbuf_count = 2,
          .cbufs = {
             { .type = NVK_CBUF_TYPE_ROOT_DESC },

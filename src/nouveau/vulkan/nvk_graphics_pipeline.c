@@ -287,7 +287,8 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
          }
 
          nvk_lower_nir(dev, nir[stage], &robustness[stage],
-                       state.rp->view_mask != 0, pipeline_layout, shader);
+                       state.rp->view_mask != 0, pipeline_layout,
+                       &shader->cbuf_map);
 
          result = nvk_compile_nir(dev, nir[stage],
                                   pipeline_flags, &robustness[stage],
