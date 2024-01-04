@@ -312,6 +312,20 @@ nir_build_wto_matrix_load(nir_builder *b, nir_def *instance_addr, nir_def **out)
    }
 }
 
+nir_def *
+radv_load_vertex_position(struct radv_device *device, nir_builder *b, nir_def *instance_addr, nir_def *primitive_id,
+                          uint32_t index)
+{
+   nir_def *bvh_addr_id =
+      nir_build_load_global(b, 1, 64, nir_iadd_imm(b, instance_addr, offsetof(struct radv_bvh_instance_node, bvh_ptr)));
+   nir_def *bvh_addr = build_node_to_addr(device, b, bvh_addr_id, true);
+
+   nir_def *offset = nir_imul_imm(b, primitive_id, sizeof(struct radv_bvh_triangle_node));
+   offset = nir_iadd_imm(b, offset, sizeof(struct radv_bvh_box32_node) + index * 3 * sizeof(float));
+
+   return nir_build_load_global(b, 3, 32, nir_iadd(b, bvh_addr, nir_u2u64(b, offset)));
+}
+
 /* When a hit is opaque the any_hit shader is skipped for this hit and the hit
  * is assumed to be an actual hit. */
 static nir_def *

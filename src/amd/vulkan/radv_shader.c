@@ -434,6 +434,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
                .ray_cull_mask = true,
                .ray_query = true,
                .ray_tracing = true,
+               .ray_tracing_position_fetch = true,
                .ray_traversal_primitive_culling = true,
                .runtime_descriptor_array = true,
                .shader_clock = true,

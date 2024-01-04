@@ -38,6 +38,9 @@ nir_def *nir_build_vec3_mat_mult(nir_builder *b, nir_def *vec, nir_def *matrix[]
 
 void nir_build_wto_matrix_load(nir_builder *b, nir_def *instance_addr, nir_def **out);
 
+nir_def *radv_load_vertex_position(struct radv_device *device, nir_builder *b, nir_def *instance_addr,
+                                   nir_def *primitive_id, uint32_t index);
+
 struct radv_ray_traversal_args;
 
 struct radv_ray_flags {

@@ -473,6 +473,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_ray_query = radv_enable_rt(device, false),
       .KHR_ray_tracing_maintenance1 = radv_enable_rt(device, false),
       .KHR_ray_tracing_pipeline = radv_enable_rt(device, true),
+      .KHR_ray_tracing_position_fetch = radv_enable_rt(device, false),
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
@@ -945,6 +946,9 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       /* VK_KHR_ray_tracing_maintenance1 */
       .rayTracingMaintenance1 = true,
       .rayTracingPipelineTraceRaysIndirect2 = radv_enable_rt(pdevice, true),
+
+      /* VK_KHR_ray_tracing_position_fetch */
+      .rayTracingPositionFetch = true,
 
       /* VK_EXT_vertex_input_dynamic_state */
       .vertexInputDynamicState = true,
