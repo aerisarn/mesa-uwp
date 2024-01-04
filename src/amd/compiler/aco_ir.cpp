@@ -1312,7 +1312,7 @@ should_form_clause(const Instruction* a, const Instruction* b)
       return false;
 
    /* Assume loads which don't use descriptors might load from similar addresses. */
-   if (a->isFlatLike())
+   if (a->isFlatLike() || a->accessesLDS())
       return true;
    if (a->isSMEM() && a->operands[0].bytes() == 8 && b->operands[0].bytes() == 8)
       return true;

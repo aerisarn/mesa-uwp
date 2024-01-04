@@ -1287,6 +1287,7 @@ struct Instruction {
 
    constexpr bool isVMEM() const noexcept { return isMTBUF() || isMUBUF() || isMIMG(); }
 
+   bool accessesLDS() const noexcept;
    bool isTrans() const noexcept;
 };
 static_assert(sizeof(Instruction) == 16, "Unexpected padding");
@@ -1673,6 +1674,12 @@ struct Pseudo_reduction_instruction : public Instruction {
 };
 static_assert(sizeof(Pseudo_reduction_instruction) == sizeof(Instruction) + 4,
               "Unexpected padding");
+
+inline bool
+Instruction::accessesLDS() const noexcept
+{
+   return (isDS() && !ds().gds) || isLDSDIR() || isVINTRP();
+}
 
 inline void
 VALU_instruction::swapOperands(unsigned idx0, unsigned idx1)
