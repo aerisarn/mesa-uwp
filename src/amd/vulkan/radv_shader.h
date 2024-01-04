@@ -461,8 +461,6 @@ struct radv_shader_info {
       bool uses_local_invocation_idx;
       unsigned block_size[3];
 
-      uint8_t subgroup_size;
-
       bool is_rt_shader;
       bool uses_ray_launch_size;
       bool uses_dynamic_rt_callable_stack;

@@ -347,7 +347,7 @@ radv_get_wave_size(struct radv_device *device, gl_shader_stage stage, const stru
    if (stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
       return 64;
    else if (stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_TASK)
-      return info->cs.subgroup_size;
+      return info->wave_size;
    else if (stage == MESA_SHADER_FRAGMENT)
       return device->physical_device->ps_wave_size;
    else if (gl_shader_stage_is_rt(stage))
@@ -937,14 +937,14 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
    const unsigned required_subgroup_size = pipeline_key->stage_info[nir->info.stage].subgroup_required_size * 32;
 
    if (required_subgroup_size) {
-      info->cs.subgroup_size = required_subgroup_size;
+      info->wave_size = required_subgroup_size;
    } else if (require_full_subgroups) {
-      info->cs.subgroup_size = RADV_SUBGROUP_SIZE;
+      info->wave_size = RADV_SUBGROUP_SIZE;
    } else if (device->physical_device->rad_info.gfx_level >= GFX10 && local_size <= 32) {
       /* Use wave32 for small workgroups. */
-      info->cs.subgroup_size = 32;
+      info->wave_size = 32;
    } else {
-      info->cs.subgroup_size = default_wave_size;
+      info->wave_size = default_wave_size;
    }
 
    if (device->physical_device->rad_info.has_cs_regalloc_hang_bug) {
