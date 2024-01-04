@@ -34,27 +34,23 @@ agx_shader_buffer_ptr(struct agx_batch *batch, struct pipe_shader_buffer *sb)
    }
 }
 
-static uint64_t
-agx_vertex_buffer_ptr(struct agx_batch *batch, unsigned vbo)
-{
-   struct pipe_vertex_buffer vb = batch->ctx->vertex_buffers[vbo];
-   assert(!vb.is_user_buffer);
-
-   if (vb.buffer.resource) {
-      struct agx_resource *rsrc = agx_resource(vb.buffer.resource);
-      agx_batch_reads(batch, rsrc);
-
-      return rsrc->bo->ptr.gpu + vb.buffer_offset;
-   } else {
-      return 0;
-   }
-}
-
 void
 agx_upload_vbos(struct agx_batch *batch)
 {
-   u_foreach_bit(vbo, batch->ctx->vb_mask) {
-      batch->uniforms.vbo_base[vbo] = agx_vertex_buffer_ptr(batch, vbo);
+   struct agx_context *ctx = batch->ctx;
+
+   u_foreach_bit(vbo, ctx->vb_mask) {
+      struct pipe_vertex_buffer vb = ctx->vertex_buffers[vbo];
+      assert(!vb.is_user_buffer);
+
+      if (vb.buffer.resource) {
+         struct agx_resource *rsrc = agx_resource(vb.buffer.resource);
+         agx_batch_reads(batch, rsrc);
+
+         batch->uniforms.vbo_base[vbo] = rsrc->bo->ptr.gpu + vb.buffer_offset;
+      } else {
+         batch->uniforms.vbo_base[vbo] = 0;
+      }
    }
 }
 
