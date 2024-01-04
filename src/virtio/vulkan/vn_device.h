@@ -54,7 +54,7 @@ struct vn_device {
    struct vn_queue *queues;
    uint32_t queue_count;
 
-   struct vn_buffer_cache buffer_cache;
+   struct vn_buffer_reqs_cache buffer_reqs_cache;
 };
 VK_DEFINE_HANDLE_CASTS(vn_device,
                        base.base.base,

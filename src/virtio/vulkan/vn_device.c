@@ -535,7 +535,7 @@ vn_device_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto out_cmd_pools_fini;
 
-   vn_buffer_cache_init(dev);
+   vn_buffer_reqs_cache_init(dev);
 
    /* This is a WA to allow fossilize replay to detect if the host side shader
     * cache is no longer up to date.
@@ -626,7 +626,7 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
    if (!dev)
       return;
 
-   vn_buffer_cache_fini(dev);
+   vn_buffer_reqs_cache_fini(dev);
 
    for (uint32_t i = 0; i < dev->queue_count; i++)
       vn_queue_fini(&dev->queues[i]);
