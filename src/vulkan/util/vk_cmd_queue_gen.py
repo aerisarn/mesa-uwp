@@ -490,8 +490,8 @@ def get_pnext_member_copy(struct, src_type, member, types, level):
             guard_post_stmt = "#endif"
         case_stmts += """
 %s
-      case %s:
-         %s
+         case %s:
+            %s
          break;
 %s
       """ % (guard_pre_stmt, type.enum, get_struct_copy(field_name, "pnext", type.name, "sizeof(%s)" % type.name, types, level), guard_post_stmt)
@@ -525,7 +525,8 @@ def get_struct_copy(dst, src_name, src_type, size, types, level=0):
 
     null_assignment = "%s = NULL;" % dst
     if_stmt = "if (%s) {" % src_name
-    return "%s\n      %s\n      %s\n   %s\n   %s   \n   %s   } else {\n      %s\n   }" % (if_stmt, allocation, copy, tmp_dst, tmp_src, member_copies, null_assignment)
+    indent = "   " * level
+    return "%s\n      %s\n      %s\n      %s\n      %s\n      %s\n%s} else {\n      %s\n%s}" % (if_stmt, allocation, copy, tmp_dst, tmp_src, member_copies, indent, null_assignment, indent)
 
 def get_struct_free(command, param, types):
     field_name = "cmd->u.%s.%s" % (to_struct_field_name(command.name), to_field_name(param.name))
