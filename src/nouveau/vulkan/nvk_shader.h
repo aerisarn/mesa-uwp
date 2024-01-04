@@ -18,6 +18,7 @@ struct nak_shader_bin;
 struct nvk_device;
 struct nvk_physical_device;
 struct nvk_pipeline_compilation_ctx;
+struct vk_descriptor_set_layout;
 struct vk_pipeline_cache;
 struct vk_pipeline_layout;
 struct vk_pipeline_robustness_state;
@@ -110,7 +111,8 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
 bool
 nvk_nir_lower_descriptors(nir_shader *nir,
                           const struct vk_pipeline_robustness_state *rs,
-                          const struct vk_pipeline_layout *layout,
+                          uint32_t set_layout_count,
+                          struct vk_descriptor_set_layout * const *set_layouts,
                           struct nvk_cbuf_map *cbuf_map_out);
 
 VkResult
