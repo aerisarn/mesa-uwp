@@ -162,16 +162,41 @@ zink_context_destroy(struct pipe_context *pctx)
    while (bs) {
       struct zink_batch_state *bs_next = bs->next;
       zink_clear_batch_state(ctx, bs);
-      zink_batch_state_destroy(screen, bs);
+      /* restore link as we insert them into the screens free_batch_states
+       * list below
+       */
+      bs->next = bs_next;
       bs = bs_next;
    }
    bs = ctx->free_batch_states;
    while (bs) {
       struct zink_batch_state *bs_next = bs->next;
       zink_clear_batch_state(ctx, bs);
-      zink_batch_state_destroy(screen, bs);
+      /* restore link as we insert them into the screens free_batch_states
+       * list below
+       */
+      bs->next = bs_next;
       bs = bs_next;
    }
+   simple_mtx_lock(&screen->free_batch_states_lock);
+   if (ctx->batch_states) {
+      if (screen->free_batch_states)
+         screen->last_free_batch_state->next = ctx->batch_states;
+      else {
+         screen->free_batch_states = ctx->batch_states;
+         screen->last_free_batch_state = screen->free_batch_states;
+      }
+      while (screen->last_free_batch_state->next)
+         screen->last_free_batch_state = screen->last_free_batch_state->next;
+   }
+   if (ctx->free_batch_states) {
+      if (screen->free_batch_states)
+         screen->last_free_batch_state->next = ctx->free_batch_states;
+      else
+         screen->free_batch_states = ctx->free_batch_states;
+      screen->last_free_batch_state = ctx->last_free_batch_state;
+   }
+   simple_mtx_unlock(&screen->free_batch_states_lock);
    if (ctx->batch.state) {
       zink_clear_batch_state(ctx, ctx->batch.state);
       zink_batch_state_destroy(screen, ctx->batch.state);

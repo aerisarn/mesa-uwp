@@ -1463,6 +1463,12 @@ static void
 zink_destroy_screen(struct pipe_screen *pscreen)
 {
    struct zink_screen *screen = zink_screen(pscreen);
+   struct zink_batch_state *bs = screen->free_batch_states;
+   while (bs) {
+      struct zink_batch_state *bs_next = bs->next;
+      zink_batch_state_destroy(screen, bs);
+      bs = bs_next;
+   }
 
 #ifdef HAVE_RENDERDOC_APP_H
    if (screen->renderdoc_capture_all && p_atomic_dec_zero(&num_screens))
@@ -3498,6 +3504,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
       screen->base_descriptor_size = MAX4(screen->db_size[0], screen->db_size[1], screen->db_size[2], screen->db_size[3]);
    }
 
+   simple_mtx_init(&screen->free_batch_states_lock, mtx_plain);
    simple_mtx_init(&screen->dt_lock, mtx_plain);
 
    util_idalloc_mt_init_tc(&screen->buffer_ids);
