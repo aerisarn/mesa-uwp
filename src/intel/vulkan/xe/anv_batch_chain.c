@@ -173,16 +173,14 @@ xe_exec_process_syncs(struct anv_queue *queue,
 static void
 xe_exec_print_debug(struct anv_queue *queue, uint32_t cmd_buffer_count,
                     struct anv_cmd_buffer **cmd_buffers, struct anv_query_pool *perf_query_pool,
-                    uint32_t perf_query_pass, struct drm_xe_exec *exec,
-                    bool is_companion_rcs_cmd_buffer)
+                    uint32_t perf_query_pass, struct drm_xe_exec *exec)
 {
    if (INTEL_DEBUG(DEBUG_SUBMIT))
       fprintf(stderr, "Batch offset=0x%016"PRIx64" on queue %u\n",
               (uint64_t)exec->address, queue->vk.index_in_family);
 
    anv_cmd_buffer_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers,
-                                   perf_query_pool, perf_query_pass,
-                                   is_companion_rcs_cmd_buffer);
+                                   perf_query_pool, perf_query_pass);
 }
 
 VkResult
@@ -271,8 +269,7 @@ xe_queue_exec_utrace_locked(struct anv_queue *queue,
 
 static VkResult
 xe_companion_rcs_queue_exec_locked(struct anv_queue *queue,
-                                   uint32_t cmd_buffer_count,
-                                   struct anv_cmd_buffer **cmd_buffers,
+                                   struct anv_cmd_buffer *companion_rcs_cmd_buffer,
                                    uint32_t wait_count,
                                    const struct vk_sync_wait *waits)
 {
@@ -302,15 +299,12 @@ xe_companion_rcs_queue_exec_locked(struct anv_queue *queue,
       .num_syncs = xe_syncs_count,
    };
 
-   struct anv_cmd_buffer *first_cmd_buffer =
-      cmd_buffers[0]->companion_rcs_cmd_buffer;
-   struct anv_batch_bo *first_batch_bo =
-      list_first_entry(&first_cmd_buffer->batch_bos, struct anv_batch_bo,
-                       link);
-   exec.address = first_batch_bo->bo->offset;
+   struct anv_batch_bo *batch_bo =
+      list_first_entry(&companion_rcs_cmd_buffer->batch_bos,
+                       struct anv_batch_bo, link);
+   exec.address = batch_bo->bo->offset;
 
-   xe_exec_print_debug(queue, cmd_buffer_count, cmd_buffers, NULL, 0, &exec,
-                       true /* is_companion_rcs_cmd_buffer */);
+   xe_exec_print_debug(queue, 1, &companion_rcs_cmd_buffer, NULL, 0, &exec);
 
    if (!device->info->no_hw) {
       if (intel_ioctl(device->fd, DRM_IOCTL_XE_EXEC, &exec))
@@ -378,8 +372,7 @@ xe_queue_exec_locked(struct anv_queue *queue,
    }
 
    xe_exec_print_debug(queue, cmd_buffer_count, cmd_buffers, perf_query_pool,
-                       perf_query_pass, &exec,
-                       false /* is_companion_rcs_cmd_buffer */);
+                       perf_query_pass, &exec);
 
    /* TODO: add perfetto stuff when Xe supports it */
 
@@ -389,10 +382,13 @@ xe_queue_exec_locked(struct anv_queue *queue,
    }
    vk_free(&device->vk.alloc, xe_syncs);
 
-   if (cmd_buffer_count != 0 && cmd_buffers[0]->companion_rcs_cmd_buffer)
-      result = xe_companion_rcs_queue_exec_locked(queue, cmd_buffer_count,
-                                                  cmd_buffers, wait_count,
-                                                  waits);
+   if (cmd_buffer_count != 0 && cmd_buffers[0]->companion_rcs_cmd_buffer) {
+      /* not allowed to chain cmd_buffers with companion_rcs_cmd_buffer  */
+      assert(cmd_buffer_count == 1);
+      result = xe_companion_rcs_queue_exec_locked(queue,
+                                                  cmd_buffers[0]->companion_rcs_cmd_buffer,
+                                                  wait_count, waits);
+   }
 
    if (result == VK_SUCCESS && queue->sync) {
       result = vk_sync_wait(&device->vk, queue->sync, 0,

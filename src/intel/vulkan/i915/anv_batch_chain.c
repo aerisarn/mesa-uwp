@@ -367,8 +367,7 @@ static VkResult
 setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
                               struct anv_queue *queue,
                               struct anv_cmd_buffer **cmd_buffers,
-                              uint32_t num_cmd_buffers,
-                              bool is_companion_rcs_cmd_buffer)
+                              uint32_t num_cmd_buffers)
 {
    struct anv_device *device = queue->device;
    VkResult result;
@@ -379,11 +378,8 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    anv_cmd_buffer_chain_command_buffers(cmd_buffers, num_cmd_buffers);
 
    for (uint32_t i = 0; i < num_cmd_buffers; i++) {
-      struct anv_cmd_buffer *cmd_buf =
-         is_companion_rcs_cmd_buffer ?
-         cmd_buffers[i]->companion_rcs_cmd_buffer : cmd_buffers[i];
-      anv_measure_submit(cmd_buf);
-      result = setup_execbuf_for_cmd_buffer(execbuf, cmd_buf);
+      anv_measure_submit(cmd_buffers[i]);
+      result = setup_execbuf_for_cmd_buffer(execbuf, cmd_buffers[i]);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -452,10 +448,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
          return result;
    }
 
-   struct list_head *batch_bo =
-      is_companion_rcs_cmd_buffer && cmd_buffers[0]->companion_rcs_cmd_buffer ?
-      &cmd_buffers[0]->companion_rcs_cmd_buffer->batch_bos :
-      &cmd_buffers[0]->batch_bos;
+   struct list_head *batch_bo = &cmd_buffers[0]->batch_bos;
    struct anv_batch_bo *first_batch_bo =
       list_first_entry(batch_bo, struct anv_batch_bo, link);
 
@@ -486,11 +479,11 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       anv_cmd_buffer_clflush(cmd_buffers, num_cmd_buffers);
 #endif
 
-   assert(!is_companion_rcs_cmd_buffer || device->physical->has_vm_control);
+   assert(!cmd_buffers[0]->is_companion_rcs_cmd_buffer || device->physical->has_vm_control);
    uint64_t exec_flags = 0;
    uint32_t context_id;
-   get_context_and_exec_flags(queue, is_companion_rcs_cmd_buffer, &exec_flags,
-                              &context_id);
+   get_context_and_exec_flags(queue, cmd_buffers[0]->is_companion_rcs_cmd_buffer,
+                              &exec_flags, &context_id);
 
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
@@ -702,8 +695,7 @@ setup_execbuf_fence_params(struct anv_execbuf *execbuf)
 
 static VkResult
 i915_companion_rcs_queue_exec_locked(struct anv_queue *queue,
-                                     uint32_t cmd_buffer_count,
-                                     struct anv_cmd_buffer **cmd_buffers,
+                                     struct anv_cmd_buffer *companion_rcs_cmd_buffer,
                                      uint32_t wait_count,
                                      const struct vk_sync_wait *waits)
 {
@@ -738,17 +730,15 @@ i915_companion_rcs_queue_exec_locked(struct anv_queue *queue,
          goto error;
    }
 
-   result = setup_execbuf_for_cmd_buffers(&execbuf, queue, cmd_buffers,
-                                          cmd_buffer_count,
-                                          true /* is_companion_rcs_cmd_buffer */);
+   result = setup_execbuf_for_cmd_buffers(&execbuf, queue,
+                                          &companion_rcs_cmd_buffer, 1);
    if (result != VK_SUCCESS)
       goto error;
 
    if (INTEL_DEBUG(DEBUG_SUBMIT))
       anv_i915_debug_submit(&execbuf);
 
-   anv_cmd_buffer_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers,
-                                   NULL, 0, true /*is_companion_rcs_cmd_buffer */);
+   anv_cmd_buffer_exec_batch_debug(queue, 1, &companion_rcs_cmd_buffer, NULL, 0);
 
    setup_execbuf_fence_params(&execbuf);
 
@@ -834,10 +824,8 @@ i915_queue_exec_locked(struct anv_queue *queue,
    }
 
    if (cmd_buffer_count) {
-      result = setup_execbuf_for_cmd_buffers(&execbuf, queue,
-                                             cmd_buffers,
-                                             cmd_buffer_count,
-                                             false /* is_companion_rcs_cmd_buffer */);
+      result = setup_execbuf_for_cmd_buffers(&execbuf, queue, cmd_buffers,
+                                             cmd_buffer_count);
    } else {
       result = setup_empty_execbuf(&execbuf, queue);
    }
@@ -852,8 +840,7 @@ i915_queue_exec_locked(struct anv_queue *queue,
       anv_i915_debug_submit(&execbuf);
 
    anv_cmd_buffer_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers,
-                                   perf_query_pool, perf_query_pass,
-                                   false /* is_companion_rcs_cmd_buffer */);
+                                   perf_query_pool, perf_query_pass);
 
    setup_execbuf_fence_params(&execbuf);
 
@@ -915,8 +902,9 @@ i915_queue_exec_locked(struct anv_queue *queue,
       struct anv_cmd_buffer *companion_rcs_cmd_buffer =
          cmd_buffers[0]->companion_rcs_cmd_buffer;
       assert(companion_rcs_cmd_buffer->is_companion_rcs_cmd_buffer);
-      result = i915_companion_rcs_queue_exec_locked(queue, cmd_buffer_count,
-                                                    cmd_buffers, wait_count,
+      assert(cmd_buffer_count == 1);
+      result = i915_companion_rcs_queue_exec_locked(queue,
+                                                    cmd_buffers[0]->companion_rcs_cmd_buffer, wait_count,
                                                     waits);
    }
 
