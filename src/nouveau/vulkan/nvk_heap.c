@@ -100,7 +100,7 @@ nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
          assert(heap->bo_count == 1);
          struct nouveau_ws_bo *old_bo = heap->bos[0].bo;
 
-         assert(util_is_power_of_two_nonzero(heap->total_size));
+         assert(util_is_power_of_two_nonzero64(heap->total_size));
          assert(heap->total_size >= NVK_HEAP_MIN_SIZE);
          assert(heap->total_size <= old_bo->size);
          assert(heap->total_size < new_bo_size);
