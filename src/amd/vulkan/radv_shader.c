@@ -1299,14 +1299,14 @@ radv_replay_shader_arena_block(struct radv_device *device, const struct radv_ser
       if (!hole->freelist.prev)
          continue;
 
-      if (hole->offset + hole->size < src->offset)
-         continue;
-
       uint32_t hole_begin = hole->offset;
       uint32_t hole_end = hole->offset + hole->size;
 
+      if (hole_end < block_end)
+         continue;
+
       /* If another allocated block overlaps the current replay block, allocation is impossible */
-      if (block_begin > hole_begin || (hole_end < block_end && hole_end >= block_begin))
+      if (hole_begin > block_begin)
          return NULL;
 
       union radv_shader_arena_block *block = insert_block(device, hole, block_begin - hole_begin, src->size, NULL);
