@@ -511,8 +511,12 @@ nvk_shader_finish(struct nvk_device *dev, struct nvk_shader *shader)
                     shader->upload_size);
    }
 
-   if (shader->nak)
+   if (shader->nak) {
       nak_shader_bin_destroy(shader->nak);
+   } else {
+      /* This came from codegen, just free it */
+      free((void *)shader->code_ptr);
+   }
 }
 
 void
