@@ -2885,7 +2885,8 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 }
 
 static bool
-panfrost_compatible_batch_state(struct panfrost_batch *batch, bool points)
+panfrost_compatible_batch_state(struct panfrost_batch *batch,
+                                enum mesa_prim reduced_prim)
 {
    /* Only applies on Valhall */
    if (PAN_ARCH < 9)
@@ -2900,7 +2901,7 @@ panfrost_compatible_batch_state(struct panfrost_batch *batch, bool points)
    /* gl_PointCoord orientation only matters when drawing points, but
     * provoking vertex doesn't matter for points.
     */
-   if (points)
+   if (reduced_prim == MESA_PRIM_POINTS)
       return pan_tristate_set(&batch->sprite_coord_origin, coord);
    else
       return pan_tristate_set(&batch->first_provoking_vertex, first);
@@ -2941,12 +2942,12 @@ panfrost_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    if (unlikely(batch->draw_count > 10000))
       batch = panfrost_get_fresh_batch_for_fbo(ctx, "Too many draws");
 
-   bool points = (info->mode == MESA_PRIM_POINTS);
+   enum mesa_prim reduced_prim = u_reduced_prim(info->mode);
 
-   if (unlikely(!panfrost_compatible_batch_state(batch, points))) {
+   if (unlikely(!panfrost_compatible_batch_state(batch, reduced_prim))) {
       batch = panfrost_get_fresh_batch_for_fbo(ctx, "State change");
 
-      ASSERTED bool succ = panfrost_compatible_batch_state(batch, points);
+      ASSERTED bool succ = panfrost_compatible_batch_state(batch, reduced_prim);
       assert(succ && "must be able to set state for a fresh batch");
    }
 
