@@ -509,6 +509,11 @@ jm_emit_tiler_draw(void *out, struct panfrost_batch *batch, bool fs_required,
 
       cfg.depth_stencil = batch->depth_stencil;
 
+      if (prim == MESA_PRIM_LINES && rast->line_smooth) {
+         cfg.multisample_enable = true;
+         cfg.single_sampled_lines = false;
+      }
+
       if (fs_required) {
          bool has_oq = ctx->occlusion_query && ctx->active_queries;
 

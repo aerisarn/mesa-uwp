@@ -608,6 +608,13 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
    rsd.opaque[9] |= zsa->rsd_stencil.opaque[0] | rast->stencil_misc.opaque[0];
 
+   /* late patching of the merged RSD in case of line-smoothing */
+   if (u_reduced_prim(ctx->active_prim) == MESA_PRIM_LINES &&
+       rast->base.line_smooth) {
+      rsd.opaque[8] |= (1u << 16); // multisample_enable = 1
+      rsd.opaque[9] &= ~(1u << 30); // single_sampled_lines = 0
+   }
+
    /* Word 10, 11 Stencil Front and Back */
    rsd.opaque[10] |= zsa->stencil_front.opaque[0];
    rsd.opaque[11] |= zsa->stencil_back.opaque[0];
@@ -2769,12 +2776,13 @@ static void
 panfrost_update_active_prim(struct panfrost_context *ctx,
                             const struct pipe_draw_info *info)
 {
-   const enum mesa_prim prev_prim = ctx->active_prim;
+   const enum mesa_prim prev_prim = u_reduced_prim(ctx->active_prim);
+   const enum mesa_prim new_prim = u_reduced_prim(info->mode);
+
    ctx->active_prim = info->mode;
 
    if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
-       ((prev_prim == MESA_PRIM_POINTS) !=
-        (info->mode == MESA_PRIM_POINTS))) {
+       (prev_prim != new_prim)) {
       panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
    }
 }
@@ -2888,12 +2896,16 @@ static bool
 panfrost_compatible_batch_state(struct panfrost_batch *batch,
                                 enum mesa_prim reduced_prim)
 {
+   struct panfrost_context *ctx = batch->ctx;
+   struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+
+   if (reduced_prim == MESA_PRIM_LINES &&
+       !pan_tristate_set(&batch->line_smoothing, rast->line_smooth))
+      return false;
+
    /* Only applies on Valhall */
    if (PAN_ARCH < 9)
       return true;
-
-   struct panfrost_context *ctx = batch->ctx;
-   struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
    bool coord = (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
    bool first = rast->flatshade_first;

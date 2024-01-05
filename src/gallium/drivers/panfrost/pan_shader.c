@@ -31,6 +31,7 @@
 #include "pan_shader.h"
 #include "nir/tgsi_to_nir.h"
 #include "util/u_memory.h"
+#include "util/u_prim.h"
 #include "nir_builder.h"
 #include "nir_serialize.h"
 #include "pan_bo.h"
@@ -257,6 +258,9 @@ panfrost_build_key(struct panfrost_context *ctx,
    /* User clip plane lowering needed everywhere */
    if (rast) {
       key->fs.clip_plane_enable = rast->clip_plane_enable;
+
+      if (u_reduced_prim(ctx->active_prim) == MESA_PRIM_LINES)
+         key->fs.line_smooth = rast->line_smooth;
    }
 
    if (dev->arch <= 5) {
