@@ -352,7 +352,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
 
       P_MTHD(p, NVC397, SET_PIPELINE_REGISTER_COUNT(idx));
       P_NVC397_SET_PIPELINE_REGISTER_COUNT(p, idx, shader->info.num_gprs);
-      P_NVC397_SET_PIPELINE_BINDING(p, idx, stage);
+      P_NVC397_SET_PIPELINE_BINDING(p, idx, nvk_cbuf_binding_for_stage(stage));
 
       switch (stage) {
       case MESA_SHADER_VERTEX:

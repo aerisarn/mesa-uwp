@@ -27,6 +27,12 @@ struct vk_shader_module;
 #define TU102_SHADER_HEADER_SIZE (32 * 4)
 #define NVC0_MAX_SHADER_HEADER_SIZE TU102_SHADER_HEADER_SIZE
 
+static inline uint32_t
+nvk_cbuf_binding_for_stage(gl_shader_stage stage)
+{
+   return stage;
+}
+
 enum ENUM_PACKED nvk_cbuf_type {
    NVK_CBUF_TYPE_INVALID = 0,
    NVK_CBUF_TYPE_ROOT_DESC,

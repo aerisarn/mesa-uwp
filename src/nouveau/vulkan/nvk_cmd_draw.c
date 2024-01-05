@@ -1881,16 +1881,25 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    desc->root.root_desc_addr = root_desc_addr;
    memcpy(root_desc_map, &desc->root, sizeof(desc->root));
 
-   uint32_t root_cbuf_count = 0;
+   /* Find cbuf maps for the 5 cbuf groups */
+   const struct nvk_cbuf_map *cbuf_maps[5] = { NULL, };
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
       const struct nvk_shader *shader = pipeline->base.shaders[stage];
       if (!shader || shader->code_size == 0)
          continue;
 
-      uint32_t group = stage;
+      uint32_t group = nvk_cbuf_binding_for_stage(stage);
+      assert(group < ARRAY_SIZE(cbuf_maps));
+      cbuf_maps[group] = &shader->cbuf_map;
+   }
 
-      for (uint32_t c = 0; c < shader->cbuf_map.cbuf_count; c++) {
-         const struct nvk_cbuf *cbuf = &shader->cbuf_map.cbufs[c];
+   uint32_t root_cbuf_count = 0;
+   for (uint32_t group = 0; group < ARRAY_SIZE(cbuf_maps); group++) {
+      if (cbuf_maps[group] == NULL)
+         continue;
+
+      for (uint32_t c = 0; c < cbuf_maps[group]->cbuf_count; c++) {
+         const struct nvk_cbuf *cbuf = &cbuf_maps[group]->cbufs[c];
 
          /* We bind these at the very end */
          if (cbuf->type == NVK_CBUF_TYPE_ROOT_DESC) {
@@ -1952,15 +1961,13 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, root_desc_addr >> 32);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_desc_addr);
 
-   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      const struct nvk_shader *shader = pipeline->base.shaders[stage];
-      if (!shader || shader->code_size == 0)
+   for (uint32_t group = 0; group < ARRAY_SIZE(cbuf_maps); group++) {
+      if (cbuf_maps[group] == NULL)
          continue;
 
-      uint32_t group = stage;
-
-      for (uint32_t c = 0; c < shader->cbuf_map.cbuf_count; c++) {
-         if (shader->cbuf_map.cbufs[c].type == NVK_CBUF_TYPE_ROOT_DESC) {
+      for (uint32_t c = 0; c < cbuf_maps[group]->cbuf_count; c++) {
+         const struct nvk_cbuf *cbuf = &cbuf_maps[group]->cbufs[c];
+         if (cbuf->type == NVK_CBUF_TYPE_ROOT_DESC) {
             P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(group), {
                .valid = VALID_TRUE,
                .shader_slot = c,
