@@ -372,13 +372,17 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    struct anv_device *device = queue->device;
    VkResult result;
 
+   if (unlikely(device->physical->measure_device.config)) {
+      for (uint32_t i = 0; i < num_cmd_buffers; i++)
+         anv_measure_submit(cmd_buffers[i]);
+   }
+
    /* Edit the tail of the command buffers to chain them all together if they
     * can be.
     */
    anv_cmd_buffer_chain_command_buffers(cmd_buffers, num_cmd_buffers);
 
    for (uint32_t i = 0; i < num_cmd_buffers; i++) {
-      anv_measure_submit(cmd_buffers[i]);
       result = setup_execbuf_for_cmd_buffer(execbuf, cmd_buffers[i]);
       if (result != VK_SUCCESS)
          return result;
