@@ -31,6 +31,7 @@
 #include "pan_shader.h"
 #include "nir/tgsi_to_nir.h"
 #include "util/u_memory.h"
+#include "nir_builder.h"
 #include "nir_serialize.h"
 #include "pan_bo.h"
 #include "pan_context.h"
@@ -64,6 +65,31 @@ static struct panfrost_compiled_shader *
 panfrost_alloc_variant(struct panfrost_uncompiled_shader *so)
 {
    return util_dynarray_grow(&so->variants, struct panfrost_compiled_shader, 1);
+}
+
+static void
+lower_load_poly_line_smooth_enabled(nir_shader *nir,
+                                    const struct panfrost_shader_key *key)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_builder b = nir_builder_create(impl);
+
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (intrin->intrinsic != nir_intrinsic_load_poly_line_smooth_enabled)
+            continue;
+
+         b.cursor = nir_before_instr(instr);
+         nir_def_rewrite_uses(&intrin->def, nir_imm_true(&b));
+
+         nir_instr_remove(instr);
+         nir_instr_free(instr);
+      }
+   }
 }
 
 static void
@@ -124,6 +150,12 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
 
       if (key->fs.clip_plane_enable) {
          NIR_PASS_V(s, nir_lower_clip_fs, key->fs.clip_plane_enable, false);
+      }
+
+      if (key->fs.line_smooth) {
+         NIR_PASS_V(s, nir_lower_poly_line_smooth, 16);
+         NIR_PASS_V(s, lower_load_poly_line_smooth_enabled, key);
+         NIR_PASS_V(s, nir_lower_alu);
       }
    }
 
