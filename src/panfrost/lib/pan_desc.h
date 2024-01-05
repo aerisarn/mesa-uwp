@@ -111,6 +111,7 @@ struct pan_fb_info {
       unsigned minx, miny, maxx, maxy;
    } extent;
    unsigned nr_samples;
+   unsigned force_samples; /* samples used for rasterization */
    unsigned rt_count;
    struct pan_fb_color_attachment rts[8];
    struct pan_fb_zs_attachment zs;

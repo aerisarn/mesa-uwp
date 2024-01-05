@@ -732,8 +732,28 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
       cfg.z_clear = fb->zs.clear_value.depth;
       cfg.s_clear = fb->zs.clear_value.stencil;
       cfg.color_buffer_allocation = cbuf_allocation;
-      cfg.sample_count = fb->nr_samples;
-      cfg.sample_pattern = pan_sample_pattern(fb->nr_samples);
+
+      /* The force_samples setting dictates the sample-count that is used
+       * for rasterization, and works like D3D11's ForcedSampleCount feature:
+       *
+       * - If force_samples == 0: Let nr_samples dictate sample count
+       * - If force_samples == 1: force single-sampled rasterization
+       * - If force_samples >= 1: force multi-sampled rasterization
+       *
+       * This can be used to read SYSTEM_VALUE_SAMPLE_MASK_IN from the
+       * fragment shader, even when performing single-sampled rendering.
+       */
+      if (!fb->force_samples) {
+         cfg.sample_count = fb->nr_samples;
+         cfg.sample_pattern = pan_sample_pattern(fb->nr_samples);
+      } else if (fb->force_samples == 1) {
+         cfg.sample_count = fb->nr_samples;
+         cfg.sample_pattern = pan_sample_pattern(1);
+      } else {
+         cfg.sample_count = 1;
+         cfg.sample_pattern = pan_sample_pattern(fb->force_samples);
+      }
+
       cfg.z_write_enable = (fb->zs.view.zs && !fb->zs.discard.z);
       cfg.s_write_enable = (fb->zs.view.s && !fb->zs.discard.s);
       cfg.has_zs_crc_extension = has_zs_crc_ext;
