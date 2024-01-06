@@ -103,6 +103,7 @@ agx_upload_stage_uniforms(struct agx_batch *batch, uint64_t textures,
 
    u_foreach_bit(cb, st->cb_mask) {
       uniforms.ubo_base[cb] = agx_const_buffer_ptr(batch, &st->cb[cb]);
+      uniforms.ubo_size[cb] = st->cb[cb].buffer_size;
    }
 
    u_foreach_bit(cb, st->ssbo_mask) {

@@ -145,6 +145,7 @@ struct PACKED agx_stage_uniforms {
 
    /* Uniform buffer objects */
    uint64_t ubo_base[PIPE_MAX_CONSTANT_BUFFERS];
+   uint32_t ubo_size[PIPE_MAX_CONSTANT_BUFFERS];
 
    /* Shader storage buffer objects */
    uint64_t ssbo_base[PIPE_MAX_SHADER_BUFFERS];

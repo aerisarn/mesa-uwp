@@ -149,6 +149,9 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
    case nir_intrinsic_load_ssbo_address:
       return load_sysval_indirect(b, 1, 64, stage_table(b), &s->ssbo_base,
                                   intr->src[0].ssa);
+   case nir_intrinsic_get_ubo_size:
+      return load_sysval_indirect(b, 1, 32, stage_table(b), &s->ubo_size,
+                                  intr->src[0].ssa);
    case nir_intrinsic_get_ssbo_size:
       return load_sysval_indirect(b, 1, 32, stage_table(b), &s->ssbo_size,
                                   intr->src[0].ssa);
