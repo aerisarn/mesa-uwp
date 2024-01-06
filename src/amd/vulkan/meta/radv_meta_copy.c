@@ -95,11 +95,12 @@ transfer_copy_buffer_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffe
 {
    const struct radv_device *device = cmd_buffer->device;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   const VkImageAspectFlags aspect_mask = region->imageSubresource.aspectMask;
+   const unsigned binding_idx = image->disjoint ? radv_plane_from_aspect(aspect_mask) : 0;
 
-   radv_cs_add_buffer(device->ws, cs, image->bindings[0].bo);
+   radv_cs_add_buffer(device->ws, cs, image->bindings[binding_idx].bo);
    radv_cs_add_buffer(device->ws, cs, buffer->bo);
 
-   const VkImageAspectFlags aspect_mask = region->imageSubresource.aspectMask;
    struct radv_sdma_surf buf = radv_sdma_get_buf_surf(buffer, image, region, aspect_mask);
    const struct radv_sdma_surf img =
       radv_sdma_get_surf(device, image, region->imageSubresource, region->imageOffset, aspect_mask);
