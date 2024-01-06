@@ -31,7 +31,6 @@
  * - main interface to GEM in the kernel
  */
 
-#include <xf86drm.h>
 #include <util/u_atomic.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -72,6 +71,7 @@
 #include "xe/iris_bufmgr.h"
 
 #include "drm-uapi/i915_drm.h"
+#include <xf86drm.h>
 
 #ifdef HAVE_VALGRIND
 #include <valgrind.h>
