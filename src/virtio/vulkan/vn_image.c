@@ -22,6 +22,8 @@
 #include "vn_physical_device.h"
 #include "vn_wsi.h"
 
+#define IMAGE_REQS_CACHE_MAX_ENTRIES 500
+
 /* image commands */
 
 static inline uint32_t
@@ -164,6 +166,7 @@ vn_image_reqs_cache_init(struct vn_device *dev)
       return;
 
    simple_mtx_init(&cache->mutex, mtx_plain);
+   list_inithead(&dev->image_reqs_cache.lru);
 }
 
 void
@@ -177,8 +180,11 @@ vn_image_reqs_cache_fini(struct vn_device *dev)
 
    hash_table_foreach(cache->ht, hash_entry) {
       struct vn_image_reqs_cache_entry *cache_entry = hash_entry->data;
+      list_del(&cache_entry->head);
       vk_free(alloc, cache_entry);
    }
+   assert(list_is_empty(&dev->image_reqs_cache.lru));
+
    _mesa_hash_table_destroy(cache->ht, NULL);
 
    simple_mtx_destroy(&cache->mutex);
@@ -202,6 +208,7 @@ vn_image_init_reqs_from_cache(struct vn_device *dev,
       struct vn_image_reqs_cache_entry *cache_entry = hash_entry->data;
       for (uint32_t i = 0; i < cache_entry->plane_count; i++)
          img->requirements[i] = cache_entry->requirements[i];
+      list_move_to(&cache_entry->head, &dev->image_reqs_cache.lru);
       p_atomic_inc(&cache->debug.cache_hit_count);
    } else {
       p_atomic_inc(&cache->debug.cache_miss_count);
@@ -223,8 +230,21 @@ vn_image_store_reqs_in_cache(struct vn_device *dev,
 
    assert(cache->ht);
 
-   cache_entry = vk_zalloc(alloc, sizeof(*cache_entry), VN_DEFAULT_ALIGN,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   simple_mtx_lock(&cache->mutex);
+   uint32_t cache_entry_count = _mesa_hash_table_num_entries(cache->ht);
+   if (cache_entry_count == IMAGE_REQS_CACHE_MAX_ENTRIES) {
+      /* Evict/use the last entry in the lru list for this new entry */
+      cache_entry =
+         list_last_entry(&cache->lru, struct vn_image_reqs_cache_entry, head);
+
+      _mesa_hash_table_remove_key(cache->ht, cache_entry->key);
+      list_del(&cache_entry->head);
+   } else {
+      cache_entry = vk_zalloc(alloc, sizeof(*cache_entry), VN_DEFAULT_ALIGN,
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   }
+   simple_mtx_unlock(&cache->mutex);
+
    if (!cache_entry)
       return;
 
@@ -238,6 +258,7 @@ vn_image_store_reqs_in_cache(struct vn_device *dev,
    if (!_mesa_hash_table_search(cache->ht, cache_entry->key)) {
       _mesa_hash_table_insert(dev->image_reqs_cache.ht, cache_entry->key,
                               cache_entry);
+      list_add(&cache_entry->head, &cache->lru);
    }
    simple_mtx_unlock(&cache->mutex);
 }
