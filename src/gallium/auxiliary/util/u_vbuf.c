@@ -1022,10 +1022,8 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
       mgr->unaligned_vb_mask[1] &= mask;
 
       for (i = 0; i < total_count; i++) {
-         unsigned dst_index = i;
-
-         pipe_vertex_buffer_unreference(&mgr->vertex_buffer[dst_index]);
-         pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[dst_index]);
+         pipe_vertex_buffer_unreference(&mgr->vertex_buffer[i]);
+         pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[i]);
       }
 
       pipe->set_vertex_buffers(pipe, count, unbind_num_trailing_slots, false, NULL);
@@ -1033,10 +1031,9 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    }
 
    for (i = 0; i < count; i++) {
-      unsigned dst_index = i;
       const struct pipe_vertex_buffer *vb = &bufs[i];
-      struct pipe_vertex_buffer *orig_vb = &mgr->vertex_buffer[dst_index];
-      struct pipe_vertex_buffer *real_vb = &mgr->real_vertex_buffer[dst_index];
+      struct pipe_vertex_buffer *orig_vb = &mgr->vertex_buffer[i];
+      struct pipe_vertex_buffer *real_vb = &mgr->real_vertex_buffer[i];
 
       if (!vb->buffer.resource) {
          pipe_vertex_buffer_unreference(orig_vb);
@@ -1048,7 +1045,7 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
       /* struct isn't tightly packed: do not use memcmp */
       if (not_user &&
           orig_vb->buffer_offset == vb->buffer_offset && orig_vb->buffer.resource == vb->buffer.resource) {
-         mask |= BITFIELD_BIT(dst_index);
+         mask |= BITFIELD_BIT(i);
          if (take_ownership) {
              pipe_vertex_buffer_unreference(orig_vb);
              /* the pointer was unset in the line above, so copy it back */
@@ -1066,10 +1063,10 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
          pipe_vertex_buffer_reference(orig_vb, vb);
       }
 
-      enabled_vb_mask |= 1 << dst_index;
+      enabled_vb_mask |= 1 << i;
 
       if ((!mgr->caps.buffer_offset_unaligned && vb->buffer_offset % 4 != 0)) {
-         incompatible_vb_mask |= 1 << dst_index;
+         incompatible_vb_mask |= 1 << i;
          real_vb->buffer_offset = vb->buffer_offset;
          pipe_vertex_buffer_unreference(real_vb);
          real_vb->is_user_buffer = false;
@@ -1078,13 +1075,13 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
 
       if (!mgr->caps.attrib_component_unaligned) {
          if (vb->buffer_offset % 2 != 0)
-            unaligned_vb_mask[0] |= BITFIELD_BIT(dst_index);
+            unaligned_vb_mask[0] |= BITFIELD_BIT(i);
          if (vb->buffer_offset % 4 != 0)
-            unaligned_vb_mask[1] |= BITFIELD_BIT(dst_index);
+            unaligned_vb_mask[1] |= BITFIELD_BIT(i);
       }
 
       if (!mgr->caps.user_vertex_buffers && vb->is_user_buffer) {
-         user_vb_mask |= 1 << dst_index;
+         user_vb_mask |= 1 << i;
          real_vb->buffer_offset = vb->buffer_offset;
          pipe_vertex_buffer_unreference(real_vb);
          real_vb->is_user_buffer = false;
