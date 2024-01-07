@@ -1419,34 +1419,34 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          /* for instructions other than v_cndmask_b32, the size of the instruction should match the
           * operand size */
-         unsigned can_use_mod =
+         bool can_use_mod =
             instr->opcode != aco_opcode::v_cndmask_b32 || instr->operands[i].getTemp().bytes() == 4;
-         can_use_mod =
-            can_use_mod && can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, i);
+         can_use_mod &= can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, i);
 
          if (instr->isSDWA())
-            can_use_mod = can_use_mod && instr->sdwa().sel[i].size() == 4;
+            can_use_mod &= instr->sdwa().sel[i].size() == 4;
          else
-            can_use_mod = can_use_mod && (instr->isDPP16() || can_use_VOP3(ctx, instr));
+            can_use_mod &= instr->isDPP16() || can_use_VOP3(ctx, instr);
 
          unsigned bits = get_operand_size(instr, i);
-         bool mod_bitsize_compat = instr->operands[i].bytes() * 8 == bits;
+         can_use_mod &= instr->operands[i].bytes() * 8 == bits;
 
-         if (info.is_neg() && instr->opcode == aco_opcode::v_add_f32 && mod_bitsize_compat) {
-            instr->opcode = i ? aco_opcode::v_sub_f32 : aco_opcode::v_subrev_f32;
+         if (info.is_neg() && can_use_mod &&
+             can_eliminate_fcanonicalize(ctx, instr, info.temp, i)) {
             instr->operands[i].setTemp(info.temp);
-         } else if (info.is_neg() && instr->opcode == aco_opcode::v_add_f16 && mod_bitsize_compat) {
-            instr->opcode = i ? aco_opcode::v_sub_f16 : aco_opcode::v_subrev_f16;
-            instr->operands[i].setTemp(info.temp);
-         } else if (info.is_neg() && can_use_mod && mod_bitsize_compat &&
-                    can_eliminate_fcanonicalize(ctx, instr, info.temp, i)) {
-            if (!instr->isDPP16() && can_use_VOP3(ctx, instr))
-               instr->format = asVOP3(instr->format);
-            instr->operands[i].setTemp(info.temp);
-            if (!instr->valu().abs[i])
-               instr->valu().neg[i] = true;
+            if (instr->valu().abs[i]) {
+               /* fabs(fneg(a)) -> fabs(a) */
+            } else if (instr->opcode == aco_opcode::v_add_f32) {
+               instr->opcode = i ? aco_opcode::v_sub_f32 : aco_opcode::v_subrev_f32;
+            } else if (instr->opcode == aco_opcode::v_add_f16) {
+               instr->opcode = i ? aco_opcode::v_sub_f16 : aco_opcode::v_subrev_f16;
+            } else {
+               if (!instr->isDPP16() && can_use_VOP3(ctx, instr))
+                  instr->format = asVOP3(instr->format);
+               instr->valu().neg[i] ^= true;
+            }
          }
-         if (info.is_abs() && can_use_mod && mod_bitsize_compat &&
+         if (info.is_abs() && can_use_mod &&
              can_eliminate_fcanonicalize(ctx, instr, info.temp, i)) {
             if (!instr->isDPP16() && can_use_VOP3(ctx, instr))
                instr->format = asVOP3(instr->format);
