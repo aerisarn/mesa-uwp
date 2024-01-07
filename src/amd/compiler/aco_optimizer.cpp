@@ -3796,23 +3796,26 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       ssa_info& info = ctx.info[op.tempId()];
       if (info.is_vop3p() && info.instr->opcode == aco_opcode::v_pk_mul_f16 &&
-          info.instr->operands[1].constantEquals(0x3C00)) {
+          (info.instr->operands[0].constantEquals(0x3C00) ||
+           info.instr->operands[1].constantEquals(0x3C00))) {
 
          VALU_instruction* fneg = &info.instr->valu();
 
-         if (fneg->opsel_lo[1] || fneg->opsel_hi[1])
+         unsigned fneg_src = fneg->operands[0].constantEquals(0x3C00);
+
+         if (fneg->opsel_lo[1 - fneg_src] || fneg->opsel_hi[1 - fneg_src])
             continue;
 
          Operand ops[3];
          for (unsigned j = 0; j < instr->operands.size(); j++)
             ops[j] = instr->operands[j];
-         ops[i] = info.instr->operands[0];
+         ops[i] = fneg->operands[fneg_src];
          if (!check_vop3_operands(ctx, instr->operands.size(), ops))
             continue;
 
          if (fneg->clamp)
             continue;
-         instr->operands[i] = fneg->operands[0];
+         instr->operands[i] = fneg->operands[fneg_src];
 
          /* opsel_lo/hi is either 0 or 1:
           * if 0 - pick selection from fneg->lo
@@ -3824,11 +3827,11 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          bool neg_hi = fneg->neg_hi[0] ^ fneg->neg_hi[1];
          vop3p->neg_lo[i] ^= opsel_lo ? neg_hi : neg_lo;
          vop3p->neg_hi[i] ^= opsel_hi ? neg_hi : neg_lo;
-         vop3p->opsel_lo[i] ^= opsel_lo ? !fneg->opsel_hi[0] : fneg->opsel_lo[0];
-         vop3p->opsel_hi[i] ^= opsel_hi ? !fneg->opsel_hi[0] : fneg->opsel_lo[0];
+         vop3p->opsel_lo[i] ^= opsel_lo ? !fneg->opsel_hi[fneg_src] : fneg->opsel_lo[fneg_src];
+         vop3p->opsel_hi[i] ^= opsel_hi ? !fneg->opsel_hi[fneg_src] : fneg->opsel_lo[fneg_src];
 
          if (--ctx.uses[fneg->definitions[0].tempId()])
-            ctx.uses[fneg->operands[0].tempId()]++;
+            ctx.uses[fneg->operands[fneg_src].tempId()]++;
       }
    }
 
