@@ -2391,6 +2391,11 @@ mem_vectorize_cb(unsigned align_mul, unsigned align_offset, unsigned bit_size,
                  unsigned num_components, nir_intrinsic_instr *low,
                  nir_intrinsic_instr *high, void *data)
 {
+   /* Must be aligned to the size of the load */
+   unsigned align = nir_combined_align(align_mul, align_offset);
+   if ((bit_size / 8) > align)
+      return false;
+
    if (num_components > 4)
       return false;
 
