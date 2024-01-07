@@ -265,4 +265,18 @@ amdgpu_winsys_bo_reference(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo **d
                        (struct pb_buffer_lean**)dst, (struct pb_buffer_lean*)src);
 }
 
+/* Same as amdgpu_winsys_bo_reference, but ignore the value in *dst. */
+static inline void
+amdgpu_winsys_bo_set_reference(struct amdgpu_winsys_bo **dst, struct amdgpu_winsys_bo *src)
+{
+   radeon_bo_set_reference((struct pb_buffer_lean**)dst, (struct pb_buffer_lean*)src);
+}
+
+/* Unreference dst, but don't assign anything. */
+static inline void
+amdgpu_winsys_bo_drop_reference(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *dst)
+{
+   radeon_bo_drop_reference(&ws->dummy_ws.base, &dst->base);
+}
+
 #endif

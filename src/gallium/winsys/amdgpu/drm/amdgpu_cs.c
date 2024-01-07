@@ -617,7 +617,7 @@ amdgpu_do_add_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo,
    struct amdgpu_cs_buffer *buffer = &list->buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
+   amdgpu_winsys_bo_set_reference(&buffer->bo, bo);
    list->num_buffers++;
 
    unsigned hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
@@ -882,7 +882,7 @@ static void amdgpu_cs_context_cleanup_buffers(struct amdgpu_winsys *ws, struct a
       unsigned num_buffers = cs->buffer_lists[i].num_buffers;
 
       for (unsigned j = 0; j < num_buffers; j++)
-         amdgpu_winsys_bo_reference(ws, &buffers[j].bo, NULL);
+         amdgpu_winsys_bo_drop_reference(ws, buffers[j].bo);
 
       cs->buffer_lists[i].num_buffers = 0;
    }
@@ -1638,10 +1638,10 @@ cleanup:
 
       for (i = 0; i < num_dec_buffers; i++) {
          p_atomic_dec(&buffers[i].bo->num_active_ioctls);
-         amdgpu_winsys_bo_reference(ws, &buffers[i].bo, NULL);
+         amdgpu_winsys_bo_drop_reference(ws, buffers[i].bo);
       }
       for (; i < num_buffers; i++)
-         amdgpu_winsys_bo_reference(ws, &buffers[i].bo, NULL);
+         amdgpu_winsys_bo_drop_reference(ws, buffers[i].bo);
 
       cs->buffer_lists[list].num_buffers = 0;
    }

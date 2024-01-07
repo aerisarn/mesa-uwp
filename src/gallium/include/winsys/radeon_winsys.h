@@ -792,6 +792,22 @@ radeon_bo_reference(struct radeon_winsys *rws, struct pb_buffer_lean **dst,
    *dst = src;
 }
 
+/* Same as radeon_bo_reference, but ignore the value in *dst. */
+static inline void
+radeon_bo_set_reference(struct pb_buffer_lean **dst, struct pb_buffer_lean *src)
+{
+   *dst = src;
+   pipe_reference(NULL, &src->reference); /* only increment refcount */
+}
+
+/* Unreference dst, but don't assign anything. */
+static inline void
+radeon_bo_drop_reference(struct radeon_winsys *rws, struct pb_buffer_lean *dst)
+{
+   if (pipe_reference(&dst->reference, NULL)) /* only decrement refcount */
+      rws->buffer_destroy(rws, dst);
+}
+
 /* The following bits describe the heaps managed by slab allocators (pb_slab) and
  * the allocation cache (pb_cache).
  */
