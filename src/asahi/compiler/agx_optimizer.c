@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "agx_builder.h"
 #include "agx_compiler.h"
 #include "agx_minifloat.h"
+#include "agx_opcodes.h"
 
 /* AGX peephole optimizer responsible for instruction combining. It operates in
  * a forward direction and a backward direction, in each case traversing in
@@ -209,7 +211,7 @@ agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
 }
 
 static void
-agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
+agx_optimizer_copyprop(agx_context *ctx, agx_instr **defs, agx_instr *I)
 {
    agx_foreach_ssa_src(I, s) {
       agx_index src = I->src[s];
@@ -226,6 +228,28 @@ agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
        */
       if (def->src[0].size != src.size)
          continue;
+
+      /* Optimize split(64-bit uniform) so we can get better copyprop of the
+       * 32-bit uniform parts. This helps reduce moves with 64-bit uniforms.
+       */
+      if (I->op == AGX_OPCODE_SPLIT && def->src[0].type == AGX_INDEX_UNIFORM &&
+          src.size == AGX_SIZE_64 && I->dest[0].size == AGX_SIZE_32) {
+
+         assert(I->nr_dests == 2 && "decomposing a 64-bit scalar");
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+
+         agx_index lo = def->src[0];
+         lo.size = AGX_SIZE_32;
+
+         agx_index hi = lo;
+         hi.value += 2 /* half of 64-bits = 32-bits = 2 x 16-bits */;
+
+         defs[I->dest[0].value] = agx_mov_to(&b, I->dest[0], lo);
+         defs[I->dest[1].value] = agx_mov_to(&b, I->dest[1], hi);
+
+         agx_remove_instruction(I);
+         continue;
+      }
 
       /* Immediate inlining happens elsewhere */
       if (def->src[0].type == AGX_INDEX_IMMEDIATE)
@@ -326,7 +350,7 @@ agx_optimizer_forward(agx_context *ctx)
 {
    agx_instr **defs = calloc(ctx->alloc, sizeof(*defs));
 
-   agx_foreach_instr_global(ctx, I) {
+   agx_foreach_instr_global_safe(ctx, I) {
       struct agx_opcode_info info = agx_opcodes_info[I->op];
 
       agx_foreach_ssa_dest(I, d) {
@@ -334,7 +358,7 @@ agx_optimizer_forward(agx_context *ctx)
       }
 
       /* Optimize moves */
-      agx_optimizer_copyprop(defs, I);
+      agx_optimizer_copyprop(ctx, defs, I);
 
       /* Propagate fmov down */
       if (info.is_float || I->op == AGX_OPCODE_FCMPSEL ||
