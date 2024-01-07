@@ -875,7 +875,7 @@ static void cleanup_fence_list(struct amdgpu_fence_list *fences)
    fences->num = 0;
 }
 
-static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
+static void amdgpu_cs_context_cleanup_buffers(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++) {
       struct amdgpu_cs_buffer *buffers = cs->buffer_lists[i].buffers;
@@ -886,7 +886,10 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs
 
       cs->buffer_lists[i].num_buffers = 0;
    }
+}
 
+static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
+{
    cs->seq_no_dependencies.valid_fence_mask = 0;
    cleanup_fence_list(&cs->fence_dependencies);
    cleanup_fence_list(&cs->syncobj_dependencies);
@@ -897,6 +900,7 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs
 
 static void amdgpu_destroy_cs_context(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
 {
+   amdgpu_cs_context_cleanup_buffers(ws, cs);
    amdgpu_cs_context_cleanup(ws, cs);
    for (unsigned i = 0; i < ARRAY_SIZE(cs->buffer_lists); i++)
       FREE(cs->buffer_lists[i].buffers);
@@ -1621,17 +1625,23 @@ cleanup:
 
    cs->error_code = r;
 
-   /* Only decrement num_active_ioctls for those buffers where we incremented it. */
-   for (i = 0; i < initial_num_real_buffers; i++)
-      p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_REAL].buffers[i].bo->num_active_ioctls);
+   /* Clear the buffer lists. */
+   for (unsigned list = 0; list < ARRAY_SIZE(cs->buffer_lists); list++) {
+      struct amdgpu_cs_buffer *buffers = cs->buffer_lists[list].buffers;
+      unsigned num_buffers = cs->buffer_lists[list].num_buffers;
+      /* Only decrement num_active_ioctls for those buffers where we incremented it. */
+      unsigned num_dec_buffers = list == AMDGPU_BO_REAL ? initial_num_real_buffers : num_buffers;
+      unsigned i;
 
-   unsigned num_slab_buffers = cs->buffer_lists[AMDGPU_BO_SLAB_ENTRY].num_buffers;
-   for (i = 0; i < num_slab_buffers; i++)
-      p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_SLAB_ENTRY].buffers[i].bo->num_active_ioctls);
+      for (i = 0; i < num_dec_buffers; i++) {
+         p_atomic_dec(&buffers[i].bo->num_active_ioctls);
+         amdgpu_winsys_bo_reference(ws, &buffers[i].bo, NULL);
+      }
+      for (; i < num_buffers; i++)
+         amdgpu_winsys_bo_reference(ws, &buffers[i].bo, NULL);
 
-   unsigned num_sparse_buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
-   for (i = 0; i < num_sparse_buffers; i++)
-      p_atomic_dec(&cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[i].bo->num_active_ioctls);
+      cs->buffer_lists[list].num_buffers = 0;
+   }
 
    amdgpu_cs_context_cleanup(ws, cs);
 }
@@ -1749,6 +1759,8 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    } else {
       if (flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION)
          cs->csc->secure = !cs->csc->secure;
+
+      amdgpu_cs_context_cleanup_buffers(ws, cs->csc);
       amdgpu_cs_context_cleanup(ws, cs->csc);
    }
 
