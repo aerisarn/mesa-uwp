@@ -1423,8 +1423,14 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             instr->opcode != aco_opcode::v_cndmask_b32 || instr->operands[i].getTemp().bytes() == 4;
          can_use_mod &= can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, i);
 
+         bool packed_math = instr->isVOP3P() && instr->opcode != aco_opcode::v_fma_mix_f32 &&
+                            instr->opcode != aco_opcode::v_fma_mixlo_f16 &&
+                            instr->opcode != aco_opcode::v_fma_mixhi_f16;
+
          if (instr->isSDWA())
             can_use_mod &= instr->sdwa().sel[i].size() == 4;
+         else if (instr->isVOP3P())
+            can_use_mod &= !packed_math || !info.is_abs();
          else
             can_use_mod &= instr->isDPP16() || can_use_VOP3(ctx, instr);
 
@@ -1434,12 +1440,17 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (info.is_neg() && can_use_mod &&
              can_eliminate_fcanonicalize(ctx, instr, info.temp, i)) {
             instr->operands[i].setTemp(info.temp);
-            if (instr->valu().abs[i]) {
+            if (!packed_math && instr->valu().abs[i]) {
                /* fabs(fneg(a)) -> fabs(a) */
             } else if (instr->opcode == aco_opcode::v_add_f32) {
                instr->opcode = i ? aco_opcode::v_sub_f32 : aco_opcode::v_subrev_f32;
             } else if (instr->opcode == aco_opcode::v_add_f16) {
                instr->opcode = i ? aco_opcode::v_sub_f16 : aco_opcode::v_subrev_f16;
+            } else if (packed_math) {
+               /* Bit size compat should ensure this. */
+               assert(!instr->valu().opsel_lo[i] && !instr->valu().opsel_hi[i]);
+               instr->valu().neg_lo[i] ^= true;
+               instr->valu().neg_hi[i] ^= true;
             } else {
                if (!instr->isDPP16() && can_use_VOP3(ctx, instr))
                   instr->format = asVOP3(instr->format);
