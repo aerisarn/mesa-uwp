@@ -725,9 +725,9 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
     * INDIRECT_BUFFER packet.
     */
    if (cs->has_chaining)
-      buffer_size = 4 * util_next_power_of_two(main_ib->max_ib_size_dw);
+      buffer_size = util_next_power_of_two(main_ib->max_ib_bytes);
    else
-      buffer_size = 4 * util_next_power_of_two(4 * main_ib->max_ib_size_dw);
+      buffer_size = util_next_power_of_two(4 * main_ib->max_ib_bytes);
 
    const unsigned min_size = MAX2(main_ib->max_check_space_size, 8 * 1024 * 4);
    const unsigned max_size = 512 * 1024 * 4;
@@ -792,12 +792,11 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
    ib_size = MAX2(ib_size, main_ib->max_check_space_size);
 
    if (!cs->has_chaining) {
-      ib_size = MAX2(ib_size,
-                     MIN2(4 * util_next_power_of_two(main_ib->max_ib_size_dw),
-                          IB_MAX_SUBMIT_BYTES));
+      ib_size = MAX2(ib_size, MIN2(util_next_power_of_two(main_ib->max_ib_bytes),
+                                   IB_MAX_SUBMIT_BYTES));
    }
 
-   main_ib->max_ib_size_dw = main_ib->max_ib_size_dw - main_ib->max_ib_size_dw / 32;
+   main_ib->max_ib_bytes = main_ib->max_ib_bytes - main_ib->max_ib_bytes / 32;
 
    rcs->prev_dw = 0;
    rcs->num_prev = 0;
@@ -847,7 +846,7 @@ static void amdgpu_ib_finalize(struct amdgpu_winsys *ws, struct radeon_cmdbuf *r
    amdgpu_set_ib_size(rcs, ib);
    ib->used_ib_space += rcs->current.cdw * 4;
    ib->used_ib_space = align(ib->used_ib_space, ws->info.ip[ip_type].ib_alignment);
-   ib->max_ib_size_dw = MAX2(ib->max_ib_size_dw, rcs->prev_dw + rcs->current.cdw);
+   ib->max_ib_bytes = MAX2(ib->max_ib_bytes, (rcs->prev_dw + rcs->current.cdw) * 4);
 }
 
 static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
@@ -1085,7 +1084,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    /* 125% of the size for IB epilog. */
    unsigned safe_byte_size = need_byte_size + need_byte_size / 4;
    main_ib->max_check_space_size = MAX2(main_ib->max_check_space_size, safe_byte_size);
-   main_ib->max_ib_size_dw = MAX2(main_ib->max_ib_size_dw, projected_size_dw);
+   main_ib->max_ib_bytes = MAX2(main_ib->max_ib_bytes, projected_size_dw * 4);
 
    if (!cs->has_chaining)
       return false;
