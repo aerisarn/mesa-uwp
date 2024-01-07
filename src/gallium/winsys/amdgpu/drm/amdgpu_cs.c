@@ -882,7 +882,7 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
 static void cleanup_fence_list(struct amdgpu_fence_list *fences)
 {
    for (unsigned i = 0; i < fences->num; i++)
-      amdgpu_fence_reference(&fences->list[i], NULL);
+      amdgpu_fence_drop_reference(fences->list[i]);
    fences->num = 0;
 }
 
@@ -1181,11 +1181,8 @@ static void add_fence_to_list(struct amdgpu_fence_list *fences,
       fences->max = idx + increment;
       size = fences->max * sizeof(fences->list[0]);
       fences->list = realloc(fences->list, size);
-      /* Clear the newly-allocated elements. */
-      memset(fences->list + idx, 0,
-             increment * sizeof(fences->list[0]));
    }
-   amdgpu_fence_reference(&fences->list[idx], (struct pipe_fence_handle*)fence);
+   amdgpu_fence_set_reference(&fences->list[idx], (struct pipe_fence_handle*)fence);
 }
 
 static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rcs,
