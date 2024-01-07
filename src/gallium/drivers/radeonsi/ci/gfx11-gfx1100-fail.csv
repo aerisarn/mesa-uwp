@@ -151,5 +151,4 @@ KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream,Fail
 
 # I saw these on Navi31, but not Navi33
-dEQP-GLES3.functional.fragment_ops.interaction.basic_shader.39,Fail
 dEQP-GLES3.functional.fragment_ops.interaction.basic_shader.94,Fail
