@@ -54,13 +54,13 @@ agx_size_align_16(enum agx_size size)
 
 /* Keep synced with hash_index */
 typedef struct {
-   /* Sufficient for as many SSA values as we need. Immediates and uniforms fit
-    * in 16-bits */
-   unsigned value : 19;
+   /* Sufficient for as many SSA values, immediates, and uniforms as we need. */
+   uint32_t value;
 
    /* Indicates that this source kills the referenced value (because it is the
     * last use in a block and the source is not live after the block). Set by
-    * liveness analysis. */
+    * liveness analysis.
+    */
    bool kill : 1;
 
    /* Cache hints */
@@ -74,6 +74,7 @@ typedef struct {
    unsigned channels_m1     : 3;
    enum agx_size size       : 2;
    enum agx_index_type type : 3;
+   unsigned padding         : 18;
 } agx_index;
 
 static inline unsigned
