@@ -782,10 +782,6 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
                               struct amdgpu_ib *main_ib,
                               struct amdgpu_cs *cs)
 {
-   /* Small IBs are better than big IBs, because the GPU goes idle quicker
-    * and there is less waiting for buffers and fences. Proof:
-    *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
-    */
    struct drm_amdgpu_cs_chunk_ib *chunk_ib = &cs->csc->chunk_ib[IB_MAIN];
    /* This is the minimum size of a contiguous IB. */
    unsigned ib_size = 4 * 1024 * 4;
