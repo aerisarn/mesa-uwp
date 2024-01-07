@@ -173,6 +173,8 @@ struct amdgpu_fence {
    uint_seq_no queue_seq_no;  /* winsys-generated sequence number */
 };
 
+void amdgpu_fence_destroy(struct amdgpu_fence *fence);
+
 static inline bool amdgpu_fence_is_syncobj(struct amdgpu_fence *fence)
 {
    return fence->ctx == NULL;
@@ -197,18 +199,27 @@ static inline void amdgpu_fence_reference(struct pipe_fence_handle **dst,
    struct amdgpu_fence **adst = (struct amdgpu_fence **)dst;
    struct amdgpu_fence *asrc = (struct amdgpu_fence *)src;
 
-   if (pipe_reference(&(*adst)->reference, &asrc->reference)) {
-      struct amdgpu_fence *fence = *adst;
+   if (pipe_reference(&(*adst)->reference, &asrc->reference))
+      amdgpu_fence_destroy(*adst);
 
-      if (amdgpu_fence_is_syncobj(fence))
-         amdgpu_cs_destroy_syncobj(fence->ws->dev, fence->syncobj);
-      else
-         amdgpu_ctx_reference(&fence->ctx, NULL);
-
-      util_queue_fence_destroy(&fence->submitted);
-      FREE(fence);
-   }
    *adst = asrc;
+}
+
+/* Same as amdgpu_fence_reference, but ignore the value in *dst. */
+static inline void amdgpu_fence_set_reference(struct pipe_fence_handle **dst,
+                                              struct pipe_fence_handle *src)
+{
+   *dst = src;
+   pipe_reference(NULL, &((struct amdgpu_fence *)src)->reference); /* only increment refcount */
+}
+
+/* Unreference dst, but don't assign anything. */
+static inline void amdgpu_fence_drop_reference(struct pipe_fence_handle *dst)
+{
+   struct amdgpu_fence *adst = (struct amdgpu_fence *)dst;
+
+   if (pipe_reference(&adst->reference, NULL)) /* only decrement refcount */
+      amdgpu_fence_destroy(adst);
 }
 
 struct amdgpu_cs_buffer *

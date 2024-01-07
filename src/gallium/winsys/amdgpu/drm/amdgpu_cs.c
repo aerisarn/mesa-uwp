@@ -15,6 +15,17 @@
 
 /* FENCES */
 
+void amdgpu_fence_destroy(struct amdgpu_fence *fence)
+{
+   if (amdgpu_fence_is_syncobj(fence))
+      amdgpu_cs_destroy_syncobj(fence->ws->dev, fence->syncobj);
+   else
+      amdgpu_ctx_reference(&fence->ctx, NULL);
+
+   util_queue_fence_destroy(&fence->submitted);
+   FREE(fence);
+}
+
 static struct pipe_fence_handle *
 amdgpu_fence_create(struct amdgpu_cs *cs)
 {
