@@ -1205,10 +1205,11 @@ static void amdgpu_add_bo_fences_to_dependencies(struct amdgpu_cs *acs,
 {
    struct amdgpu_winsys *ws = acs->ws;
    unsigned queue_index = acs->queue_index;
+   struct amdgpu_cs_buffer *buffers = list->buffers;
    unsigned num_buffers = list->num_buffers;
 
    for (unsigned i = 0; i < num_buffers; i++) {
-      struct amdgpu_cs_buffer *buffer = &list->buffers[i];
+      struct amdgpu_cs_buffer *buffer = &buffers[i];
       struct amdgpu_winsys_bo *bo = buffer->bo;
 
       /* Add BO fences from queues other than 'queue_index' to dependencies. */
@@ -1243,10 +1244,11 @@ static void amdgpu_cs_add_syncobj_signal(struct radeon_cmdbuf *rws,
  */
 static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
 {
+   struct amdgpu_cs_buffer *buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].buffers;
    unsigned num_sparse_buffers = cs->buffer_lists[AMDGPU_BO_SPARSE].num_buffers;
 
    for (unsigned i = 0; i < num_sparse_buffers; ++i) {
-      struct amdgpu_cs_buffer *buffer = &cs->buffer_lists[AMDGPU_BO_SPARSE].buffers[i];
+      struct amdgpu_cs_buffer *buffer = &buffers[i];
       struct amdgpu_bo_sparse *bo = get_sparse_bo(buffer->bo);
 
       simple_mtx_lock(&bo->commit_lock);
@@ -1277,7 +1279,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    struct amdgpu_cs *acs = (struct amdgpu_cs*)job;
    struct amdgpu_winsys *ws = acs->ws;
    struct amdgpu_cs_context *cs = acs->cst;
-   int i, r;
+   int r;
    uint64_t seq_no = 0;
    bool has_user_fence = amdgpu_cs_has_user_fence(acs);
 
@@ -1423,11 +1425,12 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
          goto cleanup;
       }
 
+      struct amdgpu_cs_buffer *real_buffers = cs->buffer_lists[AMDGPU_BO_REAL].buffers;
       unsigned num_real_buffers = cs->buffer_lists[AMDGPU_BO_REAL].num_buffers;
       bo_list = alloca((num_real_buffers + 2) * sizeof(struct drm_amdgpu_bo_list_entry));
 
-      for (i = 0; i < num_real_buffers; ++i) {
-         struct amdgpu_cs_buffer *buffer = &cs->buffer_lists[AMDGPU_BO_REAL].buffers[i];
+      for (unsigned i = 0; i < num_real_buffers; ++i) {
+         struct amdgpu_cs_buffer *buffer = &real_buffers[i];
 
          bo_list[num_bo_handles].bo_handle = get_real_bo(buffer->bo)->kms_handle;
          bo_list[num_bo_handles].bo_priority =
