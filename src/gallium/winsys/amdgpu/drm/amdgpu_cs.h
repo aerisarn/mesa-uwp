@@ -16,7 +16,7 @@
  * waiting for buffers and fences. Proof:
  *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
  */
-#define IB_MAX_SUBMIT_DWORDS (20 * 1024)
+#define IB_MAX_SUBMIT_BYTES (80 * 1024)
 
 struct amdgpu_ctx {
    struct pipe_reference reference;

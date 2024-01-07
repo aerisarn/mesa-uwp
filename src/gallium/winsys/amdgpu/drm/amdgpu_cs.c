@@ -793,8 +793,8 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 
    if (!cs->has_chaining) {
       ib_size = MAX2(ib_size,
-                     4 * MIN2(util_next_power_of_two(main_ib->max_ib_size_dw),
-                              IB_MAX_SUBMIT_DWORDS));
+                     MIN2(4 * util_next_power_of_two(main_ib->max_ib_size_dw),
+                          IB_MAX_SUBMIT_BYTES));
    }
 
    main_ib->max_ib_size_dw = main_ib->max_ib_size_dw - main_ib->max_ib_size_dw / 32;
@@ -1074,7 +1074,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
 
    unsigned projected_size_dw = rcs->prev_dw + rcs->current.cdw + dw;
 
-   if (projected_size_dw > IB_MAX_SUBMIT_DWORDS)
+   if (projected_size_dw * 4 > IB_MAX_SUBMIT_BYTES)
       return false;
 
    if (rcs->current.max_dw - rcs->current.cdw >= dw)
