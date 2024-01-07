@@ -134,7 +134,16 @@ agx_emit_parallel_copies(agx_builder *b, struct agx_copy *copies,
          copy.src.size = AGX_SIZE_32;
          copies2[num_copies2++] = copy;
 
-         copy.src.value += 2;
+         if (copy.src.type == AGX_INDEX_IMMEDIATE) {
+            static_assert(sizeof(copy.src.value) * 8 == 32, "known size");
+            copy.src.value = 0;
+         } else {
+            assert(copy.src.type == AGX_INDEX_REGISTER ||
+                   copy.src.type == AGX_INDEX_UNIFORM);
+
+            copy.src.value += 2;
+         }
+
          copy.dest += 2;
          copies2[num_copies2++] = copy;
       } else {
