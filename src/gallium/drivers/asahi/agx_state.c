@@ -4014,7 +4014,15 @@ agx_get_passthrough_gs(struct agx_context *ctx,
                        enum mesa_prim mode)
 {
    bool edgeflags = has_edgeflags(ctx, mode);
-   unsigned poly_mode = ctx->rast->base.fill_front;
+
+   /* Only handle the polygon mode when edge flags are in use, because
+    * nir_passthrough_gs doesn't handle transform feedback + polygon mode
+    * properly. Technically this can break edge flags + transform feedback but
+    * that's firmly in "doctor, it hurts when I do this" territory, and I'm not
+    * sure that's even possible to hit. TODO: Reevaluate.
+    */
+   unsigned poly_mode =
+      edgeflags ? ctx->rast->base.fill_front : PIPE_POLYGON_MODE_FILL;
 
    if (prev_cso->passthrough_progs[mode][poly_mode][edgeflags])
       return prev_cso->passthrough_progs[mode][poly_mode][edgeflags];
