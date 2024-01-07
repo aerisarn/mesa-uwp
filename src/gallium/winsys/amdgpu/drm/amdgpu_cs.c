@@ -718,19 +718,18 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    uint8_t *mapped;
    unsigned buffer_size;
 
-   /* Always create a buffer that is at least as large as the maximum seen IB
-    * size, aligned to a power of two (and multiplied by 4 to reduce internal
-    * fragmentation if chaining is not available). Limit to 512k dwords, which
-    * is the largest power of two that fits into the size field of the
-    * INDIRECT_BUFFER packet.
+   /* Always create a buffer that is at least as large as the maximum seen IB size,
+    * aligned to a power of two.
     */
-   if (cs->has_chaining)
-      buffer_size = util_next_power_of_two(main_ib->max_ib_bytes);
-   else
-      buffer_size = util_next_power_of_two(4 * main_ib->max_ib_bytes);
+   buffer_size = util_next_power_of_two(main_ib->max_ib_bytes);
 
-   const unsigned min_size = MAX2(main_ib->max_check_space_size, 8 * 1024 * 4);
-   const unsigned max_size = 512 * 1024 * 4;
+   /* Multiply by 4 to reduce internal fragmentation if chaining is not available.*/
+   if (!cs->has_chaining)
+      buffer_size *= 4;
+
+   const unsigned min_size = MAX2(main_ib->max_check_space_size, 32 * 1024);
+   /* This is the maximum size that fits into the INDIRECT_BUFFER packet. */
+   const unsigned max_size = 2 * 1024 * 1024;
 
    buffer_size = MIN2(buffer_size, max_size);
    buffer_size = MAX2(buffer_size, min_size); /* min_size is more important */
@@ -784,7 +783,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 {
    struct drm_amdgpu_cs_chunk_ib *chunk_ib = &cs->csc->chunk_ib[IB_MAIN];
    /* This is the minimum size of a contiguous IB. */
-   unsigned ib_size = 4 * 1024 * 4;
+   unsigned ib_size = 16 * 1024;
 
    /* Always allocate at least the size of the biggest cs_check_space call,
     * because precisely the last call might have requested this size.
@@ -796,6 +795,9 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
                                    IB_MAX_SUBMIT_BYTES));
    }
 
+   /* Decay the IB buffer size over time, so that memory usage decreases after
+    * a temporary peak.
+    */
    main_ib->max_ib_bytes = main_ib->max_ib_bytes - main_ib->max_ib_bytes / 32;
 
    rcs->prev_dw = 0;
