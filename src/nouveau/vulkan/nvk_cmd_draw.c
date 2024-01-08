@@ -512,6 +512,25 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    }
 }
 
+void
+nvk_cmd_invalidate_graphics_state(struct nvk_cmd_buffer *cmd)
+{
+   vk_dynamic_graphics_state_dirty_all(&cmd->vk.dynamic_graphics_state);
+
+   /* From the Vulkan 1.3.275 spec:
+    *
+    *    "...There is one exception to this rule - if the primary command
+    *    buffer is inside a render pass instance, then the render pass and
+    *    subpass state is not disturbed by executing secondary command
+    *    buffers."
+    *
+    * We need to reset everything EXCEPT the render pass state.
+    */
+   struct nvk_rendering_state render_save = cmd->state.gfx.render;
+   memset(&cmd->state.gfx, 0, sizeof(cmd->state.gfx));
+   cmd->state.gfx.render = render_save;
+}
+
 static void
 nvk_attachment_init(struct nvk_attachment *att,
                     const VkRenderingAttachmentInfo *info)

@@ -63,6 +63,12 @@ nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
    }
 }
 
+void
+nvk_cmd_invalidate_compute_state(struct nvk_cmd_buffer *cmd)
+{
+   memset(&cmd->state.cs, 0, sizeof(cmd->state.cs));
+}
+
 static void
 nva0c0_qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
                              uint32_t x, uint32_t y, uint32_t z)

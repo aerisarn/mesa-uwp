@@ -307,6 +307,9 @@ nvk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
+   if (commandBufferCount == 0)
+      return;
+
    nvk_cmd_buffer_flush_push(cmd);
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
@@ -327,6 +330,27 @@ nvk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
        */
       util_dynarray_append_dynarray(&cmd->pushes, &other->pushes);
    }
+
+   /* From the Vulkan 1.3.275 spec:
+    *
+    *    "When secondary command buffer(s) are recorded to execute on a
+    *    primary command buffer, the secondary command buffer inherits no
+    *    state from the primary command buffer, and all state of the primary
+    *    command buffer is undefined after an execute secondary command buffer
+    *    command is recorded. There is one exception to this rule - if the
+    *    primary command buffer is inside a render pass instance, then the
+    *    render pass and subpass state is not disturbed by executing secondary
+    *    command buffers. For state dependent commands (such as draws and
+    *    dispatches), any state consumed by those commands must not be
+    *    undefined."
+    *
+    * Therefore, it's the client's job to reset all the state in the primary
+    * after the secondary executes.  However, if we're doing any internal
+    * dirty tracking, we may miss the fact that a secondary has messed with
+    * GPU state if we don't invalidate all our internal tracking.
+    */
+   nvk_cmd_invalidate_graphics_state(cmd);
+   nvk_cmd_invalidate_compute_state(cmd);
 }
 
 enum nvk_barrier {

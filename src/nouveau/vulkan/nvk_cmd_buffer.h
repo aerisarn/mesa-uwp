@@ -204,6 +204,9 @@ void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
 void nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
                                   const VkCommandBufferBeginInfo *pBeginInfo);
 
+void nvk_cmd_invalidate_graphics_state(struct nvk_cmd_buffer *cmd);
+void nvk_cmd_invalidate_compute_state(struct nvk_cmd_buffer *cmd);
+
 void nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
                                     struct nvk_graphics_pipeline *pipeline);
 void nvk_cmd_bind_compute_pipeline(struct nvk_cmd_buffer *cmd,
