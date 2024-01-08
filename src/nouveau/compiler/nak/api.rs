@@ -154,6 +154,7 @@ pub extern "C" fn nak_compiler_create(
     let nak = Box::new(nak_compiler {
         sm: dev.sm,
         nir_options: nir_options(dev),
+        ..unsafe { std::mem::zeroed() }
     });
 
     Box::into_raw(nak)
@@ -198,6 +199,7 @@ impl ShaderBin {
             } else {
                 asm.as_ptr()
             },
+            ..unsafe { std::mem::zeroed() }
         };
         ShaderBin {
             bin: bin,
@@ -225,6 +227,25 @@ fn eprint_hex(label: &str, data: &[u32]) {
     }
     eprintln!("");
 }
+
+const _: () = {
+    assert!(
+        std::mem::size_of::<nak_shader_info__bindgen_ty_1>()
+            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
+    );
+    assert!(
+        std::mem::size_of::<nak_shader_info__bindgen_ty_1__bindgen_ty_1>()
+            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
+    );
+    assert!(
+        std::mem::size_of::<nak_shader_info__bindgen_ty_1__bindgen_ty_2>()
+            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
+    );
+    assert!(
+        std::mem::size_of::<nak_shader_info__bindgen_ty_1__bindgen_ty_2>()
+            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
+    );
+};
 
 #[no_mangle]
 pub extern "C" fn nak_compile_shader(
@@ -304,6 +325,7 @@ pub extern "C" fn nak_compile_shader(
             max(4, s.info.num_gprs)
         },
         num_barriers: s.info.num_barriers,
+        _pad0: Default::default(),
         slm_size: s.info.slm_size,
         __bindgen_anon_1: match &s.info.stage {
             ShaderStageInfo::Compute(cs_info) => {
@@ -315,6 +337,7 @@ pub extern "C" fn nak_compile_shader(
                             cs_info.local_size[2],
                         ],
                         smem_size: cs_info.smem_size,
+                        _pad: Default::default(),
                     },
                 }
             }
@@ -333,6 +356,7 @@ pub extern "C" fn nak_compile_shader(
                         uses_sample_shading: nir_fs_info.uses_sample_shading(),
                         early_fragment_tests: nir_fs_info
                             .early_fragment_tests(),
+                        _pad: Default::default(),
                     },
                 }
             }
@@ -369,10 +393,14 @@ pub extern "C" fn nak_compile_shader(
                         } else {
                             NAK_TS_PRIMS_TRIANGLES_CW
                         },
+
+                        _pad: Default::default(),
                     },
                 }
             }
-            _ => nak_shader_info__bindgen_ty_1 { dummy: 0 },
+            _ => nak_shader_info__bindgen_ty_1 {
+                _pad: Default::default(),
+            },
         },
         vtg: match &s.info.stage {
             ShaderStageInfo::Geometry(_)
@@ -388,6 +416,7 @@ pub extern "C" fn nak_compile_shader(
                     writes_layer: writes_layer,
                     clip_enable: clip_enable.try_into().unwrap(),
                     cull_enable: cull_enable.try_into().unwrap(),
+                    _pad: Default::default(),
                     xfb: unsafe { nak_xfb_from_nir(nir.xfb_info) },
                 }
             }

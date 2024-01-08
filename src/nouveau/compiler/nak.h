@@ -79,6 +79,20 @@ struct nak_xfb_info {
    uint8_t attr_index[4][128];
 };
 
+/* This is an enum so bindgen will generate it */
+#define NAK_SHADER_INFO_STAGE_UNION_SIZE 12
+
+/* This struct MUST have explicit padding fields to ensure that all padding is
+ * zeroed and the zeros get properly copied, even across API boundaries.  This
+ * is ensured in two ways:
+ *
+ *  - Bindgen is invoked with --explicit-padding and if a __bindgen_paddingN
+ *    member ever crops up, that tells us we need to add an explicit member
+ *    here.
+ *
+ *  - There is a set of const asserts in nak/api.rs which ensure that all of
+ *    the union fields are equal to NAK_SHADER_INFO_STAGE_UNION_SIZE.
+ */
 struct nak_shader_info {
    gl_shader_stage stage;
 
@@ -87,6 +101,8 @@ struct nak_shader_info {
 
    /** Number of barriers used */
    uint8_t num_barriers;
+
+   uint16_t _pad0;
 
    /** Size of shader local (scratch) memory */
    uint32_t slm_size;
@@ -98,6 +114,8 @@ struct nak_shader_info {
 
          /* Shared memory size */
          uint16_t smem_size;
+
+         uint8_t _pad[4];
       } cs;
 
       struct {
@@ -106,22 +124,28 @@ struct nak_shader_info {
          bool post_depth_coverage;
          bool uses_sample_shading;
          bool early_fragment_tests;
+
+         uint8_t _pad[7];
       } fs;
 
       struct {
          enum nak_ts_domain domain;
          enum nak_ts_spacing spacing;
          enum nak_ts_prims prims;
+
+         uint8_t _pad[9];
       } ts;
 
       /* Used to initialize the union for other stages */
-      uint32_t dummy;
+      uint8_t _pad[NAK_SHADER_INFO_STAGE_UNION_SIZE];
    };
 
    struct {
       bool writes_layer;
       uint8_t clip_enable;
       uint8_t cull_enable;
+
+      uint8_t _pad[1];
 
       struct nak_xfb_info xfb;
    } vtg;
