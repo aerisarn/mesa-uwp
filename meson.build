@@ -1455,8 +1455,8 @@ if cc.links('''
       locale_t loc = newlocale(LC_CTYPE_MASK, "C", NULL);
       const char *s = "1.0";
       char *end;
-      double d = strtod_l(s, end, loc);
-      float f = strtof_l(s, end, loc);
+      double d = strtod_l(s, &end, loc);
+      float f = strtof_l(s, &end, loc);
       freelocale(loc);
       return 0;
     }''',
