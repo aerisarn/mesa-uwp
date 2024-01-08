@@ -403,6 +403,10 @@ try_copy_via_blit(struct pipe_context *pctx, struct pipe_resource *dst,
    if (dst->target == PIPE_BUFFER)
       return false;
 
+   /* TODO: Handle these for rusticl copies */
+   if (dst->target != src->target)
+      return false;
+
    struct pipe_blit_info info = {
       .dst =
          {
