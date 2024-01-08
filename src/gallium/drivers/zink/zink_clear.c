@@ -234,7 +234,7 @@ zink_clear(struct pipe_context *pctx,
                    */
                   add_new_clear(fb_clear);
                   struct zink_framebuffer_clear_data *clear = fb_clear->clears.data;
-                  memcpy(clear + 1, clear, num_clears);
+                  memmove(clear + 1, clear, num_clears);
                   memcpy(&clear->color, &color, sizeof(color));
                } else {
                   /* no void clear needed */
