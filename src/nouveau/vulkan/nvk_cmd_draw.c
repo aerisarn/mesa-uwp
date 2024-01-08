@@ -1030,7 +1030,10 @@ nvk_flush_ts_state(struct nvk_cmd_buffer *cmd)
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS)) {
-      P_IMMD(p, NV9097, SET_PATCH, dyn->ts.patch_control_points);
+      /* The hardware gets grumpy if we set this to 0 so make sure we set it
+       * to at least 1 in case it's dirty but uninitialized.
+       */
+      P_IMMD(p, NV9097, SET_PATCH, MAX2(1, dyn->ts.patch_control_points));
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
