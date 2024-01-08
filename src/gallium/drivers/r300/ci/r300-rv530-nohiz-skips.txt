@@ -5,3 +5,7 @@ shaders@glsl-predication-on-large-array
 
 # I'm running it with gl_rgba8_snorm
 glx@
+
+# Missing test
+# https://gitlab.freedesktop.org/anholt/deqp-runner/-/issues/44
+spec@arb_internalformat_query2@minmax check for samples/num_sample_counts

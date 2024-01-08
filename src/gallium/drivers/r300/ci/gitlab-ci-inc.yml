@@ -9,6 +9,7 @@
         - src/gallium/drivers/r300/compiler/**/*
         - src/gallium/drivers/r300/ci/gitlab-ci.yml
         - src/gallium/drivers/r300/ci/gitlab-ci-inc.yml
+        - src/gallium/drivers/r300/ci/deqp-$DEQP_SUITE.toml
         - src/gallium/drivers/r300/ci/$GPU_VERSION-fails.txt
         - src/gallium/drivers/r300/ci/$GPU_VERSION-flakes.txt
         - src/gallium/drivers/r300/ci/$GPU_VERSION-skips.txt
