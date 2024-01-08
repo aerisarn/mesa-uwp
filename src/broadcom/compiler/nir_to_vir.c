@@ -2105,7 +2105,6 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
 
                 NIR_PASS(progress, s, nir_opt_remove_phis);
                 NIR_PASS(progress, s, nir_opt_if, false);
-                NIR_PASS(progress, s, nir_opt_undef);
                 if (c && !c->disable_gcm) {
                         bool local_progress = false;
                         NIR_PASS(local_progress, s, nir_opt_gcm, false);
