@@ -101,7 +101,6 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
     *    spec@ext_transform_feedback@immediate-reuse
     *    spec@ext_transform_feedback@immediate-reuse-index-buffer
     *    spec@ext_transform_feedback@immediate-reuse-uniform-buffer
-    *    .. and some dEQP-GLES[23].functional.fragment_ops.random.*
     */
    if (sctx->gfx_level >= GFX11)
       si_flush_gfx_cs(sctx, 0, NULL);
