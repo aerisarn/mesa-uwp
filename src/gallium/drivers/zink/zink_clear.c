@@ -878,8 +878,13 @@ zink_fb_clear_rewrite(struct zink_context *ctx, unsigned idx, enum pipe_format b
     */
    const struct util_format_description *bdesc = util_format_description(before);
    const struct util_format_description *adesc = util_format_description(after);
-   bool bsigned = bdesc->channel[util_format_get_first_non_void_channel(before)].type == UTIL_FORMAT_TYPE_SIGNED;
-   bool asigned = adesc->channel[util_format_get_first_non_void_channel(after)].type == UTIL_FORMAT_TYPE_SIGNED;
+   int bfirst_non_void_chan = util_format_get_first_non_void_channel(before);
+   int afirst_non_void_chan = util_format_get_first_non_void_channel(after);
+   bool bsigned = false, asigned = false;
+   if (bfirst_non_void_chan > 0)
+      bsigned = bdesc->channel[bfirst_non_void_chan].type == UTIL_FORMAT_TYPE_SIGNED;
+   if (afirst_non_void_chan > 0)
+      asigned = adesc->channel[afirst_non_void_chan].type == UTIL_FORMAT_TYPE_SIGNED;
    if (util_format_is_srgb(before) == util_format_is_srgb(after) &&
        bsigned == asigned)
       return;
