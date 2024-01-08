@@ -807,8 +807,9 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
       compile_rt_prolog(device, pipeline);
 
       radv_compute_pipeline_init(device, &pipeline->base, pipeline_layout, pipeline->prolog);
-      radv_rmv_log_rt_pipeline_create(device, pipeline);
    }
+
+   radv_rmv_log_rt_pipeline_create(device, pipeline);
 
    if (!cache_hit)
       radv_ray_tracing_pipeline_cache_insert(device, cache, pipeline, pCreateInfo->stageCount, pipeline->sha1);
