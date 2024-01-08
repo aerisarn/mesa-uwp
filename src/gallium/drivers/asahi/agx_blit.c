@@ -407,6 +407,10 @@ try_copy_via_blit(struct pipe_context *pctx, struct pipe_resource *dst,
    if (dst->target != src->target)
       return false;
 
+   /* TODO: float formats don't roundtrip, cast */
+   if (util_format_is_float(dst->format) || util_format_is_float(src->format))
+      return false;
+
    struct pipe_blit_info info = {
       .dst =
          {
