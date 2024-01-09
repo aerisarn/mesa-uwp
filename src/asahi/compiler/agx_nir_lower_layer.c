@@ -7,7 +7,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "agx_nir.h"
 
-void
+bool
 agx_nir_lower_layer(nir_shader *s)
 {
    assert(s->info.stage == MESA_SHADER_VERTEX);
@@ -66,4 +66,5 @@ agx_nir_lower_layer(nir_shader *s)
 
    nir_metadata_preserve(impl,
                          nir_metadata_dominance | nir_metadata_block_index);
+   return true;
 }
