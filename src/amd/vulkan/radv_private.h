@@ -361,39 +361,38 @@ struct radv_instance {
    uint64_t debug_flags;
    uint64_t perftest_flags;
 
-   struct driOptionCache dri_options;
-   struct driOptionCache available_dri_options;
+   struct {
+      struct driOptionCache options;
+      struct driOptionCache available_options;
 
-   /**
-    * Workarounds for game bugs.
-    */
-   bool enable_mrt_output_nan_fixup;
-   bool disable_tc_compat_htile_in_general;
-   bool disable_shrink_image_store;
-   bool disable_aniso_single_level;
-   bool disable_trunc_coord;
-   bool zero_vram;
-   bool disable_sinking_load_input_fs;
-   bool flush_before_query_copy;
-   bool enable_unified_heap_on_apu;
-   bool tex_non_uniform;
-   bool ssbo_non_uniform;
-   bool flush_before_timestamp_write;
-   bool force_rt_wave64;
-   bool dual_color_blend_by_location;
-   bool legacy_sparse_binding;
-   bool clear_lds;
-   bool enable_dgc;
-   bool enable_khr_present_wait;
-   bool report_llvm9_version_string;
-   bool vk_require_etc2;
-   bool vk_require_astc;
-   char *app_layer;
-   uint8_t override_graphics_shader_version;
-   uint8_t override_compute_shader_version;
-   uint8_t override_ray_tracing_shader_version;
-   int override_vram_size;
-   int override_uniform_offset_alignment;
+      bool enable_mrt_output_nan_fixup;
+      bool disable_tc_compat_htile_in_general;
+      bool disable_shrink_image_store;
+      bool disable_aniso_single_level;
+      bool disable_trunc_coord;
+      bool zero_vram;
+      bool disable_sinking_load_input_fs;
+      bool flush_before_query_copy;
+      bool enable_unified_heap_on_apu;
+      bool tex_non_uniform;
+      bool ssbo_non_uniform;
+      bool flush_before_timestamp_write;
+      bool force_rt_wave64;
+      bool dual_color_blend_by_location;
+      bool legacy_sparse_binding;
+      bool clear_lds;
+      bool enable_dgc;
+      bool enable_khr_present_wait;
+      bool report_llvm9_version_string;
+      bool vk_require_etc2;
+      bool vk_require_astc;
+      char *app_layer;
+      uint8_t override_graphics_shader_version;
+      uint8_t override_compute_shader_version;
+      uint8_t override_ray_tracing_shader_version;
+      int override_vram_size;
+      int override_uniform_offset_alignment;
+   } drirc;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);

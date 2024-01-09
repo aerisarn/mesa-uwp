@@ -224,7 +224,7 @@ enum radv_heap {
 static uint64_t
 radv_get_adjusted_vram_size(struct radv_physical_device *device)
 {
-   int ov = device->instance->override_vram_size;
+   int ov = device->instance->drirc.override_vram_size;
    if (ov >= 0)
       return MIN2((uint64_t)device->rad_info.vram_size_kb * 1024, (uint64_t)ov << 20);
    return (uint64_t)device->rad_info.vram_size_kb * 1024;
@@ -257,7 +257,7 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
    if (!device->rad_info.has_dedicated_vram) {
       const uint64_t total_size = gtt_size + visible_vram_size;
 
-      if (device->instance->enable_unified_heap_on_apu) {
+      if (device->instance->drirc.enable_unified_heap_on_apu) {
          /* Some applications seem better when the driver exposes only one heap of VRAM on APUs. */
          visible_vram_size = total_size;
          gtt_size = 0;
@@ -475,9 +475,9 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
        * but the feature is useful enough to hide behind an opt-in mechanism for now.
        * If the instance only enables surface extensions that unconditionally support present wait,
        * we can also expose the extension that way. */
-      .KHR_present_id = device->instance->enable_khr_present_wait ||
+      .KHR_present_id = device->instance->drirc.enable_khr_present_wait ||
                         wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
-      .KHR_present_wait = device->instance->enable_khr_present_wait ||
+      .KHR_present_wait = device->instance->drirc.enable_khr_present_wait ||
                           wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
       .KHR_push_descriptor = true,
       .KHR_ray_query = radv_enable_rt(device, false),
@@ -603,7 +603,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_tooling_info = true,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
-      .EXT_vertex_input_dynamic_state = !device->use_llvm && !device->instance->enable_dgc,
+      .EXT_vertex_input_dynamic_state = !device->use_llvm && !device->instance->drirc.enable_dgc,
       .EXT_ycbcr_image_arrays = true,
       .AMD_buffer_marker = true,
       .AMD_device_coherent_memory = true,
@@ -632,8 +632,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .GOOGLE_user_type = true,
       .INTEL_shader_integer_functions2 = true,
       .NV_compute_shader_derivatives = true,
-      .NV_device_generated_commands = device->instance->enable_dgc,
-      .NV_device_generated_commands_compute = device->instance->enable_dgc,
+      .NV_device_generated_commands = device->instance->drirc.enable_dgc,
+      .NV_device_generated_commands_compute = device->instance->drirc.enable_dgc,
       /* Undocumented extension purely for vkd3d-proton. This check is to prevent anyone else from
        * using it.
        */
@@ -1132,7 +1132,7 @@ radv_max_descriptor_set_size()
 static uint32_t
 radv_uniform_buffer_offset_alignment(const struct radv_physical_device *pdevice)
 {
-   uint32_t uniform_offset_alignment = pdevice->instance->override_uniform_offset_alignment;
+   uint32_t uniform_offset_alignment = pdevice->instance->drirc.override_uniform_offset_alignment;
    if (!util_is_power_of_two_or_zero(uniform_offset_alignment)) {
       fprintf(stderr,
               "ERROR: invalid radv_override_uniform_offset_alignment setting %d:"
@@ -1153,7 +1153,7 @@ radv_get_compiler_string(struct radv_physical_device *pdevice)
        * version is too old or if the LLVM version string is
        * missing. This gives 2-5% performance with SotTR and ACO.
        */
-      if (pdevice->instance->report_llvm9_version_string) {
+      if (pdevice->instance->drirc.report_llvm9_version_string) {
          return " (LLVM 9.0.1)";
       }
 
@@ -1907,8 +1907,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->emulate_etc2 = !radv_device_supports_etc(device);
    device->emulate_astc = true;
 #else
-   device->emulate_etc2 = !radv_device_supports_etc(device) && instance->vk_require_etc2;
-   device->emulate_astc = instance->vk_require_astc;
+   device->emulate_etc2 = !radv_device_supports_etc(device) && instance->drirc.vk_require_etc2;
+   device->emulate_astc = instance->drirc.vk_require_astc;
 #endif
 
    snprintf(device->name, sizeof(device->name), "AMD RADV %s%s", device->rad_info.name,
@@ -1978,8 +1978,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
        * dependence wave32 would likely be a net-loss (as well as the SALU count becoming more
        * problematic)
        */
-      if (!(device->instance->perftest_flags & RADV_PERFTEST_RT_WAVE_64) && !(device->instance->force_rt_wave64) &&
-          device->rad_info.gfx_level < GFX11)
+      if (!(device->instance->perftest_flags & RADV_PERFTEST_RT_WAVE_64) &&
+          !(device->instance->drirc.force_rt_wave64) && device->rad_info.gfx_level < GFX11)
          device->rt_wave_size = 32;
    }
 
@@ -2142,7 +2142,7 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    idx = 0;
    if (*pCount >= 1) {
       VkQueueFlags gfx_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
-      if (pdevice->instance->legacy_sparse_binding)
+      if (pdevice->instance->drirc.legacy_sparse_binding)
          gfx_flags |= VK_QUEUE_SPARSE_BINDING_BIT;
       *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
          .queueFlags = gfx_flags,
@@ -2156,7 +2156,7 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    if (pdevice->rad_info.ip[AMD_IP_COMPUTE].num_queues > 0 &&
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE)) {
       VkQueueFlags compute_flags = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
-      if (pdevice->instance->legacy_sparse_binding)
+      if (pdevice->instance->drirc.legacy_sparse_binding)
          compute_flags |= VK_QUEUE_SPARSE_BINDING_BIT;
       if (*pCount > idx) {
          *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
@@ -2278,7 +2278,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
     * in presence of shared buffers).
     */
    if (!device->rad_info.has_dedicated_vram) {
-      if (device->instance->enable_unified_heap_on_apu) {
+      if (device->instance->drirc.enable_unified_heap_on_apu) {
          /* When the heaps are unified, only the visible VRAM heap is exposed on APUs. */
          assert(device->heaps == RADV_HEAP_VRAM_VIS);
          assert(device->memory_properties.memoryHeaps[0].flags == VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);

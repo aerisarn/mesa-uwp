@@ -1725,7 +1725,7 @@ radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_
    key.spi_shader_col_format = col_format;
    key.color_is_int8 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int8 : 0;
    key.color_is_int10 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int10 : 0;
-   key.enable_mrt_output_nan_fixup = device->instance->enable_mrt_output_nan_fixup ? is_float32 : 0;
+   key.enable_mrt_output_nan_fixup = device->instance->drirc.enable_mrt_output_nan_fixup ? is_float32 : 0;
    key.mrt0_is_dual_src = state->mrt0_is_dual_src;
    key.export_depth = state->export_depth;
    key.export_stencil = state->export_stencil;
@@ -1803,7 +1803,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    struct radv_pipeline_key key = radv_generate_pipeline_key(device, pCreateInfo->pStages, pCreateInfo->stageCount,
                                                              pipeline->base.create_flags, pCreateInfo->pNext);
 
-   key.shader_version = device->instance->override_graphics_shader_version;
+   key.shader_version = device->instance->drirc.override_graphics_shader_version;
 
    key.lib_flags = lib_flags;
    key.has_multiview_view_index = state->rp ? !!state->rp->view_mask : 0;
@@ -1908,7 +1908,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
         device->physical_device->rad_info.family == CHIP_VANGOGH))
       key.adjust_frag_coord_z = true;
 
-   if (device->instance->disable_sinking_load_input_fs)
+   if (device->instance->drirc.disable_sinking_load_input_fs)
       key.disable_sinking_load_input_fs = true;
 
    if (device->primitives_generated_query)

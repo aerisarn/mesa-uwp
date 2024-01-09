@@ -542,7 +542,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
                nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared, &dead_vars_opts);
 
       if (nir->info.stage == MESA_SHADER_FRAGMENT && key->ps.epilog.mrt0_is_dual_src &&
-          device->instance->dual_color_blend_by_location)
+          device->instance->drirc.dual_color_blend_by_location)
          fix_dual_src_mrt1_export(nir);
 
       /* Variables can make nir_propagate_invariant more conservative
@@ -668,7 +668,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
             });
 
    NIR_PASS(_, nir, nir_lower_load_const_to_scalar);
-   NIR_PASS(_, nir, nir_opt_shrink_stores, !device->instance->disable_shrink_image_store);
+   NIR_PASS(_, nir, nir_opt_shrink_stores, !device->instance->drirc.disable_shrink_image_store);
 
    if (!key->optimisations_disabled)
       radv_optimize_nir(nir, false);

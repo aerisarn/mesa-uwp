@@ -155,14 +155,14 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
       key.optimisations_disabled = 1;
 
    key.disable_aniso_single_level =
-      device->instance->disable_aniso_single_level && device->physical_device->rad_info.gfx_level < GFX8;
+      device->instance->drirc.disable_aniso_single_level && device->physical_device->rad_info.gfx_level < GFX8;
 
    key.disable_trunc_coord = device->disable_trunc_coord;
 
    key.image_2d_view_of_3d = device->image_2d_view_of_3d && device->physical_device->rad_info.gfx_level == GFX9;
 
-   key.tex_non_uniform = device->instance->tex_non_uniform;
-   key.ssbo_non_uniform = device->instance->ssbo_non_uniform;
+   key.tex_non_uniform = device->instance->drirc.tex_non_uniform;
+   key.ssbo_non_uniform = device->instance->drirc.ssbo_non_uniform;
 
    for (unsigned i = 0; i < num_stages; ++i) {
       const VkPipelineShaderStageCreateInfo *const stage = &stages[i];
@@ -266,9 +266,9 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_NO_FMASK;
    if (device->instance->debug_flags & RADV_DEBUG_NO_RT)
       hash_flags |= RADV_HASH_SHADER_NO_RT;
-   if (device->instance->dual_color_blend_by_location)
+   if (device->instance->drirc.dual_color_blend_by_location)
       hash_flags |= RADV_HASH_SHADER_DUAL_BLEND_MRT1;
-   if (device->instance->clear_lds)
+   if (device->instance->drirc.clear_lds)
       hash_flags |= RADV_HASH_SHADER_CLEAR_LDS;
    return hash_flags;
 }
@@ -582,7 +582,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
       NIR_PASS(progress, stage->nir, nir_opt_load_store_vectorize, &vectorize_opts);
       if (progress) {
          NIR_PASS(_, stage->nir, nir_copy_prop);
-         NIR_PASS(_, stage->nir, nir_opt_shrink_stores, !device->instance->disable_shrink_image_store);
+         NIR_PASS(_, stage->nir, nir_opt_shrink_stores, !device->instance->drirc.disable_shrink_image_store);
 
          /* Gather info again, to update whether 8/16-bit are used. */
          nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
@@ -796,7 +796,7 @@ radv_shader_should_clear_lds(const struct radv_device *device, const nir_shader 
 {
    return (shader->info.stage == MESA_SHADER_COMPUTE || shader->info.stage == MESA_SHADER_MESH ||
            shader->info.stage == MESA_SHADER_TASK) &&
-          shader->info.shared_size > 0 && device->instance->clear_lds;
+          shader->info.shared_size > 0 && device->instance->drirc.clear_lds;
 }
 
 static uint32_t

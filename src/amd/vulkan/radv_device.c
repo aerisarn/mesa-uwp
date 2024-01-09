@@ -595,11 +595,11 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    b.tables[RADV_RRA_DISPATCH_TABLE] = &device->layer_dispatch.rra;
    b.tables[RADV_RMV_DISPATCH_TABLE] = &device->layer_dispatch.rmv;
 
-   if (!strcmp(physical_device->instance->app_layer, "metroexodus")) {
+   if (!strcmp(physical_device->instance->drirc.app_layer, "metroexodus")) {
       add_entrypoints(&b, &metro_exodus_device_entrypoints, RADV_APP_DISPATCH_TABLE);
-   } else if (!strcmp(physical_device->instance->app_layer, "rage2")) {
+   } else if (!strcmp(physical_device->instance->drirc.app_layer, "rage2")) {
       add_entrypoints(&b, &rage2_device_entrypoints, RADV_APP_DISPATCH_TABLE);
-   } else if (!strcmp(physical_device->instance->app_layer, "quanticdream")) {
+   } else if (!strcmp(physical_device->instance->drirc.app_layer, "quanticdream")) {
       add_entrypoints(&b, &quantic_dream_device_entrypoints, RADV_APP_DISPATCH_TABLE);
    }
 
@@ -1162,7 +1162,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       fprintf(stderr, "radv: Forcing anisotropy filter to %ix\n", 1 << util_logbase2(device->force_aniso));
    }
 
-   device->disable_trunc_coord = device->instance->disable_trunc_coord;
+   device->disable_trunc_coord = device->instance->drirc.disable_trunc_coord;
 
    if (device->instance->vk.app_info.engine_name && !strcmp(device->instance->vk.app_info.engine_name, "DXVK")) {
       /* For DXVK 2.3.0 and older, use dualSrcBlend to determine if this is D3D9. */
