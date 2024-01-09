@@ -2366,12 +2366,8 @@ agx_optimize_loop_nir(nir_shader *nir)
    do {
       progress = false;
 
-      NIR_PASS(progress, nir, nir_lower_var_copies);
-      NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
-
       NIR_PASS(progress, nir, nir_copy_prop);
       NIR_PASS(progress, nir, nir_opt_remove_phis);
-      NIR_PASS(progress, nir, nir_lower_phis_to_scalar, true);
       NIR_PASS(progress, nir, nir_opt_dce);
       NIR_PASS(progress, nir, nir_opt_dead_cf);
       NIR_PASS(progress, nir, nir_opt_cse);
@@ -2379,9 +2375,7 @@ agx_optimize_loop_nir(nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_phi_precision);
       NIR_PASS(progress, nir, nir_opt_algebraic);
       NIR_PASS(progress, nir, nir_opt_constant_folding);
-
       NIR_PASS(progress, nir, nir_opt_undef);
-
       NIR_PASS(progress, nir, nir_opt_shrink_vectors);
       NIR_PASS(progress, nir, nir_opt_loop_unroll);
    } while (progress);
@@ -2999,6 +2993,7 @@ agx_preprocess_nir(nir_shader *nir, const nir_shader *libagx,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
    NIR_PASS_V(nir, nir_lower_frag_coord_to_pixel_coord);
    NIR_PASS_V(nir, agx_nir_lower_subgroups);
+   NIR_PASS_V(nir, nir_lower_phis_to_scalar, true);
 
    /* After lowering, run through the standard suite of NIR optimizations. We
     * will run through the loop later, once we have the shader key, but if we
@@ -3055,6 +3050,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       NIR_PASS(needs_libagx, nir, agx_nir_lower_interpolation);
+
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
    if (needs_libagx) {
       link_libagx(nir, key->libagx);
