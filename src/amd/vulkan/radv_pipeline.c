@@ -213,8 +213,16 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
 }
 
 void
+radv_shader_stage_key_init(const struct radv_pipeline_key *pipeline_key, gl_shader_stage stage,
+                           struct radv_shader_stage_key *stage_key)
+{
+   *stage_key = pipeline_key->stage_info[stage];
+}
+
+void
 radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
-                         const struct radv_pipeline_layout *pipeline_layout, struct radv_shader_stage *out_stage)
+                         const struct radv_pipeline_layout *pipeline_layout,
+                         const struct radv_pipeline_key *pipeline_key, struct radv_shader_stage *out_stage)
 {
    const VkShaderModuleCreateInfo *minfo = vk_find_struct_const(sinfo->pNext, SHADER_MODULE_CREATE_INFO);
    const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
@@ -245,6 +253,7 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
    }
 
    radv_shader_layout_init(pipeline_layout, out_stage->stage, &out_stage->layout);
+   radv_shader_stage_key_init(pipeline_key, out_stage->stage, &out_stage->key);
 
    vk_pipeline_hash_shader_stage(sinfo, NULL, out_stage->shader_sha1);
 }

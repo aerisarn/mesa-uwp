@@ -2291,6 +2291,7 @@ radv_pipeline_retain_shaders(struct radv_retained_shaders *retained_shaders, str
 
 static void
 radv_pipeline_import_retained_shaders(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
+                                      const struct radv_pipeline_key *pipeline_key,
                                       struct radv_graphics_lib_pipeline *lib, struct radv_shader_stage *stages)
 {
    struct radv_retained_shaders *retained_shaders = &lib->retained_shaders;
@@ -2304,7 +2305,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib->lib_flags))
          continue;
 
-      radv_pipeline_stage_init(sinfo, &lib->layout, &stages[s]);
+      radv_pipeline_stage_init(sinfo, &lib->layout, pipeline_key, &stages[s]);
    }
 
    /* Import the NIR shaders (after SPIRV->NIR). */
@@ -2326,6 +2327,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       memcpy(stages[s].shader_sha1, retained_shaders->stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
 
       radv_shader_layout_init(&lib->layout, s, &stages[s].layout);
+      radv_shader_stage_key_init(pipeline_key, s, &stages[s].key);
 
       stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
@@ -2335,6 +2337,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
 
 static void
 radv_pipeline_load_retained_shaders(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
+                                    const struct radv_pipeline_key *pipeline_key,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo, struct radv_shader_stage *stages)
 {
    const VkPipelineLibraryCreateInfoKHR *libs_info =
@@ -2353,7 +2356,7 @@ radv_pipeline_load_retained_shaders(const struct radv_device *device, struct rad
       RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
       struct radv_graphics_lib_pipeline *gfx_pipeline_lib = radv_pipeline_to_graphics_lib(pipeline_lib);
 
-      radv_pipeline_import_retained_shaders(device, pipeline, gfx_pipeline_lib, stages);
+      radv_pipeline_import_retained_shaders(device, pipeline, pipeline_key, gfx_pipeline_lib, stages);
    }
 }
 
@@ -2624,10 +2627,10 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib_flags))
          continue;
 
-      radv_pipeline_stage_init(sinfo, pipeline_layout, &stages[stage]);
+      radv_pipeline_stage_init(sinfo, pipeline_layout, pipeline_key, &stages[stage]);
    }
 
-   radv_pipeline_load_retained_shaders(device, pipeline, pCreateInfo, stages);
+   radv_pipeline_load_retained_shaders(device, pipeline, pipeline_key, pCreateInfo, stages);
 
    if (radv_should_compute_pipeline_hash(device, pipeline, fast_linking_enabled)) {
       radv_hash_shaders(device, hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key);

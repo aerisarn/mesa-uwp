@@ -286,7 +286,7 @@ radv_init_rt_stage_hashes(struct radv_device *device, const VkRayTracingPipeline
 
    for (uint32_t idx = 0; idx < pCreateInfo->stageCount; idx++) {
       struct radv_shader_stage stage;
-      radv_pipeline_stage_init(&pCreateInfo->pStages[idx], pipeline_layout, &stage);
+      radv_pipeline_stage_init(&pCreateInfo->pStages[idx], pipeline_layout, key, &stage);
 
       radv_hash_shaders(device, stages[idx].sha1, &stage, 1, NULL, key);
    }
@@ -515,7 +515,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       int64_t stage_start = os_time_get_nano();
 
       struct radv_shader_stage *stage = &stages[i];
-      radv_pipeline_stage_init(&pCreateInfo->pStages[i], pipeline_layout, stage);
+      radv_pipeline_stage_init(&pCreateInfo->pStages[i], pipeline_layout, key, stage);
 
       /* precompile the shader */
       stage->nir = radv_parse_rt_stage(device, &pCreateInfo->pStages[i], key, pipeline_layout);
@@ -624,6 +624,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
    };
    vk_pipeline_hash_shader_stage(&pStage, NULL, traversal_stage.shader_sha1);
    radv_shader_layout_init(pipeline_layout, MESA_SHADER_INTERSECTION, &traversal_stage.layout);
+   radv_shader_stage_key_init(key, MESA_SHADER_INTERSECTION, &traversal_stage.key);
    result = radv_rt_nir_to_asm(device, cache, pCreateInfo, key, pipeline, false, &traversal_stage, NULL, NULL,
                                &pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]);
    ralloc_free(traversal_module.nir);

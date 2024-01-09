@@ -2010,7 +2010,7 @@ struct radv_pipeline_key;
 struct radv_ray_tracing_group;
 
 void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, const struct radv_pipeline_layout *layout,
-                              struct radv_shader_stage *out_stage);
+                              const struct radv_pipeline_key *pipeline_key, struct radv_shader_stage *out_stage);
 
 void radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const struct radv_shader_stage *stages,
                        uint32_t stage_count, const struct radv_pipeline_layout *layout,
@@ -2266,6 +2266,7 @@ struct radv_shader_stage {
 
    struct radv_shader_info info;
    struct radv_shader_args args;
+   struct radv_shader_stage_key key;
 
    VkPipelineCreationFeedback feedback;
 
@@ -2274,6 +2275,9 @@ struct radv_shader_stage {
 
 void radv_shader_layout_init(const struct radv_pipeline_layout *pipeline_layout, gl_shader_stage stage,
                              struct radv_shader_layout *layout);
+
+void radv_shader_stage_key_init(const struct radv_pipeline_key *pipeline_key, gl_shader_stage stage,
+                                struct radv_shader_stage_key *stage_key);
 
 static inline bool
 radv_is_last_vgt_stage(const struct radv_shader_stage *stage)
