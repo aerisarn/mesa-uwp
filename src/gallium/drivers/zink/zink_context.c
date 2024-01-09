@@ -4961,6 +4961,11 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    zink_resource_copies_reset(d);
    /* force counter buffer reset */
    d->so_valid = false;
+   /* FIXME: tc buffer sharedness tracking */
+   if (!num_rebinds) {
+      num_rebinds = d->bind_count[0] + d->bind_count[1];
+      rebind_mask = 0;
+   }
    if (num_rebinds && rebind_buffer(ctx, d, rebind_mask, num_rebinds) < num_rebinds)
       ctx->buffer_rebind_counter = p_atomic_inc_return(&screen->buffer_rebind_counter);
 }

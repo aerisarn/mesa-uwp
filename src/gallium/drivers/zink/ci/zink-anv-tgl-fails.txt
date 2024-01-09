@@ -692,6 +692,3 @@ KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Crash
 # Assertion `size % ZINK_SPARSE_BUFFER_PAGE_SIZE == 0 || offset + size == bo->base.size' failed.
 spec@arb_sparse_buffer@basic,Crash
 spec@arb_sparse_buffer@buffer-data,Crash
-
-# re-enable farm mesa!26900
-glx@glx-multithread-buffer,Crash
