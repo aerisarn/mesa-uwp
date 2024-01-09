@@ -154,7 +154,7 @@ compile(void *memctx, const uint32_t *spirv, size_t spirv_size)
    NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_remove_non_exported);
+   nir_remove_non_exported(nir);
    NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_deref);
 
