@@ -26,7 +26,6 @@
 
 /* clang-format off */
 static const struct debug_named_value agx_debug_options[] = {
-   {"msgs",      AGX_DBG_MSGS,		"Print debug messages"},
    {"shaders",   AGX_DBG_SHADERS,	"Dump shaders in NIR and AIR"},
    {"shaderdb",  AGX_DBG_SHADERDB,	"Print statistics"},
    {"verbose",   AGX_DBG_VERBOSE,	"Disassemble verbosely"},
@@ -51,12 +50,6 @@ agx_get_compiler_debug(void)
 {
    return debug_get_option_agx_compiler_debug();
 }
-
-#define DBG(fmt, ...)                                                          \
-   do {                                                                        \
-      if (agx_compiler_debug & AGX_DBG_MSGS)                                   \
-         fprintf(stderr, "%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__);    \
-   } while (0)
 
 static agx_index
 agx_cached_preload(agx_context *ctx, agx_index *cache, unsigned base,
