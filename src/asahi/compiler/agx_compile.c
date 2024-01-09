@@ -1990,7 +1990,16 @@ agx_emit_undef(agx_builder *b, nir_undef_instr *instr)
     * the lowering happens in NIR and this just allows for late lowering passes
     * to result in undefs.
     */
-   agx_mov_imm_to(b, agx_def_index(&instr->def), 0);
+   if (instr->def.num_components > 1) {
+      assert(instr->def.num_components <= 4);
+      agx_index zero = agx_mov_imm(b, instr->def.bit_size, 0);
+
+      agx_emit_collect_to(b, agx_def_index(&instr->def),
+                          instr->def.num_components,
+                          (agx_index[4]){zero, zero, zero, zero});
+   } else {
+      agx_mov_imm_to(b, agx_def_index(&instr->def), 0);
+   }
 }
 
 static void
@@ -2372,7 +2381,6 @@ agx_optimize_loop_nir(nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_constant_folding);
 
       NIR_PASS(progress, nir, nir_opt_undef);
-      NIR_PASS(progress, nir, nir_lower_undef_to_zero);
 
       NIR_PASS(progress, nir, nir_opt_shrink_vectors);
       NIR_PASS(progress, nir, nir_opt_loop_unroll);
