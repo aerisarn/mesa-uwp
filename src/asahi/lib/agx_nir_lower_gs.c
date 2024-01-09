@@ -1054,14 +1054,14 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
     * anything. Otherwise, smash the invocation ID to zero.
     */
    if (gs->info.gs.invocations != 1) {
-      NIR_PASS_V(gs, agx_nir_lower_gs_instancing);
+      agx_nir_lower_gs_instancing(gs);
    } else {
       nir_function_impl *impl = nir_shader_get_entrypoint(gs);
       nir_builder b = nir_builder_at(nir_before_impl(impl));
 
-      NIR_PASS_V(gs, nir_shader_intrinsics_pass, rewrite_invocation_id,
-                 nir_metadata_block_index | nir_metadata_dominance,
-                 nir_imm_int(&b, 0));
+      nir_shader_intrinsics_pass(
+         gs, rewrite_invocation_id,
+         nir_metadata_block_index | nir_metadata_dominance, nir_imm_int(&b, 0));
    }
 
    /* Link VS into the GS */
