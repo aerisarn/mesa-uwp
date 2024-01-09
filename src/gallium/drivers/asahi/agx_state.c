@@ -1920,7 +1920,8 @@ agx_compile_variant(struct agx_device *dev, struct pipe_context *pctx,
                     .api_sample_mask = key->api_sample_mask,
                  });
 
-      NIR_PASS_V(nir, agx_nir_predicate_layer_id);
+      if (nir->info.inputs_read & VARYING_BIT_LAYER)
+         NIR_PASS_V(nir, agx_nir_predicate_layer_id);
    }
 
    struct agx_shader_key base_key = {0};

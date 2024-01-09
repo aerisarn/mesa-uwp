@@ -1034,7 +1034,7 @@ link_libagx(nir_shader *nir, const nir_shader *libagx)
               nir_address_format_62bit_generic);
 }
 
-void
+bool
 agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
                  struct agx_ia_key *ia, bool rasterizer_discard,
                  nir_shader **gs_count, nir_shader **gs_copy,
@@ -1218,6 +1218,7 @@ agx_nir_lower_gs(nir_shader *gs, nir_shader *vs, const nir_shader *libagx,
    /* Signal what primitive we want to draw the GS Copy VS with */
    *out_mode = gs->info.gs.output_primitive;
    *out_count_words = gs_state.count_stride_el;
+   return true;
 }
 
 nir_shader *
