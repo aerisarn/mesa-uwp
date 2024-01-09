@@ -304,8 +304,11 @@ zink_create_surface(struct pipe_context *pctx,
          If image was created with the VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT flag and
          format is a non-compressed format, the levelCount and layerCount members of
          subresourceRange must both be 1
+
+         ...but this is allowed with a maintenance6 property
        */
-      if (util_format_is_compressed(pres->format) && templ->u.tex.first_layer != templ->u.tex.last_layer)
+      if (util_format_is_compressed(pres->format) && templ->u.tex.first_layer != templ->u.tex.last_layer &&
+          (!screen->info.have_KHR_maintenance6 || !screen->info.maint6_props.blockTexelViewCompatibleMultipleLayers))
          return NULL;
    }
 
