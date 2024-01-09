@@ -287,7 +287,7 @@ radv_init_rt_stage_hashes(struct radv_device *device, const VkRayTracingPipeline
       struct radv_shader_stage stage;
       radv_pipeline_stage_init(&pCreateInfo->pStages[idx], pipeline_layout, &stage);
 
-      radv_hash_shaders(stages[idx].sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
+      radv_hash_shaders(stages[idx].sha1, &stage, 1, NULL, key, radv_get_hash_flags(device));
    }
 }
 
@@ -783,11 +783,9 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
    if (result != VK_SUCCESS)
       goto fail;
 
-   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pipeline->base.base.create_flags);
    bool keep_executable_info = radv_pipeline_capture_shaders(device, pipeline->base.base.create_flags);
 
-   radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups,
-                        radv_get_hash_flags(device, keep_statistic_info));
+   radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups, radv_get_hash_flags(device));
    pipeline->base.base.pipeline_hash = *(uint64_t *)pipeline->sha1;
 
    bool cache_hit = false;

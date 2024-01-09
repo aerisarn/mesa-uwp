@@ -1990,7 +1990,7 @@ void radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateI
                           const struct radv_pipeline_key *key, const struct radv_ray_tracing_group *groups,
                           uint32_t flags);
 
-uint32_t radv_get_hash_flags(const struct radv_device *device, bool stats);
+uint32_t radv_get_hash_flags(const struct radv_device *device);
 
 bool radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines);
 

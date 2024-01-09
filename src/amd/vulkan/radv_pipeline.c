@@ -224,6 +224,8 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
          key.mesh_fast_launch_2 = 1u;
    }
 
+   key.keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
+
    return key;
 }
 
@@ -232,7 +234,6 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
 #define RADV_HASH_SHADER_GE_WAVE32       (1 << 3)
 #define RADV_HASH_SHADER_LLVM            (1 << 4)
 #define RADV_HASH_SHADER_CLEAR_LDS       (1 << 5)
-#define RADV_HASH_SHADER_KEEP_STATISTICS (1 << 8)
 #define RADV_HASH_SHADER_USE_NGG_CULLING (1 << 13)
 #define RADV_HASH_SHADER_EMULATE_RT      (1 << 16)
 #define RADV_HASH_SHADER_SPLIT_FMA       (1 << 17)
@@ -242,7 +243,7 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
 #define RADV_HASH_SHADER_DUAL_BLEND_MRT1 (1 << 21)
 
 uint32_t
-radv_get_hash_flags(const struct radv_device *device, bool stats)
+radv_get_hash_flags(const struct radv_device *device)
 {
    uint32_t hash_flags = 0;
 
@@ -260,8 +261,6 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_GE_WAVE32;
    if (device->physical_device->use_llvm)
       hash_flags |= RADV_HASH_SHADER_LLVM;
-   if (stats)
-      hash_flags |= RADV_HASH_SHADER_KEEP_STATISTICS;
    if (device->instance->debug_flags & RADV_DEBUG_SPLIT_FMA)
       hash_flags |= RADV_HASH_SHADER_SPLIT_FMA;
    if (device->instance->debug_flags & RADV_DEBUG_NO_FMASK)
