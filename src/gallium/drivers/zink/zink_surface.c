@@ -292,6 +292,7 @@ zink_create_surface(struct pipe_context *pctx,
                     const struct pipe_surface *templ)
 {
    struct zink_resource *res = zink_resource(pres);
+   struct zink_screen *screen = zink_screen(pctx->screen);
    bool is_array = templ->u.tex.last_layer != templ->u.tex.first_layer;
    bool needs_mutable = false;
    enum pipe_texture_target target_2d[] = {PIPE_TEXTURE_2D, PIPE_TEXTURE_2D_ARRAY};
@@ -308,16 +309,16 @@ zink_create_surface(struct pipe_context *pctx,
          return NULL;
    }
 
-   if (!zink_screen(pctx->screen)->threaded && needs_mutable) {
+   if (!screen->threaded && needs_mutable) {
       /* this is fine without tc */
       needs_mutable = false;
       zink_resource_object_init_mutable(zink_context(pctx), res);
    }
 
-   if (!zink_get_format(zink_screen(pctx->screen), templ->format))
+   if (!zink_get_format(screen, templ->format))
       return NULL;
 
-   VkImageViewCreateInfo ivci = create_ivci(zink_screen(pctx->screen), res, templ,
+   VkImageViewCreateInfo ivci = create_ivci(screen, res, templ,
                                             pres->target == PIPE_TEXTURE_3D ? target_2d[is_array] : pres->target);
 
    struct pipe_surface *psurf = NULL;
@@ -342,7 +343,7 @@ zink_create_surface(struct pipe_context *pctx,
       init_pipe_surface_info(pctx, &csurf->base, templ, pres);
    }
 
-   if (templ->nr_samples && !zink_screen(pctx->screen)->info.have_EXT_multisampled_render_to_single_sampled) {
+   if (templ->nr_samples && !screen->info.have_EXT_multisampled_render_to_single_sampled) {
       /* transient fb attachment: not cached */
       struct pipe_resource rtempl = *pres;
       rtempl.nr_samples = templ->nr_samples;
