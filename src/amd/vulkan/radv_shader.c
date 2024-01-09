@@ -670,7 +670,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
    NIR_PASS(_, nir, nir_lower_load_const_to_scalar);
    NIR_PASS(_, nir, nir_opt_shrink_stores, !device->instance->drirc.disable_shrink_image_store);
 
-   if (!key->optimisations_disabled)
+   if (!stage->key.optimisations_disabled)
       radv_optimize_nir(nir, false);
 
    /* We call nir_lower_var_copies() after the first radv_optimize_nir()
@@ -741,8 +741,8 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
     * bloat the instruction count of the loop and cause it to be
     * considered too large for unrolling.
     */
-   if (ac_nir_lower_indirect_derefs(nir, device->physical_device->rad_info.gfx_level) && !key->optimisations_disabled &&
-       nir->info.stage != MESA_SHADER_COMPUTE) {
+   if (ac_nir_lower_indirect_derefs(nir, device->physical_device->rad_info.gfx_level) &&
+       !stage->key.optimisations_disabled && nir->info.stage != MESA_SHADER_COMPUTE) {
       /* Optimize the lowered code before the linking optimizations. */
       radv_optimize_nir(nir, false);
    }
@@ -2471,7 +2471,7 @@ radv_capture_shader_executable_info(struct radv_device *device, struct radv_shad
 static struct radv_shader_binary *
 shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count, gl_shader_stage stage,
                const struct radv_shader_info *info, const struct radv_shader_args *args,
-               struct radv_nir_compiler_options *options)
+               const struct radv_shader_stage_key *stage_key, struct radv_nir_compiler_options *options)
 {
    struct radv_shader_debug_data debug_data = {
       .device = device,
@@ -2494,7 +2494,7 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    } else {
       struct aco_shader_info ac_info;
       struct aco_compiler_options ac_opts;
-      radv_aco_convert_opts(&ac_opts, options, args);
+      radv_aco_convert_opts(&ac_opts, options, args, stage_key);
       radv_aco_convert_shader_info(&ac_info, info, args, &device->cache_key, options->info->gfx_level);
       aco_compile_shader(&ac_opts, &ac_info, shader_count, shaders, &args->ac, &radv_aco_build_shader_binary,
                          (void **)&binary);
@@ -2524,7 +2524,7 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_shader_stage *pl_
                                   keep_shader_info, keep_statistic_info);
 
    struct radv_shader_binary *binary =
-      shader_compile(device, shaders, shader_count, stage, info, &pl_stage->args, &options);
+      shader_compile(device, shaders, shader_count, stage, info, &pl_stage->args, &pl_stage->key, &options);
 
    return binary;
 }
@@ -2550,6 +2550,7 @@ struct radv_shader *
 radv_create_trap_handler_shader(struct radv_device *device)
 {
    gl_shader_stage stage = MESA_SHADER_COMPUTE;
+   struct radv_shader_stage_key stage_key = {0};
    struct radv_shader_info info = {0};
    struct radv_pipeline_key key = {0};
    struct radv_nir_compiler_options options = {0};
@@ -2564,7 +2565,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
    struct radv_shader_args args;
    radv_declare_shader_args(device, &key, &info, stage, MESA_SHADER_NONE, &args);
 
-   struct radv_shader_binary *binary = shader_compile(device, &b.shader, 1, stage, &info, &args, &options);
+   struct radv_shader_binary *binary = shader_compile(device, &b.shader, 1, stage, &info, &args, &stage_key, &options);
    struct radv_shader *shader;
    radv_shader_create_uncached(device, binary, false, NULL, &shader);
 
@@ -2637,10 +2638,11 @@ radv_create_rt_prolog(struct radv_device *device)
 #endif
 
    struct radv_shader_binary *binary = NULL;
+   struct radv_shader_stage_key stage_key = {0};
    struct aco_shader_info ac_info;
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info, &in_args, &device->cache_key, options.info->gfx_level);
-   radv_aco_convert_opts(&ac_opts, &options, &in_args);
+   radv_aco_convert_opts(&ac_opts, &options, &in_args, &stage_key);
    aco_compile_rt_prolog(&ac_opts, &ac_info, &in_args.ac, &out_args.ac, &radv_aco_build_shader_binary,
                          (void **)&binary);
    binary->info = info;
@@ -2700,11 +2702,12 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
 #endif
 
    struct radv_shader_part_binary *binary = NULL;
+   struct radv_shader_stage_key stage_key = {0};
    struct aco_shader_info ac_info;
    struct aco_vs_prolog_info ac_prolog_info;
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info, &args, &device->cache_key, options.info->gfx_level);
-   radv_aco_convert_opts(&ac_opts, &options, &args);
+   radv_aco_convert_opts(&ac_opts, &options, &args, &stage_key);
    radv_aco_convert_vs_prolog_key(&ac_prolog_info, key, &args);
    aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_prolog_info, &args.ac, &radv_aco_build_shader_part, (void **)&binary);
 
@@ -2753,11 +2756,12 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
 #endif
 
    struct radv_shader_part_binary *binary = NULL;
+   struct radv_shader_stage_key stage_key = {0};
    struct aco_shader_info ac_info;
    struct aco_ps_epilog_info ac_epilog_info = {0};
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info, &args, &device->cache_key, options.info->gfx_level);
-   radv_aco_convert_opts(&ac_opts, &options, &args);
+   radv_aco_convert_opts(&ac_opts, &options, &args, &stage_key);
    radv_aco_convert_ps_epilog_key(&ac_epilog_info, key, &args);
    aco_compile_ps_epilog(&ac_opts, &ac_info, &ac_epilog_info, &args.ac, &radv_aco_build_shader_part, (void **)&binary);
 
@@ -2811,11 +2815,12 @@ radv_create_tcs_epilog(struct radv_device *device, const struct radv_tcs_epilog_
 #endif
 
    struct radv_shader_part_binary *binary = NULL;
+   struct radv_shader_stage_key stage_key = {0};
    struct aco_shader_info ac_info;
    struct aco_tcs_epilog_info ac_epilog_info;
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info, &args, &device->cache_key, options.info->gfx_level);
-   radv_aco_convert_opts(&ac_opts, &options, &args);
+   radv_aco_convert_opts(&ac_opts, &options, &args, &stage_key);
    radv_aco_convert_tcs_epilog_key(&ac_epilog_info, key, &args);
    aco_compile_tcs_epilog(&ac_opts, &ac_info, &ac_epilog_info, &args.ac, &radv_aco_build_shader_part, (void **)&binary);
 

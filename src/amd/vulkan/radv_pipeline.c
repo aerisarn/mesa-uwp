@@ -151,8 +151,10 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
 
    memset(&key, 0, sizeof(key));
 
-   if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
-      key.optimisations_disabled = 1;
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
+         key.stage_info[i].optimisations_disabled = 1;
+   }
 
    for (unsigned i = 0; i < num_stages; ++i) {
       const VkPipelineShaderStageCreateInfo *const stage = &stages[i];
@@ -476,7 +478,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    assert(stage->info.wave_size && stage->info.workgroup_size);
 
    if (stage->stage == MESA_SHADER_FRAGMENT) {
-      if (!pipeline_key->optimisations_disabled) {
+      if (!stage->key.optimisations_disabled) {
          NIR_PASS(_, stage->nir, nir_opt_cse);
       }
       NIR_PASS(_, stage->nir, radv_nir_lower_fs_intrinsics, stage, pipeline_key);
@@ -492,7 +494,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
     * thus a cheaper and likely to fail check is run first.
     */
    if (nir_has_non_uniform_access(stage->nir, lower_non_uniform_access_types)) {
-      if (!pipeline_key->optimisations_disabled) {
+      if (!stage->key.optimisations_disabled) {
          NIR_PASS(_, stage->nir, nir_opt_non_uniform_access);
       }
 
@@ -525,7 +527,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    if (stage->key.storage_robustness2)
       vectorize_opts.robust_modes |= nir_var_mem_ssbo;
 
-   if (!pipeline_key->optimisations_disabled) {
+   if (!stage->key.optimisations_disabled) {
       progress = false;
       NIR_PASS(progress, stage->nir, nir_opt_load_store_vectorize, &vectorize_opts);
       if (progress) {
@@ -569,7 +571,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
 
    NIR_PASS_V(stage->nir, radv_nir_apply_pipeline_layout, device, stage);
 
-   if (!pipeline_key->optimisations_disabled) {
+   if (!stage->key.optimisations_disabled) {
       NIR_PASS(_, stage->nir, nir_opt_shrink_vectors);
    }
 
@@ -577,7 +579,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
 
    nir_move_options sink_opts = nir_move_const_undef | nir_move_copies;
 
-   if (!pipeline_key->optimisations_disabled) {
+   if (!stage->key.optimisations_disabled) {
       if (stage->stage != MESA_SHADER_FRAGMENT || !device->cache_key.disable_sinking_load_input_fs)
          sink_opts |= nir_move_load_input;
 
@@ -718,7 +720,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
       };
       NIR_PASS(_, stage->nir, nir_fold_16bit_tex_image, &fold_16bit_options);
 
-      if (!pipeline_key->optimisations_disabled) {
+      if (!stage->key.optimisations_disabled) {
          NIR_PASS(_, stage->nir, nir_opt_vectorize, opt_vectorize_callback, device);
       }
    }
@@ -729,7 +731,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    NIR_PASS(_, stage->nir, nir_copy_prop);
    NIR_PASS(_, stage->nir, nir_opt_dce);
 
-   if (!pipeline_key->optimisations_disabled) {
+   if (!stage->key.optimisations_disabled) {
       sink_opts |= nir_move_comparisons | nir_move_load_ubo | nir_move_load_ssbo;
       NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
 

@@ -415,7 +415,7 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
       temp_stage.nir = shaders[i];
       radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, &stage->info, stack_size, i > 0, device,
                             pipeline, monolithic);
-      radv_optimize_nir(temp_stage.nir, pipeline_key->optimisations_disabled);
+      radv_optimize_nir(temp_stage.nir, stage->key.optimisations_disabled);
       radv_postprocess_nir(device, pipeline_key, &temp_stage);
 
       if (radv_can_dump_shader(device, temp_stage.nir, false))
@@ -558,7 +558,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       if (nir_needed) {
          rt_stages[idx].stack_size = stage->nir->scratch_size;
          rt_stages[idx].nir = radv_pipeline_cache_nir_to_handle(device, cache, stage->nir, rt_stages[idx].sha1,
-                                                                !key->optimisations_disabled);
+                                                                !stage->key.optimisations_disabled);
       }
 
       stage->feedback.duration += os_time_get_nano() - stage_start;

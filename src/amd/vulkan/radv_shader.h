@@ -92,6 +92,8 @@ struct radv_shader_stage_key {
 
    uint8_t storage_robustness2 : 1;
    uint8_t uniform_robustness2 : 1;
+
+   uint8_t optimisations_disabled : 1;
 };
 
 struct radv_ps_epilog_key {
@@ -115,7 +117,6 @@ struct radv_pipeline_key {
    uint32_t lib_flags : 4; /* VkGraphicsPipelineLibraryFlagBitsEXT */
 
    uint32_t has_multiview_view_index : 1;
-   uint32_t optimisations_disabled : 1;
    uint32_t adjust_frag_coord_z : 1;
    uint32_t dynamic_patch_control_points : 1;
    uint32_t dynamic_rasterization_samples : 1;
