@@ -229,51 +229,6 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
    return key;
 }
 
-#define RADV_HASH_SHADER_CS_WAVE32       (1 << 1)
-#define RADV_HASH_SHADER_PS_WAVE32       (1 << 2)
-#define RADV_HASH_SHADER_GE_WAVE32       (1 << 3)
-#define RADV_HASH_SHADER_LLVM            (1 << 4)
-#define RADV_HASH_SHADER_CLEAR_LDS       (1 << 5)
-#define RADV_HASH_SHADER_USE_NGG_CULLING (1 << 13)
-#define RADV_HASH_SHADER_EMULATE_RT      (1 << 16)
-#define RADV_HASH_SHADER_SPLIT_FMA       (1 << 17)
-#define RADV_HASH_SHADER_RT_WAVE64       (1 << 18)
-#define RADV_HASH_SHADER_NO_FMASK        (1 << 19)
-#define RADV_HASH_SHADER_NO_RT           (1 << 20)
-#define RADV_HASH_SHADER_DUAL_BLEND_MRT1 (1 << 21)
-
-uint32_t
-radv_get_hash_flags(const struct radv_device *device)
-{
-   uint32_t hash_flags = 0;
-
-   if (device->physical_device->use_ngg_culling)
-      hash_flags |= RADV_HASH_SHADER_USE_NGG_CULLING;
-   if (device->instance->perftest_flags & RADV_PERFTEST_EMULATE_RT)
-      hash_flags |= RADV_HASH_SHADER_EMULATE_RT;
-   if (device->physical_device->rt_wave_size == 64)
-      hash_flags |= RADV_HASH_SHADER_RT_WAVE64;
-   if (device->physical_device->cs_wave_size == 32)
-      hash_flags |= RADV_HASH_SHADER_CS_WAVE32;
-   if (device->physical_device->ps_wave_size == 32)
-      hash_flags |= RADV_HASH_SHADER_PS_WAVE32;
-   if (device->physical_device->ge_wave_size == 32)
-      hash_flags |= RADV_HASH_SHADER_GE_WAVE32;
-   if (device->physical_device->use_llvm)
-      hash_flags |= RADV_HASH_SHADER_LLVM;
-   if (device->instance->debug_flags & RADV_DEBUG_SPLIT_FMA)
-      hash_flags |= RADV_HASH_SHADER_SPLIT_FMA;
-   if (device->instance->debug_flags & RADV_DEBUG_NO_FMASK)
-      hash_flags |= RADV_HASH_SHADER_NO_FMASK;
-   if (device->instance->debug_flags & RADV_DEBUG_NO_RT)
-      hash_flags |= RADV_HASH_SHADER_NO_RT;
-   if (device->instance->drirc.dual_color_blend_by_location)
-      hash_flags |= RADV_HASH_SHADER_DUAL_BLEND_MRT1;
-   if (device->instance->drirc.clear_lds)
-      hash_flags |= RADV_HASH_SHADER_CLEAR_LDS;
-   return hash_flags;
-}
-
 void
 radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                          const struct radv_pipeline_layout *pipeline_layout, struct radv_shader_stage *out_stage)

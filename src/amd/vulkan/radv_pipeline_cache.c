@@ -46,12 +46,13 @@ radv_is_cache_disabled(struct radv_device *device)
 }
 
 void
-radv_hash_shaders(unsigned char *hash, const struct radv_shader_stage *stages, uint32_t stage_count,
-                  const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key, uint32_t flags)
+radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const struct radv_shader_stage *stages,
+                  uint32_t stage_count, const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key)
 {
    struct mesa_sha1 ctx;
 
    _mesa_sha1_init(&ctx);
+   _mesa_sha1_update(&ctx, device->cache_hash, sizeof(device->cache_hash));
    if (key)
       _mesa_sha1_update(&ctx, key, sizeof(*key));
    if (layout)
@@ -63,7 +64,6 @@ radv_hash_shaders(unsigned char *hash, const struct radv_shader_stage *stages, u
 
       _mesa_sha1_update(&ctx, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
    }
-   _mesa_sha1_update(&ctx, &flags, sizeof(flags));
    _mesa_sha1_final(&ctx, hash);
 }
 
@@ -78,13 +78,15 @@ radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo
 }
 
 void
-radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                     const struct radv_pipeline_key *key, const struct radv_ray_tracing_group *groups, uint32_t flags)
+radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash,
+                     const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_pipeline_key *key,
+                     const struct radv_ray_tracing_group *groups)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
    struct mesa_sha1 ctx;
 
    _mesa_sha1_init(&ctx);
+   _mesa_sha1_update(&ctx, device->cache_hash, sizeof(device->cache_hash));
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
 
@@ -120,7 +122,6 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
        VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR | VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR);
    _mesa_sha1_update(&ctx, &pipeline_flags, sizeof(pipeline_flags));
 
-   _mesa_sha1_update(&ctx, &flags, sizeof(flags));
    _mesa_sha1_final(&ctx, hash);
 }
 

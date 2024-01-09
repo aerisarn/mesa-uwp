@@ -877,6 +877,21 @@ struct radv_sqtt_timestamp {
    struct list_head list;
 };
 
+struct radv_device_cache_key {
+   uint32_t clear_lds : 1;
+   uint32_t cs_wave32 : 1;
+   uint32_t dual_color_blend_by_location : 1;
+   uint32_t emulate_rt : 1;
+   uint32_t ge_wave32 : 1;
+   uint32_t no_fmask : 1;
+   uint32_t no_rt : 1;
+   uint32_t ps_wave32 : 1;
+   uint32_t rt_wave64 : 1;
+   uint32_t split_fma : 1;
+   uint32_t use_llvm : 1;
+   uint32_t use_ngg_culling : 1;
+};
+
 struct radv_device {
    struct vk_device vk;
 
@@ -1062,6 +1077,9 @@ struct radv_device {
 
    struct hash_table *rt_handles;
    simple_mtx_t rt_handles_mtx;
+
+   struct radv_device_cache_key cache_key;
+   blake3_hash cache_hash;
 };
 
 bool radv_device_set_pstate(struct radv_device *device, bool enable);
@@ -1981,16 +1999,15 @@ struct radv_ray_tracing_group;
 void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, const struct radv_pipeline_layout *layout,
                               struct radv_shader_stage *out_stage);
 
-void radv_hash_shaders(unsigned char *hash, const struct radv_shader_stage *stages, uint32_t stage_count,
-                       const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key, uint32_t flags);
+void radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const struct radv_shader_stage *stages,
+                       uint32_t stage_count, const struct radv_pipeline_layout *layout,
+                       const struct radv_pipeline_key *key);
 
 void radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo *stages, unsigned stage_count);
 
-void radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                          const struct radv_pipeline_key *key, const struct radv_ray_tracing_group *groups,
-                          uint32_t flags);
-
-uint32_t radv_get_hash_flags(const struct radv_device *device);
+void radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash,
+                          const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_pipeline_key *key,
+                          const struct radv_ray_tracing_group *groups);
 
 bool radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines);
 

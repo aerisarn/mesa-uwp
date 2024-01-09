@@ -705,6 +705,27 @@ capture_trace(VkQueue _queue)
    return result;
 }
 
+static void
+radv_device_init_cache_key(struct radv_device *device)
+{
+   struct radv_device_cache_key *key = &device->cache_key;
+
+   key->clear_lds = device->instance->drirc.clear_lds;
+   key->cs_wave32 = device->physical_device->cs_wave_size == 32;
+   key->dual_color_blend_by_location = device->instance->drirc.dual_color_blend_by_location;
+   key->emulate_rt = !!(device->instance->perftest_flags & RADV_PERFTEST_EMULATE_RT);
+   key->ge_wave32 = device->physical_device->ge_wave_size == 32;
+   key->no_fmask = !!(device->instance->debug_flags & RADV_DEBUG_NO_FMASK);
+   key->no_rt = !!(device->instance->debug_flags & RADV_DEBUG_NO_RT);
+   key->ps_wave32 = device->physical_device->ps_wave_size == 32;
+   key->rt_wave64 = device->physical_device->rt_wave_size == 64;
+   key->split_fma = !!(device->instance->debug_flags & RADV_DEBUG_SPLIT_FMA);
+   key->use_llvm = device->physical_device->use_llvm;
+   key->use_ngg_culling = device->physical_device->use_ngg_culling;
+
+   _mesa_blake3_compute(key, sizeof(*key), device->cache_hash);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
@@ -1125,6 +1146,10 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->load_grid_size_from_user_sgpr = device->physical_device->rad_info.gfx_level >= GFX10_3;
 
    device->keep_shader_info = keep_shader_info;
+
+   /* Initialize the per-device cache key before compiling meta shaders. */
+   radv_device_init_cache_key(device);
+
    result = radv_device_init_meta(device);
    if (result != VK_SUCCESS)
       goto fail;
