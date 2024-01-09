@@ -2102,7 +2102,7 @@ radv_fill_shader_info(struct radv_device *device, const enum radv_pipeline_type 
          consider_force_vrs = radv_consider_force_vrs(pipeline_key, &stages[i], &stages[MESA_SHADER_FRAGMENT]);
       }
 
-      radv_nir_shader_info_pass(device, stages[i].nir, &stages[i].layout, pipeline_key, pipeline_type,
+      radv_nir_shader_info_pass(device, stages[i].nir, &stages[i].layout, &stages[i].key, pipeline_key, pipeline_type,
                                 consider_force_vrs, &stages[i].info);
    }
 
@@ -2177,8 +2177,8 @@ radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache 
       .shader_sha1 = {0},
    };
    radv_nir_shader_info_init(gs_copy_stage.stage, MESA_SHADER_FRAGMENT, &gs_copy_stage.info);
-   radv_nir_shader_info_pass(device, nir, &gs_stage->layout, pipeline_key, RADV_PIPELINE_GRAPHICS, false,
-                             &gs_copy_stage.info);
+   radv_nir_shader_info_pass(device, nir, &gs_stage->layout, &gs_stage->key, pipeline_key, RADV_PIPELINE_GRAPHICS,
+                             false, &gs_copy_stage.info);
    gs_copy_stage.info.wave_size = 64;      /* Wave32 not supported. */
    gs_copy_stage.info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    gs_copy_stage.info.so = gs_info->so;

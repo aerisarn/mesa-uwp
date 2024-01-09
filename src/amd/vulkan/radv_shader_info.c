@@ -915,7 +915,7 @@ gather_shader_info_rt(const nir_shader *nir, struct radv_shader_info *info)
 }
 
 static void
-gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const struct radv_pipeline_key *pipeline_key,
+gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const struct radv_shader_stage_key *stage_key,
                       struct radv_shader_info *info)
 {
    info->cs.uses_ray_launch_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_RAY_LAUNCH_SIZE_ADDR_AMD);
@@ -931,10 +931,10 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
     * the subgroup size.
     */
    const bool require_full_subgroups =
-      pipeline_key->stage_info[nir->info.stage].subgroup_require_full || nir->info.cs.has_cooperative_matrix ||
+      stage_key->subgroup_require_full || nir->info.cs.has_cooperative_matrix ||
       (default_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics && local_size % RADV_SUBGROUP_SIZE == 0);
 
-   const unsigned required_subgroup_size = pipeline_key->stage_info[nir->info.stage].subgroup_required_size * 32;
+   const unsigned required_subgroup_size = stage_key->subgroup_required_size * 32;
 
    if (required_subgroup_size) {
       info->wave_size = required_subgroup_size;
@@ -953,10 +953,10 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
 }
 
 static void
-gather_shader_info_task(struct radv_device *device, const nir_shader *nir, const struct radv_pipeline_key *pipeline_key,
-                        struct radv_shader_info *info)
+gather_shader_info_task(struct radv_device *device, const nir_shader *nir,
+                        const struct radv_shader_stage_key *stage_key, struct radv_shader_info *info)
 {
-   gather_shader_info_cs(device, nir, pipeline_key, info);
+   gather_shader_info_cs(device, nir, stage_key, info);
 
    /* Task shaders always need these for the I/O lowering even if the API shader doesn't actually
     * use them.
@@ -1076,9 +1076,9 @@ radv_nir_shader_info_init(gl_shader_stage stage, gl_shader_stage next_stage, str
 
 void
 radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
-                          const struct radv_shader_layout *layout, const struct radv_pipeline_key *pipeline_key,
-                          const enum radv_pipeline_type pipeline_type, bool consider_force_vrs,
-                          struct radv_shader_info *info)
+                          const struct radv_shader_layout *layout, const struct radv_shader_stage_key *stage_key,
+                          const struct radv_pipeline_key *pipeline_key, const enum radv_pipeline_type pipeline_type,
+                          bool consider_force_vrs, struct radv_shader_info *info)
 {
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 
@@ -1193,10 +1193,10 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
-      gather_shader_info_cs(device, nir, pipeline_key, info);
+      gather_shader_info_cs(device, nir, stage_key, info);
       break;
    case MESA_SHADER_TASK:
-      gather_shader_info_task(device, nir, pipeline_key, info);
+      gather_shader_info_task(device, nir, stage_key, info);
       break;
    case MESA_SHADER_FRAGMENT:
       gather_shader_info_fs(device, nir, pipeline_key, info);
@@ -1222,7 +1222,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       break;
    }
 
-   const struct radv_shader_stage_key *stage_key = &pipeline_key->stage_info[nir->info.stage];
    info->wave_size = radv_get_wave_size(device, nir->info.stage, info, stage_key);
    info->ballot_bit_size = radv_get_ballot_bit_size(device, nir->info.stage, info, stage_key);
 

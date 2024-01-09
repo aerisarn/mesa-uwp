@@ -519,10 +519,10 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
       .has_shared2_amd = gfx_level >= GFX7,
    };
 
-   if (pipeline_key->stage_info[stage->stage].uniform_robustness2)
+   if (stage->key.uniform_robustness2)
       vectorize_opts.robust_modes |= nir_var_mem_ubo;
 
-   if (pipeline_key->stage_info[stage->stage].storage_robustness2)
+   if (stage->key.storage_robustness2)
       vectorize_opts.robust_modes |= nir_var_mem_ssbo;
 
    if (!pipeline_key->optimisations_disabled) {
