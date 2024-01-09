@@ -164,6 +164,8 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
    key.tex_non_uniform = device->instance->drirc.tex_non_uniform;
    key.ssbo_non_uniform = device->instance->drirc.ssbo_non_uniform;
 
+   key.disable_shrink_image_store = device->instance->drirc.disable_shrink_image_store;
+
    for (unsigned i = 0; i < num_stages; ++i) {
       const VkPipelineShaderStageCreateInfo *const stage = &stages[i];
       const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *const subgroup_size =
