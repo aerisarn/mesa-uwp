@@ -3096,7 +3096,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
     */
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
-      NIR_PASS_V(nir, agx_nir_lower_layer);
+
+      if (nir->info.outputs_written &
+          (VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT)) {
+
+         NIR_PASS_V(nir, agx_nir_lower_layer);
+      }
    }
 
    NIR_PASS_V(nir, nir_opt_constant_folding);
