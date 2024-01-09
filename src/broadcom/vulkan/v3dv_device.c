@@ -205,6 +205,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_private_data                     = true,
       .EXT_provoking_vertex                 = true,
       .EXT_separate_stencil_usage           = true,
+      .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_module_identifier         = true,
       .EXT_texel_buffer_alignment           = true,
       .EXT_tooling_info                     = true,
@@ -444,6 +445,9 @@ get_features(const struct v3dv_physical_device *physical_device,
 
       /* VK_KHR_shader_terminate_invocation */
       .shaderTerminateInvocation = true,
+
+      /* VK_EXT_shader_demote_to_helper_invocation */
+      .shaderDemoteToHelperInvocation = true,
    };
 }
 
