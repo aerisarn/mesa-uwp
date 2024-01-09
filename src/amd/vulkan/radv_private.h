@@ -383,10 +383,17 @@ struct radv_instance {
    bool dual_color_blend_by_location;
    bool legacy_sparse_binding;
    bool clear_lds;
+   bool enable_dgc;
+   bool enable_khr_present_wait;
+   bool report_llvm9_version_string;
+   bool vk_require_etc2;
+   bool vk_require_astc;
    char *app_layer;
    uint8_t override_graphics_shader_version;
    uint8_t override_compute_shader_version;
    uint8_t override_ray_tracing_shader_version;
+   int override_vram_size;
+   int override_uniform_offset_alignment;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);

@@ -231,6 +231,20 @@ radv_init_dri_options(struct radv_instance *instance)
       driQueryOptioni(&instance->dri_options, "radv_override_compute_shader_version");
    instance->override_ray_tracing_shader_version =
       driQueryOptioni(&instance->dri_options, "radv_override_ray_tracing_shader_version");
+
+   instance->enable_dgc = driQueryOptionb(&instance->dri_options, "radv_dgc");
+
+   instance->override_vram_size = driQueryOptioni(&instance->dri_options, "override_vram_size");
+
+   instance->enable_khr_present_wait = driQueryOptionb(&instance->dri_options, "vk_khr_present_wait");
+
+   instance->override_uniform_offset_alignment =
+      driQueryOptioni(&instance->dri_options, "radv_override_uniform_offset_alignment");
+
+   instance->report_llvm9_version_string = driQueryOptionb(&instance->dri_options, "radv_report_llvm9_version_string");
+
+   instance->vk_require_etc2 = driQueryOptionb(&instance->dri_options, "vk_require_etc2");
+   instance->vk_require_astc = driQueryOptionb(&instance->dri_options, "vk_require_astc");
 }
 
 static const struct vk_instance_extension_table radv_instance_extensions_supported = {

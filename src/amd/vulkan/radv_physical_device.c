@@ -89,12 +89,6 @@ radv_vrs_attachment_enabled(const struct radv_physical_device *pdevice)
 }
 
 static bool
-radv_NV_device_generated_commands_enabled(const struct radv_physical_device *device)
-{
-   return driQueryOptionb(&device->instance->dri_options, "radv_dgc");
-}
-
-static bool
 radv_calibrated_timestamps_enabled(const struct radv_physical_device *pdevice)
 {
    return RADV_SUPPORT_CALIBRATED_TIMESTAMPS &&
@@ -230,7 +224,7 @@ enum radv_heap {
 static uint64_t
 radv_get_adjusted_vram_size(struct radv_physical_device *device)
 {
-   int ov = driQueryOptioni(&device->instance->dri_options, "override_vram_size");
+   int ov = device->instance->override_vram_size;
    if (ov >= 0)
       return MIN2((uint64_t)device->rad_info.vram_size_kb * 1024, (uint64_t)ov << 20);
    return (uint64_t)device->rad_info.vram_size_kb * 1024;
@@ -481,9 +475,9 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
        * but the feature is useful enough to hide behind an opt-in mechanism for now.
        * If the instance only enables surface extensions that unconditionally support present wait,
        * we can also expose the extension that way. */
-      .KHR_present_id = driQueryOptionb(&device->instance->dri_options, "vk_khr_present_wait") ||
+      .KHR_present_id = device->instance->enable_khr_present_wait ||
                         wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
-      .KHR_present_wait = driQueryOptionb(&device->instance->dri_options, "vk_khr_present_wait") ||
+      .KHR_present_wait = device->instance->enable_khr_present_wait ||
                           wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
       .KHR_push_descriptor = true,
       .KHR_ray_query = radv_enable_rt(device, false),
@@ -609,7 +603,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_tooling_info = true,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
-      .EXT_vertex_input_dynamic_state = !device->use_llvm && !radv_NV_device_generated_commands_enabled(device),
+      .EXT_vertex_input_dynamic_state = !device->use_llvm && !device->instance->enable_dgc,
       .EXT_ycbcr_image_arrays = true,
       .AMD_buffer_marker = true,
       .AMD_device_coherent_memory = true,
@@ -638,8 +632,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .GOOGLE_user_type = true,
       .INTEL_shader_integer_functions2 = true,
       .NV_compute_shader_derivatives = true,
-      .NV_device_generated_commands = radv_NV_device_generated_commands_enabled(device),
-      .NV_device_generated_commands_compute = radv_NV_device_generated_commands_enabled(device),
+      .NV_device_generated_commands = device->instance->enable_dgc,
+      .NV_device_generated_commands_compute = device->instance->enable_dgc,
       /* Undocumented extension purely for vkd3d-proton. This check is to prevent anyone else from
        * using it.
        */
@@ -1138,8 +1132,7 @@ radv_max_descriptor_set_size()
 static uint32_t
 radv_uniform_buffer_offset_alignment(const struct radv_physical_device *pdevice)
 {
-   uint32_t uniform_offset_alignment =
-      driQueryOptioni(&pdevice->instance->dri_options, "radv_override_uniform_offset_alignment");
+   uint32_t uniform_offset_alignment = pdevice->instance->override_uniform_offset_alignment;
    if (!util_is_power_of_two_or_zero(uniform_offset_alignment)) {
       fprintf(stderr,
               "ERROR: invalid radv_override_uniform_offset_alignment setting %d:"
@@ -1160,7 +1153,7 @@ radv_get_compiler_string(struct radv_physical_device *pdevice)
        * version is too old or if the LLVM version string is
        * missing. This gives 2-5% performance with SotTR and ACO.
        */
-      if (driQueryOptionb(&pdevice->instance->dri_options, "radv_report_llvm9_version_string")) {
+      if (pdevice->instance->report_llvm9_version_string) {
          return " (LLVM 9.0.1)";
       }
 
@@ -1914,9 +1907,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->emulate_etc2 = !radv_device_supports_etc(device);
    device->emulate_astc = true;
 #else
-   device->emulate_etc2 =
-      !radv_device_supports_etc(device) && driQueryOptionb(&device->instance->dri_options, "vk_require_etc2");
-   device->emulate_astc = driQueryOptionb(&device->instance->dri_options, "vk_require_astc");
+   device->emulate_etc2 = !radv_device_supports_etc(device) && instance->vk_require_etc2;
+   device->emulate_astc = instance->vk_require_astc;
 #endif
 
    snprintf(device->name, sizeof(device->name), "AMD RADV %s%s", device->rad_info.name,
