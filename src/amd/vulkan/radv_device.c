@@ -712,15 +712,28 @@ radv_device_init_cache_key(struct radv_device *device)
 
    key->clear_lds = device->instance->drirc.clear_lds;
    key->cs_wave32 = device->physical_device->cs_wave_size == 32;
+   key->disable_aniso_single_level =
+      device->instance->drirc.disable_aniso_single_level && device->physical_device->rad_info.gfx_level < GFX8;
+   key->disable_shrink_image_store = device->instance->drirc.disable_shrink_image_store;
+   key->disable_sinking_load_input_fs = device->instance->drirc.disable_sinking_load_input_fs;
+   key->disable_trunc_coord = device->disable_trunc_coord;
    key->dual_color_blend_by_location = device->instance->drirc.dual_color_blend_by_location;
    key->emulate_rt = !!(device->instance->perftest_flags & RADV_PERFTEST_EMULATE_RT);
    key->ge_wave32 = device->physical_device->ge_wave_size == 32;
+   key->image_2d_view_of_3d = device->image_2d_view_of_3d && device->physical_device->rad_info.gfx_level == GFX9;
+   key->invariant_geom = !!(device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM);
+   key->lower_discard_to_demote = !!(device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE);
+   key->mesh_shader_queries = device->mesh_shader_queries;
    key->no_fmask = !!(device->instance->debug_flags & RADV_DEBUG_NO_FMASK);
    key->no_rt = !!(device->instance->debug_flags & RADV_DEBUG_NO_RT);
+   key->primitives_generated_query = device->primitives_generated_query;
    key->ps_wave32 = device->physical_device->ps_wave_size == 32;
    key->rt_wave64 = device->physical_device->rt_wave_size == 64;
    key->split_fma = !!(device->instance->debug_flags & RADV_DEBUG_SPLIT_FMA);
+   key->ssbo_non_uniform = device->instance->drirc.ssbo_non_uniform;
+   key->tex_non_uniform = device->instance->drirc.tex_non_uniform;
    key->use_llvm = device->physical_device->use_llvm;
+   key->use_ngg = device->physical_device->use_ngg;
    key->use_ngg_culling = device->physical_device->use_ngg_culling;
 
    _mesa_blake3_compute(key, sizeof(*key), device->cache_hash);

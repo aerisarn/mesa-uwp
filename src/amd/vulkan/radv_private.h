@@ -880,15 +880,27 @@ struct radv_sqtt_timestamp {
 struct radv_device_cache_key {
    uint32_t clear_lds : 1;
    uint32_t cs_wave32 : 1;
+   uint32_t disable_aniso_single_level : 1;
+   uint32_t disable_shrink_image_store : 1;
+   uint32_t disable_sinking_load_input_fs : 1;
+   uint32_t disable_trunc_coord : 1;
    uint32_t dual_color_blend_by_location : 1;
    uint32_t emulate_rt : 1;
    uint32_t ge_wave32 : 1;
+   uint32_t image_2d_view_of_3d : 1;
+   uint32_t invariant_geom : 1;
+   uint32_t lower_discard_to_demote : 1;
+   uint32_t mesh_shader_queries : 1;
    uint32_t no_fmask : 1;
    uint32_t no_rt : 1;
+   uint32_t primitives_generated_query : 1;
    uint32_t ps_wave32 : 1;
    uint32_t rt_wave64 : 1;
    uint32_t split_fma : 1;
+   uint32_t ssbo_non_uniform : 1;
+   uint32_t tex_non_uniform : 1;
    uint32_t use_llvm : 1;
+   uint32_t use_ngg : 1;
    uint32_t use_ngg_culling : 1;
 };
 

@@ -1893,27 +1893,13 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
       key.vs.provoking_vtx_last = state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
    }
 
-   if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
-      key.ps.lower_discard_to_demote = true;
-
    key.ps.force_vrs_enabled = device->force_vrs_enabled && !radv_is_static_vrs_enabled(pipeline, state);
-
-   if (device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
-      key.invariant_geom = true;
-
-   key.use_ngg = device->physical_device->use_ngg;
 
    if ((radv_is_vrs_enabled(pipeline, state) || key.ps.force_vrs_enabled) &&
        (device->physical_device->rad_info.family == CHIP_NAVI21 ||
         device->physical_device->rad_info.family == CHIP_NAVI22 ||
         device->physical_device->rad_info.family == CHIP_VANGOGH))
       key.adjust_frag_coord_z = true;
-
-   if (device->instance->drirc.disable_sinking_load_input_fs)
-      key.disable_sinking_load_input_fs = true;
-
-   if (device->primitives_generated_query)
-      key.primitives_generated_query = true;
 
    if (radv_pipeline_needs_ps_epilog(pipeline, lib_flags))
       key.ps.has_epilog = true;
@@ -1973,8 +1959,6 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
       }
    }
 
-   key.mesh_shader_queries = device->mesh_shader_queries;
-
    return key;
 }
 
@@ -1982,7 +1966,7 @@ static void
 radv_fill_shader_info_ngg(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
                           struct radv_shader_stage *stages, VkShaderStageFlagBits active_nir_stages)
 {
-   if (pipeline_key->use_ngg) {
+   if (device->cache_key.use_ngg) {
       if (stages[MESA_SHADER_TESS_CTRL].nir) {
          stages[MESA_SHADER_TESS_EVAL].info.is_ngg = true;
       } else if (stages[MESA_SHADER_VERTEX].nir) {

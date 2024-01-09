@@ -154,18 +154,6 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
    if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
       key.optimisations_disabled = 1;
 
-   key.disable_aniso_single_level =
-      device->instance->drirc.disable_aniso_single_level && device->physical_device->rad_info.gfx_level < GFX8;
-
-   key.disable_trunc_coord = device->disable_trunc_coord;
-
-   key.image_2d_view_of_3d = device->image_2d_view_of_3d && device->physical_device->rad_info.gfx_level == GFX9;
-
-   key.tex_non_uniform = device->instance->drirc.tex_non_uniform;
-   key.ssbo_non_uniform = device->instance->drirc.ssbo_non_uniform;
-
-   key.disable_shrink_image_store = device->instance->drirc.disable_shrink_image_store;
-
    for (unsigned i = 0; i < num_stages; ++i) {
       const VkPipelineShaderStageCreateInfo *const stage = &stages[i];
       const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *const subgroup_size =
@@ -586,7 +574,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    nir_move_options sink_opts = nir_move_const_undef | nir_move_copies;
 
    if (!pipeline_key->optimisations_disabled) {
-      if (stage->stage != MESA_SHADER_FRAGMENT || !pipeline_key->disable_sinking_load_input_fs)
+      if (stage->stage != MESA_SHADER_FRAGMENT || !device->cache_key.disable_sinking_load_input_fs)
          sink_opts |= nir_move_load_input;
 
       NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
