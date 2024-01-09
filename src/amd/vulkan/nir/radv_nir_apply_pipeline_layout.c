@@ -499,8 +499,7 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
 }
 
 void
-radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device, const struct radv_shader_info *info,
-                               const struct radv_shader_args *args, const struct radv_shader_layout *layout)
+radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device, const struct radv_shader_stage *stage)
 {
    apply_layout_state state = {
       .gfx_level = device->physical_device->rad_info.gfx_level,
@@ -509,9 +508,9 @@ radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device, c
       .has_image_load_dcc_bug = device->physical_device->rad_info.has_image_load_dcc_bug,
       .disable_tg4_trunc_coord =
          !device->physical_device->rad_info.conformant_trunc_coord && !device->disable_trunc_coord,
-      .args = args,
-      .info = info,
-      .layout = layout,
+      .args = &stage->args,
+      .info = &stage->info,
+      .layout = &stage->layout,
    };
 
    nir_builder b;

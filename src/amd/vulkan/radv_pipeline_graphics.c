@@ -2193,8 +2193,8 @@ radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache 
 
    NIR_PASS_V(nir, ac_nir_lower_intrinsics_to_args, device->physical_device->rad_info.gfx_level, AC_HW_VERTEX_SHADER,
               &gs_copy_stage.args.ac);
-   NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &gs_copy_stage.info,
-              &gs_copy_stage.args, pipeline_key, device->physical_device->rad_info.address32_hi);
+   NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &gs_copy_stage, pipeline_key,
+              device->physical_device->rad_info.address32_hi);
 
    struct radv_pipeline_key key = {
       .optimisations_disabled = pipeline_key->optimisations_disabled,

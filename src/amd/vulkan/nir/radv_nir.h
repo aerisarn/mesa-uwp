@@ -43,12 +43,11 @@ struct radv_shader_args;
 struct radv_shader_layout;
 struct radv_device;
 
-void radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device, const struct radv_shader_info *info,
-                                    const struct radv_shader_args *args, const struct radv_shader_layout *layout);
+void radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
+                                    const struct radv_shader_stage *stage);
 
-void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level, const struct radv_shader_info *info,
-                        const struct radv_shader_args *args, const struct radv_pipeline_key *pl_key,
-                        uint32_t address32_hi);
+void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level, const struct radv_shader_stage *stage,
+                        const struct radv_pipeline_key *pl_key, uint32_t address32_hi);
 
 bool radv_nir_lower_hit_attrib_derefs(nir_shader *shader);
 

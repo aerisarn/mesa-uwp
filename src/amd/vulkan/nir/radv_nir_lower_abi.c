@@ -547,18 +547,18 @@ load_gsvs_ring(nir_builder *b, lower_abi_state *s, unsigned stream_id)
 }
 
 void
-radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level, const struct radv_shader_info *info,
-                   const struct radv_shader_args *args, const struct radv_pipeline_key *pl_key, uint32_t address32_hi)
+radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level, const struct radv_shader_stage *stage,
+                   const struct radv_pipeline_key *pl_key, uint32_t address32_hi)
 {
    lower_abi_state state = {
       .gfx_level = gfx_level,
-      .info = info,
-      .args = args,
+      .info = &stage->info,
+      .args = &stage->args,
       .pl_key = pl_key,
       .address32_hi = address32_hi,
    };
 
-   if (shader->info.stage == MESA_SHADER_GEOMETRY && !info->is_ngg) {
+   if (shader->info.stage == MESA_SHADER_GEOMETRY && !stage->info.is_ngg) {
       nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
       nir_builder b = nir_builder_at(nir_before_impl(impl));
