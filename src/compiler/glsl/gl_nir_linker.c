@@ -959,6 +959,8 @@ gl_nir_zero_initialize_clip_distance(nir_shader *nir)
    if (clip_dist1)
       zero_array_members(&b, clip_dist1);
 
+   nir_metadata_preserve(impl, nir_metadata_dominance |
+                               nir_metadata_block_index);
    return true;
 }
 
