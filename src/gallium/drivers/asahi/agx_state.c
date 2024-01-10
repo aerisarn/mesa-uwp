@@ -31,6 +31,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
+#include "util/bitset.h"
 #include "util/blob.h"
 #include "util/compiler.h"
 #include "util/format/u_format.h"
@@ -2810,8 +2811,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
           */
          key.op[rt] = AGX_META_OP_NONE;
       } else {
-         struct agx_resource *rsrc = agx_resource(surf->texture);
-         bool valid = agx_resource_valid(rsrc, surf->u.tex.level);
+         bool valid = (batch->load & (PIPE_CLEAR_COLOR0 << rt));
          bool clear = (batch->clear & (PIPE_CLEAR_COLOR0 << rt));
          bool load = valid && !clear;
 
@@ -3082,16 +3082,29 @@ agx_batch_init_state(struct agx_batch *batch)
    }
 
    if (batch->key.zsbuf) {
+      unsigned level = batch->key.zsbuf->u.tex.level;
       struct agx_resource *rsrc = agx_resource(batch->key.zsbuf->texture);
-      agx_batch_writes(batch, rsrc);
 
-      if (rsrc->separate_stencil)
+      agx_batch_writes(batch, rsrc);
+      BITSET_SET(rsrc->data_valid, level);
+
+      if (rsrc->separate_stencil) {
          agx_batch_writes(batch, rsrc->separate_stencil);
+         BITSET_SET(rsrc->separate_stencil->data_valid, level);
+      }
    }
 
    for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
-      if (batch->key.cbufs[i])
-         agx_batch_writes(batch, agx_resource(batch->key.cbufs[i]->texture));
+      if (batch->key.cbufs[i]) {
+         struct agx_resource *rsrc = agx_resource(batch->key.cbufs[i]->texture);
+         unsigned level = batch->key.cbufs[i]->u.tex.level;
+
+         if (agx_resource_valid(rsrc, level))
+            batch->load |= PIPE_CLEAR_COLOR0 << i;
+
+         agx_batch_writes(batch, rsrc);
+         BITSET_SET(rsrc->data_valid, batch->key.cbufs[i]->u.tex.level);
+      }
    }
 
    /* Set up standard sample positions */
