@@ -35,7 +35,7 @@ extern "C" {
 struct nir_shader;
 struct nir_variable;
 
-void st_nir_lower_builtin(struct nir_shader *shader);
+bool st_nir_lower_builtin(struct nir_shader *shader);
 bool st_nir_lower_tex_src_plane(struct nir_shader *shader, unsigned free_slots,
                                 unsigned lower_2plane, unsigned lower_3plane);
 
