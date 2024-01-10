@@ -4239,12 +4239,16 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
       state.need_src_alpha |= 0x1;
    }
 
-   if (ps && ps->info.ps.exports_mrtz_via_epilog) {
-      assert(device->physical_device->rad_info.gfx_level >= GFX11);
-      state.export_depth = ps->info.ps.writes_z;
-      state.export_stencil = ps->info.ps.writes_stencil;
-      state.export_sample_mask = ps->info.ps.writes_sample_mask;
-      state.alpha_to_coverage_via_mrtz = d->vk.ms.alpha_to_coverage_enable;
+   if (ps) {
+      state.colors_written = ps->info.ps.colors_written;
+
+      if (ps->info.ps.exports_mrtz_via_epilog) {
+         assert(device->physical_device->rad_info.gfx_level >= GFX11);
+         state.export_depth = ps->info.ps.writes_z;
+         state.export_stencil = ps->info.ps.writes_stencil;
+         state.export_sample_mask = ps->info.ps.writes_sample_mask;
+         state.alpha_to_coverage_via_mrtz = d->vk.ms.alpha_to_coverage_enable;
+      }
    }
 
    struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, &state);

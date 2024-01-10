@@ -1726,6 +1726,7 @@ radv_generate_ps_epilog_key(const struct radv_device *device, const struct radv_
    key.color_is_int8 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int8 : 0;
    key.color_is_int10 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int10 : 0;
    key.enable_mrt_output_nan_fixup = device->instance->drirc.enable_mrt_output_nan_fixup ? is_float32 : 0;
+   key.colors_written = state->colors_written;
    key.mrt0_is_dual_src = state->mrt0_is_dual_src;
    key.export_depth = state->export_depth;
    key.export_stencil = state->export_stencil;

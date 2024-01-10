@@ -1832,6 +1832,7 @@ struct radv_ps_epilog_state {
    uint32_t color_write_mask;
    uint32_t color_blend_enable;
 
+   uint32_t colors_written;
    bool mrt0_is_dual_src;
    bool export_depth;
    bool export_stencil;
