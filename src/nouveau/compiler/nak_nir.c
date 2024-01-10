@@ -986,8 +986,7 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
          unreachable("EXT_shader_stencil_export not supported");
          break;
       case FRAG_RESULT_COLOR:
-         assert(var->data.index == 0);
-         var->data.driver_location = NAK_FS_OUT_COLOR0;
+         unreachable("Vulkan alway uses explicit locations");
          break;
       case FRAG_RESULT_SAMPLE_MASK:
          assert(var->data.index == 0);
