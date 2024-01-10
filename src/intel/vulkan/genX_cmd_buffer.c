@@ -2266,12 +2266,12 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-static uint32_t
-flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
-                      struct anv_cmd_pipeline_state *pipe_state,
-                      const VkShaderStageFlags dirty,
-                      struct anv_shader_bin **shaders,
-                      uint32_t num_shaders)
+uint32_t
+genX(cmd_buffer_flush_descriptor_sets)(struct anv_cmd_buffer *cmd_buffer,
+                                       struct anv_cmd_pipeline_state *pipe_state,
+                                       const VkShaderStageFlags dirty,
+                                       struct anv_shader_bin **shaders,
+                                       uint32_t num_shaders)
 {
    VkShaderStageFlags flushed = 0;
 
@@ -2346,10 +2346,10 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
  * and surface state generation when a pipeline is not going to use the
  * binding table to access any push descriptor data.
  */
-static void
-flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
-                          struct anv_cmd_pipeline_state *state,
-                          struct anv_pipeline *pipeline)
+void
+genX(cmd_buffer_flush_push_descriptor_set)(struct anv_cmd_buffer *cmd_buffer,
+                                           struct anv_cmd_pipeline_state *state,
+                                           struct anv_pipeline *pipeline)
 {
    assert(pipeline->use_push_descriptor &&
           pipeline->layout.push_descriptor_set_index != -1);
@@ -3167,9 +3167,9 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.push_descriptors_dirty &
       pipeline->base.base.use_push_descriptor;
    if (push_descriptor_dirty) {
-      flush_push_descriptor_set(cmd_buffer,
-                                &cmd_buffer->state.gfx.base,
-                                &pipeline->base.base);
+      genX(cmd_buffer_flush_push_descriptor_set)(cmd_buffer,
+                                                 &cmd_buffer->state.gfx.base,
+                                                 &pipeline->base.base);
       descriptors_dirty |= push_descriptor_dirty;
       cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
    }
@@ -3280,11 +3280,12 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
     */
    uint32_t dirty = 0;
    if (descriptors_dirty) {
-      dirty = flush_descriptor_sets(cmd_buffer,
-                                    &cmd_buffer->state.gfx.base,
-                                    descriptors_dirty,
-                                    pipeline->base.shaders,
-                                    ARRAY_SIZE(pipeline->base.shaders));
+      dirty = genX(cmd_buffer_flush_descriptor_sets)(
+         cmd_buffer,
+         &cmd_buffer->state.gfx.base,
+         descriptors_dirty,
+         pipeline->base.shaders,
+         ARRAY_SIZE(pipeline->base.shaders));
       cmd_buffer->state.descriptors_dirty &= ~dirty;
    }
 
@@ -5779,19 +5780,19 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.push_descriptors_dirty &
       pipeline->base.use_push_descriptor;
    if (push_descriptor_dirty) {
-      flush_push_descriptor_set(cmd_buffer,
-                                &cmd_buffer->state.compute.base,
-                                &pipeline->base);
+      genX(cmd_buffer_flush_push_descriptor_set)(cmd_buffer,
+                                                 &cmd_buffer->state.compute.base,
+                                                 &pipeline->base);
       cmd_buffer->state.descriptors_dirty |= push_descriptor_dirty;
       cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
    }
 
    if ((cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_COMPUTE_BIT) ||
        cmd_buffer->state.compute.pipeline_dirty) {
-      flush_descriptor_sets(cmd_buffer,
-                            &cmd_buffer->state.compute.base,
-                            VK_SHADER_STAGE_COMPUTE_BIT,
-                            &pipeline->cs, 1);
+      genX(cmd_buffer_flush_descriptor_sets)(cmd_buffer,
+                                             &cmd_buffer->state.compute.base,
+                                             VK_SHADER_STAGE_COMPUTE_BIT,
+                                             &pipeline->cs, 1);
       cmd_buffer->state.descriptors_dirty &= ~VK_SHADER_STAGE_COMPUTE_BIT;
 
 #if GFX_VERx10 < 125
@@ -6525,9 +6526,9 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       cmd_buffer->state.push_descriptors_dirty &
       pipeline->base.use_push_descriptor;
    if (push_descriptor_dirty) {
-      flush_push_descriptor_set(cmd_buffer,
-                                &cmd_buffer->state.rt.base,
-                                &pipeline->base);
+      genX(cmd_buffer_flush_push_descriptor_set)(cmd_buffer,
+                                                 &cmd_buffer->state.rt.base,
+                                                 &pipeline->base);
       cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
    }
 
