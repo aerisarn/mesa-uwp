@@ -3313,6 +3313,7 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.gfx.dirty = 0;
 }
 
+#include "genX_cmd_draw_generated_flush.h"
 #include "genX_cmd_draw_generated_indirect.h"
 
 ALWAYS_INLINE static bool
