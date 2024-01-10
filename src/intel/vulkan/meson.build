@@ -101,6 +101,7 @@ libanv_per_hw_ver_libs = []
 anv_per_hw_ver_files = files(
   'genX_blorp_exec.c',
   'genX_cmd_buffer.c',
+  'genX_cmd_draw_generated_indirect.h',
   'genX_gfx_state.c',
   'genX_gpu_memcpy.c',
   'genX_init_state.c',
