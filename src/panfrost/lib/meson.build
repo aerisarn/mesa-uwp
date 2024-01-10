@@ -22,7 +22,7 @@
 subdir('genxml')
 subdir('kmod')
 
-pixel_format_versions = ['6', '7', '9']
+pixel_format_versions = ['5', '6', '7', '9']
 libpanfrost_pixel_format = []
 
 foreach ver : pixel_format_versions
