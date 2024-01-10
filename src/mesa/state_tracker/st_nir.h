@@ -36,7 +36,7 @@ struct nir_shader;
 struct nir_variable;
 
 void st_nir_lower_builtin(struct nir_shader *shader);
-void st_nir_lower_tex_src_plane(struct nir_shader *shader, unsigned free_slots,
+bool st_nir_lower_tex_src_plane(struct nir_shader *shader, unsigned free_slots,
                                 unsigned lower_2plane, unsigned lower_3plane);
 
 bool st_nir_lower_wpos_ytransform(struct nir_shader *nir,
