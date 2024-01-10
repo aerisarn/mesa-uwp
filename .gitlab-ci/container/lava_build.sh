@@ -219,7 +219,8 @@ mmdebstrap \
     --include "${PKG_BASE[*]} ${PKG_CI[*]} ${PKG_DEP[*]} ${PKG_MESA_DEP[*]} ${PKG_ARCH[*]}" \
     bookworm \
     "$ROOTFS/" \
-    "http://deb.debian.org/debian"
+    "http://deb.debian.org/debian" \
+    "deb [trusted=yes] https://gitlab.freedesktop.org/gfx-ci/ci-deb-repo/-/raw/${PKG_REPO_REV}/ ${FDO_DISTRIBUTION_VERSION%-*} main"
 
 ############### Install mold
 . .gitlab-ci/container/build-mold.sh

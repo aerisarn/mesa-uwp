@@ -25,7 +25,7 @@ variables:
    ALPINE_X86_64_BUILD_TAG: "2023-01-07-libdrm2_4_119"
    ALPINE_X86_64_LAVA_SSH_TAG: "2023-06-26-first-version"
    FEDORA_X86_64_BUILD_TAG: "2024-01-06-libdrm"
-   KERNEL_ROOTFS_TAG: "2024-01-10-deb-fix"
+   KERNEL_ROOTFS_TAG: "2024-01-10-libdrm"
    KERNEL_TAG: "v6.6.4-for-mesa-ci-e4f4c500f7fb"
    KERNEL_REPO: "gfx-ci/linux"
    PKG_REPO_REV: "67f2c46b"
