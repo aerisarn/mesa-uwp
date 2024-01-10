@@ -40,13 +40,16 @@
 # repository's container registry, so that the image from the main
 # repository's registry will be used there as well.
 
+.debian-container:
+  variables:
+    FDO_DISTRIBUTION_VERSION: bookworm-slim
+
 .container:
   stage: container
   extends:
     - .container+build-rules
     - .incorporate-templates-commit
   variables:
-    FDO_DISTRIBUTION_VERSION: bookworm-slim
     FDO_REPO_SUFFIX: $CI_JOB_NAME
     FDO_DISTRIBUTION_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
@@ -62,12 +65,14 @@ debian/x86_64_build-base:
   extends:
     - .fdo.container-build@debian
     - .container
+    - .debian-container
   variables:
     MESA_IMAGE_TAG: &debian-x86_64_build-base "${DEBIAN_BASE_TAG}--${PKG_REPO_REV}"
 
 .use-debian/x86_64_build-base:
   extends:
     - .fdo.container-build@debian
+    - .debian-container
     - .use-base-image
   variables:
     MESA_BASE_IMAGE: ${DEBIAN_X86_64_BUILD_BASE_IMAGE}
@@ -176,6 +181,7 @@ debian/x86_64_test-base:
 .use-debian/x86_64_test-base:
   extends:
     - .fdo.container-build@debian
+    - .debian-container
     - .use-base-image
   variables:
     MESA_BASE_IMAGE: ${DEBIAN_X86_64_TEST_BASE_IMAGE}
@@ -237,6 +243,7 @@ debian/arm64_build:
   extends:
     - .fdo.container-build@debian
     - .container
+    - .debian-container
   tags:
     - aarch64
   variables:
@@ -307,6 +314,7 @@ fedora/x86_64_build:
 .kernel+rootfs:
   extends:
     - .container+build-rules
+    - .debian-container
   stage: container
   variables:
     GIT_STRATEGY: fetch
@@ -355,6 +363,7 @@ kernel+rootfs_arm32:
   extends:
     - .fdo.container-build@debian
     - .container
+    - .debian-container
     # Don't want the .container rules
     - .container+build-rules
   variables:
