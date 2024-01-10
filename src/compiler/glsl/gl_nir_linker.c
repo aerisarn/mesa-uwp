@@ -889,7 +889,7 @@ remove_dead_varyings_pre_linking(nir_shader *nir)
  * - find every gl_Position write
  * - store 1.0 to gl_PointSize after every gl_Position write
  */
-void
+bool
 gl_nir_add_point_size(nir_shader *nir)
 {
    nir_variable *psiz = nir_create_variable_with_location(nir, nir_var_shader_out,
@@ -921,6 +921,10 @@ gl_nir_add_point_size(nir_shader *nir)
       nir_deref_instr *deref = nir_build_deref_var(&b, psiz);
       nir_store_deref(&b, deref, nir_imm_float(&b, 1.0), BITFIELD_BIT(0));
    }
+
+   /* We always modify the entrypoint */
+   nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
+   return true;
 }
 
 static void
