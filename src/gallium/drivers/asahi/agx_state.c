@@ -3744,7 +3744,6 @@ agx_launch_gs(struct agx_batch *batch, const struct pipe_draw_info *info,
 
    /* Launch the actual geometry shader */
    agx_launch(batch, &grid, gs, PIPE_SHADER_GEOMETRY);
-   batch->any_draws = true;
 
    /* If we're not rasterizing, the pipeline ends here */
    if (ctx->rast->base.rasterizer_discard)
@@ -4389,6 +4388,8 @@ agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
    struct agx_context *ctx = batch->ctx;
    struct agx_device *dev = agx_device(ctx->base.screen);
 
+   batch->any_draws = true;
+
    /* To implement load_num_workgroups, the number of workgroups needs to be
     * available in GPU memory. This is either the indirect buffer, or just a
     * buffer we upload ourselves if not indirect.
@@ -4531,11 +4532,6 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    agx_batch_add_timestamp_query(batch, ctx->time_elapsed);
 
    agx_batch_init_state(batch);
-
-   /* Consider compute launches as "draws" for the purposes of sanity
-    * checking batch state.
-    */
-   batch->any_draws = true;
 
    struct agx_uncompiled_shader *uncompiled =
       ctx->stage[PIPE_SHADER_COMPUTE].shader;
