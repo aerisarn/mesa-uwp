@@ -2779,6 +2779,10 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
    /* Construct the key */
    struct agx_meta_key key = {.tib = batch->tilebuffer_layout};
 
+   bool needs_textures_for_spilled_rts =
+      agx_tilebuffer_spills(&batch->tilebuffer_layout) && !partial_render &&
+      !store;
+
    for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
       struct pipe_surface *surf = batch->key.cbufs[rt];
 
@@ -2824,6 +2828,12 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
    for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
       if (key.op[rt] == AGX_META_OP_LOAD) {
          /* Each reloaded render target is textured */
+         needs_sampler = true;
+
+         /* Will be uploaded later, this would be clobbered */
+         if (needs_textures_for_spilled_rts)
+            continue;
+
          struct agx_ptr texture =
             agx_pool_alloc_aligned(&batch->pool, AGX_TEXTURE_LENGTH, 64);
          struct pipe_surface *surf = batch->key.cbufs[rt];
@@ -2835,12 +2845,12 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          agx_pack_texture(texture.cpu, rsrc, surf->format, &sampler_view);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
-            cfg.start = rt;
+            /* Shifted to match eMRT indexing, could be optimized */
+            cfg.start = rt * 2;
             cfg.count = 1;
             cfg.buffer = texture.gpu;
          }
 
-         needs_sampler = true;
       } else if (key.op[rt] == AGX_META_OP_CLEAR) {
          assert(batch->uploaded_clear_color[rt] && "set when cleared");
          agx_usc_uniform(&b, 4 + (8 * rt), 8, batch->uploaded_clear_color[rt]);
@@ -2864,8 +2874,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       }
    }
 
-   if (agx_tilebuffer_spills(&batch->tilebuffer_layout) && !partial_render &&
-       !store) {
+   if (needs_textures_for_spilled_rts) {
       /* Upload texture/PBE descriptors for each render target so we can clear
        * spilled render targets.
        */
