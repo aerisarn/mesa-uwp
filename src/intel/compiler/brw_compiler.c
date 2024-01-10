@@ -122,6 +122,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
    compiler->indirect_ubos_use_sampler = true;
 
    compiler->lower_dpas = devinfo->verx10 < 125 ||
+      intel_device_info_is_mtl(devinfo) ||
       debug_get_bool_option("INTEL_LOWER_DPAS", false);
 
    /* There is no vec4 mode on Gfx10+, and we don't use it at all on Gfx8+. */
