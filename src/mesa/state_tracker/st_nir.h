@@ -39,7 +39,7 @@ void st_nir_lower_builtin(struct nir_shader *shader);
 void st_nir_lower_tex_src_plane(struct nir_shader *shader, unsigned free_slots,
                                 unsigned lower_2plane, unsigned lower_3plane);
 
-void st_nir_lower_wpos_ytransform(struct nir_shader *nir,
+bool st_nir_lower_wpos_ytransform(struct nir_shader *nir,
                                   struct gl_program *prog,
                                   struct pipe_screen *pscreen);
 

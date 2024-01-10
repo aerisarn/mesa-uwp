@@ -441,13 +441,17 @@ st_nir_vectorize_io(nir_shader *producer, nir_shader *consumer)
 
 extern "C" {
 
-void
+bool
 st_nir_lower_wpos_ytransform(struct nir_shader *nir,
                              struct gl_program *prog,
                              struct pipe_screen *pscreen)
 {
-   if (nir->info.stage != MESA_SHADER_FRAGMENT)
-      return;
+   bool progress = false;
+
+   if (nir->info.stage != MESA_SHADER_FRAGMENT) {
+      nir_shader_preserve_all_metadata(nir);
+      return progress;
+   }
 
    static const gl_state_index16 wposTransformState[STATE_LENGTH] = {
       STATE_FB_WPOS_Y_TRANSFORM
@@ -470,8 +474,8 @@ st_nir_lower_wpos_ytransform(struct nir_shader *nir,
                          PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER);
 
    if (nir_lower_wpos_ytransform(nir, &wpos_options)) {
-      nir_validate_shader(nir, "after nir_lower_wpos_ytransform");
       _mesa_add_state_reference(prog->Parameters, wposTransformState);
+      progress = true;
    }
 
    static const gl_state_index16 pntcTransformState[STATE_LENGTH] = {
@@ -480,7 +484,10 @@ st_nir_lower_wpos_ytransform(struct nir_shader *nir,
 
    if (nir_lower_pntc_ytransform(nir, &pntcTransformState)) {
       _mesa_add_state_reference(prog->Parameters, pntcTransformState);
+      progress = true;
    }
+
+   return progress;
 }
 
 static bool
