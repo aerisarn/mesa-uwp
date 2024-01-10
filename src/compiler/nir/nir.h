@@ -6014,7 +6014,7 @@ bool nir_lower_clip_gs(nir_shader *shader, unsigned ucp_enables,
 bool nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables,
                        bool use_clipdist_array);
 
-void nir_lower_clip_cull_distance_to_vec4s(nir_shader *shader);
+bool nir_lower_clip_cull_distance_to_vec4s(nir_shader *shader);
 bool nir_lower_clip_cull_distance_arrays(nir_shader *nir);
 bool nir_lower_clip_disable(nir_shader *shader, unsigned clip_plane_enable);
 
