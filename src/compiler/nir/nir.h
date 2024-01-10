@@ -6062,7 +6062,7 @@ typedef struct nir_lower_drawpixels_options {
    bool scale_and_bias : 1;
 } nir_lower_drawpixels_options;
 
-void nir_lower_drawpixels(nir_shader *shader,
+bool nir_lower_drawpixels(nir_shader *shader,
                           const nir_lower_drawpixels_options *options);
 
 typedef struct nir_lower_bitmap_options {
