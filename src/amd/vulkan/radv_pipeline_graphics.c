@@ -1963,8 +1963,8 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
 }
 
 static void
-radv_fill_shader_info_ngg(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                          struct radv_shader_stage *stages, VkShaderStageFlagBits active_nir_stages)
+radv_fill_shader_info_ngg(struct radv_device *device, struct radv_shader_stage *stages,
+                          VkShaderStageFlagBits active_nir_stages)
 {
    if (device->cache_key.use_ngg) {
       if (stages[MESA_SHADER_TESS_CTRL].nir) {
@@ -2487,7 +2487,7 @@ radv_graphics_shaders_compile(struct radv_device *device, struct vk_pipeline_cac
    }
 
    /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
-   radv_fill_shader_info_ngg(device, pipeline_key, stages, active_nir_stages);
+   radv_fill_shader_info_ngg(device, stages, active_nir_stages);
 
    if (stages[MESA_SHADER_GEOMETRY].nir) {
       unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
