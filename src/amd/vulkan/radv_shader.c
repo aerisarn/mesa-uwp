@@ -2413,9 +2413,6 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options, struct
                                const struct radv_pipeline_key *key, bool should_use_wgp, bool can_dump_shader,
                                bool is_meta_shader, bool keep_shader_info, bool keep_statistic_info)
 {
-   if (key)
-      options->key = *key;
-
    /* robust_buffer_access_llvm here used by LLVM only, pipeline robustness is not exposed there. */
    options->robust_buffer_access_llvm = device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_1;
    options->wgp_mode = should_use_wgp;
@@ -2425,7 +2422,7 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options, struct
    options->record_ir = keep_shader_info;
    options->record_stats = keep_statistic_info;
    options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
-   options->enable_mrt_output_nan_fixup = options->key.ps.epilog.enable_mrt_output_nan_fixup;
+   options->enable_mrt_output_nan_fixup = key ? key->ps.epilog.enable_mrt_output_nan_fixup : false;
 }
 
 static void
