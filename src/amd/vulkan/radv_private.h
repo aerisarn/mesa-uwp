@@ -3172,9 +3172,9 @@ radv_primitive_topology_is_line_list(unsigned primitive_topology)
 }
 
 static inline unsigned
-radv_get_num_vertices_per_prim(const struct radv_pipeline_key *pipeline_key)
+radv_get_num_vertices_per_prim(const struct radv_graphics_state_key *gfx_state)
 {
-   if (pipeline_key->ia.topology == V_008958_DI_PT_NONE) {
+   if (gfx_state->ia.topology == V_008958_DI_PT_NONE) {
       /* When the topology is unknown (with graphics pipeline library), return the maximum number of
        * vertices per primitives for VS. This is used to lower NGG (the HW will ignore the extra
        * bits for points/lines) and also to enable NGG culling unconditionally (it will be disabled
@@ -3183,7 +3183,7 @@ radv_get_num_vertices_per_prim(const struct radv_pipeline_key *pipeline_key)
       return 3;
    } else {
       /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
-      return radv_conv_prim_to_gs_out(pipeline_key->ia.topology, false) + 1;
+      return radv_conv_prim_to_gs_out(gfx_state->ia.topology, false) + 1;
    }
 }
 

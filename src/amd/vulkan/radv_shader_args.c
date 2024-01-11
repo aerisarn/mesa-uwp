@@ -358,10 +358,10 @@ radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_arg
 }
 
 static bool
-radv_tcs_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_pipeline_key *key)
+radv_tcs_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_graphics_state_key *gfx_state)
 {
    /* Some values are loaded from a SGPR when dynamic states are used or when the shader is unlinked. */
-   return !key->ts.patch_control_points || !info->num_tess_patches || !info->inputs_linked;
+   return !gfx_state->ts.patch_control_points || !info->num_tess_patches || !info->inputs_linked;
 }
 
 static bool
@@ -372,26 +372,26 @@ radv_tes_needs_state_sgpr(const struct radv_shader_info *info)
 }
 
 static bool
-radv_ps_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_pipeline_key *key)
+radv_ps_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_graphics_state_key *gfx_state)
 {
-   if (info->ps.needs_sample_positions && key->dynamic_rasterization_samples)
+   if (info->ps.needs_sample_positions && gfx_state->dynamic_rasterization_samples)
       return true;
 
-   if (key->dynamic_line_rast_mode)
+   if (gfx_state->dynamic_line_rast_mode)
       return true;
 
-   if (info->ps.reads_sample_mask_in && (info->ps.uses_sample_shading || key->ms.sample_shading_enable))
+   if (info->ps.reads_sample_mask_in && (info->ps.uses_sample_shading || gfx_state->ms.sample_shading_enable))
       return true;
 
    /* For computing barycentrics when the primitive topology is unknown at compile time (GPL). */
-   if (info->ps.load_rasterization_prim && key->unknown_rast_prim)
+   if (info->ps.load_rasterization_prim && gfx_state->unknown_rast_prim)
       return true;
 
    return false;
 }
 
 static void
-declare_shader_args(const struct radv_device *device, const struct radv_pipeline_key *key,
+declare_shader_args(const struct radv_device *device, const struct radv_graphics_state_key *gfx_state,
                     const struct radv_shader_info *info, gl_shader_stage stage, gl_shader_stage previous_stage,
                     struct radv_shader_args *args, struct user_sgpr_info *user_sgpr_info)
 {
@@ -401,7 +401,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
                            (stage == MESA_SHADER_MESH && info->ms.has_query) ||
                            (stage == MESA_SHADER_TASK && info->cs.has_query);
    bool has_ngg_provoking_vtx =
-      (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_GEOMETRY) && key->dynamic_provoking_vtx_mode;
+      (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_GEOMETRY) && gfx_state->dynamic_provoking_vtx_mode;
 
    if (gfx_level >= GFX10 && info->is_ngg && stage != MESA_SHADER_GEOMETRY) {
       /* Handle all NGG shaders as GS to simplify the code here. */
@@ -536,7 +536,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
-         if (radv_tcs_needs_state_sgpr(info, key)) {
+         if (radv_tcs_needs_state_sgpr(info, gfx_state)) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->tcs_offchip_layout, AC_UD_TCS_OFFCHIP_LAYOUT);
          }
 
@@ -582,7 +582,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
-         if (radv_tcs_needs_state_sgpr(info, key)) {
+         if (radv_tcs_needs_state_sgpr(info, gfx_state)) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->tcs_offchip_layout, AC_UD_TCS_OFFCHIP_LAYOUT);
          }
 
@@ -758,7 +758,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          add_ud_arg(args, 1, AC_ARG_INT, &args->ps_epilog_pc, AC_UD_PS_EPILOG_PC);
       }
 
-      if (radv_ps_needs_state_sgpr(info, key))
+      if (radv_ps_needs_state_sgpr(info, gfx_state))
          add_ud_arg(args, 1, AC_ARG_INT, &args->ps_state, AC_UD_PS_STATE);
 
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask);
@@ -783,11 +783,11 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 }
 
 void
-radv_declare_shader_args(const struct radv_device *device, const struct radv_pipeline_key *key,
+radv_declare_shader_args(const struct radv_device *device, const struct radv_graphics_state_key *gfx_state,
                          const struct radv_shader_info *info, gl_shader_stage stage, gl_shader_stage previous_stage,
                          struct radv_shader_args *args)
 {
-   declare_shader_args(device, key, info, stage, previous_stage, args, NULL);
+   declare_shader_args(device, gfx_state, info, stage, previous_stage, args, NULL);
 
    if (gl_shader_stage_is_rt(stage))
       return;
@@ -816,7 +816,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
    if (!info->merged_shader_compiled_separately)
       allocate_inline_push_consts(info, &user_sgpr_info);
 
-   declare_shader_args(device, key, info, stage, previous_stage, args, &user_sgpr_info);
+   declare_shader_args(device, gfx_state, info, stage, previous_stage, args, &user_sgpr_info);
 }
 
 void

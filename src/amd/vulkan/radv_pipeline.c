@@ -468,7 +468,7 @@ non_uniform_access_callback(const nir_src *src, void *_)
 }
 
 void
-radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
+radv_postprocess_nir(struct radv_device *device, const struct radv_graphics_state_key *gfx_state,
                      struct radv_shader_stage *stage)
 {
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
@@ -481,7 +481,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
       if (!stage->key.optimisations_disabled) {
          NIR_PASS(_, stage->nir, nir_opt_cse);
       }
-      NIR_PASS(_, stage->nir, radv_nir_lower_fs_intrinsics, stage, pipeline_key);
+      NIR_PASS(_, stage->nir, radv_nir_lower_fs_intrinsics, stage, gfx_state);
    }
 
    enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
@@ -591,7 +591,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
     * load_input can be reordered, but buffer loads can't.
     */
    if (stage->stage == MESA_SHADER_VERTEX) {
-      NIR_PASS(_, stage->nir, radv_nir_lower_vs_inputs, stage, pipeline_key, &device->physical_device->rad_info);
+      NIR_PASS(_, stage->nir, radv_nir_lower_vs_inputs, stage, gfx_state, &device->physical_device->rad_info);
    }
 
    /* Lower I/O intrinsics to memory instructions. */
@@ -599,7 +599,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    bool io_to_mem = radv_nir_lower_io_to_mem(device, stage);
    bool lowered_ngg = stage->info.is_ngg && is_last_vgt_stage;
    if (lowered_ngg) {
-      radv_lower_ngg(device, stage, pipeline_key);
+      radv_lower_ngg(device, stage, gfx_state);
    } else if (is_last_vgt_stage) {
       if (stage->stage != MESA_SHADER_GEOMETRY) {
          NIR_PASS_V(stage->nir, ac_nir_lower_legacy_vs, gfx_level,
@@ -633,17 +633,17 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
       };
 
       if (!options.no_color_export) {
-         options.dual_src_blend_swizzle = pipeline_key->ps.epilog.mrt0_is_dual_src && gfx_level >= GFX11;
-         options.color_is_int8 = pipeline_key->ps.epilog.color_is_int8;
-         options.color_is_int10 = pipeline_key->ps.epilog.color_is_int10;
+         options.dual_src_blend_swizzle = gfx_state->ps.epilog.mrt0_is_dual_src && gfx_level >= GFX11;
+         options.color_is_int8 = gfx_state->ps.epilog.color_is_int8;
+         options.color_is_int10 = gfx_state->ps.epilog.color_is_int10;
          options.enable_mrt_output_nan_fixup =
-            pipeline_key->ps.epilog.enable_mrt_output_nan_fixup && !stage->nir->info.internal;
+            gfx_state->ps.epilog.enable_mrt_output_nan_fixup && !stage->nir->info.internal;
          /* Need to filter out unwritten color slots. */
-         options.spi_shader_col_format = pipeline_key->ps.epilog.spi_shader_col_format & stage->info.ps.colors_written;
+         options.spi_shader_col_format = gfx_state->ps.epilog.spi_shader_col_format & stage->info.ps.colors_written;
       }
 
       if (!options.no_depth_export) {
-         /* Compared to radv_pipeline_key.ps.alpha_to_coverage_via_mrtz,
+         /* Compared to gfx_state.ps.alpha_to_coverage_via_mrtz,
           * radv_shader_info.ps.writes_mrt0_alpha need any depth/stencil/sample_mask exist.
           * ac_nir_lower_ps() require this field to reflect whether alpha via mrtz is really
           * present.
@@ -675,7 +675,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
    NIR_PASS_V(stage->nir, ac_nir_lower_intrinsics_to_args, gfx_level, radv_select_hw_stage(&stage->info, gfx_level),
               &stage->args.ac);
-   NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, stage, pipeline_key,
+   NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, stage, gfx_state,
               device->physical_device->rad_info.address32_hi);
    radv_optimize_nir_algebraic(
       stage->nir, io_to_mem || lowered_ngg || stage->stage == MESA_SHADER_COMPUTE || stage->stage == MESA_SHADER_TASK);
