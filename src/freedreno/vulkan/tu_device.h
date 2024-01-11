@@ -31,7 +31,7 @@
 #define TU_BORDER_COLOR_COUNT 4096
 #define TU_BORDER_COLOR_BUILTIN 6
 
-#define TU_BLIT_SHADER_SIZE 1024
+#define TU_BLIT_SHADER_SIZE 4096
 
 /* extra space in vsc draw/prim streams */
 #define VSC_PAD 0x40

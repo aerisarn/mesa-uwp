@@ -47,6 +47,8 @@ static const struct debug_named_value shader_debug_options[] = {
    {"nocache",    IR3_DBG_NOCACHE,    "Disable shader cache"},
    {"spillall",   IR3_DBG_SPILLALL,   "Spill as much as possible to test the spiller"},
    {"nopreamble", IR3_DBG_NOPREAMBLE, "Disable the preamble pass"},
+   {"fullsync",   IR3_DBG_FULLSYNC,   "Add (sy) + (ss) after each cat5/cat6"},
+   {"fullnop",    IR3_DBG_FULLNOP,    "Add nops before each instruction"},
 #ifdef DEBUG
    /* DEBUG-only options: */
    {"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},

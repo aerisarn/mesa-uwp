@@ -948,6 +948,33 @@ nop_sched(struct ir3 *ir, struct ir3_shader_variant *so)
    }
 }
 
+static void
+dbg_sync_sched(struct ir3 *ir, struct ir3_shader_variant *so)
+{
+   foreach_block (block, &ir->block_list) {
+      foreach_instr_safe (instr, &block->instr_list) {
+         if (opc_cat(instr->opc) == 4 || opc_cat(instr->opc) == 5 ||
+             opc_cat(instr->opc) == 6) {
+            struct ir3_instruction *nop = ir3_NOP(block);
+            nop->flags |= IR3_INSTR_SS | IR3_INSTR_SY;
+            ir3_instr_move_after(nop, instr);
+         }
+      }
+   }
+}
+
+static void
+dbg_nop_sched(struct ir3 *ir, struct ir3_shader_variant *so)
+{
+   foreach_block (block, &ir->block_list) {
+      foreach_instr_safe (instr, &block->instr_list) {
+         struct ir3_instruction *nop = ir3_NOP(block);
+         nop->repeat = 5;
+         ir3_instr_move_before(nop, instr);
+      }
+   }
+}
+
 struct ir3_helper_block_data {
    /* Whether helper invocations may be used on any path starting at the
     * beginning of the block.
@@ -1229,6 +1256,14 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
    }
 
    nop_sched(ir, so);
+
+   if (ir3_shader_debug & IR3_DBG_FULLSYNC) {
+      dbg_sync_sched(ir, so);
+   }
+
+   if (ir3_shader_debug & IR3_DBG_FULLNOP) {
+      dbg_nop_sched(ir, so);
+   }
 
    while (opt_jump(ir))
       ;
