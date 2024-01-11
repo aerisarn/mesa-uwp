@@ -43,10 +43,7 @@ def main():
     parser.add_argument('-p', '--import-path', required=True)
     args = parser.parse_args()
     sys.path.insert(0, args.import_path)
-    run()
 
-
-def run():
     import nir_algebraic  # pylint: disable=import-error
 
     print('#include "nak_private.h"')
