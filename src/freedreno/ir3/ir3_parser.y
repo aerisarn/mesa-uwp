@@ -1395,7 +1395,7 @@ meta_print: T_OP_PRINT T_REGISTER ',' T_REGISTER {
 	new_src(0, IR3_REG_IMMED)->iim_val = 1;
 
 	new_instr(OPC_NOP);
-	instr->flags = IR3_INSTR_SY;
+	instr->flags = IR3_INSTR_SS;
 }
 
 src:               T_REGISTER     { $$ = new_src($1, 0); }
