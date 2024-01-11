@@ -1890,6 +1890,9 @@ emit_dynamic_buffer_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
                                         struct anv_pipeline_binding *binding,
                                         const struct anv_descriptor *desc)
 {
+   if (!desc->buffer)
+      return anv_null_surface_state_for_binding_table(cmd_buffer->device);
+
    /* Compute the offset within the buffer */
    uint32_t dynamic_offset =
       pipe_state->dynamic_offsets[
@@ -1999,16 +2002,11 @@ emit_indirect_descriptor_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
       break;
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-      if (desc->buffer) {
-         surface_state =
-            emit_dynamic_buffer_binding_table_entry(cmd_buffer, pipe_state,
-                                                    binding, desc);
-      } else {
-         surface_state = anv_null_surface_state_for_binding_table(device);
-      }
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      surface_state =
+         emit_dynamic_buffer_binding_table_entry(cmd_buffer, pipe_state,
+                                                 binding, desc);
       break;
-   }
 
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       if (desc->buffer_view) {
@@ -2034,7 +2032,6 @@ emit_direct_descriptor_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
                                            struct anv_pipeline_binding *binding,
                                            const struct anv_descriptor *desc)
 {
-   struct anv_device *device = cmd_buffer->device;
    uint32_t desc_offset;
 
    /* Relative offset in the STATE_BASE_ADDRESS::SurfaceStateBaseAddress heap.
@@ -2056,10 +2053,9 @@ emit_direct_descriptor_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-      struct anv_state state = desc->buffer ?
+      struct anv_state state =
          emit_dynamic_buffer_binding_table_entry(cmd_buffer, pipe_state,
-                                                 binding, desc) :
-         anv_null_surface_state_for_binding_table(device);
+                                                 binding, desc);
       desc_offset = state.offset;
       break;
    }
