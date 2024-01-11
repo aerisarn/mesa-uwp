@@ -490,13 +490,6 @@ spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 
 spec@arb_sampler_objects@sampler-incomplete,Fail
 
-# The test accidentally assigns a varying output instead of an attribute input to
-# gl_Position, then it gets optimized out and then set_vertex_inputs_outputs gets
-# angry that nobody set gl_Position.
-spec@arb_separate_shader_objects@getprogrampipelineiv,Crash
-spec@glsl-1.20@linker@invariant-propagation-globals,Crash
-spec@glsl-es-1.00@linker@glsl-no-glposition,Crash
-
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 1d,Fail
