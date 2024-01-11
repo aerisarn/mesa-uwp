@@ -500,6 +500,7 @@ static void emit_state(struct rendering_state *state)
    if (state->vb_strides_dirty) {
       for (unsigned i = 0; i < state->velem.count; i++)
          state->velem.velems[i].src_stride = state->vb_strides[state->velem.velems[i].vertex_buffer_index];
+      state->ve_dirty = true;
       state->vb_strides_dirty = false;
    }
 
