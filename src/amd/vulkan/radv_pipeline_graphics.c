@@ -1828,10 +1828,10 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
          uint32_t offset = state->vi->attributes[i].offset;
          enum pipe_format format = vk_format_to_pipe_format(state->vi->attributes[i].format);
 
-         key.vs.vertex_attribute_formats[i] = format;
-         key.vs.vertex_attribute_bindings[i] = binding;
-         key.vs.vertex_attribute_offsets[i] = offset;
-         key.vs.instance_rate_divisors[i] = state->vi->bindings[binding].divisor;
+         key.vi.vertex_attribute_formats[i] = format;
+         key.vi.vertex_attribute_bindings[i] = binding;
+         key.vi.vertex_attribute_offsets[i] = offset;
+         key.vi.instance_rate_divisors[i] = state->vi->bindings[binding].divisor;
 
          /* vertex_attribute_strides is only needed to workaround GFX6/7 offset>=stride checks. */
          if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE) &&
@@ -1847,11 +1847,11 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
              * Make sure the vertex attribute stride is zero to avoid computing a wrong offset if
              * it's initialized to something else than zero.
              */
-            key.vs.vertex_attribute_strides[i] = state->vi->bindings[binding].stride;
+            key.vi.vertex_attribute_strides[i] = state->vi->bindings[binding].stride;
          }
 
          if (state->vi->bindings[binding].input_rate) {
-            key.vs.instance_rate_inputs |= 1u << i;
+            key.vi.instance_rate_inputs |= 1u << i;
          }
 
          const struct ac_vtx_format_info *vtx_info =
@@ -1862,27 +1862,27 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
           * vertex_binding_align in this case.
           */
          if (offset % attrib_align == 0) {
-            key.vs.vertex_binding_align[binding] = MAX2(key.vs.vertex_binding_align[binding], attrib_align);
+            key.vi.vertex_binding_align[binding] = MAX2(key.vi.vertex_binding_align[binding], attrib_align);
          }
       }
    }
 
    if (state->ts)
-      key.tcs.tess_input_vertices = state->ts->patch_control_points;
+      key.ts.patch_control_points = state->ts->patch_control_points;
 
    if (state->ms) {
-      key.ps.sample_shading_enable = state->ms->sample_shading_enable;
+      key.ms.sample_shading_enable = state->ms->sample_shading_enable;
       if (!(pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) && state->ms->rasterization_samples > 1) {
-         key.ps.num_samples = state->ms->rasterization_samples;
+         key.ms.rasterization_samples = state->ms->rasterization_samples;
       }
    }
 
    if (device->physical_device->rad_info.gfx_level >= GFX11 && state->ms) {
-      key.ps.alpha_to_coverage_via_mrtz = state->ms->alpha_to_coverage_enable;
+      key.ms.alpha_to_coverage_via_mrtz = state->ms->alpha_to_coverage_enable;
    }
 
    if (state->ia) {
-      key.vs.topology = radv_translate_prim(state->ia->primitive_topology);
+      key.ia.topology = radv_translate_prim(state->ia->primitive_topology);
    }
 
    if (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB &&
@@ -1892,7 +1892,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    }
 
    if (device->physical_device->rad_info.gfx_level >= GFX10 && state->rs) {
-      key.vs.provoking_vtx_last = state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
+      key.rs.provoking_vtx_last = state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
    }
 
    key.ps.force_vrs_enabled = device->force_vrs_enabled && !radv_is_static_vrs_enabled(pipeline, state);
@@ -1956,7 +1956,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
            !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT))) {
          key.dynamic_line_rast_mode = true;
       } else {
-         key.ps.line_smooth_enabled =
+         key.rs.line_smooth_enabled =
             state->rs && state->rs->line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
       }
    }
@@ -2382,7 +2382,7 @@ radv_get_rasterization_prim(const struct radv_shader_stage *stages, const struct
    } else if (stages[MESA_SHADER_MESH].nir) {
       rast_prim = radv_conv_gl_prim_to_gs_out(stages[MESA_SHADER_MESH].nir->info.mesh.primitive_type);
    } else {
-      rast_prim = radv_conv_prim_to_gs_out(pipeline_key->vs.topology, false);
+      rast_prim = radv_conv_prim_to_gs_out(pipeline_key->ia.topology, false);
    }
 
    return rast_prim;

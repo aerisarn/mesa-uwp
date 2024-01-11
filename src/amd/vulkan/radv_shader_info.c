@@ -387,7 +387,7 @@ gather_info_input_decl_vs(const nir_shader *nir, unsigned location, const struct
                           const struct radv_pipeline_key *key, struct radv_shader_info *info)
 {
    if (glsl_type_is_scalar(type) || glsl_type_is_vector(type)) {
-      if (key->vs.instance_rate_inputs & BITFIELD_BIT(location)) {
+      if (key->vi.instance_rate_inputs & BITFIELD_BIT(location)) {
          info->vs.needs_instance_id = true;
          info->vs.needs_base_instance = true;
       }
@@ -395,7 +395,7 @@ gather_info_input_decl_vs(const nir_shader *nir, unsigned location, const struct
       if (info->vs.use_per_attribute_vb_descs)
          info->vs.vb_desc_usage_mask |= BITFIELD_BIT(location);
       else
-         info->vs.vb_desc_usage_mask |= BITFIELD_BIT(key->vs.vertex_attribute_bindings[location]);
+         info->vs.vb_desc_usage_mask |= BITFIELD_BIT(key->vi.vertex_attribute_bindings[location]);
 
       info->vs.input_slot_usage_mask |= BITFIELD_RANGE(location, glsl_count_attribute_slots(type, false));
    } else if (glsl_type_is_matrix(type) || glsl_type_is_array(type)) {
@@ -445,7 +445,7 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const s
     * computed because using the maximum number of vertices can't work.
     */
    info->vs.dynamic_num_verts_per_prim =
-      pipeline_key->vs.topology == V_008958_DI_PT_NONE && info->is_ngg && nir->xfb_info;
+      pipeline_key->ia.topology == V_008958_DI_PT_NONE && info->is_ngg && nir->xfb_info;
 
    if (!info->outputs_linked)
       info->vs.num_linked_outputs = util_last_bit64(nir->info.outputs_written);
@@ -476,14 +476,14 @@ gather_shader_info_tcs(struct radv_device *device, const nir_shader *nir, const 
    if (!(pipeline_key->dynamic_patch_control_points)) {
       /* Number of tessellation patches per workgroup processed by the current pipeline. */
       info->num_tess_patches =
-         get_tcs_num_patches(pipeline_key->tcs.tess_input_vertices, nir->info.tess.tcs_vertices_out,
+         get_tcs_num_patches(pipeline_key->ts.patch_control_points, nir->info.tess.tcs_vertices_out,
                              info->tcs.num_linked_inputs, info->tcs.num_linked_outputs,
                              info->tcs.num_linked_patch_outputs, device->physical_device->hs.tess_offchip_block_dw_size,
                              device->physical_device->rad_info.gfx_level, device->physical_device->rad_info.family);
 
       /* LDS size used by VS+TCS for storing TCS inputs and outputs. */
       info->tcs.num_lds_blocks =
-         calculate_tess_lds_size(device->physical_device->rad_info.gfx_level, pipeline_key->tcs.tess_input_vertices,
+         calculate_tess_lds_size(device->physical_device->rad_info.gfx_level, pipeline_key->ts.patch_control_points,
                                  nir->info.tess.tcs_vertices_out, info->tcs.num_linked_inputs, info->num_tess_patches,
                                  info->tcs.num_linked_outputs, info->tcs.num_linked_patch_outputs);
    }
@@ -818,7 +818,7 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
       info->has_epilog && pipeline_key->ps.exports_mrtz_via_epilog && export_alpha_and_mrtz;
 
    if (!info->ps.exports_mrtz_via_epilog) {
-      info->ps.writes_mrt0_alpha = pipeline_key->ps.alpha_to_coverage_via_mrtz && export_alpha_and_mrtz;
+      info->ps.writes_mrt0_alpha = pipeline_key->ms.alpha_to_coverage_via_mrtz && export_alpha_and_mrtz;
    }
 
    nir_foreach_shader_in_variable (var, nir) {
@@ -1629,11 +1629,11 @@ radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *pro
       } else {
          vs_stage->info.workgroup_size = ac_compute_lshs_workgroup_size(
             device->physical_device->rad_info.gfx_level, MESA_SHADER_VERTEX, tcs_stage->info.num_tess_patches,
-            pipeline_key->tcs.tess_input_vertices, tcs_stage->info.tcs.tcs_vertices_out);
+            pipeline_key->ts.patch_control_points, tcs_stage->info.tcs.tcs_vertices_out);
 
          tcs_stage->info.workgroup_size = ac_compute_lshs_workgroup_size(
             device->physical_device->rad_info.gfx_level, MESA_SHADER_TESS_CTRL, tcs_stage->info.num_tess_patches,
-            pipeline_key->tcs.tess_input_vertices, tcs_stage->info.tcs.tcs_vertices_out);
+            pipeline_key->ts.patch_control_points, tcs_stage->info.tcs.tcs_vertices_out);
 
          if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
             /* When the number of TCS input and output vertices are the same (typically 3):
@@ -1647,7 +1647,7 @@ radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *pro
              */
             vs_stage->info.vs.tcs_in_out_eq =
                device->physical_device->rad_info.gfx_level >= GFX9 &&
-               pipeline_key->tcs.tess_input_vertices == tcs_stage->info.tcs.tcs_vertices_out &&
+               pipeline_key->ts.patch_control_points == tcs_stage->info.tcs.tcs_vertices_out &&
                vs_stage->nir->info.float_controls_execution_mode == tcs_stage->nir->info.float_controls_execution_mode;
 
             if (vs_stage->info.vs.tcs_in_out_eq)

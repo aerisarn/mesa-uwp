@@ -266,7 +266,7 @@ radv_nir_lower_fs_barycentric(nir_shader *shader, const struct radv_pipeline_key
 
    lower_fs_barycentric_state state = {
       .dynamic_rasterization_samples = key->dynamic_rasterization_samples,
-      .num_rasterization_samples = key->ps.num_samples,
+      .num_rasterization_samples = key->ms.rasterization_samples,
       .rast_prim = rast_prim,
    };
 

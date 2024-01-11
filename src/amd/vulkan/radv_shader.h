@@ -135,6 +135,10 @@ struct radv_pipeline_key {
    struct radv_shader_stage_key stage_info[MESA_VULKAN_SHADER_STAGES];
 
    struct {
+      uint8_t topology;
+   } ia;
+
+   struct {
       uint32_t instance_rate_inputs;
       uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
       uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
@@ -142,30 +146,32 @@ struct radv_pipeline_key {
       uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
       uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
       uint8_t vertex_binding_align[MAX_VBS];
+   } vi;
+
+   struct {
+      unsigned patch_control_points;
+   } ts;
+
+   struct {
       uint32_t provoking_vtx_last : 1;
-      uint32_t has_prolog : 1;
-      uint8_t topology;
+      uint32_t line_smooth_enabled : 1;
+   } rs;
+
+   struct {
+      bool sample_shading_enable;
+      bool alpha_to_coverage_via_mrtz; /* GFX11+ */
+      uint8_t rasterization_samples;
+   } ms;
+
+   struct vs {
+      bool has_prolog;
    } vs;
 
    struct {
-      unsigned tess_input_vertices;
-   } tcs;
-
-   struct {
       struct radv_ps_epilog_key epilog;
-
-      uint8_t num_samples;
-      bool sample_shading_enable;
-
       bool force_vrs_enabled;
-
-      /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
-      bool alpha_to_coverage_via_mrtz;
       bool exports_mrtz_via_epilog;
-
       bool has_epilog;
-
-      bool line_smooth_enabled;
    } ps;
 };
 

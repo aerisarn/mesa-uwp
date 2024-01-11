@@ -157,8 +157,8 @@ lower_abi_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
       break;
    case nir_intrinsic_load_patch_vertices_in:
       if (stage == MESA_SHADER_TESS_CTRL) {
-         if (s->pl_key->tcs.tess_input_vertices) {
-            replacement = nir_imm_int(b, s->pl_key->tcs.tess_input_vertices);
+         if (s->pl_key->ts.patch_control_points) {
+            replacement = nir_imm_int(b, s->pl_key->ts.patch_control_points);
          } else {
             replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS);
          }
@@ -351,7 +351,7 @@ lower_abi_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
       if (s->pl_key->dynamic_rasterization_samples) {
          replacement = GET_SGPR_FIELD_NIR(s->args->ps_state, PS_STATE_NUM_SAMPLES);
       } else {
-         replacement = nir_imm_int(b, s->pl_key->ps.num_samples);
+         replacement = nir_imm_int(b, s->pl_key->ms.rasterization_samples);
       }
       break;
    case nir_intrinsic_load_provoking_vtx_in_prim_amd: {
@@ -359,7 +359,7 @@ lower_abi_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
          replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_provoking_vtx);
       } else {
          unsigned provoking_vertex = 0;
-         if (s->pl_key->vs.provoking_vtx_last) {
+         if (s->pl_key->rs.provoking_vtx_last) {
             if (stage == MESA_SHADER_VERTEX) {
                provoking_vertex = radv_get_num_vertices_per_prim(s->pl_key) - 1;
             } else if (stage == MESA_SHADER_GEOMETRY) {
@@ -489,7 +489,7 @@ lower_abi_instr(nir_builder *b, nir_intrinsic_instr *intrin, void *state)
          nir_def *line_rast_mode = GET_SGPR_FIELD_NIR(s->args->ps_state, PS_STATE_LINE_RAST_MODE);
          replacement = nir_ieq_imm(b, line_rast_mode, VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT);
       } else {
-         replacement = nir_imm_bool(b, s->pl_key->ps.line_smooth_enabled);
+         replacement = nir_imm_bool(b, s->pl_key->rs.line_smooth_enabled);
       }
       break;
    case nir_intrinsic_load_initial_edgeflags_amd:

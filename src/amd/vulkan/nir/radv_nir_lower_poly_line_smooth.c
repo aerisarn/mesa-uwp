@@ -31,7 +31,7 @@ radv_should_lower_poly_line_smooth(nir_shader *nir, const struct radv_pipeline_k
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   if (!key->ps.line_smooth_enabled && !key->dynamic_line_rast_mode)
+   if (!key->rs.line_smooth_enabled && !key->dynamic_line_rast_mode)
       return false;
 
    nir_foreach_block (block, impl) {

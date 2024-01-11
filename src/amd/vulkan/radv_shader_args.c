@@ -361,7 +361,7 @@ static bool
 radv_tcs_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_pipeline_key *key)
 {
    /* Some values are loaded from a SGPR when dynamic states are used or when the shader is unlinked. */
-   return !key->tcs.tess_input_vertices || !info->num_tess_patches || !info->inputs_linked;
+   return !key->ts.patch_control_points || !info->num_tess_patches || !info->inputs_linked;
 }
 
 static bool
@@ -380,7 +380,7 @@ radv_ps_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_
    if (key->dynamic_line_rast_mode)
       return true;
 
-   if (info->ps.reads_sample_mask_in && (info->ps.uses_sample_shading || key->ps.sample_shading_enable))
+   if (info->ps.reads_sample_mask_in && (info->ps.uses_sample_shading || key->ms.sample_shading_enable))
       return true;
 
    /* For computing barycentrics when the primitive topology is unknown at compile time (GPL). */

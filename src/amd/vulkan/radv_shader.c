@@ -871,7 +871,7 @@ radv_lower_ngg(struct radv_device *device, struct radv_shader_stage *ngg_stage, 
       num_vertices_per_prim = radv_get_num_vertices_per_prim(pl_key);
 
       /* Manually mark the instance ID used, so the shader can repack it. */
-      if (pl_key->vs.instance_rate_inputs)
+      if (pl_key->vi.instance_rate_inputs)
          BITSET_SET(nir->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
 
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
@@ -916,7 +916,7 @@ radv_lower_ngg(struct radv_device *device, struct radv_shader_stage *ngg_stage, 
       options.early_prim_export = info->has_ngg_early_prim_export;
       options.passthrough = info->is_ngg_passthrough;
       options.export_primitive_id = info->outinfo.export_prim_id;
-      options.instance_rate_inputs = pl_key->vs.instance_rate_inputs << VERT_ATTRIB_GENERIC0;
+      options.instance_rate_inputs = pl_key->vi.instance_rate_inputs << VERT_ATTRIB_GENERIC0;
 
       NIR_PASS_V(nir, ac_nir_lower_ngg_nogs, &options);
 

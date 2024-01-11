@@ -52,7 +52,7 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs
             nir_def *sample_coverage = nir_load_vector_arg_amd(&b, 1, .base = args->ac.sample_coverage.arg_index);
 
             nir_def *def = NULL;
-            if (info->ps.uses_sample_shading || key->ps.sample_shading_enable) {
+            if (info->ps.uses_sample_shading || key->ms.sample_shading_enable) {
                /* gl_SampleMaskIn[0] = (SampleCoverage & (PsIterMask << gl_SampleID)). */
                nir_def *ps_state = nir_load_scalar_arg_amd(&b, 1, .base = args->ps_state.arg_index);
                nir_def *ps_iter_mask =
@@ -121,7 +121,7 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs
 
                new_dest = nir_if_phi(&b, res1, res2);
             } else {
-               if (!key->ps.num_samples) {
+               if (!key->ms.rasterization_samples) {
                   new_dest = nir_load_barycentric_pixel(&b, 32, .interp_mode = nir_intrinsic_interp_mode(intrin));
                } else {
                   nir_def *sample_pos = nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa, num_samples);
