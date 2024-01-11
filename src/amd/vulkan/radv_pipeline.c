@@ -206,7 +206,7 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
       if (uniform_robustness >= RADV_BUFFER_ROBUSTNESS_2)
          key.stage_info[stage].uniform_robustness2 = 1;
       if (stage == MESA_SHADER_VERTEX && vertex_robustness >= RADV_BUFFER_ROBUSTNESS_1)
-         key.vertex_robustness1 = 1u;
+         key.stage_info[stage].vertex_robustness1 = 1u;
    }
 
    key.keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);

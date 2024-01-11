@@ -417,7 +417,7 @@ gather_info_input_decl_vs(const nir_shader *nir, unsigned location, const struct
 
 static void
 gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const struct radv_pipeline_key *pipeline_key,
-                      struct radv_shader_info *info)
+                      const struct radv_shader_stage_key *stage_key, struct radv_shader_info *info)
 {
    if (pipeline_key->vs.has_prolog && nir->info.inputs_read) {
       info->vs.has_prolog = true;
@@ -425,7 +425,7 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const s
    }
 
    /* Use per-attribute vertex descriptors to prevent faults and for correct bounds checking. */
-   info->vs.use_per_attribute_vb_descs = pipeline_key->vertex_robustness1 || info->vs.dynamic_inputs;
+   info->vs.use_per_attribute_vb_descs = stage_key->vertex_robustness1 || info->vs.dynamic_inputs;
 
    /* We have to ensure consistent input register assignments between the main shader and the
     * prolog.
@@ -1211,7 +1211,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_tcs(device, nir, pipeline_key, info);
       break;
    case MESA_SHADER_VERTEX:
-      gather_shader_info_vs(device, nir, pipeline_key, info);
+      gather_shader_info_vs(device, nir, pipeline_key, stage_key, info);
       break;
    case MESA_SHADER_MESH:
       gather_shader_info_mesh(device, nir, pipeline_key, info);

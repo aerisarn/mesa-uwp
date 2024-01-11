@@ -92,6 +92,7 @@ struct radv_shader_stage_key {
 
    uint8_t storage_robustness2 : 1;
    uint8_t uniform_robustness2 : 1;
+   uint8_t vertex_robustness1 : 1;
 
    uint8_t optimisations_disabled : 1;
 };
@@ -124,8 +125,6 @@ struct radv_pipeline_key {
    uint32_t dynamic_line_rast_mode : 1;
    uint32_t enable_remove_point_size : 1;
    uint32_t unknown_rast_prim : 1;
-
-   uint32_t vertex_robustness1 : 1;
 
    uint32_t keep_statistic_info : 1;
 
