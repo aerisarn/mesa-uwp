@@ -125,7 +125,6 @@ struct radv_pipeline_key {
    uint32_t unknown_rast_prim : 1;
 
    uint32_t vertex_robustness1 : 1;
-   uint32_t mesh_fast_launch_2 : 1;
 
    uint32_t keep_statistic_info : 1;
 

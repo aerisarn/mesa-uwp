@@ -890,6 +890,7 @@ struct radv_device_cache_key {
    uint32_t image_2d_view_of_3d : 1;
    uint32_t invariant_geom : 1;
    uint32_t lower_discard_to_demote : 1;
+   uint32_t mesh_fast_launch_2 : 1;
    uint32_t mesh_shader_queries : 1;
    uint32_t no_fmask : 1;
    uint32_t no_rt : 1;
