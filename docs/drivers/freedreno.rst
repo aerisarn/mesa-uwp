@@ -308,7 +308,7 @@ the GPU (including its internal hang detection).  If a fault in GPU address
 space happened, you should expect to find a message from the iommu, with the
 faulting address and a hardware unit involved:
 
-.. code-block:: console
+.. code-block:: text
 
   *** gpu fault: ttbr0=000000001c941000 iova=000000010066a000 dir=READ type=TRANSLATION source=TP|VFD (0,0,0,1)
 

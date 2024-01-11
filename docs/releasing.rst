@@ -112,7 +112,7 @@ good contact point.
    then they should be squashed together. The commit messages and the
    "``cherry picked from``"-tags must be preserved.
 
-   .. code-block:: console
+   .. code-block:: text
 
       git show b10859ec41d09c57663a258f43fe57c12332698e
 
