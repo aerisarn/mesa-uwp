@@ -415,7 +415,6 @@ spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
 spec@!opengl 1.1@linestipple@Restarting lines within a single Begin-End block,Fail
 spec@!opengl 1.1@read-front samples=6,Fail
-spec@!opengl 1.1@streaming-texture-leak,Timeout
 spec@!opengl 1.1@texgen,Fail
 spec@!opengl 1.1@texsubimage,Fail
 
