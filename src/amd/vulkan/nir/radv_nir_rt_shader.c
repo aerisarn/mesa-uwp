@@ -1544,7 +1544,6 @@ radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_
 struct lower_rt_instruction_monolithic_state {
    struct radv_device *device;
    struct radv_ray_tracing_pipeline *pipeline;
-   const struct radv_pipeline_key *key;
    const VkRayTracingPipelineCreateInfoKHR *pCreateInfo;
 
    struct rt_variables *vars;
