@@ -40,20 +40,24 @@ algebraic_lowering = [
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--out', required=True, help='Output file.')
     parser.add_argument('-p', '--import-path', required=True)
     args = parser.parse_args()
     sys.path.insert(0, args.import_path)
 
     import nir_algebraic  # pylint: disable=import-error
 
-    print('#include "nak_private.h"')
-
-    print(nir_algebraic.AlgebraicPass("nak_nir_lower_algebraic_late",
-                                      algebraic_lowering,
-                                      [
-                                          ("const struct nak_compiler *", "nak"),
-                                      ]).render())
-
+    try:
+        with open(args.out, 'w', encoding='utf-8') as f:
+            f.write('#include "nak_private.h"')
+            f.write(nir_algebraic.AlgebraicPass(
+                "nak_nir_lower_algebraic_late",
+                algebraic_lowering,
+                [
+                    ("const struct nak_compiler *", "nak"),
+                ]).render())
+    except Exception:
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()

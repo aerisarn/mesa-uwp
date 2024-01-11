@@ -125,9 +125,10 @@ nak_nir_algebraic_c = custom_target(
   input : 'nak_nir_algebraic.py',
   output : 'nak_nir_algebraic.c',
   command : [
-    prog_python, '@INPUT@', '-p', dir_compiler_nir,
+    prog_python, '@INPUT@',
+    '-p', dir_compiler_nir,
+    '--out', '@OUTPUT@',
   ],
-  capture : true,
   depend_files : nir_algebraic_depends,
 )
 
