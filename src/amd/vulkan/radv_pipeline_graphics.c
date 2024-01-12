@@ -1971,8 +1971,6 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    struct radv_pipeline_key key = radv_generate_pipeline_key(device, pCreateInfo->pStages, pCreateInfo->stageCount,
                                                              pipeline->base.create_flags, pCreateInfo->pNext);
 
-   key.shader_version = device->instance->drirc.override_graphics_shader_version;
-
    key.gfx_state = radv_generate_graphics_state_key(device, pipeline, state, lib_flags);
 
    return key;

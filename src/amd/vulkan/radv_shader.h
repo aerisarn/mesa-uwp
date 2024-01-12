@@ -96,6 +96,9 @@ struct radv_shader_stage_key {
 
    uint8_t optimisations_disabled : 1;
    uint8_t keep_statistic_info : 1;
+
+   /* Shader version (up to 8) to force re-compilation when RADV_BUILD_ID_OVERRIDE is enabled. */
+   uint8_t version : 3;
 };
 
 struct radv_ps_epilog_key {
@@ -171,8 +174,6 @@ struct radv_graphics_state_key {
 struct radv_pipeline_key {
    struct radv_graphics_state_key gfx_state;
 
-   /* Pipeline shader version (up to 8) to force re-compilation when RADV_BUILD_ID_OVERRIDE is enabled. */
-   uint32_t shader_version : 3;
 
    struct radv_shader_stage_key stage_info[MESA_VULKAN_SHADER_STAGES];
 };

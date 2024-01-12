@@ -152,10 +152,21 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
    memset(&key, 0, sizeof(key));
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      VkShaderStageFlagBits vk_stage = mesa_to_vk_shader_stage(i);
+
       key.stage_info[i].keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
 
       if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
          key.stage_info[i].optimisations_disabled = 1;
+
+      if (vk_stage & RADV_GRAPHICS_STAGE_BITS) {
+         key.stage_info[i].version = device->instance->drirc.override_graphics_shader_version;
+      } else if (vk_stage & RADV_RT_STAGE_BITS) {
+         key.stage_info[i].version = device->instance->drirc.override_ray_tracing_shader_version;
+      } else {
+         assert(vk_stage == VK_SHADER_STAGE_COMPUTE_BIT);
+         key.stage_info[i].version = device->instance->drirc.override_compute_shader_version;
+      }
    }
 
    for (unsigned i = 0; i < num_stages; ++i) {
