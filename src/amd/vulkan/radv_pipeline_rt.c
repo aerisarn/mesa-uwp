@@ -35,7 +35,7 @@ struct rt_handle_hash_entry {
 };
 
 static uint32_t
-handle_from_stages(struct radv_device *device, struct radv_ray_tracing_stage *stages, unsigned stage_count,
+handle_from_stages(struct radv_device *device, const struct radv_ray_tracing_stage *stages, unsigned stage_count,
                    bool replay_namespace)
 {
    struct mesa_sha1 ctx;
@@ -110,8 +110,8 @@ radv_generate_rt_pipeline_key(const struct radv_device *device, const struct rad
 
 static VkResult
 radv_create_group_handles(struct radv_device *device, const struct radv_ray_tracing_pipeline *pipeline,
-                          const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, struct radv_ray_tracing_stage *stages,
-                          struct radv_ray_tracing_group *groups)
+                          const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                          const struct radv_ray_tracing_stage *stages, struct radv_ray_tracing_group *groups)
 {
    bool capture_replay =
       pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR;
@@ -168,7 +168,8 @@ radv_create_group_handles(struct radv_device *device, const struct radv_ray_trac
 
 static VkResult
 radv_rt_fill_group_info(struct radv_device *device, const struct radv_ray_tracing_pipeline *pipeline,
-                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, struct radv_ray_tracing_stage *stages,
+                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                        const struct radv_ray_tracing_stage *stages,
                         struct radv_serialized_shader_arena_block *capture_replay_blocks,
                         struct radv_ray_tracing_group *groups)
 {
