@@ -455,6 +455,9 @@ nvk_cmd_buffer_dirty_render_pass(struct nvk_cmd_buffer *cmd)
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE);
    BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE);
+
+   /* This may depend on render targets for ESO */
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES);
 }
 
 void
@@ -496,6 +499,7 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
          render->area = (VkRect2D) { };
          render->layer_count = 0;
          render->view_mask = inheritance_info->viewMask;
+         render->samples = inheritance_info->rasterizationSamples;
 
          render->color_att_count = inheritance_info->colorAttachmentCount;
          for (uint32_t i = 0; i < render->color_att_count; i++) {
@@ -592,6 +596,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    render->area = pRenderingInfo->renderArea;
    render->view_mask = pRenderingInfo->viewMask;
    render->layer_count = pRenderingInfo->layerCount;
+   render->samples = 0;
 
    const uint32_t layer_count =
       render->view_mask ? util_last_bit(render->view_mask) :
@@ -647,6 +652,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          assert(sample_layout == NIL_SAMPLE_LAYOUT_INVALID ||
                 sample_layout == image->planes[ip].nil.sample_layout);
          sample_layout = image->planes[ip].nil.sample_layout;
+         render->samples = image->vk.samples;
 
          uint64_t addr = nvk_image_base_address(image, ip) + level->offset_B;
 
@@ -767,6 +773,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       assert(sample_layout == NIL_SAMPLE_LAYOUT_INVALID ||
              sample_layout == nil_image.sample_layout);
       sample_layout = nil_image.sample_layout;
+      render->samples = image->vk.samples;
 
       P_MTHD(p, NV9097, SET_ZT_A);
       P_NV9097_SET_ZT_A(p, addr >> 32);
@@ -807,10 +814,28 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       P_IMMD(p, NV9097, SET_ZT_SELECT, 0 /* target_count */);
    }
 
-   if (sample_layout == NIL_SAMPLE_LAYOUT_INVALID)
-      sample_layout = NIL_SAMPLE_LAYOUT_1X1;
-
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS, nil_to_nv9097_samples_mode(sample_layout));
+   /* From the Vulkan 1.3.275 spec:
+    *
+    *    "It is legal for a subpass to use no color or depth/stencil
+    *    attachments, either because it has no attachment references or
+    *    because all of them are VK_ATTACHMENT_UNUSED. This kind of subpass
+    *    can use shader side effects such as image stores and atomics to
+    *    produce an output. In this case, the subpass continues to use the
+    *    width, height, and layers of the framebuffer to define the dimensions
+    *    of the rendering area, and the rasterizationSamples from each
+    *    pipeline’s VkPipelineMultisampleStateCreateInfo to define the number
+    *    of samples used in rasterization;"
+    *
+    * In the case where we have attachments, we emit SET_ANTI_ALIAS here
+    * because SET_COLOR_TARGET_* and SET_ZT_* don't have any other way of
+    * specifying the sample layout and we want to ensure it matches.  When
+    * we don't have any attachments, we defer SET_ANTI_ALIAS to draw time
+    * where we base it on dynamic rasterizationSamples.
+    */
+   if (sample_layout != NIL_SAMPLE_LAYOUT_INVALID) {
+      P_IMMD(p, NV9097, SET_ANTI_ALIAS,
+             nil_to_nv9097_samples_mode(sample_layout));
+   }
 
    if (render->flags & VK_RENDERING_RESUMING_BIT)
       return;
@@ -1398,8 +1423,33 @@ static void
 nvk_flush_ms_state(struct nvk_cmd_buffer *cmd)
 {
    struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
+   const struct nvk_rendering_state *render = &cmd->state.gfx.render;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES)) {
+      /* When we don't have any attachments, we can't know the sample count
+       * from the render pass so we need to emit SET_ANTI_ALIAS here.  See the
+       * comment in nvk_BeginRendering() for more details.
+       */
+      if (render->samples == 0) {
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
+
+         /* Multisample information MAY be missing (rasterizationSamples == 0)
+          * if rasterizer discard is enabled.  However, this isn't valid in
+          * the hardware so always use at least one sample.
+          */
+         const uint32_t samples = MAX2(1, dyn->ms.rasterization_samples);
+         enum nil_sample_layout layout = nil_choose_sample_layout(samples);
+         P_IMMD(p, NV9097, SET_ANTI_ALIAS, nil_to_nv9097_samples_mode(layout));
+      } else {
+         /* Multisample information MAY be missing (rasterizationSamples == 0)
+          * if rasterizer discard is enabled.
+          */
+         assert(dyn->ms.rasterization_samples == 0 ||
+                dyn->ms.rasterization_samples == render->samples);
+      }
+   }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE)) {

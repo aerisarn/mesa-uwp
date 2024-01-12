@@ -91,6 +91,7 @@ struct nvk_rendering_state {
    VkRect2D area;
    uint32_t layer_count;
    uint32_t view_mask;
+   uint32_t samples;
 
    uint32_t color_att_count;
    struct nvk_attachment color_att[NVK_MAX_RTS];
