@@ -143,76 +143,85 @@ radv_convert_buffer_robustness(const struct radv_device *device, VkPipelineRobus
    }
 }
 
-struct radv_pipeline_key
-radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineShaderStageCreateInfo *stages,
-                           const unsigned num_stages, VkPipelineCreateFlags2KHR flags, const void *pNext)
+struct radv_shader_stage_key
+radv_pipeline_get_shader_key(const struct radv_device *device, const VkPipelineShaderStageCreateInfo *stage,
+                             VkPipelineCreateFlags2KHR flags, const void *pNext)
 {
-   struct radv_pipeline_key key;
+   gl_shader_stage s = vk_to_mesa_shader_stage(stage->stage);
+   struct radv_shader_stage_key key = {0};
 
-   memset(&key, 0, sizeof(key));
+   key.keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
+
+   if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
+      key.optimisations_disabled = 1;
+
+   if (stage->stage & RADV_GRAPHICS_STAGE_BITS) {
+      key.version = device->instance->drirc.override_graphics_shader_version;
+   } else if (stage->stage & RADV_RT_STAGE_BITS) {
+      key.version = device->instance->drirc.override_ray_tracing_shader_version;
+   } else {
+      assert(stage->stage == VK_SHADER_STAGE_COMPUTE_BIT);
+      key.version = device->instance->drirc.override_compute_shader_version;
+   }
 
    const VkPipelineRobustnessCreateInfoEXT *pipeline_robust_info =
       vk_find_struct_const(pNext, PIPELINE_ROBUSTNESS_CREATE_INFO_EXT);
 
+   const VkPipelineRobustnessCreateInfoEXT *stage_robust_info =
+      vk_find_struct_const(stage->pNext, PIPELINE_ROBUSTNESS_CREATE_INFO_EXT);
+
+   /* map any hit to intersection as these shaders get merged */
+   if (s == MESA_SHADER_ANY_HIT)
+      s = MESA_SHADER_INTERSECTION;
+
+   enum radv_buffer_robustness storage_robustness = device->buffer_robustness;
+   enum radv_buffer_robustness uniform_robustness = device->buffer_robustness;
+   enum radv_buffer_robustness vertex_robustness = device->buffer_robustness;
+
+   const VkPipelineRobustnessCreateInfoEXT *robust_info = stage_robust_info ? stage_robust_info : pipeline_robust_info;
+
+   if (robust_info) {
+      storage_robustness = radv_convert_buffer_robustness(device, robust_info->storageBuffers);
+      uniform_robustness = radv_convert_buffer_robustness(device, robust_info->uniformBuffers);
+      vertex_robustness = radv_convert_buffer_robustness(device, robust_info->vertexInputs);
+   }
+
+   if (storage_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+      key.storage_robustness2 = 1;
+   if (uniform_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+      key.uniform_robustness2 = 1;
+   if (s == MESA_SHADER_VERTEX && vertex_robustness >= RADV_BUFFER_ROBUSTNESS_1)
+      key.vertex_robustness1 = 1u;
+
+   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *const subgroup_size =
+      vk_find_struct_const(stage->pNext, PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
+
+   if (subgroup_size) {
+      if (subgroup_size->requiredSubgroupSize == 32)
+         key.subgroup_required_size = RADV_REQUIRED_WAVE32;
+      else if (subgroup_size->requiredSubgroupSize == 64)
+         key.subgroup_required_size = RADV_REQUIRED_WAVE64;
+      else
+         unreachable("Unsupported required subgroup size.");
+   }
+
+   if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
+      key.subgroup_require_full = 1;
+   }
+
+   return key;
+}
+
+struct radv_pipeline_key
+radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineShaderStageCreateInfo *stages,
+                           const unsigned num_stages, VkPipelineCreateFlags2KHR flags, const void *pNext)
+{
+   struct radv_pipeline_key key = {0};
+
    for (uint32_t i = 0; i < num_stages; i++) {
       gl_shader_stage s = vk_to_mesa_shader_stage(stages[i].stage);
 
-      key.stage_info[s].keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
-
-      if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
-         key.stage_info[s].optimisations_disabled = 1;
-
-      if (stages[i].stage & RADV_GRAPHICS_STAGE_BITS) {
-         key.stage_info[s].version = device->instance->drirc.override_graphics_shader_version;
-      } else if (stages[i].stage & RADV_RT_STAGE_BITS) {
-         key.stage_info[s].version = device->instance->drirc.override_ray_tracing_shader_version;
-      } else {
-         assert(stages[i].stage == VK_SHADER_STAGE_COMPUTE_BIT);
-         key.stage_info[s].version = device->instance->drirc.override_compute_shader_version;
-      }
-
-      const VkPipelineRobustnessCreateInfoEXT *stage_robust_info =
-         vk_find_struct_const(stages[i].pNext, PIPELINE_ROBUSTNESS_CREATE_INFO_EXT);
-
-      /* map any hit to intersection as these shaders get merged */
-      if (s == MESA_SHADER_ANY_HIT)
-         s = MESA_SHADER_INTERSECTION;
-
-      enum radv_buffer_robustness storage_robustness = device->buffer_robustness;
-      enum radv_buffer_robustness uniform_robustness = device->buffer_robustness;
-      enum radv_buffer_robustness vertex_robustness = device->buffer_robustness;
-
-      const VkPipelineRobustnessCreateInfoEXT *robust_info =
-         stage_robust_info ? stage_robust_info : pipeline_robust_info;
-
-      if (robust_info) {
-         storage_robustness = radv_convert_buffer_robustness(device, robust_info->storageBuffers);
-         uniform_robustness = radv_convert_buffer_robustness(device, robust_info->uniformBuffers);
-         vertex_robustness = radv_convert_buffer_robustness(device, robust_info->vertexInputs);
-      }
-
-      if (storage_robustness >= RADV_BUFFER_ROBUSTNESS_2)
-         key.stage_info[s].storage_robustness2 = 1;
-      if (uniform_robustness >= RADV_BUFFER_ROBUSTNESS_2)
-         key.stage_info[s].uniform_robustness2 = 1;
-      if (s == MESA_SHADER_VERTEX && vertex_robustness >= RADV_BUFFER_ROBUSTNESS_1)
-         key.stage_info[s].vertex_robustness1 = 1u;
-
-      const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *const subgroup_size =
-         vk_find_struct_const(stages[i].pNext, PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
-
-      if (subgroup_size) {
-         if (subgroup_size->requiredSubgroupSize == 32)
-            key.stage_info[s].subgroup_required_size = RADV_REQUIRED_WAVE32;
-         else if (subgroup_size->requiredSubgroupSize == 64)
-            key.stage_info[s].subgroup_required_size = RADV_REQUIRED_WAVE64;
-         else
-            unreachable("Unsupported required subgroup size.");
-      }
-
-      if (stages[i].flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
-         key.stage_info[s].subgroup_require_full = 1;
-      }
+      key.stage_info[s] = radv_pipeline_get_shader_key(device, &stages[i], flags, pNext);
    }
 
    return key;

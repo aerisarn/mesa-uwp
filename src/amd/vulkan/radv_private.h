@@ -2324,6 +2324,10 @@ struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_device *de
                                                     const unsigned num_stages, VkPipelineCreateFlags2KHR flags,
                                                     const void *pNext);
 
+struct radv_shader_stage_key radv_pipeline_get_shader_key(const struct radv_device *device,
+                                                          const VkPipelineShaderStageCreateInfo *stage,
+                                                          VkPipelineCreateFlags2KHR flags, const void *pNext);
+
 void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeline, enum radv_pipeline_type type);
 
 VkResult radv_graphics_pipeline_create(VkDevice device, VkPipelineCache cache,
