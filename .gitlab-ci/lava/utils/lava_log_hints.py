@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from lava.exceptions import MesaCIKnownIssueException
 from lava.utils.console_format import CONSOLE_LOG
-from lava.utils.constants import KNOWN_ISSUE_R8152_MAX_CONSECUTIVE_COUNTER
+from lava.utils.constants import KNOWN_ISSUE_R8152_MAX_CONSECUTIVE_COUNTER, LOG_DEBUG_FEEDBACK_NOISE
 from lava.utils.log_section import LogSectionType
 
 
@@ -20,12 +20,15 @@ class LAVALogHints:
 
     def detect_failure(self, new_lines: list[dict[str, Any]]):
         for line in new_lines:
+            if line["msg"] == LOG_DEBUG_FEEDBACK_NOISE:
+                continue
             self.detect_r8152_issue(line)
 
     def detect_r8152_issue(self, line):
-        if (
-            self.log_follower.phase == LogSectionType.TEST_CASE and line["lvl"] == "target"
-        ):
+        if self.log_follower.phase in (
+            LogSectionType.LAVA_BOOT,
+            LogSectionType.TEST_CASE,
+        ) and line["lvl"] in ("feedback", "target"):
             if re.search(r"r8152 \S+ eth0: Tx status -71", line["msg"]):
                 self.r8152_issue_consecutive_counter += 1
                 return

@@ -15,3 +15,7 @@ FORCE_UART = bool(getenv("LAVA_FORCE_UART", False))
 
 # How many times the r8152 error may happen to consider it a known issue.
 KNOWN_ISSUE_R8152_MAX_CONSECUTIVE_COUNTER: int = 10
+
+# This is considered noise, since LAVA produces this log after receiving a package of feedback
+# messages.
+LOG_DEBUG_FEEDBACK_NOISE = "Listened to connection for namespace 'dut' done"
