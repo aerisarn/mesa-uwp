@@ -533,3 +533,6 @@ dEQP-VK.pipeline.shader_object_linked_binary.framebuffer_attachment.unused_attac
 dEQP-VK.pipeline.shader_object_linked_spirv.framebuffer_attachment.unused_attachment,Crash
 dEQP-VK.pipeline.shader_object_unlinked_binary.framebuffer_attachment.unused_attachment,Crash
 dEQP-VK.pipeline.shader_object_unlinked_spirv.framebuffer_attachment.unused_attachment,Crash
+
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/4422
+KHR-GL31.texture_size_promotion.functional,Fail
