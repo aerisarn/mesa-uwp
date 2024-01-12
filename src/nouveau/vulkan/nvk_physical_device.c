@@ -259,8 +259,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .sparseBinding = true,
       .sparseResidencyBuffer = info->cls_eng3d >= MAXWELL_A,
       /* TODO: sparseResidency* */
-      /* TODO: variableMultisampleRate */
-      /* TODO: inheritedQueries */
+      .variableMultisampleRate = true,
       .inheritedQueries = true,
 
       /* Vulkan 1.1 */
@@ -414,7 +413,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .extendedDynamicState3TessellationDomainOrigin = true,
       .extendedDynamicState3DepthClampEnable = true,
       .extendedDynamicState3PolygonMode = true,
-      .extendedDynamicState3RasterizationSamples = false,
+      .extendedDynamicState3RasterizationSamples = true,
       .extendedDynamicState3SampleMask = true,
       .extendedDynamicState3AlphaToCoverageEnable = true,
       .extendedDynamicState3AlphaToOneEnable = true,
