@@ -1428,13 +1428,13 @@ nvk_flush_ms_state(struct nvk_cmd_buffer *cmd)
       &cmd->vk.dynamic_graphics_state;
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES)) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+
       /* When we don't have any attachments, we can't know the sample count
        * from the render pass so we need to emit SET_ANTI_ALIAS here.  See the
        * comment in nvk_BeginRendering() for more details.
        */
       if (render->samples == 0) {
-         struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
-
          /* Multisample information MAY be missing (rasterizationSamples == 0)
           * if rasterizer discard is enabled.  However, this isn't valid in
           * the hardware so always use at least one sample.
@@ -1449,6 +1449,17 @@ nvk_flush_ms_state(struct nvk_cmd_buffer *cmd)
          assert(dyn->ms.rasterization_samples == 0 ||
                 dyn->ms.rasterization_samples == render->samples);
       }
+
+      const struct nvk_graphics_pipeline *pipeline = cmd->state.gfx.pipeline;
+      uint32_t min_samples = ceilf(dyn->ms.rasterization_samples *
+                                   pipeline->min_sample_shading);
+      min_samples = util_next_power_of_two(MAX2(1, min_samples));
+
+      P_IMMD(p, NV9097, SET_HYBRID_ANTI_ALIAS_CONTROL, {
+         .passes = min_samples,
+         .centroid = min_samples > 1 ? CENTROID_PER_PASS
+                                     : CENTROID_PER_FRAGMENT,
+      });
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE) ||
