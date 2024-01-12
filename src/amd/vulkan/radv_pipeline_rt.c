@@ -288,7 +288,7 @@ radv_init_rt_stage_hashes(struct radv_device *device, const VkRayTracingPipeline
 
       radv_pipeline_stage_init(&pCreateInfo->pStages[idx], pipeline_layout, &key->stage_info[s], &stage);
 
-      radv_hash_shaders(device, stages[idx].sha1, &stage, 1, NULL, key);
+      radv_hash_shaders(device, stages[idx].sha1, &stage, 1, NULL, NULL);
    }
 }
 

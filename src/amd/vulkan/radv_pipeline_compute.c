@@ -201,7 +201,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
 
    radv_pipeline_stage_init(pStage, pipeline_layout, &pipeline_key->stage_info[MESA_SHADER_COMPUTE], &cs_stage);
 
-   radv_hash_shaders(device, hash, &cs_stage, 1, pipeline_layout, pipeline_key);
+   radv_hash_shaders(device, hash, &cs_stage, 1, pipeline_layout, NULL);
 
    pipeline->base.pipeline_hash = *(uint64_t *)hash;
 
