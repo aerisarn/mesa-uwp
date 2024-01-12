@@ -265,7 +265,7 @@ radv_amdgpu_cs_get_new_ib(struct radeon_cmdbuf *_cs, uint32_t ib_size)
    cs->ib_mapped = cs->ws->base.buffer_map(cs->ib_buffer);
    if (!cs->ib_mapped) {
       cs->ws->base.buffer_destroy(&cs->ws->base, cs->ib_buffer);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
    }
 
    cs->ib.ib_mc_address = radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va;
@@ -730,7 +730,7 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
 
          mapped = ws->base.buffer_map(ib->bo);
          if (!mapped) {
-            parent->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+            parent->status = VK_ERROR_OUT_OF_DEVICE_MEMORY;
             return;
          }
 

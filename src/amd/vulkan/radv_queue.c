@@ -981,8 +981,10 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
 
    if (descriptor_bo != queue->descriptor_bo) {
       uint32_t *map = (uint32_t *)ws->buffer_map(descriptor_bo);
-      if (!map)
+      if (!map) {
+         result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
          goto fail;
+      }
 
       radv_fill_shader_rings(device, map, scratch_bo, needs->esgs_ring_size, esgs_ring_bo, needs->gsvs_ring_size,
                              gsvs_ring_bo, tess_rings_bo, task_rings_bo, mesh_scratch_ring_bo, needs->attr_ring_size,
