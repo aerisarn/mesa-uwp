@@ -56,8 +56,11 @@ struct nvk_root_descriptor_table {
    /* Dynamic buffer bindings */
    struct nvk_buffer_address dynamic_buffers[NVK_MAX_DYNAMIC_BUFFERS];
 
+   /* Start index in dynamic_buffers where each set starts */
+   uint8_t set_dynamic_buffer_start[NVK_MAX_SETS];
+
    /* enfore alignment to 0x100 as needed pre pascal */
-   uint8_t __padding[0x20];
+   uint8_t __padding[0x18];
 };
 
 /* helper macro for computing root descriptor byte offsets */
