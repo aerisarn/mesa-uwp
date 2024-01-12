@@ -788,7 +788,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
 
    bool keep_executable_info = radv_pipeline_capture_shaders(device, pipeline->base.base.create_flags);
 
-   radv_hash_rt_shaders(device, pipeline->sha1, pCreateInfo, &key, pipeline->groups);
+   radv_hash_rt_shaders(device, pipeline->sha1, stages, pCreateInfo, pipeline->groups);
    pipeline->base.base.pipeline_hash = *(uint64_t *)pipeline->sha1;
 
    bool cache_hit = false;

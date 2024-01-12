@@ -2015,10 +2015,10 @@ void radv_hash_shaders(const struct radv_device *device, unsigned char *hash, co
                        uint32_t stage_count, const struct radv_pipeline_layout *layout,
                        const struct radv_pipeline_key *key);
 
-void radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo *stages, unsigned stage_count);
-
+struct radv_ray_tracing_stage;
 void radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash,
-                          const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_pipeline_key *key,
+                          const struct radv_ray_tracing_stage *stages,
+                          const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                           const struct radv_ray_tracing_group *groups);
 
 bool radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines);

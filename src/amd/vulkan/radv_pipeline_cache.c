@@ -68,19 +68,8 @@ radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const s
 }
 
 void
-radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo *stages, unsigned stage_count)
-{
-   for (unsigned i = 0; i < stage_count; ++i) {
-      unsigned char hash[20];
-      vk_pipeline_hash_shader_stage(&stages[i], NULL, hash);
-      _mesa_sha1_update(ctx, hash, sizeof(hash));
-   }
-}
-
-void
-radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash,
-                     const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_pipeline_key *key,
-                     const struct radv_ray_tracing_group *groups)
+radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash, const struct radv_ray_tracing_stage *stages,
+                     const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_ray_tracing_group *groups)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
    struct mesa_sha1 ctx;
@@ -90,9 +79,9 @@ radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash,
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
 
-   _mesa_sha1_update(&ctx, key, sizeof(*key));
-
-   radv_hash_rt_stages(&ctx, pCreateInfo->pStages, pCreateInfo->stageCount);
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+      _mesa_sha1_update(&ctx, stages[i].sha1, sizeof(stages[i].sha1));
+   }
 
    for (uint32_t i = 0; i < pCreateInfo->groupCount; i++) {
       _mesa_sha1_update(&ctx, &pCreateInfo->pGroups[i].type, sizeof(pCreateInfo->pGroups[i].type));
