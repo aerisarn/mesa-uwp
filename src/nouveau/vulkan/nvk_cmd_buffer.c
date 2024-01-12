@@ -574,24 +574,24 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
    uint32_t next_dyn_offset = 0;
    for (uint32_t i = 0; i < descriptorSetCount; ++i) {
-      unsigned set_idx = i + firstSet;
+      unsigned s = i + firstSet;
       VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
       const struct nvk_descriptor_set_layout *set_layout =
-         vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set_idx]);
+         vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[s]);
 
-      if (desc->sets[set_idx] != set) {
-         desc->root.sets[set_idx] = nvk_descriptor_set_addr(set);
-         desc->set_sizes[set_idx] = set->size;
-         desc->sets[set_idx] = set;
-         desc->sets_dirty |= BITFIELD_BIT(set_idx);
+      if (desc->sets[s] != set) {
+         desc->root.sets[s] = nvk_descriptor_set_addr(set);
+         desc->set_sizes[s] = set->size;
+         desc->sets[s] = set;
+         desc->sets_dirty |= BITFIELD_BIT(s);
 
          /* Binding descriptors invalidates push descriptors */
-         desc->push_dirty &= ~BITFIELD_BIT(set_idx);
+         desc->push_dirty &= ~BITFIELD_BIT(s);
       }
 
       if (set_layout->dynamic_buffer_count > 0) {
          const uint32_t dynamic_buffer_start =
-            nvk_descriptor_set_layout_dynbuf_start(pipeline_layout, set_idx);
+            nvk_descriptor_set_layout_dynbuf_start(pipeline_layout, s);
 
          for (uint32_t j = 0; j < set_layout->dynamic_buffer_count; j++) {
             struct nvk_buffer_address addr = set->dynamic_buffers[j];
