@@ -63,6 +63,7 @@ radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const s
          continue;
 
       _mesa_sha1_update(&ctx, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
+      _mesa_sha1_update(&ctx, &stages[s].key, sizeof(stages[s].key));
    }
    _mesa_sha1_final(&ctx, hash);
 }
