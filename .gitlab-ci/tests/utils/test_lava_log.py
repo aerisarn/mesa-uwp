@@ -16,6 +16,7 @@ from lava.utils import (
     fix_lava_gitlab_section_log,
     hide_sensitive_data,
 )
+from lava.utils.constants import KNOWN_ISSUE_R8152_MAX_CONSECUTIVE_COUNTER
 
 from ..lava.helpers import create_lava_yaml_msg, does_not_raise, lava_yaml, yaml_dump
 
@@ -312,9 +313,9 @@ def test_gitlab_section_id(case_name, expected_id):
 
 
 A618_NETWORK_ISSUE_LOGS = [
-    create_lava_yaml_msg(
+    *(KNOWN_ISSUE_R8152_MAX_CONSECUTIVE_COUNTER*[create_lava_yaml_msg(
         msg="[ 1733.599402] r8152 2-1.3:1.0 eth0: Tx status -71", lvl="target"
-    ),
+    )]),
     create_lava_yaml_msg(
         msg="[ 1733.604506] nfs: server 192.168.201.1 not responding, still trying",
         lvl="target",
