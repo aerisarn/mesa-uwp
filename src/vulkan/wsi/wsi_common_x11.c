@@ -1241,9 +1241,12 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
       if (config->pixmap_flags & PresentWindowDestroyed)
          return VK_ERROR_SURFACE_LOST_KHR;
 
-      if (config->width != chain->extent.width ||
-          config->height != chain->extent.height)
-         return VK_SUBOPTIMAL_KHR;
+      struct wsi_device *wsi_device = (struct wsi_device *)chain->base.wsi;
+      if (!wsi_device->x11.ignore_suboptimal) {
+         if (config->width != chain->extent.width ||
+             config->height != chain->extent.height)
+            return VK_SUBOPTIMAL_KHR;
+      }
 
       break;
    }
@@ -1280,6 +1283,11 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
       }
 
       VkResult result = VK_SUCCESS;
+
+      struct wsi_device *wsi_device = (struct wsi_device *)chain->base.wsi;
+      if (wsi_device->x11.ignore_suboptimal)
+         return result;
+
       switch (complete->mode) {
       case XCB_PRESENT_COMPLETE_MODE_COPY:
          if (chain->copy_is_suboptimal)
@@ -1824,9 +1832,12 @@ x11_acquire_next_image(struct wsi_swapchain *anv_chain,
             xcb_get_geometry_reply_t *geom = xcb_get_geometry_reply(chain->conn, geom_cookie, &err);
             VkResult result = VK_SUCCESS;
             if (geom) {
-               if (chain->extent.width != geom->width ||
-                   chain->extent.height != geom->height)
-                  result = VK_SUBOPTIMAL_KHR;
+               struct wsi_device *wsi_device = (struct wsi_device *)chain->base.wsi;
+               if (!wsi_device->x11.ignore_suboptimal) {
+                  if (chain->extent.width != geom->width ||
+                      chain->extent.height != geom->height)
+                     result = VK_SUBOPTIMAL_KHR;
+               }
             } else {
                result = VK_ERROR_SURFACE_LOST_KHR;
             }
@@ -2823,8 +2834,10 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
     * happen by flip, only by copy. So this is a suboptimal copy, because if the client would change
     * the chain extents X may be able to flip
     */
-   if (chain->extent.width != cur_width || chain->extent.height != cur_height)
-       chain->status = VK_SUBOPTIMAL_KHR;
+   if (!wsi_device->x11.ignore_suboptimal) {
+      if (chain->extent.width != cur_width || chain->extent.height != cur_height)
+         chain->status = VK_SUBOPTIMAL_KHR;
+   }
 
    /* On a new swapchain this helper variable is set to false. Once we present it will have an
     * impact once we ever do at least one flip and go back to copying afterwards. It is presumed
@@ -3019,6 +3032,11 @@ wsi_x11_init_wsi(struct wsi_device *wsi_device,
       if (driCheckOption(dri_options, "vk_xwayland_wait_ready", DRI_BOOL)) {
          wsi_device->x11.xwaylandWaitReady =
             driQueryOptionb(dri_options, "vk_xwayland_wait_ready");
+      }
+
+      if (driCheckOption(dri_options, "vk_x11_ignore_suboptimal", DRI_BOOL)) {
+         wsi_device->x11.ignore_suboptimal =
+            driQueryOptionb(dri_options, "vk_x11_ignore_suboptimal");
       }
    }
 

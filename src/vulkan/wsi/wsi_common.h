@@ -160,6 +160,10 @@ struct wsi_device {
 
       /* adds an extra minImageCount when running under xwayland */
       bool extra_xwayland_image;
+
+      /* Never report VK_SUBOPTIMAL_KHR. Used to workaround
+       * games that cannot handle SUBOPTIMAL correctly. */
+      bool ignore_suboptimal;
    } x11;
 
    struct {

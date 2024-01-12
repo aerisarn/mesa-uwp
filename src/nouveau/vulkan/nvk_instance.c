@@ -71,6 +71,11 @@ static const driOptionDescription nvk_dri_options[] = {
       DRI_CONF_VK_KHR_PRESENT_WAIT(false)
       DRI_CONF_VK_XWAYLAND_WAIT_READY(true)
    DRI_CONF_SECTION_END
+
+   DRI_CONF_SECTION_DEBUG
+      DRI_CONF_VK_WSI_FORCE_SWAPCHAIN_TO_CURRENT_EXTENT(false)
+      DRI_CONF_VK_X11_IGNORE_SUBOPTIMAL(false)
+   DRI_CONF_SECTION_END
 };
 
 static void

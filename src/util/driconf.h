@@ -422,6 +422,10 @@
    DRI_CONF_OPT_B(vk_x11_ensure_min_image_count, def, \
                   "Force the X11 WSI to create at least the number of image specified by the driver in VkSurfaceCapabilitiesKHR::minImageCount")
 
+#define DRI_CONF_VK_X11_IGNORE_SUBOPTIMAL(def) \
+   DRI_CONF_OPT_B(vk_x11_ignore_suboptimal, def, \
+                  "Force the X11 WSI to never report VK_SUBOPTIMAL_KHR")
+
 #define DRI_CONF_VK_KHR_PRESENT_WAIT(def) \
    DRI_CONF_OPT_B(vk_khr_present_wait, def, \
                   "Expose VK_KHR_present_wait and id extensions despite them not being implemented for all supported surface types")

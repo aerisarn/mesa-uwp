@@ -137,6 +137,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_OVERRIDE_VRAM_SIZE()
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
       DRI_CONF_VK_WSI_FORCE_SWAPCHAIN_TO_CURRENT_EXTENT(false)
+      DRI_CONF_VK_X11_IGNORE_SUBOPTIMAL(false)
       DRI_CONF_VK_REQUIRE_ETC2(false)
       DRI_CONF_VK_REQUIRE_ASTC(false)
       DRI_CONF_RADV_ZERO_VRAM(false)
