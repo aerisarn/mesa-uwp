@@ -291,17 +291,14 @@ ubo_deref_to_cbuf(nir_deref_instr *deref,
    }
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
-      uint8_t dynamic_buffer_index =
-         nvk_descriptor_set_layout_dynbuf_start(ctx->layout, set) +
-         binding_layout->dynamic_buffer_index + index;
-
       *offset_out = 0;
       *start_out = offset;
       *end_out = offset + range;
 
       return (struct nvk_cbuf) {
          .type = NVK_CBUF_TYPE_DYNAMIC_UBO,
-         .dynamic_idx = dynamic_buffer_index,
+         .desc_set = set,
+         .dynamic_idx = binding_layout->dynamic_buffer_index + index,
       };
    }
 

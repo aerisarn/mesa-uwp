@@ -758,9 +758,12 @@ nvk_cmd_buffer_get_cbuf_descriptor(struct nvk_cmd_buffer *cmd,
       };
       return true;
 
-   case NVK_CBUF_TYPE_DYNAMIC_UBO:
-      *desc_out = desc->root.dynamic_buffers[cbuf->dynamic_idx];
+   case NVK_CBUF_TYPE_DYNAMIC_UBO: {
+      const uint32_t dyn_start =
+         desc->root.set_dynamic_buffer_start[cbuf->desc_set];
+      *desc_out = desc->root.dynamic_buffers[dyn_start + cbuf->dynamic_idx];
       return true;
+   }
 
    case NVK_CBUF_TYPE_UBO_DESC: {
       if (desc->sets[cbuf->desc_set] != NULL)
