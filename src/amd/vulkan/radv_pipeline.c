@@ -152,6 +152,8 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
    memset(&key, 0, sizeof(key));
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      key.stage_info[i].keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
+
       if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
          key.stage_info[i].optimisations_disabled = 1;
    }
@@ -208,8 +210,6 @@ radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineSha
       if (stage == MESA_SHADER_VERTEX && vertex_robustness >= RADV_BUFFER_ROBUSTNESS_1)
          key.stage_info[stage].vertex_robustness1 = 1u;
    }
-
-   key.keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
 
    return key;
 }

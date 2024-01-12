@@ -95,6 +95,7 @@ struct radv_shader_stage_key {
    uint8_t vertex_robustness1 : 1;
 
    uint8_t optimisations_disabled : 1;
+   uint8_t keep_statistic_info : 1;
 };
 
 struct radv_ps_epilog_key {
@@ -169,8 +170,6 @@ struct radv_graphics_state_key {
 
 struct radv_pipeline_key {
    struct radv_graphics_state_key gfx_state;
-
-   uint32_t keep_statistic_info : 1;
 
    /* Pipeline shader version (up to 8) to force re-compilation when RADV_BUILD_ID_OVERRIDE is enabled. */
    uint32_t shader_version : 3;
