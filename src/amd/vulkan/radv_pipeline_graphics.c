@@ -2320,7 +2320,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib->lib_flags))
          continue;
 
-      radv_pipeline_stage_init(sinfo, &lib->layout, pipeline_key, &stages[s]);
+      radv_pipeline_stage_init(sinfo, &lib->layout, &pipeline_key->stage_info[s], &stages[s]);
    }
 
    /* Import the NIR shaders (after SPIRV->NIR). */
@@ -2339,10 +2339,10 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       stages[s].stage = s;
       stages[s].nir = nir_deserialize(NULL, options, &blob_reader);
       stages[s].entrypoint = nir_shader_get_entrypoint(stages[s].nir)->function->name;
+      stages[s].key = pipeline_key->stage_info[s];
       memcpy(stages[s].shader_sha1, retained_shaders->stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
 
       radv_shader_layout_init(&lib->layout, s, &stages[s].layout);
-      radv_shader_stage_key_init(pipeline_key, s, &stages[s].key);
 
       stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
@@ -2640,7 +2640,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib_flags))
          continue;
 
-      radv_pipeline_stage_init(sinfo, pipeline_layout, pipeline_key, &stages[stage]);
+      radv_pipeline_stage_init(sinfo, pipeline_layout, &pipeline_key->stage_info[stage], &stages[stage]);
    }
 
    radv_pipeline_load_retained_shaders(device, pipeline, pipeline_key, pCreateInfo, stages);
