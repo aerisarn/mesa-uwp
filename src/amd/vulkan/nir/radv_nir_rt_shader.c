@@ -808,15 +808,9 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
 }
 
 nir_shader *
-radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
-                    const struct radv_pipeline_key *key, const struct radv_pipeline_layout *pipeline_layout)
+radv_parse_rt_stage(struct radv_device *device, const struct radv_shader_stage *rt_stage)
 {
-   gl_shader_stage s = vk_to_mesa_shader_stage(sinfo->stage);
-   struct radv_shader_stage rt_stage;
-
-   radv_pipeline_stage_init(sinfo, pipeline_layout, &key->stage_info[s], &rt_stage);
-
-   nir_shader *shader = radv_shader_spirv_to_nir(device, &rt_stage, NULL, false);
+   nir_shader *shader = radv_shader_spirv_to_nir(device, rt_stage, NULL, false);
 
    NIR_PASS(_, shader, nir_lower_vars_to_explicit_types, nir_var_function_temp | nir_var_shader_call_data,
             glsl_get_natural_size_align_bytes);

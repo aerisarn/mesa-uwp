@@ -518,7 +518,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       radv_pipeline_stage_init(&pCreateInfo->pStages[i], pipeline_layout, &key->stage_info[s], stage);
 
       /* precompile the shader */
-      stage->nir = radv_parse_rt_stage(device, &pCreateInfo->pStages[i], key, pipeline_layout);
+      stage->nir = radv_parse_rt_stage(device, stage);
 
       rt_stages[i].can_inline = radv_rt_can_inline_shader(stage->nir);
 
