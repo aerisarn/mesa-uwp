@@ -37,6 +37,7 @@ static const struct debug_control debug_control[] = {
    { "floats",     INTEL_BATCH_DECODE_FLOATS },
    { "surfaces",   INTEL_BATCH_DECODE_SURFACES },
    { "accumulate", INTEL_BATCH_DECODE_ACCUMULATE },
+   { "vb-data",    INTEL_BATCH_DECODE_VB_DATA },
    { NULL,    0 }
 };
 
@@ -580,7 +581,8 @@ handle_3dstate_vertex_buffers(struct intel_batch_decode_ctx *ctx,
          if (vb.map == 0 || vb_size == 0)
             continue;
 
-         ctx_print_buffer(ctx, vb, vb_size, pitch, ctx->max_vbo_decoded_lines);
+         if (ctx->flags & INTEL_BATCH_DECODE_VB_DATA)
+            ctx_print_buffer(ctx, vb, vb_size, pitch, ctx->max_vbo_decoded_lines);
 
          vb.map = NULL;
          vb_size = 0;
