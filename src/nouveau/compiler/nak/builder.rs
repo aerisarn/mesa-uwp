@@ -493,14 +493,28 @@ pub trait SSABuilder: Builder {
         assert!(x.is_predicate() == y.is_predicate());
         if x.is_predicate() {
             let dst = self.alloc_ssa(RegFile::Pred, 1);
-            self.push_op(OpPLop3 {
-                dsts: [dst.into(), Dst::None],
-                srcs: [cond, x, y],
-                ops: [
-                    LogicOp3::new_lut(&|c, x, y| (c & x) | (!c & y)),
-                    LogicOp3::new_const(false),
-                ],
-            });
+            if self.sm() >= 70 {
+                self.push_op(OpPLop3 {
+                    dsts: [dst.into(), Dst::None],
+                    srcs: [cond, x, y],
+                    ops: [
+                        LogicOp3::new_lut(&|c, x, y| (c & x) | (!c & y)),
+                        LogicOp3::new_const(false),
+                    ],
+                });
+            } else {
+                let tmp = self.alloc_ssa(RegFile::Pred, 1);
+                self.push_op(OpPSetP {
+                    dsts: [tmp.into(), Dst::None],
+                    ops: [PredSetOp::And, PredSetOp::And],
+                    srcs: [cond.into(), x.into(), true.into()],
+                });
+                self.push_op(OpPSetP {
+                    dsts: [dst.into(), Dst::None],
+                    ops: [PredSetOp::And, PredSetOp::Or],
+                    srcs: [Src::from(cond).bnot(), y.into(), tmp.into()],
+                });
+            }
             dst
         } else {
             let dst = self.alloc_ssa(RegFile::GPR, 1);
