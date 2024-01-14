@@ -352,8 +352,7 @@ dump_binding_table(struct intel_batch_decode_ctx *ctx,
 
    const uint32_t *pointers = bind_bo.map;
    for (int i = 0; i < count; i++) {
-      if (((uintptr_t)&pointers[i] >= ((uintptr_t)bind_bo.map + bind_bo.size)) ||
-          pointers[i] == 0)
+      if (((uintptr_t)&pointers[i] >= ((uintptr_t)bind_bo.map + bind_bo.size)))
          break;
 
       uint64_t addr = ctx->surface_base + pointers[i];
