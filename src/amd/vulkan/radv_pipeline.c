@@ -315,6 +315,7 @@ radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned 
 
    switch (low->intrinsic) {
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant:
    case nir_intrinsic_store_global:
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_load_ssbo:
