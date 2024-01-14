@@ -118,6 +118,9 @@ static struct Context {
    /* Map hang file in RW for edition */
    bool edit = false;
 
+   /* AUX-TT */
+   uint64_t aux_tt_addr = 0;
+
    struct intel_device_info devinfo;
    struct intel_spec *spec = NULL;
    struct brw_isa_info isa;
@@ -141,6 +144,15 @@ static struct Context {
 } context;
 
 thread_local ImGuiContext* __MesaImGui;
+
+hang_bo *find_bo(uint64_t addr)
+{
+   for (auto &bo : context.bos) {
+      if (addr >= bo.offset && addr < (bo.offset + bo.size))
+         return &bo;
+   }
+   return NULL;
+}
 
 /**/
 
@@ -204,21 +216,19 @@ public:
       snprintf(m_name, sizeof(m_name),
                "%s (0x%" PRIx64 ")##%p", m_description.c_str(), m_address, this);
 
-      for (auto &bo : context.bos) {
-         if (address >= bo.offset &&
-             address < (bo.offset + bo.size)) {
-            char *shader_txt = NULL;
-            size_t shader_txt_size = 0;
-            FILE *f = open_memstream(&shader_txt, &shader_txt_size);
-            if (f) {
-               intel_disassemble(&context.isa,
-                                 (const uint8_t *) bo.map +
-                                 (address - bo.offset), 0, f);
-               fclose(f);
-            }
-
-            m_shader = std::string(shader_txt);
+      hang_bo *bo = find_bo(address);
+      if (bo != NULL) {
+         char *shader_txt = NULL;
+         size_t shader_txt_size = 0;
+         FILE *f = open_memstream(&shader_txt, &shader_txt_size);
+         if (f) {
+            intel_disassemble(&context.isa,
+                              (const uint8_t *) bo->map +
+                              (address - bo->offset), 0, f);
+            fclose(f);
          }
+
+         m_shader = std::string(shader_txt);
       }
    }
 
@@ -230,6 +240,86 @@ public:
    }
 
    void destroy() {}
+};
+
+class aux_tt_window : public window {
+public:
+   aux_tt_window(uint64_t l3_addr)
+      : m_l3_addr(l3_addr)
+      , m_bo(find_bo(l3_addr)) {
+      snprintf(m_name, sizeof(m_name), "AUX TT##%p", this);
+   }
+
+   void display() {
+      ImGui::BeginChild(ImGui::GetID("##toplevel"));
+      if (m_bo != NULL)
+         display_level(3, m_l3_addr, 0);
+      else
+         ImGui::Text("AUX table buffer not found: 0x%" PRIx64,
+                     m_l3_addr);
+      ImGui::EndChild();
+   }
+
+   void destroy() {}
+
+private:
+   void display_level(int level, uint64_t table_addr, uint64_t base_addr) {
+      assert(level >= 1 && level <= 3);
+
+      const hang_bo *bo =
+         table_addr == m_l3_addr ? m_bo : find_bo(table_addr);
+      if (bo == NULL) {
+         ImGui::Text("level %u not found addr=0x%016" PRIx64,
+                     level, table_addr);
+         return;
+      }
+
+      static struct {
+         uint32_t top;
+         uint32_t bottom;
+      } levels[4] = {
+         {  0,  0, },
+         { 23, 16, },
+         { 35, 24, },
+         { 47, 36, },
+      };
+
+      const uint64_t *entries =
+         (const uint64_t *)((const uint8_t *)bo->map + (table_addr - bo->offset));
+
+      if (level == 1) {
+         uint32_t n_entries = context.devinfo.verx10 == 125 ? 16 : 256;
+         for (uint32_t i = 0; i < n_entries; i++) {
+            uint64_t addr = entries[i] & 0xffffffffff00ull;
+            ImGui::Text("entry%04u: addr=0x%012" PRIx64 " entry=0x%012" PRIx64
+                        " range=0x%012" PRIx64 "-0x%012" PRIx64,
+                        i, addr, entries[i],
+                        base_addr + (uint64_t)i << levels[level].bottom,
+                        base_addr + (uint64_t)i << levels[level].bottom);
+         }
+      } else {
+         for (uint32_t i = 0; i < 4096; i++) {
+            uint64_t entry_addr = base_addr + (uint64_t)i << levels[level].bottom;
+            uint64_t addr = entries[i] & 0xffffffff8000ull;
+            bool valid = (entries[i] & 0x1) != 0;
+            if (valid &&
+                ImGui::TreeNodeEx(
+                   (void *)&entries[i],
+                   ImGuiTreeNodeFlags_Framed,
+                   "entry%04u: addr=0x%012" PRIx64 " entry=0x%012" PRIx64
+                   " range=0x%012" PRIx64 "-0x%012" PRIx64,
+                   i, addr, entries[i],
+                   entry_addr, entry_addr)) {
+               if (valid)
+                  display_level(level - 1, addr, entry_addr);
+               ImGui::TreePop();
+            }
+         }
+      }
+   }
+
+   uint64_t m_l3_addr;
+   const hang_bo *m_bo;
 };
 
 static struct intel_batch_decode_bo
@@ -402,8 +492,9 @@ display_hang_stats()
    ImGui::BeginChild(ImGui::GetID("BO list:"));
    for (const auto &bo : context.bos) {
       char bo_name[80];
-      snprintf(bo_name, sizeof(bo_name), "BO 0x%012" PRIx64 " size=%" PRIu64 "(%s) %s",
-               bo.offset, bo.size, human_size(bo.size),
+      snprintf(bo_name, sizeof(bo_name),
+               "BO 0x%012" PRIx64 "-0x%012" PRIx64 " size=%" PRIu64 "(%s) %s",
+               bo.offset, bo.offset + bo.size - 1, bo.size, human_size(bo.size),
                bo.offset == exec_buf_addr ? "BATCH BUFFER" : "");
 
       if (ImGui::Selectable(bo_name, false))
@@ -411,6 +502,8 @@ display_hang_stats()
    }
    if (context.hw_image.size != 0 && ImGui::Selectable("HW IMAGE", false))
       context.windows.push_back(std::shared_ptr<window>(new batch_window(context.hw_image)));
+   if (context.aux_tt_addr != 0 && ImGui::Selectable("AUX-TT", false))
+      context.windows.push_back(std::shared_ptr<window>(new aux_tt_window(context.aux_tt_addr)));
    ImGui::EndChild();
 
    ImGui::End();
@@ -518,6 +611,7 @@ print_help(const char *progname, FILE *file)
            "\n"
            "    -p, --platform platform    platform to use for decoding\n"
            "    -e, --edit                 map the hang file read/write for edition\n"
+           "    -x, --aux-tt                 map the hang file read/write for edition\n"
            , progname);
 }
 
@@ -632,31 +726,34 @@ int
 main(int argc, char *argv[])
 {
    int c, i;
-   bool help = false, edit = false;
+   bool help = false;
    const char *platform = NULL;
    const struct option aubinator_opts[] = {
-      { "platform",      required_argument, NULL,                          0    },
-      { "edit",          no_argument,       (int *) &edit,                 true },
+      { "platform",      required_argument, NULL,                          'p'  },
+      { "aux-tt",        required_argument, NULL,                          'x'  },
+      { "edit",          no_argument,       NULL,                          'e'  },
       { "help",          no_argument,       (int *) &help,                 true },
       { NULL,            0,                 NULL,                          0    },
    };
 
+   context = {};
+
    i = 0;
-   while ((c = getopt_long(argc, argv, "p:e", aubinator_opts, &i)) != -1) {
+   while ((c = getopt_long(argc, argv, "p:ex:", aubinator_opts, &i)) != -1) {
       switch (c) {
       case 'p':
          platform = optarg;
          break;
       case 'e':
-         edit = true;
+         context.edit = true;
+         break;
+      case 'x':
+         context.aux_tt_addr = strtoll(optarg, NULL, 16);
          break;
       default:
          break;
       }
    }
-
-   context = {};
-   context.edit = edit;
 
    const char *filename = NULL;
    if (optind < argc)
