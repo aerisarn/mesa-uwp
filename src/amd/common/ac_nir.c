@@ -889,6 +889,12 @@ ac_nir_lower_legacy_vs(nir_shader *nir,
    nir_metadata_preserve(impl, preserved);
 }
 
+static nir_def *
+ac_nir_accum_ior(nir_builder *b, nir_def *accum_result, nir_def *new_term)
+{
+   return accum_result ? nir_ior(b, accum_result, new_term) : new_term;
+}
+
 bool
 ac_nir_gs_shader_query(nir_builder *b,
                        bool has_gen_prim_query,
@@ -900,24 +906,24 @@ ac_nir_gs_shader_query(nir_builder *b,
 {
    nir_def *pipeline_query_enabled = NULL;
    nir_def *prim_gen_query_enabled = NULL;
-   nir_def *shader_query_enabled = NULL;
+   nir_def *any_query_enabled = NULL;
+
    if (has_gen_prim_query) {
       prim_gen_query_enabled = nir_load_prim_gen_query_enabled_amd(b);
-      if (has_pipeline_stats_query) {
-         pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
-         shader_query_enabled = nir_ior(b, pipeline_query_enabled, prim_gen_query_enabled);
-      } else {
-         shader_query_enabled = prim_gen_query_enabled;
-      }
-   } else if (has_pipeline_stats_query) {
+      any_query_enabled = ac_nir_accum_ior(b, any_query_enabled, prim_gen_query_enabled);
+   }
+
+   if (has_pipeline_stats_query) {
       pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
-      shader_query_enabled = pipeline_query_enabled;
-   } else {
+      any_query_enabled = ac_nir_accum_ior(b, any_query_enabled, pipeline_query_enabled);
+   }
+
+   if (!any_query_enabled) {
       /* has no query */
       return false;
    }
 
-   nir_if *if_shader_query = nir_push_if(b, shader_query_enabled);
+   nir_if *if_shader_query = nir_push_if(b, any_query_enabled);
 
    nir_def *active_threads_mask = nir_ballot(b, 1, wave_size, nir_imm_true(b));
    nir_def *num_active_threads = nir_bit_count(b, active_threads_mask);
