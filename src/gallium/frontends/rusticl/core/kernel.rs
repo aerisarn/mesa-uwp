@@ -509,7 +509,6 @@ fn lower_and_optimize_nir(
         !dev.samplers_as_deref(),
     );
 
-    nir.reset_scratch_size();
     nir_pass!(
         nir,
         nir_lower_vars_to_explicit_types,
