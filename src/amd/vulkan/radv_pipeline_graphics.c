@@ -1962,13 +1962,13 @@ radv_generate_graphics_state_key(const struct radv_device *device, const struct 
    return key;
 }
 
-static struct radv_pipeline_key
+static struct radv_graphics_pipeline_key
 radv_generate_graphics_pipeline_key(const struct radv_device *device, const struct radv_graphics_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct vk_graphics_pipeline_state *state,
                                     VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
-   struct radv_pipeline_key key = {0};
+   struct radv_graphics_pipeline_key key = {0};
 
    key.gfx_state = radv_generate_graphics_state_key(device, pipeline, state, lib_flags);
 
@@ -2220,7 +2220,7 @@ radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache 
    NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &gs_copy_stage, gfx_state,
               device->physical_device->rad_info.address32_hi);
 
-   struct radv_pipeline_key key = {0};
+   struct radv_graphics_pipeline_key key = {0};
    bool dump_shader = radv_can_dump_shader(device, nir, true);
 
    *gs_copy_binary = radv_shader_nir_to_asm(device, &gs_copy_stage, &nir, 1, &key.gfx_state, keep_executable_info,
@@ -2609,7 +2609,7 @@ radv_should_compute_pipeline_hash(const struct radv_device *device, const struct
 static VkResult
 radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                struct radv_pipeline_layout *pipeline_layout, struct radv_device *device,
-                               struct vk_pipeline_cache *cache, const struct radv_pipeline_key *pipeline_key,
+                               struct vk_pipeline_cache *cache, const struct radv_graphics_pipeline_key *pipeline_key,
                                VkGraphicsPipelineLibraryFlagBitsEXT lib_flags, bool fast_linking_enabled)
 {
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
@@ -3931,7 +3931,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_layout_hash(&pipeline_layout);
 
    if (!radv_skip_graphics_pipeline_compile(device, pipeline, needed_lib_flags, fast_linking_enabled)) {
-      struct radv_pipeline_key key =
+      struct radv_graphics_pipeline_key key =
          radv_generate_graphics_pipeline_key(device, pipeline, pCreateInfo, &state, needed_lib_flags);
 
       result = radv_graphics_pipeline_compile(pipeline, pCreateInfo, &pipeline_layout, device, cache, &key,
@@ -4107,7 +4107,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline, str
    if (radv_should_compute_pipeline_hash(device, &pipeline->base, fast_linking_enabled))
       radv_pipeline_layout_hash(pipeline_layout);
 
-   struct radv_pipeline_key key =
+   struct radv_graphics_pipeline_key key =
       radv_generate_graphics_pipeline_key(device, &pipeline->base, pCreateInfo, state, needed_lib_flags);
 
    return radv_graphics_pipeline_compile(&pipeline->base, pCreateInfo, pipeline_layout, device, cache, &key,

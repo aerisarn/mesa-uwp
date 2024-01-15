@@ -45,7 +45,6 @@ struct radv_physical_device;
 struct radv_device;
 struct radv_pipeline;
 struct radv_ray_tracing_pipeline;
-struct radv_pipeline_key;
 struct radv_shader_args;
 struct radv_vs_input_state;
 struct radv_shader_args;
@@ -171,7 +170,7 @@ struct radv_graphics_state_key {
    } ps;
 };
 
-struct radv_pipeline_key {
+struct radv_graphics_pipeline_key {
    struct radv_graphics_state_key gfx_state;
 
    struct radv_shader_stage_key stage_info[MESA_VULKAN_SHADER_STAGES];
