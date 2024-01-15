@@ -1651,7 +1651,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       return false;
    }
 
-   /* remaining initializion queries the kernel for device info */
+   /* remaining initialization queries the kernel for device info */
    if (devinfo->no_hw) {
       /* Provide some sensible values for NO_HW. */
       devinfo->gtt_size =
@@ -1714,7 +1714,7 @@ bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int
    default:
       ret = false;
    }
-   return ret || intel_device_info_compute_system_memory(devinfo, true);
+   return ret;
 }
 
 void

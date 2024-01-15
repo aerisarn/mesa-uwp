@@ -331,8 +331,13 @@ intel_device_info_i915_query_regions(struct intel_device_info *devinfo, int fd, 
 {
    struct drm_i915_query_memory_regions *meminfo =
       intel_i915_query_alloc(fd, DRM_I915_QUERY_MEMORY_REGIONS, NULL);
-   if (meminfo == NULL)
-      return false;
+
+   if (meminfo == NULL) {
+      /* If the memory region uAPI query is not available, try to generate some
+       * numbers out of os_* utils for sram only.
+       */
+      return intel_device_info_compute_system_memory(devinfo, false);
+   }
 
    for (int i = 0; i < meminfo->num_regions; i++) {
       const struct drm_i915_memory_region_info *mem = &meminfo->regions[i];
@@ -577,11 +582,7 @@ bool intel_device_info_i915_get_info_from_fd(int fd, struct intel_device_info *d
       getparam_topology(devinfo, fd);
    }
 
-   /* If the memory region uAPI query is not available, try to generate some
-    * numbers out of os_* utils for sram only.
-    */
-   if (!intel_device_info_i915_query_regions(devinfo, fd, false))
-      intel_device_info_compute_system_memory(devinfo, false);
+   intel_device_info_i915_query_regions(devinfo, fd, false);
 
    if (devinfo->platform == INTEL_PLATFORM_CHV)
       fixup_chv_device_info(devinfo);
