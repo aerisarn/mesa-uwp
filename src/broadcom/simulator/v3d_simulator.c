@@ -216,17 +216,15 @@ static struct v3d_simulator_bo *
 v3d_create_simulator_bo(int fd, unsigned size)
 {
         struct v3d_simulator_file *file = v3d_get_simulator_file_for_fd(fd);
-        struct v3d_simulator_bo *sim_bo = rzalloc(file,
-                                                  struct v3d_simulator_bo);
-        size = align(size, 4096);
-
-        sim_bo->file = file;
 
         simple_mtx_lock(&sim_state.mutex);
+        struct v3d_simulator_bo *sim_bo = rzalloc(file,
+                                                  struct v3d_simulator_bo);
         sim_bo->block = u_mmAllocMem(sim_state.heap, size + 4, GMP_ALIGN2, 0);
         simple_mtx_unlock(&sim_state.mutex);
         assert(sim_bo->block);
-
+        size = align(size, 4096);
+        sim_bo->file = file;
         set_gmp_flags(file, sim_bo->block->ofs, size, 0x3);
 
         sim_bo->size = size;
@@ -344,8 +342,8 @@ v3d_free_simulator_bo(struct v3d_simulator_bo *sim_bo)
                 _mesa_hash_table_remove_key(sim_file->bo_map,
                                             int_to_key(sim_bo->handle));
         }
-        simple_mtx_unlock(&sim_state.mutex);
         ralloc_free(sim_bo);
+        simple_mtx_unlock(&sim_state.mutex);
 }
 
 static struct v3d_simulator_bo *
@@ -1208,8 +1206,8 @@ v3d_simulator_destroy(struct v3d_simulator_file *sim_file)
                 /* No memsetting the struct, because it contains the mutex. */
                 sim_state.mem = NULL;
         }
-        simple_mtx_unlock(&sim_state.mutex);
         ralloc_free(sim_file);
+        simple_mtx_unlock(&sim_state.mutex);
 }
 
 #endif /* USE_V3D_SIMULATOR */
