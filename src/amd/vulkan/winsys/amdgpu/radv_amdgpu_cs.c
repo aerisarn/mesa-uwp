@@ -1767,7 +1767,16 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
          fprintf(stderr, "radv/amdgpu: Not enough memory for command submission.\n");
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
       } else if (r == -ECANCELED) {
-         fprintf(stderr, "radv/amdgpu: The CS has been cancelled because the context is lost.\n");
+         fprintf(stderr,
+                 "radv/amdgpu: The CS has been cancelled because the context is lost. This context is innocent.\n");
+         result = VK_ERROR_DEVICE_LOST;
+      } else if (r == -ENODATA) {
+         fprintf(stderr, "radv/amdgpu: The CS has been cancelled because the context is lost. This context is guilty "
+                         "of a soft recovery.\n");
+         result = VK_ERROR_DEVICE_LOST;
+      } else if (r == -ETIME) {
+         fprintf(stderr, "radv/amdgpu: The CS has been cancelled because the context is lost. This context is guilty "
+                         "of a hard recovery.\n");
          result = VK_ERROR_DEVICE_LOST;
       } else {
          fprintf(stderr,
