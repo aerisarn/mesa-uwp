@@ -154,7 +154,6 @@ pub extern "C" fn nak_compiler_create(
     let nak = Box::new(nak_compiler {
         sm: dev.sm,
         nir_options: nir_options(dev),
-        ..unsafe { std::mem::zeroed() }
     });
 
     Box::into_raw(nak)
@@ -199,7 +198,6 @@ impl ShaderBin {
             } else {
                 asm.as_ptr()
             },
-            ..unsafe { std::mem::zeroed() }
         };
         ShaderBin {
             bin: bin,
@@ -227,25 +225,6 @@ fn eprint_hex(label: &str, data: &[u32]) {
     }
     eprintln!("");
 }
-
-const _: () = {
-    assert!(
-        std::mem::size_of::<nak_shader_info__bindgen_ty_1>()
-            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
-    );
-    assert!(
-        std::mem::size_of::<nak_shader_info__bindgen_ty_1__bindgen_ty_1>()
-            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
-    );
-    assert!(
-        std::mem::size_of::<nak_shader_info__bindgen_ty_1__bindgen_ty_2>()
-            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
-    );
-    assert!(
-        std::mem::size_of::<nak_shader_info__bindgen_ty_1__bindgen_ty_2>()
-            == NAK_SHADER_INFO_STAGE_UNION_SIZE as usize
-    );
-};
 
 #[no_mangle]
 pub extern "C" fn nak_compile_shader(

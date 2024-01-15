@@ -79,9 +79,6 @@ struct nak_xfb_info {
    uint8_t attr_index[4][128];
 };
 
-/* This is an enum so bindgen will generate it */
-#define NAK_SHADER_INFO_STAGE_UNION_SIZE 12
-
 /* This struct MUST have explicit padding fields to ensure that all padding is
  * zeroed and the zeros get properly copied, even across API boundaries.  This
  * is ensured in two ways:
@@ -93,6 +90,8 @@ struct nak_xfb_info {
  *  - There is a set of const asserts in nak/api.rs which ensure that all of
  *    the union fields are equal to NAK_SHADER_INFO_STAGE_UNION_SIZE.
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wpadded"
 struct nak_shader_info {
    gl_shader_stage stage;
 
@@ -137,7 +136,7 @@ struct nak_shader_info {
       } ts;
 
       /* Used to initialize the union for other stages */
-      uint8_t _pad[NAK_SHADER_INFO_STAGE_UNION_SIZE];
+      uint8_t _pad[12];
    };
 
    struct {
@@ -153,6 +152,7 @@ struct nak_shader_info {
    /** Shader header for 3D stages */
    uint32_t hdr[32];
 };
+#pragma GCC diagnostic pop
 
 struct nak_shader_bin {
    struct nak_shader_info info;
