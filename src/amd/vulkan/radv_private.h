@@ -2318,11 +2318,6 @@ struct radv_graphics_pipeline_create_info {
    uint32_t custom_blend_mode;
 };
 
-struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_device *device,
-                                                    const VkPipelineShaderStageCreateInfo *stages,
-                                                    const unsigned num_stages, VkPipelineCreateFlags2KHR flags,
-                                                    const void *pNext);
-
 struct radv_shader_stage_key radv_pipeline_get_shader_key(const struct radv_device *device,
                                                           const VkPipelineShaderStageCreateInfo *stage,
                                                           VkPipelineCreateFlags2KHR flags, const void *pNext);

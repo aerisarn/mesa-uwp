@@ -212,21 +212,6 @@ radv_pipeline_get_shader_key(const struct radv_device *device, const VkPipelineS
    return key;
 }
 
-struct radv_pipeline_key
-radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineShaderStageCreateInfo *stages,
-                           const unsigned num_stages, VkPipelineCreateFlags2KHR flags, const void *pNext)
-{
-   struct radv_pipeline_key key = {0};
-
-   for (uint32_t i = 0; i < num_stages; i++) {
-      gl_shader_stage s = vk_to_mesa_shader_stage(stages[i].stage);
-
-      key.stage_info[s] = radv_pipeline_get_shader_key(device, &stages[i], flags, pNext);
-   }
-
-   return key;
-}
-
 void
 radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                          const struct radv_pipeline_layout *pipeline_layout,

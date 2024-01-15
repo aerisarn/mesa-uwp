@@ -1968,10 +1968,16 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
                                     const struct vk_graphics_pipeline_state *state,
                                     VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
-   struct radv_pipeline_key key = radv_generate_pipeline_key(device, pCreateInfo->pStages, pCreateInfo->stageCount,
-                                                             pipeline->base.create_flags, pCreateInfo->pNext);
+   struct radv_pipeline_key key = {0};
 
    key.gfx_state = radv_generate_graphics_state_key(device, pipeline, state, lib_flags);
+
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[i];
+      gl_shader_stage s = vk_to_mesa_shader_stage(stage->stage);
+
+      key.stage_info[s] = radv_pipeline_get_shader_key(device, stage, pipeline->base.create_flags, pCreateInfo->pNext);
+   }
 
    return key;
 }
