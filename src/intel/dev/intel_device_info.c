@@ -1454,21 +1454,29 @@ intel_get_device_info_from_pci_id(int pci_id,
 bool
 intel_device_info_compute_system_memory(struct intel_device_info *devinfo, bool update)
 {
-   uint64_t total_phys;
-   if (!os_get_total_physical_memory(&total_phys))
-      return false;
+   if (!update) {
+      if (!os_get_total_physical_memory(&devinfo->mem.sram.mappable.size))
+         return false;
+   }
 
-   uint64_t available = 0;
-   os_get_available_system_memory(&available);
-
-   if (!update)
-      devinfo->mem.sram.mappable.size = total_phys;
-   else
-      assert(devinfo->mem.sram.mappable.size == total_phys);
-
-   devinfo->mem.sram.mappable.free = available;
+   os_get_available_system_memory(&devinfo->mem.sram.mappable.free);
 
    return true;
+}
+
+static void
+intel_device_info_ajust_memory(struct intel_device_info *devinfo)
+{
+   uint64_t available;
+
+   /* Applications running without elevated privileges don't report valid
+    * numbers for free sram
+    */
+   if (os_get_available_system_memory(&available)) {
+      devinfo->mem.sram.mappable.free = MIN3(devinfo->mem.sram.mappable.free,
+                                             devinfo->mem.sram.mappable.size,
+                                             available);
+   }
 }
 
 static void
@@ -1683,6 +1691,8 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       return false;
    }
 
+   intel_device_info_ajust_memory(devinfo);
+
    /* Gfx7 and older do not support EU/Subslice info */
    assert(devinfo->subslice_total >= 1 || devinfo->ver <= 7);
    devinfo->subslice_total = MAX2(devinfo->subslice_total, 1);
@@ -1714,6 +1724,9 @@ bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int
    default:
       ret = false;
    }
+
+   if (ret)
+      intel_device_info_ajust_memory(devinfo);
    return ret;
 }
 

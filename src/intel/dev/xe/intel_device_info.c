@@ -99,6 +99,7 @@ intel_device_info_xe_query_regions(int fd, struct intel_device_info *devinfo,
             assert(devinfo->mem.sram.mem.instance == region->instance);
             assert(devinfo->mem.sram.mappable.size == region->total_size);
          }
+         /* if running without elevated privileges Xe reports used == 0 */
          devinfo->mem.sram.mappable.free = region->total_size - region->used;
          break;
       }
