@@ -174,7 +174,6 @@ struct radv_graphics_state_key {
 struct radv_pipeline_key {
    struct radv_graphics_state_key gfx_state;
 
-
    struct radv_shader_stage_key stage_info[MESA_VULKAN_SHADER_STAGES];
 };
 
