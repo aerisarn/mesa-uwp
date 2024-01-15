@@ -416,18 +416,6 @@ vk_video_session_parameters_finish(struct vk_device *device,
 }
 
 static VkResult
-update_sps(struct vk_video_session_parameters *params,
-           uint32_t count, const StdVideoH264SequenceParameterSet *adds)
-{
-    if (params->h264_dec.std_sps_count + count >= params->h264_dec.max_std_sps_count)
-      return VK_ERROR_TOO_MANY_OBJECTS;
-
-   typed_memcpy(&params->h264_dec.std_sps[params->h264_dec.std_sps_count], adds, count);
-   params->h264_dec.std_sps_count += count;
-   return VK_SUCCESS;
-}
-
-static VkResult
 update_h264_dec_session_parameters(struct vk_video_session_parameters *params,
                                    const struct VkVideoDecodeH264SessionParametersAddInfoKHR *h264_add)
 {
