@@ -2299,6 +2299,7 @@ radv_pipeline_retain_shaders(struct radv_retained_shaders *retained_shaders, str
                              &retained_shaders->stages[s].serialized_nir_size);
 
       memcpy(retained_shaders->stages[s].shader_sha1, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
+      memcpy(&retained_shaders->stages[s].key, &stages[s].key, sizeof(stages[s].key));
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
@@ -2306,7 +2307,6 @@ radv_pipeline_retain_shaders(struct radv_retained_shaders *retained_shaders, str
 
 static void
 radv_pipeline_import_retained_shaders(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                                      const struct radv_pipeline_key *pipeline_key,
                                       struct radv_graphics_lib_pipeline *lib, struct radv_shader_stage *stages)
 {
    struct radv_retained_shaders *retained_shaders = &lib->retained_shaders;
@@ -2320,7 +2320,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib->lib_flags))
          continue;
 
-      radv_pipeline_stage_init(sinfo, &lib->layout, &pipeline_key->stage_info[s], &stages[s]);
+      radv_pipeline_stage_init(sinfo, &lib->layout, &lib->stage_keys[s], &stages[s]);
    }
 
    /* Import the NIR shaders (after SPIRV->NIR). */
@@ -2339,8 +2339,8 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       stages[s].stage = s;
       stages[s].nir = nir_deserialize(NULL, options, &blob_reader);
       stages[s].entrypoint = nir_shader_get_entrypoint(stages[s].nir)->function->name;
-      stages[s].key = pipeline_key->stage_info[s];
       memcpy(stages[s].shader_sha1, retained_shaders->stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
+      memcpy(&stages[s].key, &retained_shaders->stages[s].key, sizeof(stages[s].key));
 
       radv_shader_layout_init(&lib->layout, s, &stages[s].layout);
 
@@ -2352,7 +2352,6 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
 
 static void
 radv_pipeline_load_retained_shaders(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                                    const struct radv_pipeline_key *pipeline_key,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo, struct radv_shader_stage *stages)
 {
    const VkPipelineLibraryCreateInfoKHR *libs_info =
@@ -2371,7 +2370,7 @@ radv_pipeline_load_retained_shaders(const struct radv_device *device, struct rad
       RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
       struct radv_graphics_lib_pipeline *gfx_pipeline_lib = radv_pipeline_to_graphics_lib(pipeline_lib);
 
-      radv_pipeline_import_retained_shaders(device, pipeline, pipeline_key, gfx_pipeline_lib, stages);
+      radv_pipeline_import_retained_shaders(device, pipeline, gfx_pipeline_lib, stages);
    }
 }
 
@@ -2643,7 +2642,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       radv_pipeline_stage_init(sinfo, pipeline_layout, &pipeline_key->stage_info[stage], &stages[stage]);
    }
 
-   radv_pipeline_load_retained_shaders(device, pipeline, pipeline_key, pCreateInfo, stages);
+   radv_pipeline_load_retained_shaders(device, pipeline, pCreateInfo, stages);
 
    if (radv_should_compute_pipeline_hash(device, pipeline, fast_linking_enabled)) {
       radv_hash_shaders(device, hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key);
@@ -2688,6 +2687,11 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
             return VK_ERROR_OUT_OF_HOST_MEMORY;
 
          gfx_pipeline_lib->stage_count = pCreateInfo->stageCount;
+
+         for (unsigned i = 0; i < pCreateInfo->stageCount; i++) {
+            gl_shader_stage s = vk_to_mesa_shader_stage(pCreateInfo->pStages[i].stage);
+            gfx_pipeline_lib->stage_keys[s] = pipeline_key->stage_info[s];
+         }
       }
 
       result = VK_SUCCESS;

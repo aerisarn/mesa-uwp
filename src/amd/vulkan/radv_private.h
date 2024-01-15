@@ -2203,6 +2203,7 @@ struct radv_retained_shaders {
       void *serialized_nir;
       size_t serialized_nir_size;
       unsigned char shader_sha1[SHA1_DIGEST_LENGTH];
+      struct radv_shader_stage_key key;
    } stages[MESA_VULKAN_SHADER_STAGES];
 };
 
@@ -2221,6 +2222,7 @@ struct radv_graphics_lib_pipeline {
 
    unsigned stage_count;
    VkPipelineShaderStageCreateInfo *stages;
+   struct radv_shader_stage_key stage_keys[MESA_VULKAN_SHADER_STAGES];
 };
 
 #define RADV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)                                                              \
