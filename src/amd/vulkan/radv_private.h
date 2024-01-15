@@ -1249,6 +1249,7 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_SHADER_QUERY = 1ull << 57,
    RADV_CMD_DIRTY_OCCLUSION_QUERY = 1ull << 58,
    RADV_CMD_DIRTY_DB_SHADER_CONTROL = 1ull << 59,
+   RADV_CMD_DIRTY_STREAMOUT_ENABLE = 1ull << 60,
 };
 
 enum radv_cmd_flush_bits {
@@ -1799,8 +1800,6 @@ struct radv_image;
 struct radv_image_view;
 
 bool radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer);
-
-void radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer);
 
 void radv_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs);
 void radv_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs);

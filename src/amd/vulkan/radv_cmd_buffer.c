@@ -8928,6 +8928,35 @@ radv_emit_db_shader_control(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_streamout_enable_state(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+   const bool streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
+   uint32_t enabled_stream_buffers_mask = 0;
+
+   if (streamout_enabled && cmd_buffer->state.last_vgt_shader) {
+      const struct radv_shader_info *info = &cmd_buffer->state.last_vgt_shader->info;
+
+      enabled_stream_buffers_mask = info->so.enabled_stream_buffers_mask;
+
+      if (!cmd_buffer->device->physical_device->use_ngg_streamout) {
+         u_foreach_bit (i, so->enabled_mask) {
+            radeon_set_context_reg(cmd_buffer->cs, R_028AD4_VGT_STRMOUT_VTX_STRIDE_0 + 16 * i, info->so.strides[i]);
+         }
+      }
+   }
+
+   radeon_set_context_reg_seq(cmd_buffer->cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
+   radeon_emit(cmd_buffer->cs, S_028B94_STREAMOUT_0_EN(streamout_enabled) | S_028B94_RAST_STREAM(0) |
+                                  S_028B94_STREAMOUT_1_EN(streamout_enabled) |
+                                  S_028B94_STREAMOUT_2_EN(streamout_enabled) |
+                                  S_028B94_STREAMOUT_3_EN(streamout_enabled));
+   radeon_emit(cmd_buffer->cs, so->hw_enabled_mask & enabled_stream_buffers_mask);
+
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_STREAMOUT_ENABLE;
+}
+
+static void
 radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info)
 {
    const struct radv_device *device = cmd_buffer->device;
@@ -9019,6 +9048,9 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (info->indexed && info->indirect && cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
       radv_emit_index_buffer(cmd_buffer);
+
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_STREAMOUT_ENABLE)
+      radv_emit_streamout_enable_state(cmd_buffer);
 
    const uint64_t dynamic_states =
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
@@ -10889,31 +10921,6 @@ radv_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer, uint32_t 
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
 }
 
-void
-radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
-{
-   struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-   bool streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint32_t enabled_stream_buffers_mask = 0;
-
-   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4);
-
-   if (cmd_buffer->state.last_vgt_shader) {
-      enabled_stream_buffers_mask = cmd_buffer->state.last_vgt_shader->info.so.enabled_stream_buffers_mask;
-   }
-
-   radeon_set_context_reg_seq(cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
-   radeon_emit(cs, S_028B94_STREAMOUT_0_EN(streamout_enabled) | S_028B94_RAST_STREAM(0) |
-                      S_028B94_STREAMOUT_1_EN(streamout_enabled) | S_028B94_STREAMOUT_2_EN(streamout_enabled) |
-                      S_028B94_STREAMOUT_3_EN(streamout_enabled));
-   radeon_emit(cs, so->hw_enabled_mask & enabled_stream_buffers_mask);
-
-   cmd_buffer->state.context_roll_without_scissor_emitted = true;
-
-   assert(cs->cdw <= cdw_max);
-}
-
 static void
 radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
 {
@@ -10929,7 +10936,7 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
    if (!cmd_buffer->device->physical_device->use_ngg_streamout &&
        ((old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) ||
         (old_hw_enabled_mask != so->hw_enabled_mask)))
-      radv_emit_streamout_enable(cmd_buffer);
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_ENABLE;
 
    if (cmd_buffer->device->physical_device->use_ngg_streamout) {
       /* Re-emit streamout desciptors because with NGG streamout, a buffer size of 0 acts like a
@@ -10985,7 +10992,6 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_streamout_binding *sb = cmd_buffer->streamout_bindings;
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-   struct radv_shader_info *info = &cmd_buffer->state.last_vgt_shader->info;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
    assert(firstCounterBuffer + counterBufferCount <= MAX_SO_BUFFERS);
@@ -11034,9 +11040,7 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
           * VGT only counts primitives and tells the shader through
           * SGPRs what to do.
           */
-         radeon_set_context_reg_seq(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 2);
-         radeon_emit(cs, sb[i].size >> 2);     /* BUFFER_SIZE (in DW) */
-         radeon_emit(cs, info->so.strides[i]); /* VTX_STRIDE (in DW) */
+         radeon_set_context_reg(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, sb[i].size >> 2);
 
          cmd_buffer->state.context_roll_without_scissor_emitted = true;
 
@@ -11064,6 +11068,8 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
    assert(cs->cdw <= cdw_max);
 
    radv_set_streamout_enable(cmd_buffer, true);
+
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

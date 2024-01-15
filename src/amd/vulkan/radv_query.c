@@ -2122,7 +2122,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
             cmd_buffer->state.active_prims_gen_queries++;
 
             if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
-               radv_emit_streamout_enable(cmd_buffer);
+               cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_ENABLE;
             }
          } else {
             cmd_buffer->state.active_prims_gen_queries++;
@@ -2313,7 +2313,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
             cmd_buffer->state.active_prims_gen_queries--;
 
             if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
-               radv_emit_streamout_enable(cmd_buffer);
+               cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_ENABLE;
             }
          } else {
             cmd_buffer->state.active_prims_gen_queries--;
