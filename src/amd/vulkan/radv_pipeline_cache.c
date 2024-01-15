@@ -47,14 +47,15 @@ radv_is_cache_disabled(struct radv_device *device)
 
 void
 radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const struct radv_shader_stage *stages,
-                  uint32_t stage_count, const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key)
+                  uint32_t stage_count, const struct radv_pipeline_layout *layout,
+                  const struct radv_graphics_state_key *gfx_state)
 {
    struct mesa_sha1 ctx;
 
    _mesa_sha1_init(&ctx);
    _mesa_sha1_update(&ctx, device->cache_hash, sizeof(device->cache_hash));
-   if (key)
-      _mesa_sha1_update(&ctx, key, sizeof(*key));
+   if (gfx_state)
+      _mesa_sha1_update(&ctx, gfx_state, sizeof(*gfx_state));
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
 

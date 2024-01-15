@@ -2645,7 +2645,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    radv_pipeline_load_retained_shaders(device, pipeline, pCreateInfo, stages);
 
    if (radv_should_compute_pipeline_hash(device, pipeline, fast_linking_enabled)) {
-      radv_hash_shaders(device, hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key);
+      radv_hash_shaders(device, hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, &pipeline_key->gfx_state);
 
       pipeline->base.pipeline_hash = *(uint64_t *)hash;
    }

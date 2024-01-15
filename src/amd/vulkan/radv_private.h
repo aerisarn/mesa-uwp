@@ -2006,7 +2006,6 @@ struct radv_event {
    uint64_t *map;
 };
 
-struct radv_pipeline_key;
 struct radv_ray_tracing_group;
 
 void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, const struct radv_pipeline_layout *layout,
@@ -2014,7 +2013,7 @@ void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, cons
 
 void radv_hash_shaders(const struct radv_device *device, unsigned char *hash, const struct radv_shader_stage *stages,
                        uint32_t stage_count, const struct radv_pipeline_layout *layout,
-                       const struct radv_pipeline_key *key);
+                       const struct radv_graphics_state_key *gfx_state);
 
 struct radv_ray_tracing_stage;
 void radv_hash_rt_shaders(const struct radv_device *device, unsigned char *hash,
