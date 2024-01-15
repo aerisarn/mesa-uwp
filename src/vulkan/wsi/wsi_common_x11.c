@@ -2276,7 +2276,6 @@ static void
 wsi_x11_get_dri3_modifiers(struct wsi_x11_connection *wsi_conn,
                            xcb_connection_t *conn, xcb_window_t window,
                            uint8_t depth, uint8_t bpp,
-                           VkCompositeAlphaFlagsKHR vk_alpha,
                            uint64_t **modifiers_in, uint32_t *num_modifiers_in,
                            uint32_t *num_tranches_in,
                            const VkAllocationCallbacks *pAllocator)
@@ -2698,7 +2697,6 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       };
       if (wsi_device->supports_modifiers) {
          wsi_x11_get_dri3_modifiers(wsi_conn, conn, window, bit_depth, 32,
-                                    pCreateInfo->compositeAlpha,
                                     modifiers, num_modifiers,
                                     &drm_image_params.num_modifier_lists,
                                     pAllocator);
