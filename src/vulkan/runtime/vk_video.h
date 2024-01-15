@@ -59,49 +59,49 @@ struct vk_video_session_parameters {
    VkVideoCodecOperationFlagsKHR op;
    union {
       struct {
-         uint32_t max_std_sps_count;
-         uint32_t max_std_pps_count;
+         uint32_t max_h264_sps_count;
+         uint32_t max_h264_pps_count;
 
-         uint32_t std_sps_count;
-         StdVideoH264SequenceParameterSet *std_sps;
-         uint32_t std_pps_count;
-         StdVideoH264PictureParameterSet *std_pps;
+         uint32_t h264_sps_count;
+         StdVideoH264SequenceParameterSet *h264_sps;
+         uint32_t h264_pps_count;
+         StdVideoH264PictureParameterSet *h264_pps;
       } h264_dec;
 
       struct {
-         uint32_t max_std_vps_count;
-         uint32_t max_std_sps_count;
-         uint32_t max_std_pps_count;
+         uint32_t max_h265_vps_count;
+         uint32_t max_h265_sps_count;
+         uint32_t max_h265_pps_count;
 
-         uint32_t std_vps_count;
-         StdVideoH265VideoParameterSet *std_vps;
-         uint32_t std_sps_count;
-         StdVideoH265SequenceParameterSet *std_sps;
-         uint32_t std_pps_count;
-         StdVideoH265PictureParameterSet *std_pps;
+         uint32_t h265_vps_count;
+         StdVideoH265VideoParameterSet *h265_vps;
+         uint32_t h265_sps_count;
+         StdVideoH265SequenceParameterSet *h265_sps;
+         uint32_t h265_pps_count;
+         StdVideoH265PictureParameterSet *h265_pps;
       } h265_dec;
 
       struct {
-         uint32_t max_std_sps_count;
-         uint32_t max_std_pps_count;
+         uint32_t max_h264_sps_count;
+         uint32_t max_h264_pps_count;
 
-         uint32_t std_sps_count;
-         StdVideoH264SequenceParameterSet *std_sps;
-         uint32_t std_pps_count;
-         StdVideoH264PictureParameterSet *std_pps;
+         uint32_t h264_sps_count;
+         StdVideoH264SequenceParameterSet *h264_sps;
+         uint32_t h264_pps_count;
+         StdVideoH264PictureParameterSet *h264_pps;
       } h264_enc;
 
       struct {
-         uint32_t max_std_vps_count;
-         uint32_t max_std_sps_count;
-         uint32_t max_std_pps_count;
+         uint32_t max_h265_vps_count;
+         uint32_t max_h265_sps_count;
+         uint32_t max_h265_pps_count;
 
-         uint32_t std_vps_count;
-         StdVideoH265VideoParameterSet *std_vps;
-         uint32_t std_sps_count;
-         StdVideoH265SequenceParameterSet *std_sps;
-         uint32_t std_pps_count;
-         StdVideoH265PictureParameterSet *std_pps;
+         uint32_t h265_vps_count;
+         StdVideoH265VideoParameterSet *h265_vps;
+         uint32_t h265_sps_count;
+         StdVideoH265SequenceParameterSet *h265_sps;
+         uint32_t h265_pps_count;
+         StdVideoH265PictureParameterSet *h265_pps;
       } h265_enc;
    };
 };

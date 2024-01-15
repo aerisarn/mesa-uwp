@@ -785,7 +785,7 @@ get_h264_msg(struct radv_video_session *vid, struct radv_video_session_params *p
 
    memset(&result, 0, sizeof(result));
 
-   assert(params->vk.h264_dec.std_sps_count > 0);
+   assert(params->vk.h264_dec.h264_sps_count > 0);
    const StdVideoH264SequenceParameterSet *sps =
       vk_video_find_h264_dec_std_sps(&params->vk, h264_pic_info->pStdPictureInfo->seq_parameter_set_id);
    switch (sps->profile_idc) {
