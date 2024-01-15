@@ -599,6 +599,7 @@ impl<'a> ShaderFromNir<'a> {
                         self.float_ctl[dst_type].ftz
                     },
                     high: false,
+                    integer_rnd: false,
                 });
                 dst
             }
@@ -679,14 +680,28 @@ impl<'a> ShaderFromNir<'a> {
                     nir_op_fround_even => FRndMode::NearestEven,
                     _ => unreachable!(),
                 };
-                b.push_op(OpFRnd {
-                    dst: dst.into(),
-                    src: srcs[0],
-                    src_type: ty,
-                    dst_type: ty,
-                    rnd_mode,
-                    ftz: self.float_ctl[ty].ftz,
-                });
+                let ftz = self.float_ctl[ty].ftz;
+                if b.sm() >= 70 {
+                    b.push_op(OpFRnd {
+                        dst: dst.into(),
+                        src: srcs[0],
+                        src_type: ty,
+                        dst_type: ty,
+                        rnd_mode,
+                        ftz,
+                    });
+                } else {
+                    b.push_op(OpF2F {
+                        dst: dst.into(),
+                        src: srcs[0],
+                        src_type: ty,
+                        dst_type: ty,
+                        rnd_mode,
+                        ftz,
+                        integer_rnd: true,
+                        high: false,
+                    });
+                }
                 dst
             }
             nir_op_fcos => {
@@ -856,6 +871,7 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                     ftz: true,
                     high: false,
+                    integer_rnd: false,
                 });
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -867,6 +883,7 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                     ftz: true,
                     high: false,
+                    integer_rnd: false,
                 });
                 dst
             }
@@ -1172,6 +1189,7 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                     ftz: false,
                     high: false,
+                    integer_rnd: false,
                 });
 
                 let src_bits = usize::from(alu.get_src(1).bit_size());
@@ -1185,6 +1203,7 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                     ftz: false,
                     high: false,
+                    integer_rnd: false,
                 });
 
                 b.prmt(low.into(), high.into(), [0, 1, 4, 5])
@@ -1319,6 +1338,7 @@ impl<'a> ShaderFromNir<'a> {
                     rnd_mode: FRndMode::NearestEven,
                     ftz: false,
                     high: alu.op == nir_op_unpack_half_2x16_split_y,
+                    integer_rnd: false,
                 });
 
                 dst

@@ -722,24 +722,10 @@ impl SM50Instr {
         self.set_field(8..10, (op.dst_type.bits() / 8).ilog2());
         self.set_field(10..12, (op.src_type.bits() / 8).ilog2());
         self.set_rnd_mode(39..41, op.rnd_mode);
-        self.set_field(41..43, 0_u8); // TODO: subop
+        self.set_bit(42, op.integer_rnd);
         self.set_bit(44, op.ftz);
 
         self.set_dst(op.dst);
-    }
-
-    fn encode_frnd(&mut self, op: &OpFRnd) {
-        // FRND doesn't exist on SM50, remap it to F2F.
-
-        self.encode_f2f(&OpF2F {
-            dst: op.dst,
-            src: op.src,
-            src_type: op.src_type,
-            dst_type: op.dst_type,
-            rnd_mode: op.rnd_mode,
-            ftz: op.ftz,
-            high: false,
-        });
     }
 
     fn encode_imad(&mut self, op: &OpIMad) {
@@ -1918,7 +1904,6 @@ impl SM50Instr {
             Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),
-            Op::FRnd(op) => si.encode_frnd(&op),
             Op::IMad(op) => si.encode_imad(&op),
             Op::IMul(op) => si.encode_imul(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),

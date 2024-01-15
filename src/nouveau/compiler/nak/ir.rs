@@ -3047,6 +3047,10 @@ pub struct OpF2F {
     pub ftz: bool,
     /// Place the result into the upper 16 bits of the destination register
     pub high: bool,
+    /// Round to the nearest integer rather than nearest float
+    ///
+    /// Not available on SM70+
+    pub integer_rnd: bool,
 }
 
 impl SrcsAsSlice for OpF2F {
@@ -3073,6 +3077,9 @@ impl DisplayOp for OpF2F {
         write!(f, "f2f")?;
         if self.ftz {
             write!(f, ".ftz")?;
+        }
+        if self.integer_rnd {
+            write!(f, ".int")?;
         }
         write!(
             f,

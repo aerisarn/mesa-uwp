@@ -880,6 +880,7 @@ impl SM70Instr {
     }
 
     fn encode_f2f(&mut self, op: &OpF2F) {
+        assert!(!op.integer_rnd);
         if op.src_type.bits() <= 32 && op.dst_type.bits() <= 32 {
             self.encode_alu(
                 0x104,
