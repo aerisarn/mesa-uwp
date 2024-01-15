@@ -93,11 +93,147 @@ vk_video_session_init(struct vk_device *device,
    return VK_SUCCESS;
 }
 
+static void
+vk_video_deep_copy_h264_sps(struct vk_video_h264_sps *dst,
+                            const StdVideoH264SequenceParameterSet *src)
+{
+   memcpy(&dst->base, src, sizeof(StdVideoH264SequenceParameterSet));
+   if (src->num_ref_frames_in_pic_order_cnt_cycle && src->pOffsetForRefFrame) {
+      memcpy(dst->offsets_for_ref_frame, src->pOffsetForRefFrame, sizeof(int32_t) * src->num_ref_frames_in_pic_order_cnt_cycle);
+      dst->base.pOffsetForRefFrame = dst->offsets_for_ref_frame;
+   }
+   if (src->flags.seq_scaling_matrix_present_flag && src->pScalingLists) {
+      memcpy(&dst->scaling_lists, src->pScalingLists, sizeof(StdVideoH264ScalingLists));
+      dst->base.pScalingLists = &dst->scaling_lists;
+   }
+   if (src->flags.vui_parameters_present_flag && src->pSequenceParameterSetVui) {
+      memcpy(&dst->vui, src->pSequenceParameterSetVui, sizeof(StdVideoH264SequenceParameterSetVui));
+      dst->base.pSequenceParameterSetVui = &dst->vui;
+
+      if (src->pSequenceParameterSetVui->pHrdParameters) {
+         memcpy(&dst->vui_hrd_parameters, src->pSequenceParameterSetVui->pHrdParameters,
+                sizeof(StdVideoH264HrdParameters));
+         dst->vui.pHrdParameters = &dst->vui_hrd_parameters;
+      }
+   }
+}
+
+static void
+vk_video_deep_copy_h264_pps(struct vk_video_h264_pps *dst,
+                            const StdVideoH264PictureParameterSet *src)
+{
+   memcpy(&dst->base, src, sizeof(StdVideoH264PictureParameterSet));
+   if (src->flags.pic_scaling_matrix_present_flag && src->pScalingLists) {
+      memcpy(&dst->scaling_lists, src->pScalingLists, sizeof(StdVideoH264ScalingLists));
+      dst->base.pScalingLists = &dst->scaling_lists;
+   }
+}
+
+static void
+vk_video_deep_copy_h265_vps(struct vk_video_h265_vps *dst,
+                            const StdVideoH265VideoParameterSet *src)
+{
+   memcpy(&dst->base, src, sizeof(StdVideoH265VideoParameterSet));
+   if (src->pDecPicBufMgr) {
+      memcpy(&dst->dec_pic_buf_mgr, src->pDecPicBufMgr, sizeof(StdVideoH265DecPicBufMgr));
+      dst->base.pDecPicBufMgr = &dst->dec_pic_buf_mgr;
+   }
+   if (src->pHrdParameters) {
+      memcpy(&dst->hrd_parameters, src->pHrdParameters, sizeof(StdVideoH265HrdParameters));
+      dst->base.pHrdParameters = &dst->hrd_parameters;
+      if (src->pHrdParameters->pSubLayerHrdParametersNal) {
+         memcpy(&dst->hrd_parameters_nal, src->pHrdParameters->pSubLayerHrdParametersNal,
+                sizeof(StdVideoH265SubLayerHrdParameters));
+         dst->hrd_parameters.pSubLayerHrdParametersNal = &dst->hrd_parameters_nal;
+      }
+      if (src->pHrdParameters->pSubLayerHrdParametersVcl) {
+         memcpy(&dst->hrd_parameters_vcl, src->pHrdParameters->pSubLayerHrdParametersVcl,
+                sizeof(StdVideoH265SubLayerHrdParameters));
+         dst->hrd_parameters.pSubLayerHrdParametersVcl = &dst->hrd_parameters_vcl;
+      }
+   }
+
+   if (src->pProfileTierLevel) {
+      memcpy(&dst->tier_level, src->pProfileTierLevel, sizeof(StdVideoH265ProfileTierLevel));
+      dst->base.pProfileTierLevel = &dst->tier_level;
+   }
+}
+
+static void
+vk_video_deep_copy_h265_sps(struct vk_video_h265_sps *dst,
+                            const StdVideoH265SequenceParameterSet *src)
+{
+   memcpy(&dst->base, src, sizeof(StdVideoH265SequenceParameterSet));
+   if (src->pProfileTierLevel) {
+      memcpy(&dst->tier_level, src->pProfileTierLevel, sizeof(StdVideoH265ProfileTierLevel));
+      dst->base.pProfileTierLevel = &dst->tier_level;
+   }
+   if (src->pDecPicBufMgr) {
+      memcpy(&dst->dec_pic_buf_mgr, src->pDecPicBufMgr, sizeof(StdVideoH265DecPicBufMgr));
+      dst->base.pDecPicBufMgr = &dst->dec_pic_buf_mgr;
+   }
+   if (src->flags.sps_scaling_list_data_present_flag && src->pScalingLists) {
+      memcpy(&dst->scaling_lists, src->pScalingLists, sizeof(StdVideoH265ScalingLists));
+      dst->base.pScalingLists = &dst->scaling_lists;
+   }
+
+   if (src->pShortTermRefPicSet) {
+      memcpy(&dst->short_term_ref_pic_set, src->pShortTermRefPicSet, sizeof(StdVideoH265ShortTermRefPicSet));
+      dst->base.pShortTermRefPicSet = &dst->short_term_ref_pic_set;
+   }
+
+   if (src->pLongTermRefPicsSps) {
+      memcpy(&dst->long_term_ref_pics_sps, src->pLongTermRefPicsSps, sizeof(StdVideoH265LongTermRefPicsSps));
+      dst->base.pLongTermRefPicsSps = &dst->long_term_ref_pics_sps;
+   }
+
+   if (src->pSequenceParameterSetVui) {
+      memcpy(&dst->vui, src->pSequenceParameterSetVui, sizeof(StdVideoH265SequenceParameterSetVui));
+      dst->base.pSequenceParameterSetVui = &dst->vui;
+
+      if (src->pSequenceParameterSetVui->pHrdParameters) {
+         memcpy(&dst->hrd_parameters, src->pSequenceParameterSetVui->pHrdParameters, sizeof(StdVideoH265HrdParameters));
+         dst->vui.pHrdParameters = &dst->hrd_parameters;
+         if (src->pSequenceParameterSetVui->pHrdParameters->pSubLayerHrdParametersNal) {
+            memcpy(&dst->hrd_parameters_nal, src->pSequenceParameterSetVui->pHrdParameters->pSubLayerHrdParametersNal,
+                   sizeof(StdVideoH265SubLayerHrdParameters));
+            dst->hrd_parameters.pSubLayerHrdParametersNal = &dst->hrd_parameters_nal;
+         }
+         if (src->pSequenceParameterSetVui->pHrdParameters->pSubLayerHrdParametersVcl) {
+            memcpy(&dst->hrd_parameters_vcl, src->pSequenceParameterSetVui->pHrdParameters->pSubLayerHrdParametersVcl,
+                   sizeof(StdVideoH265SubLayerHrdParameters));
+            dst->hrd_parameters.pSubLayerHrdParametersVcl = &dst->hrd_parameters_vcl;
+         }
+      }
+   }
+   if (src->flags.sps_palette_predictor_initializers_present_flag && src->pPredictorPaletteEntries) {
+      memcpy(&dst->palette_entries, src->pPredictorPaletteEntries, sizeof(StdVideoH265PredictorPaletteEntries));
+      dst->base.pPredictorPaletteEntries = &dst->palette_entries;
+   }
+}
+
+static void
+vk_video_deep_copy_h265_pps(struct vk_video_h265_pps *dst,
+                            const StdVideoH265PictureParameterSet *src)
+{
+   memcpy(&dst->base, src, sizeof(StdVideoH265PictureParameterSet));
+   if (src->flags.pps_scaling_list_data_present_flag && src->pScalingLists) {
+      memcpy(&dst->scaling_lists, src->pScalingLists, sizeof(StdVideoH265ScalingLists));
+      dst->base.pScalingLists = &dst->scaling_lists;
+   }
+
+   if (src->flags.pps_palette_predictor_initializers_present_flag && src->pPredictorPaletteEntries) {
+      memcpy(&dst->palette_entries, src->pPredictorPaletteEntries, sizeof(StdVideoH265PredictorPaletteEntries));
+      dst->base.pPredictorPaletteEntries = &dst->palette_entries;
+   }
+}
+
+
 #define FIND(PARAMSET, SS, SET, ID)                                     \
    static struct vk_video_##SET *find_##SS##_##SET(const struct vk_video_session_parameters *params, uint32_t id) { \
       for (unsigned i = 0; i < params->SS.SET##_count; i++) {           \
          if (params->SS.SET[i].base.ID == id)                           \
-            return &params->SS.SET[i];                             \
+            return &params->SS.SET[i];                                  \
       }                                                                 \
       return NULL;                                                      \
    }                                                                    \
@@ -106,18 +242,19 @@ vk_video_session_init(struct vk_device *device,
                                 const PARAMSET *new_set, bool noreplace) {  \
       struct vk_video_##SET *set = find_##SS##_##SET(params, new_set->ID);           \
       if (set) {                                                        \
-	 if (noreplace)                                                 \
+         if (noreplace)                                                 \
             return;                                                     \
-         set->base = *new_set;                                          \
+         vk_video_deep_copy_##SET(set, new_set);                        \
       } else                                                            \
-         params->SS.SET[params->SS.SET##_count++].base = *new_set;      \
+         vk_video_deep_copy_##SET(&params->SS.SET[params->SS.SET##_count++], new_set); \
    }                                                                    \
                                                                         \
    static VkResult update_##SS##_##SET(struct vk_video_session_parameters *params, \
                                        uint32_t count, const PARAMSET *updates) { \
       if (params->SS.SET##_count + count >= params->SS.max_##SET##_count) \
          return VK_ERROR_TOO_MANY_OBJECTS;                              \
-      typed_memcpy(&params->SS.SET[params->SS.SET##_count].base, updates, count); \
+      for (unsigned _c = 0; _c < count; _c++)                           \
+         vk_video_deep_copy_##SET(&params->SS.SET[params->SS.SET##_count + _c], &updates[_c]); \
       params->SS.SET##_count += count;                                  \
       return VK_SUCCESS;                                                \
    }

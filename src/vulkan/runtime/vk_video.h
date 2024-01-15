@@ -31,22 +31,44 @@ extern "C" {
 
 struct vk_video_h264_sps {
    StdVideoH264SequenceParameterSet base;
+   int32_t offsets_for_ref_frame[256];
+   StdVideoH264ScalingLists scaling_lists;
+   StdVideoH264SequenceParameterSetVui vui;
+   StdVideoH264HrdParameters vui_hrd_parameters;
 };
 
 struct vk_video_h264_pps {
    StdVideoH264PictureParameterSet base;
+   StdVideoH264ScalingLists scaling_lists;
 };
 
 struct vk_video_h265_vps {
    StdVideoH265VideoParameterSet base;
+   StdVideoH265DecPicBufMgr dec_pic_buf_mgr;
+   StdVideoH265SubLayerHrdParameters hrd_parameters_nal;
+   StdVideoH265SubLayerHrdParameters hrd_parameters_vcl;
+   StdVideoH265HrdParameters hrd_parameters;
+   StdVideoH265ProfileTierLevel tier_level;
 };
 
 struct vk_video_h265_sps {
    StdVideoH265SequenceParameterSet base;
+   StdVideoH265ProfileTierLevel tier_level;
+   StdVideoH265DecPicBufMgr dec_pic_buf_mgr;
+   StdVideoH265ScalingLists scaling_lists;
+   StdVideoH265ShortTermRefPicSet short_term_ref_pic_set;
+   StdVideoH265LongTermRefPicsSps long_term_ref_pics_sps;
+   StdVideoH265SubLayerHrdParameters hrd_parameters_nal;
+   StdVideoH265SubLayerHrdParameters hrd_parameters_vcl;
+   StdVideoH265HrdParameters hrd_parameters;
+   StdVideoH265SequenceParameterSetVui vui;
+   StdVideoH265PredictorPaletteEntries palette_entries;
 };
 
 struct vk_video_h265_pps {
    StdVideoH265PictureParameterSet base;
+   StdVideoH265ScalingLists scaling_lists;
+   StdVideoH265PredictorPaletteEntries palette_entries;
 };
 
 struct vk_video_session {
