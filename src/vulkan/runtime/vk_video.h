@@ -29,6 +29,26 @@
 extern "C" {
 #endif
 
+struct vk_video_h264_sps {
+   StdVideoH264SequenceParameterSet base;
+};
+
+struct vk_video_h264_pps {
+   StdVideoH264PictureParameterSet base;
+};
+
+struct vk_video_h265_vps {
+   StdVideoH265VideoParameterSet base;
+};
+
+struct vk_video_h265_sps {
+   StdVideoH265SequenceParameterSet base;
+};
+
+struct vk_video_h265_pps {
+   StdVideoH265PictureParameterSet base;
+};
+
 struct vk_video_session {
    struct vk_object_base base;
    VkVideoSessionCreateFlagsKHR flags;
@@ -63,9 +83,9 @@ struct vk_video_session_parameters {
          uint32_t max_h264_pps_count;
 
          uint32_t h264_sps_count;
-         StdVideoH264SequenceParameterSet *h264_sps;
+         struct vk_video_h264_sps *h264_sps;
          uint32_t h264_pps_count;
-         StdVideoH264PictureParameterSet *h264_pps;
+         struct vk_video_h264_pps *h264_pps;
       } h264_dec;
 
       struct {
@@ -74,11 +94,11 @@ struct vk_video_session_parameters {
          uint32_t max_h265_pps_count;
 
          uint32_t h265_vps_count;
-         StdVideoH265VideoParameterSet *h265_vps;
+         struct vk_video_h265_vps *h265_vps;
          uint32_t h265_sps_count;
-         StdVideoH265SequenceParameterSet *h265_sps;
+         struct vk_video_h265_sps *h265_sps;
          uint32_t h265_pps_count;
-         StdVideoH265PictureParameterSet *h265_pps;
+         struct vk_video_h265_pps *h265_pps;
       } h265_dec;
 
       struct {
@@ -86,9 +106,9 @@ struct vk_video_session_parameters {
          uint32_t max_h264_pps_count;
 
          uint32_t h264_sps_count;
-         StdVideoH264SequenceParameterSet *h264_sps;
+         struct vk_video_h264_sps *h264_sps;
          uint32_t h264_pps_count;
-         StdVideoH264PictureParameterSet *h264_pps;
+         struct vk_video_h264_pps *h264_pps;
       } h264_enc;
 
       struct {
@@ -97,11 +117,11 @@ struct vk_video_session_parameters {
          uint32_t max_h265_pps_count;
 
          uint32_t h265_vps_count;
-         StdVideoH265VideoParameterSet *h265_vps;
+         struct vk_video_h265_vps *h265_vps;
          uint32_t h265_sps_count;
-         StdVideoH265SequenceParameterSet *h265_sps;
+         struct vk_video_h265_sps *h265_sps;
          uint32_t h265_pps_count;
-         StdVideoH265PictureParameterSet *h265_pps;
+         struct vk_video_h265_pps *h265_pps;
       } h265_enc;
    };
 };
