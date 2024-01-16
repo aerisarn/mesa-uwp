@@ -1073,7 +1073,9 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
    nir->info.has_transform_feedback_varyings = prev_stage->info.has_transform_feedback_varyings;
    memcpy(nir->info.xfb_stride, prev_stage->info.xfb_stride, sizeof(prev_stage->info.xfb_stride));
    if (prev_stage->xfb_info) {
-      nir->xfb_info = mem_dup(prev_stage->xfb_info, nir_xfb_info_size(prev_stage->xfb_info->output_count));
+      size_t size = nir_xfb_info_size(prev_stage->xfb_info->output_count);
+      nir->xfb_info = ralloc_size(nir, size);
+      memcpy(nir->xfb_info, prev_stage->xfb_info, size);
    }
 
    nir_variable *in_vars[VARYING_SLOT_MAX];
