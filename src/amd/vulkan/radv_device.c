@@ -83,8 +83,6 @@ typedef void *drmDevicePtr;
 #include "ac_llvm_util.h"
 #endif
 
-#include "ac_debug.h"
-
 static bool
 radv_spm_trace_enabled(struct radv_instance *instance)
 {
@@ -619,49 +617,6 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    add_entrypoints(&b, &vk_common_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
 }
 
-static void
-radv_report_gpuvm_fault(struct radv_device *device)
-{
-   struct radv_winsys_gpuvm_fault_info fault_info = {0};
-
-   if (!radv_vm_fault_occurred(device, &fault_info))
-      return;
-
-   fprintf(stderr, "radv: GPUVM fault detected at address 0x%08" PRIx64 ".\n", fault_info.addr);
-   ac_print_gpuvm_fault_status(stderr, device->physical_device->rad_info.gfx_level, fault_info.status);
-}
-
-static VkResult
-radv_check_status(struct vk_device *vk_device)
-{
-   struct radv_device *device = container_of(vk_device, struct radv_device, vk);
-   enum radv_reset_status status;
-   bool context_reset = false;
-
-   /* If an INNOCENT_CONTEXT_RESET is found in one of the contexts, we need to
-    * keep querying in case there's a guilty one, so we can correctly log if the
-    * hung happened in this app or not */
-   for (int i = 0; i < RADV_NUM_HW_CTX; i++) {
-      if (device->hw_ctx[i]) {
-         status = device->ws->ctx_query_reset_status(device->hw_ctx[i]);
-
-         if (status == RADV_GUILTY_CONTEXT_RESET) {
-            radv_report_gpuvm_fault(device);
-            return vk_device_set_lost(&device->vk, "GPU hung detected in this process");
-         } else if (status == RADV_INNOCENT_CONTEXT_RESET) {
-            context_reset = true;
-         }
-      }
-   }
-
-   if (context_reset) {
-      radv_report_gpuvm_fault(device);
-      return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
-   }
-
-   return VK_SUCCESS;
-}
-
 static VkResult
 capture_trace(VkQueue _queue)
 {
@@ -907,7 +862,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->vk.capture_trace = capture_trace;
 
    device->vk.command_buffer_ops = &radv_cmd_buffer_ops;
-   device->vk.check_status = radv_check_status;
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;

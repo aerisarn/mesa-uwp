@@ -31,6 +31,8 @@
 #include "vk_semaphore.h"
 #include "vk_sync.h"
 
+#include "ac_debug.h"
+
 enum radeon_ctx_priority
 radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *pObj)
 {
@@ -1687,6 +1689,18 @@ fail:
    return result;
 }
 
+static void
+radv_report_gpuvm_fault(struct radv_device *device)
+{
+   struct radv_winsys_gpuvm_fault_info fault_info = {0};
+
+   if (!radv_vm_fault_occurred(device, &fault_info))
+      return;
+
+   fprintf(stderr, "radv: GPUVM fault detected at address 0x%08" PRIx64 ".\n", fault_info.addr);
+   ac_print_gpuvm_fault_status(stderr, device->physical_device->rad_info.gfx_level, fault_info.status);
+}
+
 static VkResult
 radv_queue_sparse_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
 {
@@ -1722,6 +1736,7 @@ fail:
        * VK_ERROR_DEVICE_LOST to ensure the clients do not attempt
        * to submit the same job again to this device.
        */
+      radv_report_gpuvm_fault(queue->device);
       result = vk_device_set_lost(&queue->device->vk, "vkQueueSubmit() failed");
    }
    return result;
@@ -1759,6 +1774,7 @@ fail:
        * VK_ERROR_DEVICE_LOST to ensure the clients do not attempt
        * to submit the same job again to this device.
        */
+      radv_report_gpuvm_fault(queue->device);
       result = vk_device_set_lost(&queue->device->vk, "vkQueueSubmit() failed");
    }
    return result;
