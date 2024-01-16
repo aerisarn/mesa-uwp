@@ -1618,9 +1618,22 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
 cleanup:
    if (unlikely(r)) {
-      amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx,
-                                     PIPE_GUILTY_CONTEXT_RESET,
-                                     "amdgpu: The CS has been rejected (%i).\n", r);
+      if (r == -ECANCELED) {
+         amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx, PIPE_INNOCENT_CONTEXT_RESET,
+                                       "amdgpu: The CS has cancelled because the context is lost. This context is innocent.\n");
+      } else if (r == -ENODATA) {
+         amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx, PIPE_GUILTY_CONTEXT_RESET,
+                                       "amdgpu: The CS has cancelled because the context is lost. This context is guilty of a soft recovery.\n");
+      } else if (r == -ETIME) {
+         amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx, PIPE_GUILTY_CONTEXT_RESET,
+                                       "amdgpu: The CS has cancelled because the context is lost. This context is guilty of a hard recovery.\n");
+      } else {
+         amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx,
+                                       PIPE_UNKNOWN_CONTEXT_RESET,
+                                       "amdgpu: The CS has been rejected, "
+                                       "see dmesg for more information (%i).\n",
+                                       r);
+      }
    }
 
    /* If there was an error, signal the fence, because it won't be signalled
