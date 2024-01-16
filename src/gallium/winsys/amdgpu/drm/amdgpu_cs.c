@@ -483,7 +483,6 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
                               bool *needs_reset, bool *reset_completed)
 {
    struct amdgpu_ctx *ctx = (struct amdgpu_ctx*)rwctx;
-   int r;
 
    if (needs_reset)
       *needs_reset = false;
@@ -500,46 +499,45 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
       return PIPE_NO_RESET;
    }
 
-   r = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", r);
-      return PIPE_NO_RESET;
-   }
+   /*
+    * ctx->sw_status is updated on alloc/ioctl failures.
+    *
+    * We only rely on amdgpu_cs_query_reset_state2 to tell us
+    * that the context reset is complete.
+    */
+   if (ctx->sw_status != PIPE_NO_RESET) {
+      int r = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
+      if (!r) {
+         if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
+            if (reset_completed) {
+               /* The ARB_robustness spec says:
+               *
+               *    If a reset status other than NO_ERROR is returned and subsequent
+               *    calls return NO_ERROR, the context reset was encountered and
+               *    completed. If a reset status is repeatedly returned, the context may
+               *    be in the process of resetting.
+               *
+               * Starting with drm_minor >= 54 amdgpu reports if the reset is complete,
+               * so don't do anything special. On older kernels, submit a no-op cs. If it
+               * succeeds then assume the reset is complete.
+               */
+               if (!(flags & AMDGPU_CTX_QUERY2_FLAGS_RESET_IN_PROGRESS))
+                  *reset_completed = true;
 
-   if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
-      if (reset_completed) {
-         /* The ARB_robustness spec says:
-          *
-          *    If a reset status other than NO_ERROR is returned and subsequent
-          *    calls return NO_ERROR, the context reset was encountered and
-          *    completed. If a reset status is repeatedly returned, the context may
-          *    be in the process of resetting.
-          *
-          * Starting with drm_minor >= 54 amdgpu reports if the reset is complete,
-          * so don't do anything special. On older kernels, submit a no-op cs. If it
-          * succeeds then assume the reset is complete.
-          */
-         if (!(flags & AMDGPU_CTX_QUERY2_FLAGS_RESET_IN_PROGRESS))
-            *reset_completed = true;
-
-         if (ctx->ws->info.drm_minor < 54 && ctx->ws->info.has_graphics)
-            *reset_completed = amdgpu_submit_gfx_nop(ctx) == 0;
+               if (ctx->ws->info.drm_minor < 54 && ctx->ws->info.has_graphics)
+                  *reset_completed = amdgpu_submit_gfx_nop(ctx) == 0;
+            }
+         }
+      } else {
+         fprintf(stderr, "amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", r);
       }
 
-      if (needs_reset)
-            *needs_reset = flags & AMDGPU_CTX_QUERY2_FLAGS_VRAMLOST;
-      if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY)
-         return PIPE_GUILTY_CONTEXT_RESET;
-      else
-         return PIPE_INNOCENT_CONTEXT_RESET;
-   }
-
-   /* Return a failure due to SW issues. */
-   if (ctx->sw_status != PIPE_NO_RESET) {
+      /* Return a failure due to SW issues. */
       if (needs_reset)
          *needs_reset = true;
       return ctx->sw_status;
    }
+
    if (needs_reset)
       *needs_reset = false;
    return PIPE_NO_RESET;
@@ -1620,19 +1618,19 @@ cleanup:
    if (unlikely(r)) {
       if (r == -ECANCELED) {
          amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx, PIPE_INNOCENT_CONTEXT_RESET,
-                                       "amdgpu: The CS has cancelled because the context is lost. This context is innocent.\n");
+                                        "amdgpu: The CS has cancelled because the context is lost. This context is innocent.\n");
       } else if (r == -ENODATA) {
          amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx, PIPE_GUILTY_CONTEXT_RESET,
-                                       "amdgpu: The CS has cancelled because the context is lost. This context is guilty of a soft recovery.\n");
+                                        "amdgpu: The CS has cancelled because the context is lost. This context is guilty of a soft recovery.\n");
       } else if (r == -ETIME) {
          amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx, PIPE_GUILTY_CONTEXT_RESET,
-                                       "amdgpu: The CS has cancelled because the context is lost. This context is guilty of a hard recovery.\n");
+                                        "amdgpu: The CS has cancelled because the context is lost. This context is guilty of a hard recovery.\n");
       } else {
          amdgpu_ctx_set_sw_reset_status((struct radeon_winsys_ctx*)acs->ctx,
-                                       PIPE_UNKNOWN_CONTEXT_RESET,
-                                       "amdgpu: The CS has been rejected, "
-                                       "see dmesg for more information (%i).\n",
-                                       r);
+                                        PIPE_UNKNOWN_CONTEXT_RESET,
+                                        "amdgpu: The CS has been rejected, "
+                                        "see dmesg for more information (%i).\n",
+                                        r);
       }
    }
 
