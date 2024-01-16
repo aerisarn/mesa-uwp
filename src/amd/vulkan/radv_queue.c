@@ -1714,7 +1714,7 @@ radv_queue_sparse_submit(struct vk_queue *vqueue, struct vk_queue_submit *submis
    }
 
 fail:
-   if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
+   if (result != VK_SUCCESS) {
       /* When something bad happened during the submission, such as
        * an out of memory issue, it might be hard to recover from
        * this inconsistent state. To avoid this sort of problem, we
@@ -1751,7 +1751,7 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
    }
 
 fail:
-   if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
+   if (result != VK_SUCCESS) {
       /* When something bad happened during the submission, such as
        * an out of memory issue, it might be hard to recover from
        * this inconsistent state. To avoid this sort of problem, we
