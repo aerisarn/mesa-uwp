@@ -1487,32 +1487,6 @@ radv_amdgpu_ctx_wait_idle(struct radeon_winsys_ctx *rwctx, enum amd_ip_type ip_t
    return true;
 }
 
-static enum radv_reset_status
-radv_amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx)
-{
-   int ret;
-   struct radv_amdgpu_ctx *ctx = (struct radv_amdgpu_ctx *)rwctx;
-   uint64_t flags;
-
-   ret = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
-   if (ret) {
-      fprintf(stderr, "radv/amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", ret);
-      return RADV_NO_RESET;
-   }
-
-   if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
-      if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY) {
-         /* Some job from this context once caused a GPU hang */
-         return RADV_GUILTY_CONTEXT_RESET;
-      } else {
-         /* Some job from other context caused a GPU hang */
-         return RADV_INNOCENT_CONTEXT_RESET;
-      }
-   }
-
-   return RADV_NO_RESET;
-}
-
 static uint32_t
 radv_to_amdgpu_pstate(enum radeon_ctx_pstate radv_pstate)
 {
@@ -1802,7 +1776,6 @@ radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
    ws->base.ctx_destroy = radv_amdgpu_ctx_destroy;
    ws->base.ctx_wait_idle = radv_amdgpu_ctx_wait_idle;
    ws->base.ctx_set_pstate = radv_amdgpu_ctx_set_pstate;
-   ws->base.ctx_query_reset_status = radv_amdgpu_ctx_query_reset_status;
    ws->base.cs_domain = radv_amdgpu_cs_domain;
    ws->base.cs_create = radv_amdgpu_cs_create;
    ws->base.cs_destroy = radv_amdgpu_cs_destroy;
