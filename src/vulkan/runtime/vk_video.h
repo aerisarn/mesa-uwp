@@ -291,13 +291,13 @@ vk_video_find_h265_enc_std_pps(const struct vk_video_session_parameters *params,
                                uint32_t id);
 
 void
-vk_video_encode_h264_sps(StdVideoH264SequenceParameterSet *sps,
+vk_video_encode_h264_sps(const StdVideoH264SequenceParameterSet *sps,
                          size_t size_limit,
                          size_t *data_size_ptr,
                          void *data_ptr);
 
 void
-vk_video_encode_h264_pps(StdVideoH264PictureParameterSet *pps,
+vk_video_encode_h264_pps(const StdVideoH264PictureParameterSet *pps,
                          bool high_profile,
                          size_t size_limit,
                          size_t *data_size_ptr,
@@ -307,18 +307,18 @@ unsigned
 vk_video_get_h265_nal_unit(StdVideoH265PictureType pic_type, bool irap_pic_flag);
 
 void
-vk_video_encode_h265_vps(StdVideoH265VideoParameterSet *vps,
+vk_video_encode_h265_vps(const StdVideoH265VideoParameterSet *vps,
                          size_t size_limit,
                          size_t *data_size,
                          void *data_ptr);
 void
-vk_video_encode_h265_sps(StdVideoH265SequenceParameterSet *sps,
+vk_video_encode_h265_sps(const StdVideoH265SequenceParameterSet *sps,
                          size_t size_limit,
                          size_t* pDataSize,
                          void* pData);
 
 void
-vk_video_encode_h265_pps(StdVideoH265PictureParameterSet *pps,
+vk_video_encode_h265_pps(const StdVideoH265PictureParameterSet *pps,
                          size_t size_limit,
                          size_t *data_size,
                          void *data_ptr);

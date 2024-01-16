@@ -1505,7 +1505,7 @@ encode_hrd_params(struct vl_bitstream_encoder *enc,
 }
 
 void
-vk_video_encode_h264_sps(StdVideoH264SequenceParameterSet *sps,
+vk_video_encode_h264_sps(const StdVideoH264SequenceParameterSet *sps,
                          size_t size_limit,
                          size_t *data_size_ptr,
                          void *data_ptr)
@@ -1626,7 +1626,7 @@ vk_video_encode_h264_sps(StdVideoH264SequenceParameterSet *sps,
 }
 
 void
-vk_video_encode_h264_pps(StdVideoH264PictureParameterSet *pps,
+vk_video_encode_h264_pps(const StdVideoH264PictureParameterSet *pps,
                          bool high_profile,
                          size_t size_limit,
                          size_t *data_size_ptr,
@@ -1707,7 +1707,7 @@ encode_h265_profile_tier_level(struct vl_bitstream_encoder *enc,
 }
 
 void
-vk_video_encode_h265_vps(StdVideoH265VideoParameterSet *vps,
+vk_video_encode_h265_vps(const StdVideoH265VideoParameterSet *vps,
                          size_t size_limit,
                          size_t *data_size_ptr,
                          void *data_ptr)
@@ -1797,7 +1797,7 @@ encode_rps(struct vl_bitstream_encoder *enc,
 }
 
 void
-vk_video_encode_h265_sps(StdVideoH265SequenceParameterSet *sps,
+vk_video_encode_h265_sps(const StdVideoH265SequenceParameterSet *sps,
                          size_t size_limit,
                          size_t *data_size_ptr,
                          void *data_ptr)
@@ -1954,7 +1954,7 @@ vk_video_encode_h265_sps(StdVideoH265SequenceParameterSet *sps,
 }
 
 void
-vk_video_encode_h265_pps(StdVideoH265PictureParameterSet *pps,
+vk_video_encode_h265_pps(const StdVideoH265PictureParameterSet *pps,
                          size_t size_limit,
                          size_t *data_size_ptr,
                          void *data_ptr)
