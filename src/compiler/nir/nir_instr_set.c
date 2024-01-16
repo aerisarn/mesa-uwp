@@ -455,13 +455,17 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
          alu2_swizzle[i] = i;
    }
 
+   /* Bail early if sources are not equal or we don't have parity. */
+   if (!parity || !nir_srcs_equal(alu1_actual_src, alu2_actual_src))
+      return false;
+
    for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(alu1, src1); i++) {
       if (alu1_swizzle[alu1->src[src1].swizzle[i]] !=
           alu2_swizzle[alu2->src[src2].swizzle[i]])
          return false;
    }
 
-   return parity && nir_srcs_equal(alu1_actual_src, alu2_actual_src);
+   return true;
 }
 
 bool
