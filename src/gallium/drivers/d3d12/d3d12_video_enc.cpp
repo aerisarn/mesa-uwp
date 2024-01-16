@@ -1217,6 +1217,12 @@ bool d3d12_video_encoder_negotiate_requested_features_and_d3d12_driver_caps(stru
          }
       }
 
+      /* Try fallback for multi-slice/tile not supported with single subregion mode */
+      if ((capEncoderSupportData1.ValidationFlags & D3D12_VIDEO_ENCODER_VALIDATION_FLAG_SUBREGION_LAYOUT_MODE_NOT_SUPPORTED) != 0) {
+         pD3D12Enc->m_currentEncodeConfig.m_encoderSliceConfigMode = D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME;
+         debug_printf("[d3d12_video_encoder] WARNING: Requested slice/tile mode not supported by driver, will continue encoding with single subregion encoding.\n");
+      }
+
       ///
       /// Try fallback configuration
       ///
