@@ -728,6 +728,36 @@ impl SM50Instr {
         self.set_dst(op.dst);
     }
 
+    fn encode_i2i(&mut self, op: &OpI2I) {
+        match &op.src.src_ref {
+            SrcRef::Imm32(imm32) => {
+                self.set_opcode(0x38e0);
+                self.set_src_imm_i20(20..39, 56, *imm32);
+            }
+            SrcRef::Zero | SrcRef::Reg(_) => {
+                self.set_opcode(0x5ce0);
+                self.set_reg_src(20..28, op.src);
+            }
+            SrcRef::CBuf(cbuf) => {
+                self.set_opcode(0x4ce0);
+                self.set_src_cb(20..39, cbuf);
+            }
+            src => panic!("Unsupported src type for I2I: {src}"),
+        }
+
+        self.set_bit(45, op.neg);
+        self.set_bit(49, op.abs);
+        self.set_bit(50, op.saturate);
+        self.set_bit(12, op.dst_type.is_signed());
+        self.set_bit(13, op.src_type.is_signed());
+        self.set_field(8..10, (op.dst_type.bits() / 8).ilog2());
+        self.set_field(10..12, (op.src_type.bits() / 8).ilog2());
+        self.set_field(41..43, 0u8); // src.B1-3
+        self.set_bit(47, false); // dst.CC
+
+        self.set_dst(op.dst);
+    }
+
     fn encode_imad(&mut self, op: &OpIMad) {
         assert!(op.srcs[0].is_reg_or_zero());
         assert!(op.srcs[1].is_reg_or_zero());
@@ -1814,37 +1844,6 @@ impl SM50Instr {
         self.set_reg_fmod_src(8..16, 7, 43, op.srcs[0]);
     }
 
-    fn encode_iabs(&mut self, op: &OpIAbs) {
-        assert!(op.src.is_reg_or_zero());
-
-        // IABS isn't a thing on SM50, we use I2I instead.
-
-        // We always assume 32bits signed for now
-        let src_type = IntType::I32;
-        let dst_type = IntType::I32;
-
-        match &op.src.src_ref {
-            SrcRef::Imm32(imm32) => {
-                self.set_opcode(0x38e0);
-                self.set_src_imm_i20(20..39, 56, *imm32);
-            }
-            SrcRef::Zero | SrcRef::Reg(_) => {
-                self.set_opcode(0x5ce0);
-                self.set_reg_src(20..28, op.src);
-            }
-            SrcRef::CBuf(cbuf) => {
-                self.set_opcode(0x4ce0);
-                self.set_src_cb(20..39, cbuf);
-            }
-            src => panic!("Unsupported src type for IABS: {src}"),
-        }
-        self.set_bit(12, dst_type.is_signed());
-        self.set_bit(13, src_type.is_signed());
-        self.set_field(8..10, (dst_type.bits() / 8).ilog2());
-        self.set_field(10..12, (src_type.bits() / 8).ilog2());
-        self.set_dst(op.dst);
-    }
-
     fn encode_iadd2(&mut self, op: &OpIAdd2) {
         let carry_in = match op.carry_in.src_ref {
             SrcRef::Reg(reg) if reg.file() == RegFile::Carry => true,
@@ -1943,7 +1942,6 @@ impl SM50Instr {
             Op::DMnMx(op) => si.encode_dmnmx(&op),
             Op::DMul(op) => si.encode_dmul(&op),
             Op::DSetP(op) => si.encode_dsetp(&op),
-            Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd2(op) => si.encode_iadd2(&op),
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
@@ -1964,6 +1962,7 @@ impl SM50Instr {
             Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),
+            Op::I2I(op) => si.encode_i2i(&op),
             Op::IMad(op) => si.encode_imad(&op),
             Op::IMul(op) => si.encode_imul(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),

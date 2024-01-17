@@ -267,9 +267,6 @@ fn legalize_sm50_instr(
             copy_alu_src_if_not_reg(b, src0, SrcType::F64);
             copy_alu_src_if_f20_overflow(b, src1, SrcType::F64);
         }
-        Op::IAbs(op) => {
-            copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
-        }
         Op::Sel(op) => {
             let [ref mut src0, ref mut src1] = op.srcs;
             if swap_srcs_if_not_reg(src0, src1) {
@@ -294,6 +291,9 @@ fn legalize_sm50_instr(
         }
         Op::F2F(op) => {
             copy_alu_src_if_not_reg(b, &mut op.src, SrcType::GPR);
+        }
+        Op::I2I(op) => {
+            copy_alu_src_if_i20_overflow(b, &mut op.src, SrcType::ALU);
         }
         Op::IMad(op) => {
             copy_alu_src_if_not_reg(b, &mut op.srcs[0], SrcType::ALU);

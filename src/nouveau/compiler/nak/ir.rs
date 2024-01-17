@@ -3197,6 +3197,41 @@ impl DisplayOp for OpI2F {
 }
 impl_display_for_op!(OpI2F);
 
+/// Not used on SM70+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpI2I {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub src: Src,
+
+    pub src_type: IntType,
+    pub dst_type: IntType,
+
+    pub saturate: bool,
+    pub abs: bool,
+    pub neg: bool,
+}
+
+impl DisplayOp for OpI2I {
+    fn fmt_op(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i2i")?;
+        if self.saturate {
+            write!(f, ".sat ")?;
+        }
+        write!(f, "{}{} {}", self.dst_type, self.src_type, self.src,)?;
+        if self.abs {
+            write!(f, ".abs")?;
+        }
+        if self.neg {
+            write!(f, ".neg")?;
+        }
+        Ok(())
+    }
+}
+impl_display_for_op!(OpI2I);
+
 #[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpFRnd {
@@ -4772,6 +4807,7 @@ pub enum Op {
     F2F(OpF2F),
     F2I(OpF2I),
     I2F(OpI2F),
+    I2I(OpI2I),
     FRnd(OpFRnd),
     Mov(OpMov),
     Prmt(OpPrmt),
@@ -5214,7 +5250,9 @@ impl Instr {
             | Op::Shr(_) => true,
 
             // Conversions are variable latency?!?
-            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::FRnd(_) => false,
+            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::I2I(_) | Op::FRnd(_) => {
+                false
+            }
 
             // Move ops
             Op::Mov(_) | Op::Prmt(_) | Op::Sel(_) => true,

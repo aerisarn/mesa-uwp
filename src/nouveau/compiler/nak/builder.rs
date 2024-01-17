@@ -231,10 +231,22 @@ pub trait SSABuilder: Builder {
 
     fn iabs(&mut self, i: Src) -> SSARef {
         let dst = self.alloc_ssa(RegFile::GPR, 1);
-        self.push_op(OpIAbs {
-            dst: dst.into(),
-            src: i,
-        });
+        if self.sm() >= 70 {
+            self.push_op(OpIAbs {
+                dst: dst.into(),
+                src: i,
+            });
+        } else {
+            self.push_op(OpI2I {
+                dst: dst.into(),
+                src: i,
+                src_type: IntType::I32,
+                dst_type: IntType::I32,
+                saturate: false,
+                abs: true,
+                neg: false,
+            });
+        }
         dst
     }
 
