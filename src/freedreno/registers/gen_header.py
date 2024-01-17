@@ -721,11 +721,11 @@ class Parser(object):
 			self.dump_reg_variants(regname, self.variant_regs[regname])
 
 
-def dump_c(rnn_path, xml_path, guard, func):
+def dump_c(args, guard, func):
 	p = Parser()
 
 	try:
-		p.parse(rnn_path, xml_path)
+		p.parse(args.rnn, args.xml)
 	except Error as e:
 		print(e, file=sys.stderr)
 		exit(1)
@@ -749,12 +749,12 @@ def dump_c(rnn_path, xml_path, guard, func):
 
 def dump_c_defines(args):
 	guard = str.replace(os.path.basename(args.xml), '.', '_').upper()
-	dump_c(args.rnn, args.xml, guard, lambda p: p.dump())
+	dump_c(args, guard, lambda p: p.dump())
 
 
 def dump_c_pack_structs(args):
 	guard = str.replace(os.path.basename(args.xml), '.', '_').upper() + '_STRUCTS'
-	dump_c(args.rnn, args.xml, guard, lambda p: p.dump_structs())
+	dump_c(args, guard, lambda p: p.dump_structs())
 
 
 def dump_py_defines(args):
