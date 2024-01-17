@@ -46,6 +46,7 @@
 #include <xf86drm.h>
 #include "drm-uapi/drm_fourcc.h"
 #include "util/hash_table.h"
+#include "util/mesa-blake3.h"
 #include "util/os_file.h"
 #include "util/os_time.h"
 #include "util/u_debug.h"
@@ -1057,6 +1058,8 @@ struct x11_swapchain {
    uint32_t                                     depth;
    VkExtent2D                                   extent;
 
+   blake3_hash                                  dri3_modifier_hash;
+
    xcb_present_event_t                          event_id;
    xcb_special_event_t *                        special_event;
    uint64_t                                     send_sbc;
@@ -1218,6 +1221,9 @@ x11_get_wsi_image(struct wsi_swapchain *wsi_chain, uint32_t image_index)
    return &chain->images[image_index].base;
 }
 
+static bool
+wsi_x11_swapchain_query_dri3_modifiers_changed(struct x11_swapchain *chain);
+
 /* XXX this belongs in presentproto */
 #ifndef PresentWindowDestroyed
 #define PresentWindowDestroyed (1 << 0)
@@ -1291,7 +1297,14 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
          /* The winsys is now trying to flip directly and cannot due to our
           * configuration. Request the user reallocate.
           */
-         result = VK_SUBOPTIMAL_KHR;
+
+         /* Sometimes, this complete mode is spurious, and a false positive.
+          * Xwayland may report SUBOPTIMAL_COPY even if there are no changes in the modifiers.
+          * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/26616 for more details. */
+         if (chain->status == VK_SUCCESS &&
+             wsi_x11_swapchain_query_dri3_modifiers_changed(chain)) {
+            result = VK_SUBOPTIMAL_KHR;
+         }
          break;
 #endif
       default:
@@ -2273,6 +2286,21 @@ x11_image_finish(struct x11_swapchain *chain,
 }
 
 static void
+wsi_x11_recompute_dri3_modifier_hash(blake3_hash *hash, const struct wsi_drm_image_params *params)
+{
+   mesa_blake3 ctx;
+   _mesa_blake3_init(&ctx);
+   _mesa_blake3_update(&ctx, &params->num_modifier_lists, sizeof(params->num_modifier_lists));
+   for (uint32_t i = 0; i < params->num_modifier_lists; i++) {
+      _mesa_blake3_update(&ctx, &i, sizeof(i));
+      _mesa_blake3_update(&ctx, params->modifiers[i],
+                          params->num_modifiers[i] * sizeof(*params->modifiers[i]));
+   }
+   _mesa_blake3_update(&ctx, &params->same_gpu, sizeof(params->same_gpu));
+   _mesa_blake3_final(&ctx, *hash);
+}
+
+static void
 wsi_x11_get_dri3_modifiers(struct wsi_x11_connection *wsi_conn,
                            xcb_connection_t *conn, xcb_window_t window,
                            uint8_t depth, uint8_t bpp,
@@ -2346,6 +2374,50 @@ wsi_x11_get_dri3_modifiers(struct wsi_x11_connection *wsi_conn,
 #endif
 out:
    *num_tranches_in = 0;
+}
+
+static bool
+wsi_x11_swapchain_query_dri3_modifiers_changed(struct x11_swapchain *chain)
+{
+   const struct wsi_device *wsi_device = chain->base.wsi;
+
+   if (wsi_device->sw || !wsi_device->supports_modifiers)
+      return false;
+
+   struct wsi_drm_image_params drm_image_params;
+   uint64_t *modifiers[2] = {NULL, NULL};
+   uint32_t num_modifiers[2] = {0, 0};
+
+   struct wsi_x11_connection *wsi_conn =
+         wsi_x11_get_connection((struct wsi_device*)chain->base.wsi, chain->conn);
+
+   xcb_get_geometry_reply_t *geometry =
+         xcb_get_geometry_reply(chain->conn, xcb_get_geometry(chain->conn, chain->window), NULL);
+   if (geometry == NULL)
+      return false;
+   uint32_t bit_depth = geometry->depth;
+   free(geometry);
+
+   drm_image_params = (struct wsi_drm_image_params){
+      .base.image_type = WSI_IMAGE_TYPE_DRM,
+      .same_gpu = wsi_x11_check_dri3_compatible(wsi_device, chain->conn),
+   };
+
+   wsi_x11_get_dri3_modifiers(wsi_conn, chain->conn, chain->window, bit_depth, 32,
+                              modifiers, num_modifiers,
+                              &drm_image_params.num_modifier_lists,
+                              &wsi_device->instance_alloc);
+
+   drm_image_params.num_modifiers = num_modifiers;
+   drm_image_params.modifiers = (const uint64_t **)modifiers;
+
+   blake3_hash hash;
+   wsi_x11_recompute_dri3_modifier_hash(&hash, &drm_image_params);
+
+   for (int i = 0; i < ARRAY_SIZE(modifiers); i++)
+      vk_free(&wsi_device->instance_alloc, modifiers[i]);
+
+   return memcmp(hash, chain->dri3_modifier_hash, sizeof(hash)) != 0;
 }
 
 static VkResult
@@ -2702,6 +2774,8 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                                     pAllocator);
          drm_image_params.num_modifiers = num_modifiers;
          drm_image_params.modifiers = (const uint64_t **)modifiers;
+
+         wsi_x11_recompute_dri3_modifier_hash(&chain->dri3_modifier_hash, &drm_image_params);
       }
       image_params = &drm_image_params.base;
    }
