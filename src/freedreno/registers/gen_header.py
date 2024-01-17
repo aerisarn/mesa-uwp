@@ -335,6 +335,7 @@ class Parser(object):
 		self.enums = {}
 		self.variants = set()
 		self.file = []
+		self.xml_files = []
 
 	def error(self, message):
 		parser, filename = self.stack[-1]
@@ -460,6 +461,10 @@ class Parser(object):
 			print("lxml not found, skipping validation", file=sys.stderr)
 
 	def do_parse(self, filename):
+		filepath = os.path.abspath(filename)
+		if filepath in self.xml_files:
+			return
+		self.xml_files.append(filepath)
 		file = open(filename, "rb")
 		parser = xml.parsers.expat.ParserCreate()
 		self.stack.append((parser, filename))
