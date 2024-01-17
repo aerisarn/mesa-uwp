@@ -735,6 +735,7 @@ nvk_get_device_properties(const struct nvk_instance *instance,
       .filterMinmaxSingleComponentFormats = true,
       .filterMinmaxImageComponentMapping = true,
       .maxTimelineSemaphoreValueDifference = UINT64_MAX,
+      .framebufferIntegerColorSampleCounts = sample_counts,
 
       /* Vulkan 1.3 properties */
       .minSubgroupSize = 32,
