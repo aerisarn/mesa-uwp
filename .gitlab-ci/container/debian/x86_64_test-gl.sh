@@ -46,6 +46,7 @@ EPHEMERAL=(
 DEPS=(
     clinfo
     iptables
+    kmod
     "libclang-common-${LLVM_VERSION}-dev"
     "libclang-cpp${LLVM_VERSION}"
     libcap2
