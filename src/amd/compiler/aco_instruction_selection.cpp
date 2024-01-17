@@ -8348,6 +8348,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       emit_mbcnt(ctx, get_ssa_temp(ctx, &instr->def));
       break;
    }
+   case nir_intrinsic_ballot_relaxed:
    case nir_intrinsic_ballot: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->def);
@@ -8365,7 +8366,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       /* Make sure that all inactive lanes return zero.
        * Value-numbering might remove the comparison above */
       Definition def = dst.size() == bld.lm.size() ? Definition(dst) : bld.def(bld.lm);
-      src = bld.sop2(Builder::s_and, def, bld.def(s1, scc), src, Operand(exec, bld.lm));
+      if (instr->intrinsic == nir_intrinsic_ballot_relaxed)
+         src = bld.copy(def, src);
+      else
+         src = bld.sop2(Builder::s_and, def, bld.def(s1, scc), src, Operand(exec, bld.lm));
       if (dst.size() != bld.lm.size()) {
          /* Wave32 with ballot size set to 64 */
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src, Operand::zero());
@@ -8461,6 +8465,15 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          emit_readfirstlane(ctx, src, dst);
       }
       set_wqm(ctx);
+      break;
+   }
+   case nir_intrinsic_as_uniform: {
+      Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp dst = get_ssa_temp(ctx, &instr->def);
+      if (src.type() == RegType::vgpr)
+         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), src);
+      else
+         bld.copy(Definition(dst), src);
       break;
    }
    case nir_intrinsic_vote_all: {
