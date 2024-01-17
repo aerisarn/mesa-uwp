@@ -158,12 +158,12 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $llvm_build
 
 Get-Date
 Write-Host "Cloning SPIRV-Tools"
-git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Tools deps/SPIRV-Tools
+git clone -b "vulkan-sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Tools deps/SPIRV-Tools
 if (!$?) {
   Write-Host "Failed to clone SPIRV-Tools repository"
   Exit 1
 }
-git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Headers deps/SPIRV-Tools/external/SPIRV-Headers
+git clone -b "vulkan-sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Headers deps/SPIRV-Tools/external/SPIRV-Headers
 if (!$?) {
   Write-Host "Failed to clone SPIRV-Headers repository"
   Exit 1
