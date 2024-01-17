@@ -249,6 +249,8 @@ brw_get_compiler_config_value(const struct brw_compiler *compiler)
 
    insert_u64_bit(&config, compiler->precise_trig);
    bits++;
+   insert_u64_bit(&config, compiler->lower_dpas);
+   bits++;
 
    uint64_t mask = DEBUG_DISK_CACHE_MASK;
    bits += util_bitcount64(mask);
