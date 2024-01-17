@@ -2766,14 +2766,15 @@ panfrost_increase_vertex_count(struct panfrost_batch *batch, uint32_t increment)
  * because all dirty flags are set there.
  */
 static void
-panfrost_update_point_sprite_shader(struct panfrost_context *ctx,
-                                    const struct pipe_draw_info *info)
+panfrost_update_active_prim(struct panfrost_context *ctx,
+                            const struct pipe_draw_info *info)
 {
-   if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
-       ((ctx->active_prim == MESA_PRIM_POINTS) ^
-        (info->mode == MESA_PRIM_POINTS))) {
+   const enum mesa_prim prev_prim = ctx->active_prim;
+   ctx->active_prim = info->mode;
 
-      ctx->active_prim = info->mode;
+   if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
+       ((prev_prim == MESA_PRIM_POINTS) !=
+        (info->mode == MESA_PRIM_POINTS))) {
       panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
    }
 }
@@ -2836,7 +2837,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
    struct panfrost_context *ctx = batch->ctx;
 
-   panfrost_update_point_sprite_shader(ctx, info);
+   panfrost_update_active_prim(ctx, info);
 
    /* Take into account a negative bias */
    ctx->vertex_count =
@@ -2844,7 +2845,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
    ctx->instance_count = info->instance_count;
    ctx->base_vertex = info->index_size ? draw->index_bias : 0;
    ctx->base_instance = info->start_instance;
-   ctx->active_prim = info->mode;
    ctx->drawid = drawid_offset;
 
    struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
