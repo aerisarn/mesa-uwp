@@ -301,7 +301,6 @@ class Reg(object):
 
 		if self.bitset.inline:
 			self.bitset.dump(self.full_name)
-		print("")
 
 	def dump_pack_struct(self):
 		if self.bitset.inline:
@@ -795,6 +794,7 @@ The rules-ng-ng source files this header was generated from are:
 	print("#else")
 	print("#define __struct_cast(X) (struct X)")
 	print("#endif")
+	print()
 
 	func(p)
 
