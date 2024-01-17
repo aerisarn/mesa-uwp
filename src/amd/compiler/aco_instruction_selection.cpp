@@ -8395,6 +8395,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_shuffle:
    case nir_intrinsic_read_invocation: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+      assert(instr->def.bit_size != 1);
       if (!nir_src_is_divergent(instr->src[0])) {
          emit_uniform_subgroup(ctx, instr, src);
       } else {
@@ -8404,8 +8405,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
             tid = bld.as_uniform(tid);
          Temp dst = get_ssa_temp(ctx, &instr->def);
 
-         if (instr->def.bit_size != 1)
-            src = as_vgpr(ctx, src);
+         src = as_vgpr(ctx, src);
 
          if (src.regClass() == v1b || src.regClass() == v2b) {
             Temp tmp = bld.tmp(v1);
@@ -8425,22 +8425,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
             hi = emit_bpermute(ctx, bld, tid, hi);
             bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
             emit_split_vector(ctx, dst, 2);
-         } else if (instr->def.bit_size == 1 && tid.regClass() == s1) {
-            assert(src.regClass() == bld.lm);
-            Temp tmp = bld.sopc(Builder::s_bitcmp1, bld.def(s1, scc), src, tid);
-            bool_to_vector_condition(ctx, tmp, dst);
-         } else if (instr->def.bit_size == 1 && tid.regClass() == v1) {
-            assert(src.regClass() == bld.lm);
-            Temp tmp;
-            if (ctx->program->gfx_level <= GFX7)
-               tmp = bld.vop3(aco_opcode::v_lshr_b64, bld.def(v2), src, tid);
-            else if (ctx->program->wave_size == 64)
-               tmp = bld.vop3(aco_opcode::v_lshrrev_b64, bld.def(v2), tid, src);
-            else
-               tmp = bld.vop2_e64(aco_opcode::v_lshrrev_b32, bld.def(v1), tid, src);
-            tmp = emit_extract_vector(ctx, tmp, 0, v1);
-            tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(1u), tmp);
-            bld.vopc(aco_opcode::v_cmp_lg_u32, Definition(dst), Operand::zero(), tmp);
          } else {
             isel_err(&instr->instr, "Unimplemented NIR instr bit size");
          }
