@@ -252,19 +252,15 @@ brw_get_compiler_config_value(const struct brw_compiler *compiler)
 
    uint64_t mask = DEBUG_DISK_CACHE_MASK;
    bits += util_bitcount64(mask);
-   while (mask != 0) {
-      const uint64_t bit = 1ULL << (ffsll(mask) - 1);
-      insert_u64_bit(&config, INTEL_DEBUG(bit));
-      mask &= ~bit;
-   }
+
+   u_foreach_bit64(bit, mask)
+      insert_u64_bit(&config, INTEL_DEBUG(1ULL << bit));
 
    mask = SIMD_DISK_CACHE_MASK;
    bits += util_bitcount64(mask);
-   while (mask != 0) {
-      const uint64_t bit = 1ULL << (ffsll(mask) - 1);
-      insert_u64_bit(&config, (intel_simd & bit) != 0);
-      mask &= ~bit;
-   }
+
+   u_foreach_bit64(bit, mask)
+      insert_u64_bit(&config, (intel_simd & (1ULL << bit)) != 0);
 
    assert(bits <= util_bitcount64(UINT64_MAX));
 
