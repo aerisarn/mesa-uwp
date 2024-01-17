@@ -93,6 +93,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    /* Intrinsics which are always uniform */
    case nir_intrinsic_shader_clock:
    case nir_intrinsic_ballot:
+   case nir_intrinsic_ballot_relaxed:
+   case nir_intrinsic_as_uniform:
    case nir_intrinsic_read_invocation:
    case nir_intrinsic_read_first_invocation:
    case nir_intrinsic_vote_any:
