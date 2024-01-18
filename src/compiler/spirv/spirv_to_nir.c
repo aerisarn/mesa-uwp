@@ -4922,6 +4922,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(fragment_shader_pixel_interlock, cap);
          break;
 
+      case SpvCapabilityShaderSMBuiltinsNV:
+         spv_check_supported(shader_sm_builtins_nv, cap);
+         break;
+
       case SpvCapabilityDemoteToHelperInvocation:
          spv_check_supported(demote_to_helper_invocation, cap);
          b->uses_demote_to_helper_invocation = true;

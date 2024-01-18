@@ -927,6 +927,12 @@ typedef enum
    SYSTEM_VALUE_SHADER_INDEX,
    SYSTEM_VALUE_COALESCED_INPUT_COUNT,
 
+   /* SPV_NV_shader_sm_builtins */
+   SYSTEM_VALUE_WARPS_PER_SM_NV,
+   SYSTEM_VALUE_SM_COUNT_NV,
+   SYSTEM_VALUE_WARP_ID_NV,
+   SYSTEM_VALUE_SM_ID_NV,
+
    SYSTEM_VALUE_MAX             /**< Number of values */
 } gl_system_value;
 

@@ -103,6 +103,7 @@ struct spirv_supported_capabilities {
    bool runtime_descriptor_array;
    bool shader_clock;
    bool shader_enqueue;
+   bool shader_sm_builtins_nv;
    bool shader_viewport_index_layer;
    bool shader_viewport_mask_nv;
    bool sparse_residency;
