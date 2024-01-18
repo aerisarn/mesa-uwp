@@ -6,6 +6,7 @@ dEQP-GLES31.functional.texture.multisample.samples_4.use_texture_depth_2d_array
 dEQP-GLES31.functional.texture.multisample.samples_8.use_texture_depth_2d
 dEQP-GLES31.functional.texture.multisample.samples_8.use_texture_depth_2d_array
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.points.lowp_uint
+KHR-GL46.geometry_shader.primitive_counter.points_to_line_strip
 KHR-GL46.geometry_shader.primitive_counter.points_to_line_strip_rp
 glx@glx_arb_sync_control@swapbuffersmsc-divisor-zero
 glx@glx_arb_sync_control@waitformsc
