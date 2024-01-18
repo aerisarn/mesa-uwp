@@ -1733,12 +1733,10 @@ endif
 
 if with_amd_vk or with_gallium_radeonsi
   _llvm_version = '>= 15.0.0'
-elif with_intel_clc
-  _llvm_version = '>= 13.0.0'
+elif with_clc
+  _llvm_version = '>= 14.0.0'
 elif with_gallium_opencl
   _llvm_version = '>= 11.0.0'
-elif with_clc
-  _llvm_version = '>= 10.0.0'
 else
   _llvm_version = '>= 5.0.0'
 endif
@@ -1830,8 +1828,8 @@ if with_opencl_spirv
   # does not have the required API and those are only available starting from
   # 8.0.1.3.
   _llvmspirvlib_min_version = '>= 8.0.1.3'
-  if with_intel_clc
-    _llvmspirvlib_min_version = '>= 13.0.0.0'
+  if with_clc
+    _llvmspirvlib_min_version = '>= 14.0.0.0'
   endif
 
   _llvmspirvlib_version = [

@@ -67,11 +67,6 @@ if get_option('opencl-external-clang-headers') \
   _libmesaclc_cpp_args += ['-DUSE_STATIC_OPENCL_C_H=1']
 endif
 
-# Supported added for SPIRV 1.4 in a version that required LLVM 14.
-if dep_llvm.version().version_compare('>= 14.0')
-  _libmesaclc_cpp_args += ['-DHAS_SPIRV_1_4=1']
-endif
-
 _basedir = dep_clc.get_variable(pkgconfig : 'libexecdir')
 
 _static_libclc = get_option('static-libclc')

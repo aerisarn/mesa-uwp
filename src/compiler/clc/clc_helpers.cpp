@@ -903,7 +903,6 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
    if (!args->features.images)
       c->getPreprocessorOpts().addMacroUndef("__IMAGE_SUPPORT__");
 
-#if LLVM_VERSION_MAJOR >= 14
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-all");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_byte_addressable_store");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_global_int32_base_atomics");
@@ -941,7 +940,6 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       assert(args->features.subgroups);
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_subgroups");
    }
-#endif
 
    // llvm handles these extensions differently so we have to pass those flags instead to expose the clc functions
    c->getPreprocessorOpts().addMacroDef("cl_khr_expect_assume=1");
@@ -1005,9 +1003,7 @@ spirv_version_to_llvm_spirv_translator_version(enum clc_spirv_version version)
    case CLC_SPIRV_VERSION_1_1: return SPIRV::VersionNumber::SPIRV_1_1;
    case CLC_SPIRV_VERSION_1_2: return SPIRV::VersionNumber::SPIRV_1_2;
    case CLC_SPIRV_VERSION_1_3: return SPIRV::VersionNumber::SPIRV_1_3;
-#ifdef HAS_SPIRV_1_4
    case CLC_SPIRV_VERSION_1_4: return SPIRV::VersionNumber::SPIRV_1_4;
-#endif
    default:      return invalid_spirv_trans_version;
    }
 }
@@ -1052,10 +1048,8 @@ llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
    }
    SPIRV::TranslatorOpts spirv_opts = SPIRV::TranslatorOpts(version, ext_map);
 
-#if LLVM_VERSION_MAJOR >= 13
    /* This was the default in 12.0 and older, but currently we'll fail to parse without this */
    spirv_opts.setPreserveOCLKernelArgTypeMetadataThroughString(true);
-#endif
 
 #if LLVM_VERSION_MAJOR >= 17
    if (args->use_llvm_spirv_target) {
