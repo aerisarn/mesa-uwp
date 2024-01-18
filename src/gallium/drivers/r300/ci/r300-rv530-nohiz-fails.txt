@@ -487,8 +487,6 @@ spec@arb_pixel_buffer_object@pbo-getteximage,Fail
 
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 
-spec@arb_sampler_objects@sampler-incomplete,Fail
-
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 1d,Fail
