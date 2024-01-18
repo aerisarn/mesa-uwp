@@ -412,7 +412,7 @@ check_print_asm_support(Program* program)
 #ifndef _WIN32
    /* Check if CLRX disassembler binary is available and can disassemble the program */
    return to_clrx_device_name(program->gfx_level, program->family) &&
-          system("clrxdisasm --version") == 0;
+          system("clrxdisasm --version > /dev/null 2>&1") == 0;
 #else
    return false;
 #endif
