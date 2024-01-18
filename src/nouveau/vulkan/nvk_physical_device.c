@@ -203,6 +203,7 @@ nvk_get_device_extensions(const struct nvk_instance *instance,
       .EXT_vertex_input_dynamic_state = true,
       .EXT_ycbcr_2plane_444_formats = true,
       .EXT_ycbcr_image_arrays = true,
+      .NV_shader_sm_builtins = true,
    };
 }
 
@@ -518,6 +519,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* VK_EXT_ycbcr_image_arrays */
       .ycbcrImageArrays = true,
 
+      /* VK_NV_shader_sm_builtins */
+      .shaderSMBuiltins = true,
+
       /* VK_VALVE_mutable_descriptor_type */
       .mutableDescriptorType = true,
    };
@@ -817,6 +821,10 @@ nvk_get_device_properties(const struct nvk_instance *instance,
 
       /* VK_KHR_fragment_shader_barycentric */
       .triStripVertexOrderIndependentOfProvokingVertex = false,
+
+      /* VK_NV_shader_sm_builtins */
+      .shaderSMCount = (uint32_t)info->tpc_count * info->mp_per_tpc,
+      .shaderWarpsPerSM = info->max_warps_per_mp,
    };
 
    snprintf(properties->deviceName, sizeof(properties->deviceName),
