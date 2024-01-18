@@ -99,6 +99,10 @@ meson.build @dbaker @eric
 # CI #
 ######
 
+/.gitlab-ci.yml @eric
+/.gitlab-ci/ @eric
+gitlab-ci*.yml @eric
+
 # Broadcom
 /src/broadcom/ci/ @jasuarez @chema
 
