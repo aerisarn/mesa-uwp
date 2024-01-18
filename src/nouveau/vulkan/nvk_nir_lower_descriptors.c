@@ -419,6 +419,12 @@ build_cbuf_map(nir_shader *nir, struct lower_descriptors_ctx *ctx)
       .type = NVK_CBUF_TYPE_ROOT_DESC,
    };
 
+   if (nir->constant_data_size > 0) {
+      ctx->cbuf_map->cbufs[mapped_cbuf_count++] = (struct nvk_cbuf) {
+         .type = NVK_CBUF_TYPE_SHADER_DATA,
+      };
+   }
+
    uint8_t max_cbuf_bindings;
    if (nir->info.stage == MESA_SHADER_COMPUTE ||
        nir->info.stage == MESA_SHADER_KERNEL) {
@@ -502,6 +508,35 @@ lower_load_ubo_intrin(nir_builder *b, nir_intrinsic_instr *load, void *_ctx)
    nir_deref_path_finish(&path);
 
    nir_lower_explicit_io_instr(b, load, addr, addr_format);
+
+   return true;
+}
+
+static bool
+lower_load_constant(nir_builder *b, nir_intrinsic_instr *load,
+                    const struct lower_descriptors_ctx *ctx)
+{
+   assert(load->intrinsic == nir_intrinsic_load_constant);
+
+   const struct nvk_cbuf cbuf_key = {
+      .type = NVK_CBUF_TYPE_SHADER_DATA,
+   };
+   int cbuf_idx = get_mapped_cbuf_idx(&cbuf_key, ctx);
+   assert(cbuf_idx >= 0);
+
+   uint32_t base = nir_intrinsic_base(load);
+   uint32_t range = nir_intrinsic_range(load);
+
+   b->cursor = nir_before_instr(&load->instr);
+
+   nir_def *offset = nir_iadd_imm(b, load->src[0].ssa, base);
+   nir_def *data = nir_load_ubo(b, load->def.num_components, load->def.bit_size,
+                                nir_imm_int(b, cbuf_idx), offset,
+                                .align_mul = nir_intrinsic_align_mul(load),
+                                .align_offset = nir_intrinsic_align_offset(load),
+                                .range_base = base, .range = range);
+
+   nir_def_rewrite_uses(&load->def, data);
 
    return true;
 }
@@ -835,6 +870,9 @@ try_lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
                  const struct lower_descriptors_ctx *ctx)
 {
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_constant:
+      return lower_load_constant(b, intrin, ctx);
+
    case nir_intrinsic_load_vulkan_descriptor:
       return try_lower_load_vulkan_descriptor(b, intrin, ctx);
 

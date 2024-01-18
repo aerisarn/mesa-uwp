@@ -1994,7 +1994,7 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
          }
 
          struct nvk_buffer_address ba;
-         if (nvk_cmd_buffer_get_cbuf_descriptor(cmd, desc, cbuf, &ba)) {
+         if (nvk_cmd_buffer_get_cbuf_descriptor(cmd, desc, shader, cbuf, &ba)) {
             assert(ba.base_addr % min_cbuf_alignment == 0);
             ba.size = align(ba.size, min_cbuf_alignment);
             ba.size = MIN2(ba.size, NVK_MAX_CBUF_SIZE);

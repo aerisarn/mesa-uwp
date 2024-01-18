@@ -763,6 +763,7 @@ nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
 bool
 nvk_cmd_buffer_get_cbuf_descriptor(struct nvk_cmd_buffer *cmd,
                                    const struct nvk_descriptor_state *desc,
+                                   const struct nvk_shader *shader,
                                    const struct nvk_cbuf *cbuf,
                                    struct nvk_buffer_address *desc_out)
 {
@@ -774,6 +775,13 @@ nvk_cmd_buffer_get_cbuf_descriptor(struct nvk_cmd_buffer *cmd,
    case NVK_CBUF_TYPE_ROOT_DESC:
       unreachable("The caller should handle root descriptors");
       return false;
+
+   case NVK_CBUF_TYPE_SHADER_DATA:
+      *desc_out = (struct nvk_buffer_address) {
+         .base_addr = nvk_shader_data_address(shader),
+         .size = shader->data_size,
+      };
+      return true;
 
    case NVK_CBUF_TYPE_DESC_SET:
       *desc_out = (struct nvk_buffer_address) {

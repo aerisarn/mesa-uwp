@@ -23,6 +23,7 @@ struct nvk_cmd_bo;
 struct nvk_cmd_pool;
 struct nvk_image_view;
 struct nvk_push_descriptor_set;
+struct nvk_shader;
 
 struct nvk_sample_location {
    uint8_t x_u4:4;
@@ -256,6 +257,7 @@ nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
 bool
 nvk_cmd_buffer_get_cbuf_descriptor(struct nvk_cmd_buffer *cmd,
                                    const struct nvk_descriptor_state *desc,
+                                   const struct nvk_shader *shader,
                                    const struct nvk_cbuf *cbuf,
                                    struct nvk_buffer_address *desc_out);
 uint64_t

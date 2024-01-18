@@ -37,6 +37,7 @@ nvk_cbuf_binding_for_stage(gl_shader_stage stage)
 enum ENUM_PACKED nvk_cbuf_type {
    NVK_CBUF_TYPE_INVALID = 0,
    NVK_CBUF_TYPE_ROOT_DESC,
+   NVK_CBUF_TYPE_SHADER_DATA,
    NVK_CBUF_TYPE_DESC_SET,
    NVK_CBUF_TYPE_DYNAMIC_UBO,
    NVK_CBUF_TYPE_UBO_DESC,
@@ -64,15 +65,25 @@ struct nvk_shader {
    const void *code_ptr;
    uint32_t code_size;
 
+   const void *data_ptr;
+   uint32_t data_size;
+
    uint32_t upload_size;
    uint64_t upload_addr;
    uint32_t hdr_offset;
+   uint32_t data_offset;
 };
 
 static inline uint64_t
 nvk_shader_address(const struct nvk_shader *shader)
 {
    return shader->upload_addr + shader->hdr_offset;
+}
+
+static inline uint64_t
+nvk_shader_data_address(const struct nvk_shader *shader)
+{
+   return shader->upload_addr + shader->data_offset;
 }
 
 static inline bool

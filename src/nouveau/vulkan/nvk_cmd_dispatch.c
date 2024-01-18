@@ -229,7 +229,7 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
          };
       } else {
          ASSERTED bool direct_descriptor =
-            nvk_cmd_buffer_get_cbuf_descriptor(cmd, desc, cbuf, &ba);
+            nvk_cmd_buffer_get_cbuf_descriptor(cmd, desc, shader, cbuf, &ba);
          assert(direct_descriptor);
       }
 
