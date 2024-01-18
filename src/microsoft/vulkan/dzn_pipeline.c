@@ -384,7 +384,7 @@ enum dxil_shader_model
    dzn_get_shader_model(const struct dzn_physical_device *pdev)
 {
    static_assert(D3D_SHADER_MODEL_6_0 == 0x60 && SHADER_MODEL_6_0 == 0x60000, "Validating math below");
-   static_assert(D3D_SHADER_MODEL_6_7 == 0x67 && SHADER_MODEL_6_7 == 0x60007, "Validating math below");
+   static_assert(D3D_SHADER_MODEL_6_8 == 0x68 && SHADER_MODEL_6_8 == 0x60008, "Validating math below");
    return ((pdev->shader_model & 0xf0) << 12) | (pdev->shader_model & 0xf);
 }
 

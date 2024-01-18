@@ -6428,9 +6428,9 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 }
 
 static const unsigned dxil_validator_min_capable_version = DXIL_VALIDATOR_1_4;
-static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_7;
+static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_8;
 static const unsigned dxil_min_shader_model = SHADER_MODEL_6_0;
-static const unsigned dxil_max_shader_model = SHADER_MODEL_6_7;
+static const unsigned dxil_max_shader_model = SHADER_MODEL_6_8;
 
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
