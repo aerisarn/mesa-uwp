@@ -61,9 +61,6 @@
 #include "spirv.h"
 
 #ifdef USE_STATIC_OPENCL_C_H
-#if LLVM_VERSION_MAJOR < 15
-#include "opencl-c.h.h"
-#endif
 #include "opencl-c-base.h.h"
 #endif
 
@@ -791,12 +788,8 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       "-triple", triple,
       // By default, clang prefers to use modules to pull in the default headers,
       // which doesn't work with our technique of embedding the headers in our binary
-#if LLVM_VERSION_MAJOR >= 15
       "-fdeclare-opencl-builtins",
-#else
-      "-finclude-default-header",
-#endif
-#if LLVM_VERSION_MAJOR >= 15 && LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17
       "-no-opaque-pointers",
 #endif
       // Add a default CL compiler version. Clang will pick the last one specified
@@ -854,20 +847,11 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
                                        clang::frontend::Angled,
                                        false, false);
 
-#if LLVM_VERSION_MAJOR < 15
-      ::llvm::sys::path::append(system_header_path, "opencl-c.h");
-      c->getPreprocessorOpts().addRemappedFile(system_header_path.str(),
-         ::llvm::MemoryBuffer::getMemBuffer(llvm::StringRef(opencl_c_source, ARRAY_SIZE(opencl_c_source) - 1)).release());
-      ::llvm::sys::path::remove_filename(system_header_path);
-#endif
-
       ::llvm::sys::path::append(system_header_path, "opencl-c-base.h");
       c->getPreprocessorOpts().addRemappedFile(system_header_path.str(),
          ::llvm::MemoryBuffer::getMemBuffer(llvm::StringRef(opencl_c_base_source, ARRAY_SIZE(opencl_c_base_source) - 1)).release());
 
-#if LLVM_VERSION_MAJOR >= 15
       c->getPreprocessorOpts().Includes.push_back("opencl-c-base.h");
-#endif
    }
 #else
    // GetResourcePath is a way to retrive the actual libclang resource dir based on a given binary
@@ -886,11 +870,7 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
                                     clang::frontend::Angled,
                                     false, false);
    // Add opencl include
-#if LLVM_VERSION_MAJOR >= 15
    c->getPreprocessorOpts().Includes.push_back("opencl-c-base.h");
-#else
-   c->getPreprocessorOpts().Includes.push_back("opencl-c.h");
-#endif
 #endif
 
    // Enable/Disable optional OpenCL C features. Some can be toggled via `OpenCLExtensionsAsWritten`

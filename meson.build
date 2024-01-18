@@ -1731,10 +1731,8 @@ if draw_with_llvm
   llvm_optional_modules += ['lto']
 endif
 
-if with_amd_vk or with_gallium_radeonsi
+if with_amd_vk or with_gallium_radeonsi or with_clc
   _llvm_version = '>= 15.0.0'
-elif with_clc
-  _llvm_version = '>= 14.0.0'
 elif with_gallium_opencl
   _llvm_version = '>= 11.0.0'
 else
@@ -1829,7 +1827,7 @@ if with_opencl_spirv
   # 8.0.1.3.
   _llvmspirvlib_min_version = '>= 8.0.1.3'
   if with_clc
-    _llvmspirvlib_min_version = '>= 14.0.0.0'
+    _llvmspirvlib_min_version = '>= 15.0.0.0'
   endif
 
   _llvmspirvlib_version = [
