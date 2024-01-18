@@ -81,6 +81,9 @@ fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     let mut op: nir_shader_compiler_options = unsafe { std::mem::zeroed() };
 
     op.lower_fdiv = true;
+    op.fuse_ffma16 = true;
+    op.fuse_ffma32 = true;
+    op.fuse_ffma64 = true;
     op.lower_flrp16 = true;
     op.lower_flrp32 = true;
     op.lower_flrp64 = true;
