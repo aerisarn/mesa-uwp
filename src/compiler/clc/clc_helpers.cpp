@@ -893,15 +893,12 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
 #endif
 #endif
 
+   // Enable/Disable optional OpenCL C features. Some can be toggled via `OpenCLExtensionsAsWritten`
+   // others we have to (un)define via macros ourselves.
+
    // Undefine clang added SPIR(V) defines so we don't magically enable extensions
    c->getPreprocessorOpts().addMacroUndef("__SPIR__");
    c->getPreprocessorOpts().addMacroUndef("__SPIRV__");
-
-   // clang defines those unconditionally, we need to fix that.
-   if (!args->features.int64)
-      c->getPreprocessorOpts().addMacroUndef("__opencl_c_int64");
-   if (!args->features.images)
-      c->getPreprocessorOpts().addMacroUndef("__IMAGE_SUPPORT__");
 
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-all");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_byte_addressable_store");
@@ -909,6 +906,8 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_global_int32_extended_atomics");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_local_int32_base_atomics");
    c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_local_int32_extended_atomics");
+   c->getPreprocessorOpts().addMacroDef("cl_khr_expect_assume=1");
+
    if (args->features.fp16) {
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_fp16");
    }
@@ -919,9 +918,15 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
    if (args->features.int64) {
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cles_khr_int64");
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_int64");
+   } else {
+      // clang defines this unconditionally, we need to fix that.
+      c->getPreprocessorOpts().addMacroUndef("__opencl_c_int64");
    }
    if (args->features.images) {
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_images");
+   } else {
+      // clang defines this unconditionally, we need to fix that.
+      c->getPreprocessorOpts().addMacroUndef("__IMAGE_SUPPORT__");
    }
    if (args->features.images_read_write) {
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_read_write_images");
@@ -935,26 +940,21 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
    }
    if (args->features.subgroups) {
       c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_subgroups");
-   }
-   if (args->features.subgroups_ifp) {
-      assert(args->features.subgroups);
-      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_subgroups");
-   }
-
-   // llvm handles these extensions differently so we have to pass those flags instead to expose the clc functions
-   c->getPreprocessorOpts().addMacroDef("cl_khr_expect_assume=1");
-   if (args->features.integer_dot_product) {
-      c->getPreprocessorOpts().addMacroDef("cl_khr_integer_dot_product=1");
-      c->getPreprocessorOpts().addMacroDef("__opencl_c_integer_dot_product_input_4x8bit_packed=1");
-      c->getPreprocessorOpts().addMacroDef("__opencl_c_integer_dot_product_input_4x8bit=1");
-   }
-   if (args->features.subgroups) {
       if (args->features.subgroups_shuffle) {
          c->getPreprocessorOpts().addMacroDef("cl_khr_subgroup_shuffle=1");
       }
       if (args->features.subgroups_shuffle_relative) {
          c->getPreprocessorOpts().addMacroDef("cl_khr_subgroup_shuffle_relative=1");
       }
+   }
+   if (args->features.subgroups_ifp) {
+      assert(args->features.subgroups);
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_subgroups");
+   }
+   if (args->features.integer_dot_product) {
+      c->getPreprocessorOpts().addMacroDef("cl_khr_integer_dot_product=1");
+      c->getPreprocessorOpts().addMacroDef("__opencl_c_integer_dot_product_input_4x8bit_packed=1");
+      c->getPreprocessorOpts().addMacroDef("__opencl_c_integer_dot_product_input_4x8bit=1");
    }
 
    if (args->num_headers) {
