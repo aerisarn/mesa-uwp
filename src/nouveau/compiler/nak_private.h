@@ -18,6 +18,7 @@ bool nak_should_print_nir(void);
 
 struct nak_compiler {
    uint8_t sm;
+   uint8_t warps_per_sm;
 
    struct nir_shader_compiler_options nir_options;
 };
@@ -87,6 +88,8 @@ enum ENUM_PACKED nak_attr {
 
 enum ENUM_PACKED nak_sv {
    NAK_SV_LANE_ID          = 0x00,
+   NAK_SV_VIRTCFG          = 0x02,
+   NAK_SV_VIRTID           = 0x03,
    NAK_SV_VERTEX_COUNT     = 0x10,
    NAK_SV_INVOCATION_ID    = 0x11,
    NAK_SV_THREAD_KILL      = 0x13,

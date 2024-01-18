@@ -416,6 +416,8 @@ static bool
 nak_nir_lower_system_value_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
                                   void *data)
 {
+   const struct nak_compiler *nak = data;
+
    b->cursor = nir_before_instr(&intrin->instr);
 
    nir_def *val;
@@ -512,6 +514,25 @@ nak_nir_lower_system_value_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
       val = nir_unpack_64_2x32(b, val);
       break;
 
+   case nir_intrinsic_load_warps_per_sm_nv:
+      val = nir_imm_int(b, nak->warps_per_sm);
+      break;
+
+   case nir_intrinsic_load_sm_count_nv:
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_VIRTCFG);
+      val = nir_ubitfield_extract_imm(b, val, 20, 9);
+      break;
+
+   case nir_intrinsic_load_warp_id_nv:
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_VIRTID);
+      val = nir_ubitfield_extract_imm(b, val, 8, 7);
+      break;
+
+   case nir_intrinsic_load_sm_id_nv:
+      val = nir_load_sysval_nv(b, 32, .base = NAK_SV_VIRTID);
+      val = nir_ubitfield_extract_imm(b, val, 20, 9);
+      break;
+
    default:
       return false;
    }
@@ -525,12 +546,12 @@ nak_nir_lower_system_value_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static bool
-nak_nir_lower_system_values(nir_shader *nir)
+nak_nir_lower_system_values(nir_shader *nir, const struct nak_compiler *nak)
 {
    return nir_shader_intrinsics_pass(nir, nak_nir_lower_system_value_intrin,
                                      nir_metadata_block_index |
                                      nir_metadata_dominance,
-                                     NULL);
+                                     (void *)nak);
 }
 
 static bool
@@ -1165,7 +1186,7 @@ nak_postprocess_nir(nir_shader *nir,
           nir->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES);
    }
 
-   OPT(nir, nak_nir_lower_system_values);
+   OPT(nir, nak_nir_lower_system_values, nak);
 
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:

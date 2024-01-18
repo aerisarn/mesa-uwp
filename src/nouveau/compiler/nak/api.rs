@@ -156,6 +156,7 @@ pub extern "C" fn nak_compiler_create(
 
     let nak = Box::new(nak_compiler {
         sm: dev.sm,
+        warps_per_sm: dev.max_warps_per_mp,
         nir_options: nir_options(dev),
     });
 
