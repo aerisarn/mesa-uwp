@@ -98,7 +98,7 @@ TEST_F(FSCombineConstantsTest, Simple)
    ASSERT_EQ(bblock_end(block)->opcode, BRW_OPCODE_SEL);
 }
 
-TEST_F(FSCombineConstantsTest, DISABLED_DoContainingDo)
+TEST_F(FSCombineConstantsTest, DoContainingDo)
 {
    fs_builder bld = make_builder(shader);
 
