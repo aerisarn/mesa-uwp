@@ -501,23 +501,31 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
     * Kepler+ needs the first instruction to be 0x80 aligned, so we waste 0x30 bytes
     */
    int alignment = dev->pdev->info.cls_eng3d >= KEPLER_A ? 0x80 : 0x40;
-   int offset = 0;
 
+   uint32_t total_size = 0;
    if (dev->pdev->info.cls_eng3d >= KEPLER_A &&
        dev->pdev->info.cls_eng3d < TURING_A &&
        hdr_size > 0) {
-      /* offset will be 0x30 */
-      offset = alignment - hdr_size;
+      /* The instructions are what has to be aligned so we need to start at a
+       * small offset (0x30 B) into the upload area.
+       */
+      total_size = alignment - hdr_size;
    }
 
-   uint32_t total_size = shader->code_size + hdr_size + offset;
+   const uint32_t hdr_offset = total_size;
+   total_size += hdr_size;
+
+   const uint32_t code_offset = total_size;
+   assert(code_offset % alignment == 0);
+   total_size += shader->code_size;
+
    char *data = malloc(total_size);
    if (data == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    assert(hdr_size <= sizeof(shader->info.hdr));
-   memcpy(data + offset, shader->info.hdr, hdr_size);
-   memcpy(data + offset + hdr_size, shader->code_ptr, shader->code_size);
+   memcpy(data + hdr_offset, shader->info.hdr, hdr_size);
+   memcpy(data + code_offset, shader->code_ptr, shader->code_size);
 
 #ifndef NDEBUG
    if (debug_get_bool_option("NV50_PROG_DEBUG", false))
@@ -528,7 +536,7 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
                                      total_size, alignment, &shader->upload_addr);
    if (result == VK_SUCCESS) {
       shader->upload_size = total_size;
-      shader->upload_padding = offset;
+      shader->hdr_offset = hdr_offset;
    }
    free(data);
 

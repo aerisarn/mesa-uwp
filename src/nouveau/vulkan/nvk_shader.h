@@ -66,13 +66,13 @@ struct nvk_shader {
 
    uint32_t upload_size;
    uint64_t upload_addr;
-   uint32_t upload_padding;
+   uint32_t hdr_offset;
 };
 
 static inline uint64_t
 nvk_shader_address(const struct nvk_shader *shader)
 {
-   return shader->upload_addr + shader->upload_padding;
+   return shader->upload_addr + shader->hdr_offset;
 }
 
 static inline bool
