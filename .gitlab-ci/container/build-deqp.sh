@@ -57,6 +57,10 @@ cts_patch_files=(
   # Android specific patches.
   build-deqp_Allow-running-on-Android-from-the-command-line.patch
   build-deqp_Android-prints-to-stdout-instead-of-logcat.patch
+
+  # Change zlib URL because the one from zlib.net requires a human-verification
+  # Forward-port of b61f15f09adb6b7c9eefc7f7c44612c0c390abe5 into modern dEQP codebase
+  build-deqp_Change-zlib-URL-because-the-one-from-zlib.net-requir.patch
 )
 
 for patch in "${cts_patch_files[@]}"
