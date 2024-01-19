@@ -135,6 +135,12 @@ struct intel_device_info_pat_entry {
    .coherency = INTEL_DEVICE_INFO_COHERENCY_MODE_##coh_     \
 }
 
+enum intel_cmat_scope
+{
+   INTEL_CMAT_SCOPE_NONE = 0,
+   INTEL_CMAT_SCOPE_SUBGROUP,
+};
+
 enum intel_cooperative_matrix_component_type
 {
    INTEL_CMAT_FLOAT16,
@@ -147,7 +153,7 @@ enum intel_cooperative_matrix_component_type
 
 struct intel_cooperative_matrix_configuration
 {
-   mesa_scope scope;
+   enum intel_cmat_scope scope;
 
    /* Matrix A is MxK.
     * Matrix B is KxN.

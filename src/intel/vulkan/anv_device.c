@@ -2225,7 +2225,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       device->has_exec_timeline = false;
 
    device->has_cooperative_matrix =
-      device->info.cooperative_matrix_configurations[0].scope != SCOPE_NONE;
+      device->info.cooperative_matrix_configurations[0].scope != INTEL_CMAT_SCOPE_NONE;
 
    unsigned st_idx = 0;
 
@@ -5138,13 +5138,10 @@ convert_component_type(enum intel_cooperative_matrix_component_type t)
 }
 
 static VkScopeKHR
-convert_scope(mesa_scope scope)
+convert_scope(enum intel_cmat_scope scope)
 {
    switch (scope) {
-   case SCOPE_DEVICE:       return VK_SCOPE_DEVICE_KHR;
-   case SCOPE_WORKGROUP:    return VK_SCOPE_WORKGROUP_KHR;
-   case SCOPE_SUBGROUP:     return VK_SCOPE_SUBGROUP_KHR;
-   case SCOPE_QUEUE_FAMILY: return VK_SCOPE_QUEUE_FAMILY_KHR;
+   case INTEL_CMAT_SCOPE_SUBGROUP: return VK_SCOPE_SUBGROUP_KHR;
    default:
       unreachable("invalid cooperative matrix scope in configuration");
    }
@@ -5166,7 +5163,7 @@ VkResult anv_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(
       const struct intel_cooperative_matrix_configuration *cfg =
          &devinfo->cooperative_matrix_configurations[i];
 
-      if (cfg->scope == SCOPE_NONE)
+      if (cfg->scope == INTEL_CMAT_SCOPE_NONE)
          break;
 
       vk_outarray_append_typed(VkCooperativeMatrixPropertiesKHR, &out, prop) {
