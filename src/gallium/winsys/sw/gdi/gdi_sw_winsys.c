@@ -219,12 +219,15 @@ gdi_sw_display( struct sw_winsys *winsys,
                 struct sw_displaytarget *dt,
                 HDC hDC )
 {
+//TODO: do we really need this on UWP?
+#ifndef _XBOX_UWP
     struct gdi_sw_displaytarget *gdt = gdi_sw_displaytarget(dt);
 
     StretchDIBits(hDC,
                   0, 0, gdt->width, gdt->height,
                   0, 0, gdt->width, gdt->height,
                   gdt->data, (BITMAPINFO *)&gdt->bmi, 0, SRCCOPY);
+#endif
 }
 
 static void
