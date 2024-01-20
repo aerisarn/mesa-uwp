@@ -48,7 +48,7 @@
 static LRESULT CALLBACK
 WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#ifndef _GAMING_XBOX
+#if !defined _GAMING_XBOX && !defined _XBOX_UWP
     MINMAXINFO *pMMI;
     switch (uMsg) {
     case WM_GETMINMAXINFO:
@@ -80,7 +80,7 @@ stw_pbuffer_create(const struct stw_pixelformat_info *pfi, int iWidth, int iHeig
       WNDCLASS wc;
       memset(&wc, 0, sizeof wc);
       wc.hbrBackground = (HBRUSH) (COLOR_BTNFACE + 1);
-#ifndef _GAMING_XBOX
+#if !defined _GAMING_XBOX && !defined _XBOX_UWP
       wc.hCursor = LoadCursor(NULL, IDC_ARROW);
       wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 #endif

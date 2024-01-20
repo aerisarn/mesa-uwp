@@ -224,7 +224,7 @@ wglUseFontBitmapsW(
    DWORD count,
    DWORD listBase )
 {
-#ifndef _GAMING_XBOX
+#if !defined _GAMING_XBOX && !defined _XBOX_UWP
    GLYPHMETRICS gm;
    MAT2 tra;
    FIXED one, minus_one, zero;
@@ -277,7 +277,7 @@ wglUseFontBitmapsW(
    return result;
 #else
    return false;
-#endif /* _GAMING_XBOX */
+#endif /* _GAMING_XBOX && !defined _XBOX_UWP */
 }
 
 WINGDIAPI BOOL APIENTRY

@@ -86,7 +86,7 @@ debug_disable_win32_error_dialogs(void)
     */
    UINT uMode = SetErrorMode(0);
    SetErrorMode(uMode);
-#ifndef _GAMING_XBOX
+#if !defined _GAMING_XBOX && !defined _XBOX_UWP
    if (uMode & SEM_FAILCRITICALERRORS) {
       /* Disable assertion failure message box.
        * http://msdn.microsoft.com/en-us/library/sas1dkb2.aspx

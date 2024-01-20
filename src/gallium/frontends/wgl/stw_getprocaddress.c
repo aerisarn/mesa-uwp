@@ -54,17 +54,24 @@ static const struct stw_extension_entry stw_extension_entries[] = {
    /* WGL_ARB_extensions_string */
    STW_EXTENSION_ENTRY( wglGetExtensionsStringARB ),
 
+
+//TODO: I still have to map concepts here
+#ifndef _XBOX_UWP
    /* WGL_ARB_pbuffer */
    STW_EXTENSION_ENTRY( wglCreatePbufferARB ),
    STW_EXTENSION_ENTRY( wglGetPbufferDCARB ),
    STW_EXTENSION_ENTRY( wglReleasePbufferDCARB ),
    STW_EXTENSION_ENTRY( wglDestroyPbufferARB ),
    STW_EXTENSION_ENTRY( wglQueryPbufferARB ),
+#endif
 
+//TODO: I still have to map concepts here
+#ifndef _XBOX_UWP
    /* WGL_ARB_pixel_format */
    STW_EXTENSION_ENTRY( wglChoosePixelFormatARB ),
    STW_EXTENSION_ENTRY( wglGetPixelFormatAttribfvARB ),
    STW_EXTENSION_ENTRY( wglGetPixelFormatAttribivARB ),
+#endif
 
    /* WGL_EXT_extensions_string */
    STW_EXTENSION_ENTRY( wglGetExtensionsStringEXT ),

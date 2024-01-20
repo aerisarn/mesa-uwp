@@ -73,7 +73,7 @@ stw_get_param(struct pipe_frontend_screen *fscreen,
 static int
 get_refresh_rate(void)
 {
-#ifndef _GAMING_XBOX
+#if !defined _GAMING_XBOX && !defined _XBOX_UWP
    DEVMODE devModes;
 
    if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devModes)) {

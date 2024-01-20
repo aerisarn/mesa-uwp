@@ -816,7 +816,7 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
       winsys->displaytarget_unmap(winsys, res->dt);
    }
 
-#if defined(_WIN32) && !defined(_GAMING_XBOX)
+#if defined(_WIN32) && !defined(_GAMING_XBOX) && !defined(_XBOX_UWP)
    // WindowFromDC is Windows-only, and this method requires an HWND, so only use it on Windows
    ID3D12SharingContract *sharing_contract;
    if (SUCCEEDED(screen->cmdqueue->QueryInterface(IID_PPV_ARGS(&sharing_contract)))) {
