@@ -120,3 +120,8 @@ glx@glx_ext_no_config_context@no fbconfig
 
 # See https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/25861#note_2140498
 spec@ext_timer_query@time-elapsed
+
+# ci-collate: Issue found in https://gitlab.freedesktop.org/mesa/mesa/-/jobs/53978300
+spec@!opengl 2.0@occlusion-query-discard
+spec@arb_shader_storage_buffer_object@max-ssbo-size@fsexceed
+spec@arb_shader_storage_buffer_object@max-ssbo-size@vsexceed
