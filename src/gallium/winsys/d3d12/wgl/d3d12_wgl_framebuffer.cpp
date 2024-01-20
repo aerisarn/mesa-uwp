@@ -111,6 +111,7 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
 
    if (!framebuffer->swapchain) {
       ComPtr<IDXGISwapChain1> swapchain1;
+#ifndef _XBOX_UWP
       if (FAILED(screen->factory->CreateSwapChainForHwnd(
          screen->base.cmdqueue,
          framebuffer->window,
@@ -121,11 +122,24 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
          debug_printf("D3D12: failed to create swapchain");
          return;
       }
+#else     
+      if (FAILED(screen->factory->CreateSwapChainForCoreWindow(
+         screen->base.cmdqueue,
+         reinterpret_cast<IUnknown*>(framebuffer->window),
+         &desc,
+         nullptr,
+         &swapchain1))) {
+         debug_printf("D3D12: failed to create swapchain");
+         return;
+      }
+#endif
 
       swapchain1.As(&framebuffer->swapchain);
 
+#ifndef _XBOX_UWP
       screen->factory->MakeWindowAssociation(framebuffer->window,
                                              DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
+#endif
    }
    else {
       struct pipe_fence_handle *fence = NULL;
