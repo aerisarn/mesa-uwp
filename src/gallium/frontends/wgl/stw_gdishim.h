@@ -28,6 +28,8 @@
 #ifndef STW_GDISHIM_H
 #define STW_GDISHIM_H
 
+#include <windows.h>
+
 #ifdef _XBOX_UWP
 
 //These must be implemented as well for UWP
@@ -38,11 +40,28 @@
 #define GetDC(hwnd) (HDC)hwnd
 #define ReleaseDC(hwnd, hdc) 1
 
+#ifdef _XBOX_UWP
+
+__declspec(dllimport)
+BOOL
+WINAPI
+xSetClientRect(
+   _In_ HWND hWnd,
+   _In_ LPRECT lpRect);
+
+__declspec(dllimport)
+BOOL
+WINAPI
+xGetClientRect(
+   _In_ HWND hWnd,
+   _Out_ LPRECT lpRect);
+
+#endif
+   
+
 #endif
 
 #ifdef _GAMING_XBOX
-
-#include <windows.h>
 
 /* Handles */
 typedef void* HMONITOR;

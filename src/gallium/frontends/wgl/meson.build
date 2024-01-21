@@ -50,9 +50,9 @@ files_libwgl = files(
   'stw_tls.c',
 )
 
-if target_machine.system().startswith('Gaming.Xbox')
+#if target_machine.system().startswith('Gaming.Xbox')
   files_libwgl += files('stw_gdishim.c')
-endif
+#endif
 
 libwgl = static_library(
   'wgl',
