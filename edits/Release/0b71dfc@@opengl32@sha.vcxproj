@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build" ToolsVersion="4.0">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="release|x64">
+      <Configuration>release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9D247A80-8362-4BD1-9479-AC70A0067564}</ProjectGuid>
+    <Keyword>x64Proj</Keyword>
+    <RootNamespace>opengl32</RootNamespace>
+    <Platform>x64</Platform>
+    <ProjectName>opengl32</ProjectName>
+    <AppContainerApplication>true</AppContainerApplication>
+    <ApplicationType>Windows Store</ApplicationType>
+    <WindowsTargetPlatformVersion>10.0.20348.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <UseMultiToolTask>true</UseMultiToolTask>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir>.\</OutDir>
+    <IntDir>0b71dfc@@opengl32@sha\</IntDir>
+    <TargetName>opengl32</TargetName>
+    <TargetExt>.dll</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>0b71dfc@@opengl32@sha;.;..\..\..\..\..\src\gallium\targets/libgl-gdi;..\..\..\..\include;..\..\..\..\..\include\.;..\..\frontends\wgl;..\..\..\..\..\src\gallium\frontends/wgl\.;..\..\..;..\..\..\..\..\src\.;..\..\include;..\..\..\..\..\src\gallium/include;..\..\..\..\..\src\util\..;..\..\..\..\subprojects\zlib-1.3;..\..\..\..\..\subprojects\zlib-1.3\.;..\..\..\..\..\src\c11/impl\../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level2</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <CompileAsWinRT Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</CompileAsWinRT>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions />
+    </ResourceCompile>
+    <Link>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalOptions>/OPT:REF /fixed:no /dynamicbase /nxcompat /incremental:no %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>..\..\..\..\src/gallium/targets/wgl/libgallium_wgl.lib;..\..\..\..\src/mapi/glapi/libglapi_bridge.a;..\..\..\..\src/util/libmesa_util.a;..\..\..\..\src/util/libmesa_util_sse41.a;..\..\..\..\subprojects/zlib-1.3/z.lib;..\..\..\..\src/util/blake3/libblake3.a;..\..\..\..\src/c11/impl/libmesa_util_c11.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)opengl32.dll</OutputFile>
+      <SubSystem>Windows</SubSystem>
+      <ImportLibrary>opengl32.lib</ImportLibrary>
+      <ModuleDefinitionFile>..\..\..\..\src\gallium\targets/libgl-gdi\opengl32.def</ModuleDefinitionFile>
+      <TargetMachine>MachineX64</TargetMachine>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <SetChecksum>true</SetChecksum>
+      <GenerateWindowsMetadata Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</GenerateWindowsMetadata>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\..\src\gallium\targets/libgl-gdi\meson.build" />
+  </ItemGroup>
+  <ItemGroup>
+    <CLCompile Include="..\..\..\..\..\src\gallium\targets/libgl-gdi\stw_wgl.c">
+      <AdditionalOptions>"/std:c11" "/wd4018" "/wd4056" "/wd4244" "/wd4267" "/wd4305" "/wd4351" "/wd4756" "/wd4800" "/wd4996" "/wd4291" "/wd4146" "/wd4200" "/wd4624" "/wd4309" "/wd4838" "/wd5105" "/we4020" "/we4024" "/we4189" "/Zc:__cplusplus" %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>NDEBUG;__STDC_CONSTANT_MACROS;__STDC_FORMAT_MACROS;__STDC_LIMIT_MACROS;PACKAGE_VERSION="24.1.0-devel";PACKAGE_BUGREPORT="https://gitlab.freedesktop.org/mesa/mesa/-/issues";HAVE_OPENGL=1;HAVE_OPENGL_ES_1=0;HAVE_OPENGL_ES_2=0;HAVE_D3D12;USE_VK_COMPILER=1;VIDEO_CODEC_VC1DEC=0;VIDEO_CODEC_H264DEC=0;VIDEO_CODEC_H264ENC=0;VIDEO_CODEC_H265DEC=0;VIDEO_CODEC_H265ENC=0;VIDEO_CODEC_AV1DEC=0;VIDEO_CODEC_AV1ENC=0;VIDEO_CODEC_VP9DEC=0;HAVE_WINDOWS_PLATFORM;HAVE_GALLIUM_D3D12_VIDEO;ENABLE_ST_OMX_BELLAGIO=0;ENABLE_ST_OMX_TIZONIA=0;GLAPI_EXPORT_PROTO_ENTRY_POINTS=0;ALLOW_KCMP;_WINDOWS;_WIN32_WINNT=0x0A00;WINVER=0x0A00;PIPE_SUBSYSTEM_WINDOWS_USER;_USE_MATH_DEFINES;VC_EXTRALEAN;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_SCL_SECURE_NO_DEPRECATE;_ALLOW_KEYWORD_MACROS;_HAS_EXCEPTIONS=0;NOMINMAX;USE_SSE41;MISSING_64BIT_ATOMICS;HAVE_STRTOF;HAVE_QSORT_S;HAVE_STRUCT_TIMESPEC;HAVE_ZLIB;HAVE_COMPRESSION;WIN32_LEAN_AND_MEAN;LLVM_AVAILABLE=0;DRAW_LLVM_AVAILABLE=0; _XBOX_UWP;%(PreprocessorDefinitions);_GDI32_</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>0b71dfc@@opengl32@sha;.;..\..\..\..\..\src\gallium\targets/libgl-gdi;..\..\..\..\include;..\..\..\..\..\include\.;..\..\frontends\wgl;..\..\..\..\..\src\gallium\frontends/wgl\.;..\..\..;..\..\..\..\..\src\.;..\..\include;..\..\..\..\..\src\gallium/include;..\..\..\..\..\src\util\..;..\..\..\..\subprojects\zlib-1.3;..\..\..\..\..\subprojects\zlib-1.3\.;..\..\..\..\..\src\c11/impl\../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ObjectFileName>$(IntDir)stw_wgl.c.obj</ObjectFileName>
+    </CLCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemGroup>
+    <ProjectReference Include="D:\gitroot\uwp\mesa-uwp\build_release\REGEN.vcxproj">
+      <Project>{86E34E7D-51D5-426C-870C-D3AE4088F74E}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\wgl\b41e55a@@libgallium_wgl@sha.vcxproj">
+      <Project>{C692AA52-433B-4FF6-99A2-0B70EC4C8774}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\mapi\glapi\175994c@@glapi_bridge@sta.vcxproj">
+      <Project>{2AD3A2B4-DF76-4B41-9E98-99057894E4BC}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\util\719bc35@@mesa_util@sta.vcxproj">
+      <Project>{44E162FA-85BC-4775-B274-FC5F8D20E19D}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\subprojects\zlib-1.3\24d8660@@z@sha.vcxproj">
+      <Project>{C3B2F526-C621-4F6B-9FFE-DCD9793D4395}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\util\blake3\526e7f7@@blake3@sta.vcxproj">
+      <Project>{2DDA6FE8-C8C0-470A-9D9D-93D2EB164271}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\c11\impl\298887e@@mesa_util_c11@sta.vcxproj">
+      <Project>{26718EA6-CEEB-4BE0-AA47-642E3BAECC55}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include=".\0b71dfc@@opengl32.def@cus.vcxproj">
+      <Project>{F0224792-CFBC-4B4F-ABB9-57DFA46E73BF}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

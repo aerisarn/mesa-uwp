@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build" ToolsVersion="4.0">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="release|x64">
+      <Configuration>release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C692AA52-433B-4FF6-99A2-0B70EC4C8774}</ProjectGuid>
+    <Keyword>x64Proj</Keyword>
+    <RootNamespace>libgallium_wgl</RootNamespace>
+    <Platform>x64</Platform>
+    <ProjectName>libgallium_wgl</ProjectName>
+    <AppContainerApplication>true</AppContainerApplication>
+    <ApplicationType>Windows Store</ApplicationType>
+    <WindowsTargetPlatformVersion>10.0.20348.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <UseMultiToolTask>true</UseMultiToolTask>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir>.\</OutDir>
+    <IntDir>b41e55a@@libgallium_wgl@sha\</IntDir>
+    <TargetName>libgallium_wgl</TargetName>
+    <TargetExt>.dll</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>b41e55a@@libgallium_wgl@sha;.;..\..\..\..\..\src\gallium\targets/wgl;..\..\..\..\include;..\..\..\..\..\include\.;..\..\..;..\..\..\..\..\src\.;..\..\..\mapi;..\..\..\..\..\src\mapi;..\..\..\mesa;..\..\..\..\..\src\mesa;..\..\include;..\..\..\..\..\src\gallium/include;..\..\auxiliary;..\..\..\..\..\src\gallium/auxiliary;..\..\frontends\wgl;..\..\..\..\..\src\gallium\frontends/wgl\.;..\..\winsys;..\..\..\..\..\src\gallium\winsys;..\..\winsys\sw;..\..\..\..\..\src\gallium\winsys/sw;..\..\drivers;..\..\..\..\..\src\gallium\drivers;..\..\..\compiler\nir;..\..\..\..\..\src\compiler\nir\.;..\..\..\compiler;..\..\..\..\..\src\compiler\.;..\..\..\..\..\src\util\..;..\..\..\..\subprojects\zlib-1.3;..\..\..\..\..\subprojects\zlib-1.3\.;..\..\..\..\..\src\c11/impl\../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GALLIUM_D3D12;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level2</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <CompileAsWinRT Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</CompileAsWinRT>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions />
+    </ResourceCompile>
+    <Link>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalOptions>/OPT:REF /fixed:no /dynamicbase /nxcompat /incremental:no /WHOLEARCHIVE:..\..\..\..\src/gallium/frontends/wgl/libwgl.a %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>..\..\..\..\src/gallium/auxiliary/libgallium.a;..\..\..\..\src/compiler/nir/libnir.a;..\..\..\..\src/compiler/libcompiler.a;..\..\..\..\src/util/libmesa_util.a;..\..\..\..\src/util/libmesa_util_sse41.a;..\..\..\..\subprojects/zlib-1.3/z.lib;..\..\..\..\src/util/blake3/libblake3.a;..\..\..\..\src/c11/impl/libmesa_util_c11.a;..\..\..\..\src/compiler/glsl/libglsl.a;..\..\..\..\src/compiler/glsl/glcpp/libglcpp.a;..\..\..\..\src/mesa/libmesa.a;..\..\..\..\src/mesa/libmesa_sse41.a;..\..\..\..\src/compiler/spirv/libvtn.a;..\..\..\..\src/gallium/winsys/sw/gdi/libwsgdi.a;..\..\..\..\src/mapi/glapi/libglapi_static.a;..\..\..\..\src/gallium/auxiliary/libgalliumvl.a;..\..\..\..\src/gallium/drivers/d3d12/libd3d12.a;..\..\..\..\src/microsoft/compiler/libdxil_compiler.a;..\..\..\..\subprojects/DirectX-Headers-1.0/libd3dx12-format-properties.a;..\..\..\..\subprojects/DirectX-Headers-1.0/libDirectX-Guids.a;..\..\..\..\src/gallium/winsys/d3d12/wgl/libd3d12winsys.a;..\..\..\..\src/util/libxmlconfig.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)libgallium_wgl.dll</OutputFile>
+      <SubSystem>Windows</SubSystem>
+      <ImportLibrary>libgallium_wgl.lib</ImportLibrary>
+      <ModuleDefinitionFile>..\..\..\..\src\gallium\targets/wgl\gallium_wgl.def</ModuleDefinitionFile>
+      <TargetMachine>MachineX64</TargetMachine>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <SetChecksum>true</SetChecksum>
+      <GenerateWindowsMetadata Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</GenerateWindowsMetadata>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\frontends\wgl\945cc3d@@wgl@sta.vcxproj">
+      <Project>{441584DE-7759-4775-BDD7-186483849242}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\..\src\gallium\targets/wgl\meson.build" />
+  </ItemGroup>
+  <ItemGroup>
+    <CLInclude Include="..\..\..\..\src\compiler\nir\nir_opcodes.h" />
+    <CLInclude Include="..\..\..\..\src\compiler\nir\nir_builder_opcodes.h" />
+    <CLInclude Include="..\..\..\..\src\compiler\nir\nir_intrinsics.h" />
+    <CLInclude Include="..\..\..\..\src\compiler\nir\nir_intrinsics_indices.h" />
+    <CLInclude Include="..\..\..\..\src\compiler\ir_expression_operation.h" />
+    <CLInclude Include="..\..\..\..\src\compiler\builtin_types.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CLCompile Include="..\..\..\..\..\src\gallium\targets/wgl\wgl.c">
+      <AdditionalOptions>"/std:c11" "/wd4018" "/wd4056" "/wd4244" "/wd4267" "/wd4305" "/wd4351" "/wd4756" "/wd4800" "/wd4996" "/wd4291" "/wd4146" "/wd4200" "/wd4624" "/wd4309" "/wd4838" "/wd5105" "/we4020" "/we4024" "/we4189" "/Zc:__cplusplus" %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>NDEBUG;__STDC_CONSTANT_MACROS;__STDC_FORMAT_MACROS;__STDC_LIMIT_MACROS;PACKAGE_VERSION="24.1.0-devel";PACKAGE_BUGREPORT="https://gitlab.freedesktop.org/mesa/mesa/-/issues";HAVE_OPENGL=1;HAVE_OPENGL_ES_1=0;HAVE_OPENGL_ES_2=0;HAVE_D3D12;USE_VK_COMPILER=1;VIDEO_CODEC_VC1DEC=0;VIDEO_CODEC_H264DEC=0;VIDEO_CODEC_H264ENC=0;VIDEO_CODEC_H265DEC=0;VIDEO_CODEC_H265ENC=0;VIDEO_CODEC_AV1DEC=0;VIDEO_CODEC_AV1ENC=0;VIDEO_CODEC_VP9DEC=0;HAVE_WINDOWS_PLATFORM;HAVE_GALLIUM_D3D12_VIDEO;ENABLE_ST_OMX_BELLAGIO=0;ENABLE_ST_OMX_TIZONIA=0;GLAPI_EXPORT_PROTO_ENTRY_POINTS=0;ALLOW_KCMP;_WINDOWS;_WIN32_WINNT=0x0A00;WINVER=0x0A00;PIPE_SUBSYSTEM_WINDOWS_USER;_USE_MATH_DEFINES;VC_EXTRALEAN;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_SCL_SECURE_NO_DEPRECATE;_ALLOW_KEYWORD_MACROS;_HAS_EXCEPTIONS=0;NOMINMAX;USE_SSE41;MISSING_64BIT_ATOMICS;HAVE_STRTOF;HAVE_QSORT_S;HAVE_STRUCT_TIMESPEC;HAVE_ZLIB;HAVE_COMPRESSION;WIN32_LEAN_AND_MEAN;LLVM_AVAILABLE=0;DRAW_LLVM_AVAILABLE=0; _XBOX_UWP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>b41e55a@@libgallium_wgl@sha;.;..\..\..\..\..\src\gallium\targets/wgl;..\..\..\..\include;..\..\..\..\..\include\.;..\..\..;..\..\..\..\..\src\.;..\..\..\mapi;..\..\..\..\..\src\mapi;..\..\..\mesa;..\..\..\..\..\src\mesa;..\..\include;..\..\..\..\..\src\gallium/include;..\..\auxiliary;..\..\..\..\..\src\gallium/auxiliary;..\..\frontends\wgl;..\..\..\..\..\src\gallium\frontends/wgl\.;..\..\winsys;..\..\..\..\..\src\gallium\winsys;..\..\winsys\sw;..\..\..\..\..\src\gallium\winsys/sw;..\..\drivers;..\..\..\..\..\src\gallium\drivers;..\..\..\compiler\nir;..\..\..\..\..\src\compiler\nir\.;..\..\..\compiler;..\..\..\..\..\src\compiler\.;..\..\..\..\..\src\util\..;..\..\..\..\subprojects\zlib-1.3;..\..\..\..\..\subprojects\zlib-1.3\.;..\..\..\..\..\src\c11/impl\../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ObjectFileName>$(IntDir)wgl.c.obj</ObjectFileName>
+    </CLCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemGroup>
+    <ProjectReference Include="D:\gitroot\uwp\mesa-uwp\build_release\REGEN.vcxproj">
+      <Project>{86E34E7D-51D5-426C-870C-D3AE4088F74E}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\auxiliary\962fc52@@gallium@sta.vcxproj">
+      <Project>{F5E4904F-AEB5-449D-965B-6FC3904AC2F1}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\glsl\1a27c3f@@glsl@sta.vcxproj">
+      <Project>{479C5FE8-9048-4291-BE24-0055B8296E2D}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\mesa\5cde929@@mesa@sta.vcxproj">
+      <Project>{DB4E8696-538E-49B8-990E-4A4B3EB71C64}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\winsys\sw\gdi\f66e3e9@@wsgdi@sta.vcxproj">
+      <Project>{B1322D0D-9BF5-4762-8980-22D1B401835B}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\mapi\glapi\175994c@@glapi_static@sta.vcxproj">
+      <Project>{025247D4-8281-496D-A256-0F777E1E265C}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\auxiliary\962fc52@@galliumvl@sta.vcxproj">
+      <Project>{E86AE50D-3866-48F8-B914-D4FCB8E29468}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\nir\c6d7332@@nir@sta.vcxproj">
+      <Project>{DCB2F9DF-569E-4C7A-AF00-1C288F8F948E}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\util\719bc35@@mesa_util@sta.vcxproj">
+      <Project>{44E162FA-85BC-4775-B274-FC5F8D20E19D}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\subprojects\zlib-1.3\24d8660@@z@sha.vcxproj">
+      <Project>{C3B2F526-C621-4F6B-9FFE-DCD9793D4395}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\util\blake3\526e7f7@@blake3@sta.vcxproj">
+      <Project>{2DDA6FE8-C8C0-470A-9D9D-93D2EB164271}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\c11\impl\298887e@@mesa_util_c11@sta.vcxproj">
+      <Project>{26718EA6-CEEB-4BE0-AA47-642E3BAECC55}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\7e42b24@@compiler@sta.vcxproj">
+      <Project>{4F765D83-8BBB-4E1B-B1BA-3FFF92565FA0}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\drivers\d3d12\6fc9968@@d3d12@sta.vcxproj">
+      <Project>{ABA130B6-6AA2-4C68-AFF1-C682FB07F1DB}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\winsys\d3d12\wgl\93e0d4b@@d3d12winsys@sta.vcxproj">
+      <Project>{0D8E2316-282C-426F-999D-04DC8A206559}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include=".\b41e55a@@gallium_wgl.def@cus.vcxproj">
+      <Project>{E6AC593D-CE07-4FF0-8B93-BB09998FEDD5}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\nir\c6d7332@@nir_opcodes.h@cus.vcxproj">
+      <Project>{ADF38CB4-325B-4AE0-917B-4CA1786476FB}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\nir\c6d7332@@nir_builder_opcodes.h@cus.vcxproj">
+      <Project>{FA10CBEB-4E79-4D87-8B40-7B2C24BEFE9F}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\nir\c6d7332@@nir_intrinsics.h@cus.vcxproj">
+      <Project>{9F4D2853-6EA1-4458-AB78-961929B0BDDB}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\nir\c6d7332@@nir_intrinsics_indices.h@cus.vcxproj">
+      <Project>{CFA10021-08A6-45DF-ACEB-D123782BEDCD}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\7e42b24@@ir_expression_operation.h@cus.vcxproj">
+      <Project>{C689F47D-3135-4F76-8A64-41C1A2224A9D}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\compiler\7e42b24@@builtin_types.h@cus.vcxproj">
+      <Project>{F19B457D-1B98-496A-9E0B-431D31497E5B}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
