@@ -977,12 +977,16 @@ create_device(util_dl_library *d3d12_mod, IUnknown *adapter, ID3D12DeviceFactory
 static bool
 can_attribute_at_vertex(struct d3d12_screen *screen)
 {
+#ifdef _XBOX_UWP
+   return false; //unsupported
+#else
    switch (screen->vendor_id)  {
    case HW_VENDOR_MICROSOFT:
       return true;
    default:
       return screen->opts3.BarycentricsSupported;
    }
+#endif
 }
 
 static bool
