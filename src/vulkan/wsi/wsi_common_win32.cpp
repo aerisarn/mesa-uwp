@@ -173,11 +173,14 @@ wsi_win32_surface_get_capabilities(VkIcdSurfaceBase *surf,
                                    struct wsi_device *wsi_device,
                                    VkSurfaceCapabilitiesKHR* caps)
 {
+#ifndef _XBOX_UWP
    VkIcdSurfaceWin32 *surface = (VkIcdSurfaceWin32 *)surf;
-
+#endif
    RECT win_rect;
+#ifndef _XBOX_UWP
    if (!GetClientRect(surface->hwnd, &win_rect))
       return VK_ERROR_SURFACE_LOST_KHR;
+#endif
 
    caps->minImageCount = 1;
 
@@ -531,8 +534,10 @@ wsi_win32_image_init(VkDevice device_h,
    if (chain->dxgi)
       return VK_SUCCESS;
 
+#ifndef _XBOX_UWP
    chain->chain_dc = GetDC(chain->wnd);
    image->sw.dc = CreateCompatibleDC(chain->chain_dc);
+#endif
    HBITMAP bmp = NULL;
 
    BITMAPINFO info = { 0 };
@@ -542,15 +547,20 @@ wsi_win32_image_init(VkDevice device_h,
    info.bmiHeader.biPlanes = 1;
    info.bmiHeader.biBitCount = 32;
    info.bmiHeader.biCompression = BI_RGB;
-
+#ifndef _XBOX_UWP
    bmp = CreateDIBSection(image->sw.dc, &info, DIB_RGB_COLORS, &image->sw.ppvBits, NULL, 0);
+#endif
    assert(bmp && image->sw.ppvBits);
 
+#ifndef _XBOX_UWP
    SelectObject(image->sw.dc, bmp);
+#endif
 
    BITMAP header;
+#ifndef _XBOX_UWP
    int status = GetObject(bmp, sizeof(BITMAP), &header);
    (void)status;
+#endif
    image->sw.bmp_row_pitch = header.bmWidthBytes;
    image->sw.bmp = bmp;
 
@@ -564,11 +574,12 @@ wsi_win32_image_finish(struct wsi_win32_swapchain *chain,
 {
    if (image->dxgi.swapchain_res)
       image->dxgi.swapchain_res->Release();
-
+#ifndef _XBOX_UWP
    if (image->sw.dc)
       DeleteDC(image->sw.dc);
    if(image->sw.bmp)
       DeleteObject(image->sw.bmp);
+#endif
    wsi_destroy_image(&chain->base, &image->base);
 }
 
@@ -581,9 +592,9 @@ wsi_win32_swapchain_destroy(struct wsi_swapchain *drv_chain,
 
    for (uint32_t i = 0; i < chain->base.image_count; i++)
       wsi_win32_image_finish(chain, allocator, &chain->images[i]);
-
+#ifndef _XBOX_UWP
    DeleteDC(chain->chain_dc);
-
+#endif
    if (chain->surface->current_swapchain == chain)
       chain->surface->current_swapchain = NULL;
 
@@ -731,9 +742,10 @@ wsi_win32_queue_present(struct wsi_swapchain *drv_chain,
       dptr += image->sw.bmp_row_pitch;
       ptr += image->base.row_pitches[0];
    }
+#ifndef _XBOX_UWP
    if (!StretchBlt(chain->chain_dc, 0, 0, chain->extent.width, chain->extent.height, image->sw.dc, 0, 0, chain->extent.width, chain->extent.height, SRCCOPY))
       chain->status = VK_ERROR_MEMORY_MAP_FAILED;
-
+#endif
    image->state = WSI_IMAGE_IDLE;
 
    return chain->status;
