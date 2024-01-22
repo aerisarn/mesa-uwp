@@ -7,7 +7,7 @@ Use a meson fork that supports UWP.
 
 .. code-block:: sh
 
-  $ python3 meson.py setup build_debug --wipe --backend=vs --uwp --buildtype=release -Dcpp_args=["'/D _XBOX_UWP'"] -Dc_args=["'/D _XBOX_UWP'"] -Db_pch=false -Dc_winlibs=[] -Dcpp_winlibs=[]
+  $ python3 meson.py setup build_release --wipe --backend=vs --uwp --buildtype=release -Dcpp_args=["'/D _XBOX_UWP'"] -Dc_args=["'/D _XBOX_UWP'"] -Db_pch=false -Dc_winlibs=[] -Dcpp_winlibs=[]
   $ python3 meson.py install -C build_release
 
 Original Source
