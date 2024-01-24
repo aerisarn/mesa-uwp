@@ -46,10 +46,6 @@
 #include "stw_context.h"
 #include "stw_st.h"
 
-#ifdef _XBOX_UWP
-#define GetClientRect XGetClientRect
-#endif
-
 
 /**
  * Search the framebuffer with the matching HWND while holding the
@@ -229,12 +225,9 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
    if (!tls_data)
       return 0;
 
-#ifndef _XBOX_UWP
    if (nCode < 0 || !stw_dev)
        return CallNextHookEx(tls_data->hCallWndProcHook, nCode, wParam, lParam);
-#else
-   return 0;
-#endif
+
    /* We check that the stw_dev object is initialized before we try to do
     * anything with it.  Otherwise, in multi-threaded programs there's a
     * chance of executing this code before the stw_dev object is fully
@@ -273,11 +266,8 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
          stw_unlock_framebuffers(stw_dev);
       }
    }
-#ifndef _XBOX_UWP
+
    return CallNextHookEx(tls_data->hCallWndProcHook, nCode, wParam, lParam);
-#else
-   return 0;
-#endif
 }
 #else
 LRESULT CALLBACK

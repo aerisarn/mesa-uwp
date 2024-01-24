@@ -68,27 +68,6 @@ wglMakeContextCurrentARB(
    HDC hReadDC,
    HGLRC hglrc );
 
-//These are undefined on UWP without WinGDI
-#ifdef _XBOX_UWP
-__declspec(dllexport) HGLRC APIENTRY xwglCreateContext(HDC hdc);
-__declspec(dllexport) BOOL APIENTRY xwglMakeCurrent(HDC hdc, HGLRC hglrc);
-__declspec(dllexport) BOOL APIENTRY xwglSwapBuffers(HDC hdc);
-
-__declspec(dllexport)
-BOOL
-WINAPI
-xSetClientRect(
-   _In_ HWND hWnd,
-   _In_ LPRECT lpRect);
-
-__declspec(dllexport)
-BOOL
-WINAPI
-xGetClientRect(
-   _In_ HWND hWnd,
-   _Out_ LPRECT lpRect);
-
-#endif
 
 #ifndef WGL_SWAPMULTIPLE_MAX
 

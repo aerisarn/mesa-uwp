@@ -36,57 +36,6 @@
 
 #include <windows.h>
 
-#ifdef _XBOX_UWP
-typedef struct tagLAYERPLANEDESCRIPTOR { // lpd
-   WORD  nSize;
-   WORD  nVersion;
-   DWORD dwFlags;
-   BYTE  iPixelType;
-   BYTE  cColorBits;
-   BYTE  cRedBits;
-   BYTE  cRedShift;
-   BYTE  cGreenBits;
-   BYTE  cGreenShift;
-   BYTE  cBlueBits;
-   BYTE  cBlueShift;
-   BYTE  cAlphaBits;
-   BYTE  cAlphaShift;
-   BYTE  cAccumBits;
-   BYTE  cAccumRedBits;
-   BYTE  cAccumGreenBits;
-   BYTE  cAccumBlueBits;
-   BYTE  cAccumAlphaBits;
-   BYTE  cDepthBits;
-   BYTE  cStencilBits;
-   BYTE  cAuxBuffers;
-   BYTE  iLayerPlane;
-   BYTE  bReserved;
-   COLORREF crTransparent;
-} LAYERPLANEDESCRIPTOR, * PLAYERPLANEDESCRIPTOR, FAR* LPLAYERPLANEDESCRIPTOR;
-
-//typedef struct _POINTFLOAT {
-//    FLOAT   x;
-//    FLOAT   y;
-//} POINTFLOAT, *PPOINTFLOAT;
-//
-//typedef struct _GLYPHMETRICSFLOAT {
-//    FLOAT       gmfBlackBoxX;
-//    FLOAT       gmfBlackBoxY;
-//    POINTFLOAT  gmfptGlyphOrigin;
-//    FLOAT       gmfCellIncX;
-//    FLOAT       gmfCellIncY;
-//} GLYPHMETRICSFLOAT, *PGLYPHMETRICSFLOAT, FAR *LPGLYPHMETRICSFLOAT;
-//
-//WINGDIAPI BOOL  WINAPI wglDeleteContext(HGLRC);
-//
-typedef struct _WGLSWAP
-{
-    HDC hdc;
-    UINT uiFlags;
-} WGLSWAP, *PWGLSWAP, FAR *LPWGLSWAP;
-
-#endif
-
 #include "util/u_debug.h"
 #include "stw_winsys.h"
 #include "stw_device.h"
@@ -362,48 +311,3 @@ DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
    }
    return true;
 }
-
-//TODO: make a different DLL, possibly in c++, which correctly address all of these values
-//using CoreWindow
-#ifdef _XBOX_UWP
-RECT win_rect;
-
-BOOL
-XSetClientRect(
-   _In_ HWND hWnd,
-   _In_ LPRECT lpRect)
-{
-   win_rect = *lpRect;
-   return TRUE;
-}
-
-BOOL
-XGetClientRect(
-   _In_ HWND hWnd,
-   _Out_ LPRECT lpRect)
-{
-   *lpRect = win_rect;
-   return TRUE;
-}
-
-__declspec(dllexport)
-BOOL
-WINAPI
-xSetClientRect(
-   _In_ HWND hWnd,
-   _In_ LPRECT lpRect)
-{
-   return XSetClientRect(hWnd, lpRect);
-}
-
-__declspec(dllexport)
-BOOL
-WINAPI
-xGetClientRect(
-   _In_ HWND hWnd,
-   _Out_ LPRECT lpRect)
-{
-   return XGetClientRect(hWnd, lpRect);
-}
-
-#endif

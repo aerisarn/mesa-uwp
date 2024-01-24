@@ -41,10 +41,6 @@
 #include "stw_pixelformat.h"
 #include "stw_framebuffer.h"
 
-#ifdef _XBOX_UWP
-#define GetClientRect XGetClientRect
-#endif
-
 
 #define LARGE_WINDOW_SIZE 60000
 
@@ -67,11 +63,8 @@ WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     }
 #endif /* _GAMING_XBOX */
-#ifndef _XBOX_UWP
+
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
-#else
-    return 0;
-#endif
 }
 
 struct stw_framebuffer *
@@ -91,17 +84,12 @@ stw_pbuffer_create(const struct stw_pixelformat_info *pfi, int iWidth, int iHeig
       wc.hCursor = LoadCursor(NULL, IDC_ARROW);
       wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 #endif
-
       wc.lpfnWndProc = WndProc;
       wc.lpszClassName = "wglpbuffer";
       wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
-#ifndef _XBOX_UWP
       RegisterClass(&wc);
-#endif
       first = false;
    }
-   //TODO multiple windows?
-#ifndef _XBOX_UWP
 
    DWORD dwExStyle = 0;
    DWORD dwStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
@@ -146,6 +134,7 @@ stw_pbuffer_create(const struct stw_pixelformat_info *pfi, int iWidth, int iHeig
    if (!hWnd) {
       return 0;
    }
+
 #ifdef DEBUG
    /*
     * Verify the client area size matches the specified size.
@@ -159,8 +148,6 @@ stw_pbuffer_create(const struct stw_pixelformat_info *pfi, int iWidth, int iHeig
 #endif
 
    return stw_framebuffer_create(hWnd, pfi, STW_FRAMEBUFFER_PBUFFER, fscreen);
-#endif /*_XBOX_UWP*/
-   return NULL;
 }
 
 
@@ -334,13 +321,8 @@ wglDestroyPbufferARB(HPBUFFERARB hPbuffer)
 
    fb = stw_framebuffer_from_HPBUFFERARB(hPbuffer);
 
-   //TODO multiple windows?
-#ifndef _XBOX_UWP
    /* This will destroy all our data */
    return DestroyWindow(fb->hWnd);
-#else
-   return TRUE;
-#endif
 }
 
 

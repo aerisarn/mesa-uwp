@@ -43,56 +43,10 @@
 
 #include "util/u_debug.h"
 #include "stw_gdishim.h"
-
-#ifdef _XBOX_UWP
-typedef struct tagLAYERPLANEDESCRIPTOR { // lpd
-   WORD  nSize;
-   WORD  nVersion;
-   DWORD dwFlags;
-   BYTE  iPixelType;
-   BYTE  cColorBits;
-   BYTE  cRedBits;
-   BYTE  cRedShift;
-   BYTE  cGreenBits;
-   BYTE  cGreenShift;
-   BYTE  cBlueBits;
-   BYTE  cBlueShift;
-   BYTE  cAlphaBits;
-   BYTE  cAlphaShift;
-   BYTE  cAccumBits;
-   BYTE  cAccumRedBits;
-   BYTE  cAccumGreenBits;
-   BYTE  cAccumBlueBits;
-   BYTE  cAccumAlphaBits;
-   BYTE  cDepthBits;
-   BYTE  cStencilBits;
-   BYTE  cAuxBuffers;
-   BYTE  iLayerPlane;
-   BYTE  bReserved;
-   COLORREF crTransparent;
-} LAYERPLANEDESCRIPTOR, * PLAYERPLANEDESCRIPTOR, FAR* LPLAYERPLANEDESCRIPTOR;
-
-typedef struct _POINTFLOAT {
-    FLOAT   x;
-    FLOAT   y;
-} POINTFLOAT, *PPOINTFLOAT;
-
-typedef struct _GLYPHMETRICSFLOAT {
-    FLOAT       gmfBlackBoxX;
-    FLOAT       gmfBlackBoxY;
-    POINTFLOAT  gmfptGlyphOrigin;
-    FLOAT       gmfCellIncX;
-    FLOAT       gmfCellIncY;
-} GLYPHMETRICSFLOAT, *PGLYPHMETRICSFLOAT, FAR *LPGLYPHMETRICSFLOAT;
-
-WINGDIAPI BOOL  WINAPI wglDeleteContext(HGLRC);
-#endif
-
-#include "stw_wgl.h"
 #include "gldrv.h"
 #include "stw_context.h"
 #include "stw_pixelformat.h"
-
+#include "stw_wgl.h"
 #include "stw_ext_context.h"
 
 WINGDIAPI BOOL APIENTRY
@@ -423,11 +377,5 @@ wglRealizeLayerPalette(
 
    return false;
 }
-
-#ifdef _XBOX_UWP
-HGLRC APIENTRY xwglCreateContext(HDC hdc) {return wglCreateContext(hdc);}
-BOOL APIENTRY xwglMakeCurrent(HDC hdc, HGLRC hglrc) { return wglMakeCurrent(hdc, hglrc);}
-BOOL APIENTRY xwglSwapBuffers(HDC hdc)  { return wglSwapBuffers(hdc);}
-#endif
 
 
