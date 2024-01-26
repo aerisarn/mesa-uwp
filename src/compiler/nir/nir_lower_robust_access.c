@@ -34,7 +34,7 @@ static void
 wrap_in_if(nir_builder *b, nir_intrinsic_instr *instr, nir_def *valid)
 {
    bool has_dest = nir_intrinsic_infos[instr->intrinsic].has_dest;
-   nir_def *res, *zero;
+   nir_def *res = NULL, *zero = NULL;
 
    if (has_dest) {
       zero = nir_imm_zero(b, instr->def.num_components,

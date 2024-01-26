@@ -132,7 +132,7 @@ struct stw_framebuffer
    int swap_interval;
    int64_t prev_swap_time;
 
-#if defined _GAMING_XBOX || defined _XBOX_UWP
+#if defined _GAMING_XBOX
    /* For the WndProc hook chain */
    WNDPROC prev_wndproc;
 #endif

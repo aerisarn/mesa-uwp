@@ -70,6 +70,7 @@ with_osmesa = get_option('osmesa')
 with_vulkan_overlay_layer = get_option('vulkan-layers').contains('overlay')
 with_vulkan_device_select_layer = get_option('vulkan-layers').contains('device-select')
 with_tools = get_option('tools')
+with_uwp = get_option('uwp')
 if with_tools.contains('all')
   with_tools = [
     'drm-shim',

@@ -37,9 +37,10 @@
 #include <windows.h>
 
 #include "util/u_debug.h"
+#include "stw_gdishim.h"
 #include "stw_winsys.h"
+#include "frontend/sw_winsys.h"
 #include "stw_device.h"
-#include "gdi/gdi_sw_winsys.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_context.h"
 
@@ -66,6 +67,7 @@
 #ifdef GALLIUM_LLVMPIPE
 static bool use_llvmpipe = false;
 #endif
+#include <pipebuffer\pb_cache.h>
 #ifdef GALLIUM_D3D12
 static bool use_d3d12 = false;
 #endif
@@ -109,6 +111,9 @@ wgl_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
 
    return screen;
 }
+
+struct sw_winsys*
+   gdi_create_sw_winsys(void);
 
 static struct pipe_screen *
 wgl_screen_create(HDC hDC)

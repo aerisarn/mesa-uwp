@@ -1,4 +1,4 @@
-# Copyright © Microsoft Corporation
+# Copyright © 2018 NVIDIA CORPORATION
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,35 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
-gallium_wgl_link_args = []
-
-wgl_def = custom_target(
-  'gallium_wgl.def',
-  input: 'gallium_wgl.def.in',
-  output : 'gallium_wgl.def',
-  command : gen_vs_module_defs_normal_command,
-)
-
-gallium_wgl_name = get_option('gallium-windows-dll-name')
-
-libgallium_wgl = shared_library(
-  gallium_wgl_name,
-  ['wgl.c','dummy_uwp.cpp'],
-  vs_module_defs : wgl_def,
+libgdi_uwp = static_library(
+  'gdiuwp',
+  ['gdi_uwp.cpp'],
   include_directories : [
-    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_wgl, inc_gallium_winsys, inc_gallium_winsys_sw, inc_gallium_drivers,
+    inc_include, inc_src, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
+    inc_gallium_winsys
   ],
-  link_whole : [libwgl, libgdi_uwp],
-  link_with : [
-    libgallium, libglsl, libmesa, libwsgdi, libglapi_static, libglapi, libgalliumvl, libgdi_uwp
-  ],
-  dependencies : [
-    dep_ws2_32, idep_nir, idep_mesautil, driver_swrast,
-    driver_d3d12, driver_zink, winsys_d3d12_wgl
-  ],
-  link_args : gallium_wgl_link_args,
-  name_prefix : '',
-  install : true,
+  cpp_args : '/ZW',
 )
-libgallium_wgl_build_dir = meson.current_build_dir()
+
+install_headers('uwpgdi.h', 'uwpgdi.h')

@@ -563,7 +563,7 @@ fallback_copy_image(struct st_context *st,
 {
    uint8_t *dst, *src;
    int dst_stride, src_stride;
-   struct pipe_transfer *dst_transfer, *src_transfer;
+   struct pipe_transfer *dst_transfer = NULL, *src_transfer = NULL;
    unsigned line_bytes;
 
    bool dst_is_compressed = dst_image && _mesa_is_format_compressed(dst_image->TexFormat);

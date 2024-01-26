@@ -29,15 +29,8 @@
 #define STW_GDISHIM_H
 
 #ifdef _XBOX_UWP
-
-//These must be implemented as well for UWP
-//as GDI is not available. Actually, we can do 
-//With just one handle from CoreWindow, so 
-//Possibly hdc == hwnd 
-#define WindowFromDC(hdc) (HWND)hdc
-#define GetDC(hwnd) (HDC)hwnd
-#define ReleaseDC(hwnd, hdc) 1
-
+#include "../../../gallium/winsys/uwp/uwpgdi.h"
+#include "../../../gallium/winsys/uwp/gdi_uwp.h"
 #endif
 
 #ifdef _GAMING_XBOX

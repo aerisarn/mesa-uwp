@@ -22,6 +22,8 @@
 files_libd3d12winsys = files('d3d12_wgl_winsys.c')
 if target_machine.system().startswith('Gaming.Xbox')
   files_libd3d12winsys += files('d3d12_wgl_framebuffer_xbox.cpp')
+elif with_uwp
+  files_libd3d12winsys += files('d3d12_wgl_framebuffer_uwp.cpp')
 else
   files_libd3d12winsys += files('d3d12_wgl_framebuffer.cpp')
 endif

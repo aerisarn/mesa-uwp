@@ -209,7 +209,7 @@ stw_framebuffer_get_size(struct stw_framebuffer *fb)
 }
 
 
-#ifndef _GAMING_XBOX
+#if !defined _GAMING_XBOX && !defined _XBOX_UWP
 /**
  * @sa http://msdn.microsoft.com/en-us/library/ms644975(VS.85).aspx
  * @sa http://msdn.microsoft.com/en-us/library/ms644960(VS.85).aspx
@@ -269,7 +269,7 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
 
    return CallNextHookEx(tls_data->hCallWndProcHook, nCode, wParam, lParam);
 }
-#else
+#elif !defined _XBOX_UWP
 LRESULT CALLBACK
 stw_call_window_proc_xbox(HWND hWnd, UINT message,
                           WPARAM wParam, LPARAM lParam)

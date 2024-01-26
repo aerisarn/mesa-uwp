@@ -127,7 +127,7 @@ pb_slab_alloc_reclaimed(struct pb_slabs *slabs, unsigned size, unsigned heap, bo
    unsigned order = MAX2(slabs->min_order, util_logbase2_ceil(size));
    unsigned group_index;
    struct pb_slab_group *group;
-   struct pb_slab *slab;
+   struct pb_slab *slab = NULL;
    struct pb_slab_entry *entry;
    unsigned entry_size = 1 << order;
    bool three_fourths = false;

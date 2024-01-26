@@ -3232,7 +3232,7 @@ check_end_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
 static void
 bind_framebuffer(GLenum target, GLuint framebuffer)
 {
-   struct gl_framebuffer *newDrawFb, *newReadFb;
+   struct gl_framebuffer *newDrawFb = NULL, *newReadFb = NULL;
    GLboolean bindReadBuf, bindDrawBuf;
    GET_CURRENT_CONTEXT(ctx);
 

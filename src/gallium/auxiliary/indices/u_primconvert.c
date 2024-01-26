@@ -112,8 +112,8 @@ primconvert_init_draw(struct primconvert_context *pc,
    struct pipe_draw_start_count_bias *direct_draws = NULL;
    unsigned num_direct_draws = 0;
    struct pipe_transfer *src_transfer = NULL;
-   u_translate_func trans_func, direct_draw_func;
-   u_generate_func gen_func;
+   u_translate_func trans_func = NULL, direct_draw_func = NULL;
+   u_generate_func gen_func = NULL;
    const void *src = NULL;
    void *dst;
    unsigned ib_offset;
