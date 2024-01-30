@@ -1,5 +1,7 @@
 #include "gdi_uwp.h"
 
+#include "..\..\frontends\wgl\stw_pixelformat.h"
+
 #include <wrl.h>
 #include <wrl/client.h>
 #include <dxgi1_4.h>
@@ -72,9 +74,31 @@ ReleaseDC(
    return 1;
 }
 
+static int iPixelFormat = 0;
+
 int WINAPI GetPixelFormat(HDC hdc)
 {
-   return 1;
+   if (iPixelFormat == 0)
+   {
+      int count = stw_pixelformat_get_count(hdc);
+      if (count <= 0)
+      {
+         return 0;
+      }
+      for (iPixelFormat = 1; iPixelFormat <= count; ++iPixelFormat)
+      {
+         const struct stw_pixelformat_info * info = stw_pixelformat_get_info(iPixelFormat);
+
+         //Initialize to DXGI_FORMAT_B8G8R8A8_UNORM
+         if (info && 
+            info->stvis.color_format == PIPE_FORMAT_B8G8R8A8_UNORM &&
+            info->pfd.dwFlags & PFD_DOUBLEBUFFER)
+         {
+            break;
+         }
+      }
+   }
+   return iPixelFormat;
 }
 
 int DescribePixelFormat(
@@ -85,36 +109,16 @@ int DescribePixelFormat(
 )
 {
 
-   ppfd->nSize = sizeof(PIXELFORMATDESCRIPTOR);
-   ppfd->nVersion = 1;                           // Version Number
-   ppfd->dwFlags = PFD_DRAW_TO_WINDOW |         // Format Must Support Window
-      PFD_SUPPORT_OPENGL |         // Format Must Support OpenGL
-      PFD_SUPPORT_COMPOSITION |    // Format Must Support Composition
-      PFD_DOUBLEBUFFER;            // Must Support Double Buffering
-   ppfd->iPixelType = PFD_TYPE_RGBA;               // Request An RGBA Format
-   ppfd->cColorBits = 32;                          // Select Our Color Depth
-   ppfd->cRedBits = 0;                           // Color Bits Ignored
-   ppfd->cRedShift = 0;                           // Color Bits Ignored
-   ppfd->cGreenBits = 0;                           // Color Bits Ignored
-   ppfd->cGreenShift = 0;                           // Color Bits Ignored
-   ppfd->cBlueBits = 0;                           // Color Bits Ignored
-   ppfd->cBlueShift = 0;                           // Color Bits Ignored
-   ppfd->cAlphaBits = 8;                           // An Alpha Buffer
-   ppfd->cAlphaShift = 0;                           // Shift Bit Ignored
-   ppfd->cAccumBits = 0;                           // No Accumulation Buffer
-   ppfd->cAccumRedBits = 0;                           // Accumulation Bits Ignored
-   ppfd->cAccumGreenBits = 0;                           // Accumulation Bits Ignored
-   ppfd->cAccumBlueBits = 0;                           // Accumulation Bits Ignored
-   ppfd->cAccumAlphaBits = 0;                           // Accumulation Bits Ignored
-   ppfd->cDepthBits = 24;                          // 16Bit Z-Buffer (Depth Buffer)
-   ppfd->cStencilBits = 8;                           // Some Stencil Buffer
-   ppfd->cAuxBuffers = 0;                           // No Auxiliary Buffer
-   ppfd->iLayerType = PFD_MAIN_PLANE,              // Main Drawing Layer
-      ppfd->bReserved = 0;                           // Reserved
-   ppfd->dwLayerMask = 0;                           // Layer Masks Ignored
-   ppfd->dwVisibleMask = 0;                           // Layer Masks Ignored
-   ppfd->dwDamageMask = 0;                           // Layer Masks Ignored
-   return 1;
+   if (iPixelFormat > 0)
+   {
+      const struct stw_pixelformat_info * info = stw_pixelformat_get_info(iPixelFormat);
+      if (info && ppfd)
+      {
+         *ppfd = info->pfd;
+         return TRUE;
+      }
+   }
+   return FALSE;
 }
 
 BOOL SetPixelFormat(
@@ -123,18 +127,9 @@ BOOL SetPixelFormat(
    const PIXELFORMATDESCRIPTOR* ppfd
 )
 {
-   // TODO: can we support this?
-#if 0
-   struct stw_framebuffer* fb;
-
-   fb = stw_framebuffer_from_hdc(hdc);
-   if (fb && fb->pfi) {
-      fb->pfi->iPixelFormat = format;
-      stw_framebuffer_unlock(fb);
-      return true;
-   }
-#endif
-   return true;
+   //hmmm, do we have to replace pfd?
+   iPixelFormat = format;
+   return TRUE;
 }
 
 HWND
