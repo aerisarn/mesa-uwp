@@ -78,7 +78,7 @@ option(
 option(
   'gallium-drivers',
   type : 'array',
-  value : ['d3d12'],
+  value : ['d3d12','swrast'],
   choices : [
     'auto', 'kmsro', 'radeonsi', 'r300', 'r600', 'nouveau', 'freedreno',
     'swrast', 'v3d', 'vc4', 'etnaviv', 'tegra', 'i915', 'svga', 'virgl',
@@ -302,6 +302,7 @@ option(
 option(
   'shared-glapi',
   type : 'feature',
+  value : 'enabled',
   deprecated: {'true': 'enabled', 'false': 'disabled'},
   description : 'Whether to build a shared or static glapi. Defaults to ' +
                 'disabled on Windows, enabled elsewhere'
@@ -317,6 +318,7 @@ option(
 option(
   'gles2',
   type : 'feature',
+  value : 'enabled',
   deprecated: {'true': 'enabled', 'false': 'disabled'},
   description : 'Build support for OpenGL ES 2.x and 3.x'
 )
@@ -354,6 +356,7 @@ option(
 option(
   'egl',
   type : 'feature',
+  value : 'enabled',
   deprecated: {'true': 'enabled', 'false': 'disabled'},
   description : 'Build support for EGL platform'
 )

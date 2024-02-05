@@ -128,8 +128,12 @@ _eglNativePlatformDetectNativeDisplay(void *nativeDisplay)
       return _EGL_INVALID_PLATFORM;
 
 #ifdef HAVE_WINDOWS_PLATFORM
+#ifdef _XBOX_UWP
+   return _EGL_PLATFORM_WINDOWS;
+#else
    if (GetObjectType(nativeDisplay) == OBJ_DC)
       return _EGL_PLATFORM_WINDOWS;
+#endif
 #endif
 
 #if defined(HAVE_WAYLAND_PLATFORM) || defined(HAVE_DRM_PLATFORM)

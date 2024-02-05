@@ -30,6 +30,7 @@ stw_get_current_dc
 stw_pixelformat_choose
 stw_pixelformat_get
 stw_pixelformat_get_info
+stw_pixelformat_get_count
 stw_override_opengl32_entry_points
 stw_create_context_attribs
 stw_destroy_context

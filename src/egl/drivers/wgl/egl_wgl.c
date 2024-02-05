@@ -814,7 +814,11 @@ wgl_wait_native(EGLint engine)
    if (engine != EGL_CORE_NATIVE_ENGINE)
       return _eglError(EGL_BAD_PARAMETER, "eglWaitNative");
    /* It's unclear what "native" means, but GDI is as good a guess as any */
+#ifdef _XBOX_UWP
+   //wglSwapIntervalEXT(TRUE);
+#else
    GdiFlush();
+#endif
    return EGL_TRUE;
 }
 
