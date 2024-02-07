@@ -24,6 +24,7 @@ WINGDIAPI_UWP HGLRC WINAPI wglCreateContext(HDC);
 WINGDIAPI_UWP BOOL  WINAPI wglDeleteContext(HGLRC);
 WINGDIAPI_UWP BOOL  WINAPI wglMakeCurrent(HDC, HGLRC);
 WINGDIAPI_UWP BOOL APIENTRY wglSwapBuffers(HDC hdc);
+WINGDIAPI_UWP PROC APIENTRY wglGetProcAddress(LPCSTR lpszProc);
 
 #ifdef __cplusplus
 }
