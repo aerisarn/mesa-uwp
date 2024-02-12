@@ -577,6 +577,16 @@ d3d12_lower_state_vars(nir_shader *nir, struct d3d12_shader *shader)
    return progress;
 }
 
+bool
+d3d12_is_missing_dual_src_target(struct nir_shader *s)
+{
+   nir_foreach_variable_with_modes (var, s, nir_var_shader_out) {
+      if (var->data.location == FRAG_RESULT_DATA0)
+         return false;
+   }
+   return true;
+}
+
 void
 d3d12_add_missing_dual_src_target(struct nir_shader *s,
                                   unsigned missing_mask)

@@ -1238,8 +1238,9 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
       }
 
       if (key.fs.missing_dual_src_outputs) {
-         NIR_PASS_V(new_nir_variant, d3d12_add_missing_dual_src_target,
-                    key.fs.missing_dual_src_outputs);
+         if (d3d12_is_missing_dual_src_target(new_nir_variant)) {
+            NIR_PASS_V(new_nir_variant, d3d12_add_missing_dual_src_target, key.fs.missing_dual_src_outputs);
+         }
       } else if (key.fs.frag_result_color_lowering) {
          NIR_PASS_V(new_nir_variant, nir_lower_fragcolor,
                     key.fs.frag_result_color_lowering);

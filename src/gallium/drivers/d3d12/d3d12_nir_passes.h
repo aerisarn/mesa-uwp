@@ -78,6 +78,9 @@ d3d12_lower_compute_state_vars(nir_shader *nir);
 void
 d3d12_lower_uint_cast(nir_shader *nir, bool is_signed);
 
+bool
+d3d12_is_missing_dual_src_target(struct nir_shader *s);
+
 void
 d3d12_add_missing_dual_src_target(struct nir_shader *s,
                                   unsigned missing_mask);
