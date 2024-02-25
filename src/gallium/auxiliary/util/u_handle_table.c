@@ -233,7 +233,7 @@ handle_table_get(struct handle_table *ht,
 }
 
 
-void
+int
 handle_table_remove(struct handle_table *ht, 
                     unsigned handle)
 {
@@ -243,17 +243,19 @@ handle_table_remove(struct handle_table *ht,
    assert(ht);
    assert(handle);
    if(!handle || !ht || handle > ht->size)
-      return;
+      return 0;
 
    index = handle - 1;
    object = ht->objects[index];
    if (!object)
-      return;
+      return 0;
    
    handle_table_clear(ht, index);
 
    if(index < ht->filled)
       ht->filled = index;
+
+   return ht->filled;
 }
 
 

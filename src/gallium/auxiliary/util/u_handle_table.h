@@ -91,7 +91,7 @@ handle_table_get(struct handle_table *ht,
                  unsigned handle);
 
 
-void
+int
 handle_table_remove(struct handle_table *ht, 
                     unsigned handle);
 
