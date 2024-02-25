@@ -99,6 +99,9 @@ extern struct stw_device *stw_dev;
 bool
 stw_init_screen(HDC hdc);
 
+void
+stw_destroy_screen(HDC hdc);
+
 struct stw_device *
 stw_get_device(void);
 

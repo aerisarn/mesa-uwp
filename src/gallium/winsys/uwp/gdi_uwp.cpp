@@ -1,6 +1,7 @@
 #include "gdi_uwp.h"
 
 #include "..\..\frontends\wgl\stw_pixelformat.h"
+#include "..\..\frontends/wgl/stw_winsys.h"
 
 #include <wrl.h>
 #include <wrl/client.h>
@@ -14,6 +15,7 @@
 #include <agile.h>
 #include <concrt.h>
 
+
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Core;
 using namespace Windows::ApplicationModel::Activation;
@@ -22,6 +24,8 @@ using namespace Windows::UI::Input;
 using namespace Windows::System;
 using namespace Windows::Foundation;
 using namespace Windows::Graphics::Display;
+
+static int iPixelFormat = 0;
 
 inline float ConvertDipsToPixels(float dips, float dpi)
 {
@@ -71,10 +75,9 @@ ReleaseDC(
    _In_opt_ HWND hWnd,
    _In_ HDC hDC)
 {
+   iPixelFormat = 0;
    return 1;
 }
-
-static int iPixelFormat = 0;
 
 int WINAPI GetPixelFormat(HDC hdc)
 {
