@@ -321,7 +321,8 @@ DrvDeleteContext(DHGLRC dhglrc)
    stw_lock_contexts(stw_dev);
    ctx = stw_lookup_context_locked(dhglrc);
    //we need to know if we are removing the last handle
-   dhglrc = handle_table_remove(stw_dev->ctx_table, dhglrc);
+   handle_table_remove(stw_dev->ctx_table, dhglrc);
+   dhglrc = handle_table_get_first_handle(stw_dev->ctx_table);
    stw_unlock_contexts(stw_dev);
 
 
