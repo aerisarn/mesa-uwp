@@ -364,7 +364,11 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 64 * 1024 * 1024;
 
    case PIPE_CAP_SAMPLER_VIEW_TARGET:
+#ifdef _XBOX_UWP
+      return true;
+#else
       return screen->opts12.RelaxedFormatCastingSupported;
+#endif
 
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
