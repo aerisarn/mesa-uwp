@@ -39,7 +39,139 @@
 
 #if DETECT_OS_WINDOWS
 
+/* mmap() replacement for Windows
+ *
+ * Author: Mike Frysinger <vapier@gentoo.org>
+ * Placed into the public domain
+ */
+
+/* References:
+ * CreateFileMapping: http://msdn.microsoft.com/en-us/library/aa366537(VS.85).aspx
+ * CloseHandle:       http://msdn.microsoft.com/en-us/library/ms724211(VS.85).aspx
+ * MapViewOfFile:     http://msdn.microsoft.com/en-us/library/aa366761(VS.85).aspx
+ * UnmapViewOfFile:   http://msdn.microsoft.com/en-us/library/aa366882(VS.85).aspx
+ */
+
+#include <io.h>
 #include <windows.h>
+
+#define PROT_READ     0x1
+#define PROT_WRITE    0x2
+/* This flag is only available in WinXP+ */
+#ifdef FILE_MAP_EXECUTE
+#define PROT_EXEC     0x4
+#else
+#define PROT_EXEC        0x0
+#define FILE_MAP_EXECUTE 0
+#endif
+
+#define MAP_SHARED    0x01
+#define MAP_PRIVATE   0x02
+#define MAP_ANONYMOUS 0x20
+#define MAP_ANON      MAP_ANONYMOUS
+#define MAP_FAILED    ((void *) -1)
+
+#ifdef __USE_FILE_OFFSET64
+# define DWORD_HI(x) (x >> 32)
+# define DWORD_LO(x) ((x) & 0xffffffff)
+#else
+# define DWORD_HI(x) (0)
+# define DWORD_LO(x) (x)
+#endif
+
+typedef SSIZE_T ssize_t;
+#define HAVE_DIRENT_D_TYPE 1
+#define O_CLOEXEC O_NOINHERIT
+
+static void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset)
+{
+	if (prot & ~(PROT_READ | PROT_WRITE | PROT_EXEC))
+		return MAP_FAILED;
+	if (fd == -1) {
+		if (!(flags & MAP_ANON) || offset)
+			return MAP_FAILED;
+	} else if (flags & MAP_ANON)
+		return MAP_FAILED;
+
+	DWORD flProtect;
+	if (prot & PROT_WRITE) {
+		if (prot & PROT_EXEC)
+			flProtect = PAGE_EXECUTE_READWRITE;
+		else
+			flProtect = PAGE_READWRITE;
+	} else if (prot & PROT_EXEC) {
+		if (prot & PROT_READ)
+			flProtect = PAGE_EXECUTE_READ;
+		else if (prot & PROT_EXEC)
+			flProtect = PAGE_EXECUTE;
+	} else
+		flProtect = PAGE_READONLY;
+
+	off_t end = length + offset;
+	HANDLE mmap_fd, h;
+	if (fd == -1)
+		mmap_fd = INVALID_HANDLE_VALUE;
+	else
+		mmap_fd = (HANDLE)_get_osfhandle(fd);
+	h = CreateFileMapping(mmap_fd, NULL, flProtect, DWORD_HI(end), DWORD_LO(end), NULL);
+	if (h == NULL)
+		return MAP_FAILED;
+
+	DWORD dwDesiredAccess;
+	if (prot & PROT_WRITE)
+		dwDesiredAccess = FILE_MAP_WRITE;
+	else
+		dwDesiredAccess = FILE_MAP_READ;
+	if (prot & PROT_EXEC)
+		dwDesiredAccess |= FILE_MAP_EXECUTE;
+	if (flags & MAP_PRIVATE)
+		dwDesiredAccess |= FILE_MAP_COPY;
+	void *ret = MapViewOfFile(h, dwDesiredAccess, DWORD_HI(offset), DWORD_LO(offset), length);
+	if (ret == NULL) {
+		CloseHandle(h);
+		ret = MAP_FAILED;
+	}
+	return ret;
+}
+
+static void munmap(void *addr, size_t length)
+{
+	UnmapViewOfFile(addr);
+	/* ruh-ro, we leaked handle from CreateFileMapping() ... */
+}
+
+
+int fallocate_wrapper(HANDLE hndl, long long int size_to_reserve)
+{	
+	if (size_to_reserve <= 0)
+		return 0;
+
+	LARGE_INTEGER minus_one = {0}, zero = {0};
+	minus_one.QuadPart = -1;
+
+	//Get the current file position
+	LARGE_INTEGER old_pos = {0};
+	if (!SetFilePointerEx(hndl, zero, &old_pos, FILE_CURRENT))
+		return -1;
+
+	//Movie file position to the new end. These calls do NOT result in the actual allocation of
+	//new blocks, but they must succeed.
+	LARGE_INTEGER new_pos={0};
+	new_pos.QuadPart=size_to_reserve;
+	if (!SetFilePointerEx(hndl, new_pos, NULL, FILE_END))
+		return -1;
+	if (!SetEndOfFile(hndl))
+		return -1;
+
+	if (!SetFilePointerEx(hndl, minus_one, NULL, FILE_END))
+		return -1;		
+	char initializer_buf [1] = {1};
+	DWORD written=0;
+	if (!WriteFile(hndl, initializer_buf, 1, &written, NULL))
+		return -1;
+        
+	return 0;
+}
 
 bool
 disk_cache_get_function_identifier(void *ptr, struct mesa_sha1 *ctx)
@@ -80,21 +212,42 @@ disk_cache_get_function_identifier(void *ptr, struct mesa_sha1 *ctx)
 
 #ifdef ENABLE_SHADER_CACHE
 
+//#if DETECT_OS_WINDOWS
+///* TODO: implement disk cache support on windows */
+//
+//#else
+
 #if DETECT_OS_WINDOWS
-/* TODO: implement disk cache support on windows */
+#include "dirent.h"
+
+#define fstatat fstat
+
+inline int dirfd(DIR* dir)
+{
+   return _open_osfhandle((intptr_t)dir->wdirp->handle, O_RDONLY);
+}
 
 #else
-
 #include <dirent.h>
+#endif
 #include <errno.h>
+#if DETECT_OS_WINDOWS
+#else
 #include <pwd.h>
+#endif
 #include <stdio.h>
 #include <string.h>
+#if DETECT_OS_WINDOWS
+#else
 #include <sys/file.h>
 #include <sys/mman.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
+#if DETECT_OS_WINDOWS
+#else
 #include <unistd.h>
+#endif
 
 #include "util/blob.h"
 #include "util/crc32.h"
@@ -115,7 +268,9 @@ mkdir_if_needed(const char *path)
    /* If the path exists already, then our work is done if it's a
     * directory, but it's an error if it is not.
     */
-   if (stat(path, &sb) == 0) {
+
+   int ret = stat(path, &sb);
+   if (ret == 0) {
       if (S_ISDIR(sb.st_mode)) {
          return 0;
       } else {
@@ -125,8 +280,8 @@ mkdir_if_needed(const char *path)
       }
    }
 
-   int ret = mkdir(path, 0700);
-   if (ret == 0 || (ret == -1 && errno == EEXIST))
+   ret = mkdir(path, 0700);
+   if (ret == 0 || (ret == -1 && errno == EEXIST) || (ret == -1 && errno == EACCES))
      return 0;
 
    fprintf(stderr, "Failed to create %s for shader cache (%s)---disabling.\n",
@@ -240,16 +395,15 @@ choose_lru_file_matching(const char *dir_path,
    if (dir == NULL)
       return NULL;
 
-   const int dir_fd = dirfd(dir);
-
    /* First count the number of files in the directory */
    unsigned total_file_count = 0;
    while ((dir_ent = readdir(dir)) != NULL) {
-#ifdef HAVE_DIRENT_D_TYPE
+#ifdef HAVE_DIRENT_D_TYPE 
       if (dir_ent->d_type == DT_REG) { /* If the entry is a regular file */
          total_file_count++;
       }
 #else
+      const int dir_fd = dirfd(dir);
       struct stat st;
 
       if (fstatat(dir_fd, dir_ent->d_name, &st, AT_SYMLINK_NOFOLLOW) == 0) {
@@ -277,7 +431,7 @@ choose_lru_file_matching(const char *dir_path,
          break;
 
       struct stat sb;
-      if (fstatat(dir_fd, dir_ent->d_name, &sb, 0) == 0) {
+      if (stat(dir_ent->d_name, &sb) == 0) {
          struct lru_file *entry = NULL;
          if (!list_is_empty(lru_file_list))
             entry = list_first_entry(lru_file_list, struct lru_file, node);
@@ -322,7 +476,7 @@ choose_lru_file_matching(const char *dir_path,
                entry->lru_name = tmp;
                memcpy(entry->lru_name, dir_ent->d_name, len + 1);
                entry->lru_atime = sb.st_atime;
-               entry->lru_file_size = sb.st_blocks * 512;
+               entry->lru_file_size = /*sb.st_blocks*/ 512 * 512;
             }
          }
       }
@@ -456,7 +610,10 @@ read_all(int fd, void *buf, size_t count)
    for (done = 0; done < count; done += read_ret) {
       read_ret = read(fd, in + done, count - done);
       if (read_ret == -1 || read_ret == 0)
+      {
+         int er = errno; er;
          return -1;
+      }
    }
    return done;
 }
@@ -538,8 +695,8 @@ disk_cache_evict_item(struct disk_cache *cache, char *filename)
    unlink(filename);
    free(filename);
 
-   if (sb.st_blocks)
-      p_atomic_add(&cache->size->value, - (uint64_t)sb.st_blocks * 512);
+   if (sb.st_size)
+      p_atomic_add(&cache->size->value, - (uint64_t)sb.st_size);
 }
 
 static void *
@@ -630,7 +787,7 @@ disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size)
 {
    uint8_t *data = NULL;
 
-   int fd = open(filename, O_RDONLY | O_CLOEXEC);
+   int fd = open(filename, O_RDONLY | O_CLOEXEC | O_BINARY);
    if (fd == -1)
       goto fail;
 
@@ -643,6 +800,7 @@ disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size)
       goto fail;
 
    /* Read entire file into memory */
+   lseek(fd, 0, SEEK_SET);
    int ret = read_all(fd, data, sb.st_size);
    if (ret == -1)
       goto fail;
@@ -803,6 +961,10 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
     */
 #ifdef HAVE_FLOCK
    int err = flock(fd, LOCK_EX | LOCK_NB);
+#elif DETECT_OS_WINDOWS
+   HANDLE h = (HANDLE)_get_osfhandle(fd);
+   OVERLAPPED overlapvar = { 0 };
+   int err = !LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, MAXDWORD, MAXDWORD, &overlapvar) ? -1 : 0;
 #else
    struct flock lock = {
       .l_start = 0,
@@ -845,6 +1007,12 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
       unlink(filename_tmp);
       goto done;
    }
+   
+   #ifdef DETECT_OS_WINDOWS
+   close(fd);
+   fd = -1;
+   //to rename the file we must cluse source before
+   #endif
 
    ret = rename(filename_tmp, filename);
    if (ret == -1) {
@@ -859,7 +1027,7 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
       goto done;
    }
 
-   p_atomic_add(&dc_job->cache->size->value, sb.st_blocks * 512);
+   p_atomic_add(&dc_job->cache->size->value, sb.st_size);
 
  done:
    if (fd_final != -1)
@@ -868,7 +1036,9 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
     * has been renamed into place and the size has been added).
     */
    if (fd != -1)
+   {
       close(fd);
+   }
    free(filename_tmp);
    blob_finish(&cache_blob);
 }
@@ -922,6 +1092,7 @@ disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
       }
    }
 
+#if !DETECT_OS_WINDOWS
    if (!path) {
       char *buf;
       size_t buf_size;
@@ -966,7 +1137,7 @@ disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
       if (!path)
          return NULL;
    }
-
+#endif
    return path;
 }
 
@@ -979,9 +1150,11 @@ disk_cache_enabled()
    if (DETECT_OS_ANDROID)
       return false;
 
+#ifndef DETECT_OS_WINDOWS
    /* If running as a users other than the real user disable cache */
    if (geteuid() != getuid())
       return false;
+#endif
 
    /* At user request, disable shader cache entirely. */
 #ifdef SHADER_CACHE_DISABLE_BY_DEFAULT
@@ -1071,6 +1244,9 @@ disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
        */
       if (posix_fallocate(fd, 0, size) != 0)
          goto path_fail;
+#elif DETECT_OS_WINDOWS
+      if (fallocate_wrapper((HANDLE)_get_osfhandle(fd), size) != 0)
+         goto path_fail;
 #else
       /* ftruncate() allocates disk space lazily. If the disk is full
        * and it is unable to allocate disk space when accessed via
@@ -1158,6 +1334,6 @@ disk_cache_db_load_cache_index(void *mem_ctx, struct disk_cache *cache)
 {
    return mesa_cache_db_multipart_open(&cache->cache_db, cache->path);
 }
-#endif
+//#endif
 
 #endif /* ENABLE_SHADER_CACHE */

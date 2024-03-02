@@ -17,12 +17,19 @@
 #include "detect_os.h"
 #include "simple_mtx.h"
 
+#ifdef DETECT_OS_WINDOWS
+   typedef void* mesa_file_handle;
+   #define fileno(a) (a)
+#else
+   typedef FILE* mesa_file_handle;
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct mesa_cache_db_file {
-   FILE *file;
+   mesa_file_handle file;
    char *path;
    off_t offset;
    uint64_t uuid;
@@ -39,7 +46,7 @@ struct mesa_cache_db {
    bool alive;
 };
 
-#if DETECT_OS_WINDOWS == 0
+#if 1
 bool
 mesa_cache_db_open(struct mesa_cache_db *db, const char *cache_path);
 

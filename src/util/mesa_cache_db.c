@@ -9,14 +9,20 @@
 
 #include "detect_os.h"
 
-#if DETECT_OS_WINDOWS == 0
+#if 1
 
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#if DETECT_OS_WINDOWS
+#define WIN32_LOAD_AND_MEAN
+#include "asprintf.h"
+#include <Windows.h>
+#else
 #include <sys/file.h>
 #include <unistd.h>
+#endif
 
 #include "crc32.h"
 #include "disk_cache.h"
@@ -30,6 +36,8 @@
 
 #define MESA_CACHE_DB_VERSION          1
 #define MESA_CACHE_DB_MAGIC            "MESA_DB"
+
+const DWORD allBitsSet = (DWORD)~(0);
 
 struct PACKED mesa_db_file_header {
    char magic[8];
@@ -58,53 +66,91 @@ struct mesa_index_db_hash_entry {
    bool evicted;
 };
 
-static inline bool mesa_db_seek_end(FILE *file)
+static inline bool mesa_db_seek_end(mesa_file_handle file)
 {
+#if DETECT_OS_WINDOWS
+   return INVALID_SET_FILE_POINTER != SetFilePointer(file, 0, NULL, FILE_END);
+#else
    return !fseek(file, 0, SEEK_END);
+#endif
 }
 
-static inline bool mesa_db_seek(FILE *file, long pos)
+static inline bool mesa_db_seek(mesa_file_handle file, long pos)
 {
+#if DETECT_OS_WINDOWS
+   return INVALID_SET_FILE_POINTER != SetFilePointer(file, pos, NULL, FILE_BEGIN);
+#else
    return !fseek(file, pos, SEEK_SET);
+#endif
 }
 
-static inline bool mesa_db_seek_cur(FILE *file, long pos)
+static inline bool mesa_db_seek_cur(mesa_file_handle file, long pos)
 {
+#if DETECT_OS_WINDOWS
+   return INVALID_SET_FILE_POINTER != SetFilePointer(file, pos, NULL, FILE_CURRENT);
+#else
    return !fseek(file, pos, SEEK_CUR);
+#endif
 }
 
-static inline bool mesa_db_read_data(FILE *file, void *data, size_t size)
+static inline bool mesa_db_read_data(mesa_file_handle file, void *data, size_t size)
 {
+#if DETECT_OS_WINDOWS
+   DWORD lpNumberOfBytesRead = 0;
+   return TRUE == ReadFile(file, data, size, &lpNumberOfBytesRead, NULL) && size == lpNumberOfBytesRead;
+#else
    return fread(data, 1, size, file) == size;
+#endif
 }
 #define mesa_db_read(file, var) mesa_db_read_data(file, var, sizeof(*(var)))
 
-static inline bool mesa_db_write_data(FILE *file, const void *data, size_t size)
+static inline bool mesa_db_write_data(mesa_file_handle file, const void *data, size_t size)
 {
+#if DETECT_OS_WINDOWS
+   DWORD lpNumberOfBytesWritten = 0;
+   return TRUE == WriteFile(file, data, size, &lpNumberOfBytesWritten, NULL) && size == lpNumberOfBytesWritten;
+#else
    return fwrite(data, 1, size, file) == size;
+#endif
 }
 #define mesa_db_write(file, var) mesa_db_write_data(file, var, sizeof(*(var)))
 
-static inline bool mesa_db_truncate(FILE *file, long pos)
+static inline bool mesa_db_truncate(mesa_file_handle file, long pos)
 {
+#if DETECT_OS_WINDOWS
+   return INVALID_SET_FILE_POINTER != SetFilePointer(file, pos, NULL, FILE_BEGIN) &&
+         0 != SetEndOfFile(file);
+#else
    return !ftruncate(fileno(file), pos);
+#endif
 }
 
 static bool
 mesa_db_lock(struct mesa_cache_db *db)
 {
    simple_mtx_lock(&db->flock_mtx);
-
+#if DETECT_OS_WINDOWS
+   if (!LockFileEx(db->cache.file, LOCKFILE_EXCLUSIVE_LOCK, 0, allBitsSet, allBitsSet, NULL))
+#else
    if (flock(fileno(db->cache.file), LOCK_EX) == -1)
+#endif
       goto unlock_mtx;
 
+#if DETECT_OS_WINDOWS
+   if (!LockFileEx(db->index.file, LOCKFILE_EXCLUSIVE_LOCK, 0, allBitsSet, allBitsSet, NULL))
+#else
    if (flock(fileno(db->index.file), LOCK_EX) == -1)
+#endif
       goto unlock_cache;
 
    return true;
 
 unlock_cache:
+#if DETECT_OS_WINDOWS
+   UnlockFileEx(db->cache.file, 0, allBitsSet, allBitsSet, NULL);
+#else
    flock(fileno(db->cache.file), LOCK_UN);
+#endif
 unlock_mtx:
    simple_mtx_unlock(&db->flock_mtx);
 
@@ -114,8 +160,13 @@ unlock_mtx:
 static void
 mesa_db_unlock(struct mesa_cache_db *db)
 {
+#if DETECT_OS_WINDOWS
+   UnlockFileEx(db->index.file, 0, allBitsSet, allBitsSet, NULL);
+   UnlockFileEx(db->cache.file, 0, allBitsSet, allBitsSet, NULL);
+#else
    flock(fileno(db->index.file), LOCK_UN);
    flock(fileno(db->cache.file), LOCK_UN);
+#endif
    simple_mtx_unlock(&db->flock_mtx);
 }
 
@@ -364,11 +415,14 @@ mesa_db_reload(struct mesa_cache_db *db)
    return mesa_db_load(db, true);
 }
 
+#if DETECT_OS_WINDOWS
+#else
 static void
 touch_file(const char* path)
 {
    close(open(path, O_CREAT | O_CLOEXEC, 0644));
 }
+#endif
 
 static bool
 mesa_db_open_file(struct mesa_cache_db_file *db_file,
@@ -378,12 +432,14 @@ mesa_db_open_file(struct mesa_cache_db_file *db_file,
    if (asprintf(&db_file->path, "%s/%s", cache_path, filename) == -1)
       return false;
 
-   /* The fopen("r+b") mode doesn't auto-create new file, hence we need to
-    * explicitly create the file first.
-    */
+#if DETECT_OS_WINDOWS
+   db_file->file = CreateFileA(db_file->path, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+#else
    touch_file(db_file->path);
 
    db_file->file = fopen(db_file->path, "r+b");
+#endif   
+   
    if (!db_file->file) {
       free(db_file->path);
       return false;
@@ -395,7 +451,11 @@ mesa_db_open_file(struct mesa_cache_db_file *db_file,
 static void
 mesa_db_close_file(struct mesa_cache_db_file *db_file)
 {
+#if DETECT_OS_WINDOWS
+   CloseHandle(db_file->file);
+#else
    fclose(db_file->file);
+#endif
    free(db_file->path);
 }
 
@@ -406,8 +466,11 @@ mesa_db_remove_file(struct mesa_cache_db_file *db_file,
 {
    if (asprintf(&db_file->path, "%s/%s", cache_path, filename) == -1)
       return false;
-
+#if DETECT_OS_WINDOWS
+   DeleteFileA(db_file->path);
+#else
    unlink(db_file->path);
+#endif
 
    return true;
 }
@@ -862,7 +925,7 @@ mesa_cache_db_entry_remove(struct mesa_cache_db *db,
    struct mesa_index_db_hash_entry *hash_entry;
 
    if (!mesa_db_lock(db))
-      return NULL;
+      return FALSE;
 
    if (!db->alive)
       goto fail;

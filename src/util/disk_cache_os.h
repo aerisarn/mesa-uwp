@@ -26,11 +26,11 @@
 
 #include "util/u_queue.h"
 
-#if DETECT_OS_WINDOWS
+//#if DETECT_OS_WINDOWS
 
 /* TODO: implement disk cache support on windows */
 
-#else
+//#else
 
 #include "util/fossilize_db.h"
 #include "util/mesa_cache_db.h"
@@ -184,4 +184,4 @@ disk_cache_db_load_cache_index(void *mem_ctx, struct disk_cache *cache);
 
 #endif
 
-#endif /* DISK_CACHE_OS_H */
+//#endif /* DISK_CACHE_OS_H */

@@ -27,12 +27,15 @@
 #include "pipe/p_screen.h"
 
 #include "util/slab.h"
+#include "util/disk_cache.h"
 #include "d3d12_descriptor_pool.h"
 
 #include "nir.h"
 #include "dxil_versions.h"
 
 #include "d3d12_common.h"
+
+#define D2D12_SHADER_CACHE_FLAGS_IR_NIR 1 << 0
 
 struct pb_manager;
 struct util_dl_library;
@@ -139,6 +142,10 @@ struct d3d12_screen {
 
 #ifdef _GAMING_XBOX
    UINT64 frame_token;
+#endif
+
+#ifdef ENABLE_SHADER_CACHE
+   struct disk_cache *disk_shader_cache;
 #endif
 };
 

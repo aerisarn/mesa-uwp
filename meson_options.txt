@@ -249,6 +249,7 @@ option(
 option(
   'shader-cache',
   type : 'feature',
+  value : 'enabled',
   deprecated: {'true': 'enabled', 'false': 'disabled'},
   description : 'Build with on-disk shader cache support.',
 )

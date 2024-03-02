@@ -56,6 +56,7 @@
 #endif
 
 #include <dxguids/dxguids.h>
+#include <util/hex.h>
 static GUID OpenGLOn12CreatorID = { 0x6bb3cd34, 0x0d19, 0x45ab, { 0x97, 0xed, 0xd7, 0x20, 0xba, 0x3d, 0xfc, 0x80 } };
 
 static const struct debug_named_value
@@ -1457,10 +1458,47 @@ try_create_device_factory(util_dl_library *d3d12_mod)
 }
 #endif
 
+static const char *
+d3d12_screen_get_name(struct pipe_screen *pscreen)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   return screen->device_uuid;
+}
+
+#ifdef ENABLE_SHADER_CACHE
+static void
+d3d12_disk_cache_create(struct d3d12_screen *screen)
+{
+   struct mesa_sha1 ctx;
+   unsigned char sha1[20];
+   char cache_id[20 * 2 + 1];
+   uint64_t driver_flags = 0;
+
+   _mesa_sha1_init(&ctx);
+   if (!disk_cache_get_function_identifier(d3d12_disk_cache_create, &ctx))
+      return;
+
+   _mesa_sha1_final(&ctx, sha1);
+   mesa_bytes_to_hex(cache_id, sha1, 20);
+
+   driver_flags |= D2D12_SHADER_CACHE_FLAGS_IR_NIR;
+
+   screen->disk_shader_cache = disk_cache_create(d3d12_screen_get_name(&screen->base), cache_id, driver_flags);
+}
+
+static struct disk_cache *
+d3d12_screen_get_disk_shader_cache(struct pipe_screen *pscreen)
+{
+   return d3d12_screen(pscreen)->disk_shader_cache;
+}
+
+#endif
+
 bool
 d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 {
    assert(screen->base.destroy != nullptr);
+   struct pipe_screen *pscreen = &screen->base;
 
    // Device can be imported with d3d12_create_dxcore_screen_from_d3d12_device
    if (!screen->dev) {
@@ -1722,6 +1760,11 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    _mesa_sha1_update(&sha1_ctx, &screen->revision, sizeof(screen->revision));
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(screen->device_uuid, sha1, PIPE_UUID_SIZE);
+
+#ifdef ENABLE_SHADER_CACHE
+   d3d12_disk_cache_create(screen);
+   pscreen->get_disk_shader_cache = d3d12_screen_get_disk_shader_cache;
+#endif   // ENABLE_SHADER_CACHE
 
    return true;
 }
