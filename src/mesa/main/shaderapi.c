@@ -106,7 +106,14 @@ struct _shader_replacement {
    const char *sha1;
    gl_shader_stage stage;
 };
+
+#if DETECT_CC_MSVC
+//Weird issue with msvc. MSDN says that /Ze options should allow it. But it's deprecated.
+//Language extensions are enabled by default. Doesn't compile even with c17.
+//disabling for now
+#else
 struct _shader_replacement shader_replacements[0];
+#endif
 
 static char *try_direct_replace(const char *app, const char *source)
 {
@@ -2010,6 +2017,7 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source,
 
    _mesa_sha1_format(sha, sha1);
 
+#if DETECT_OS_WINDOWS == 0
    if (!debug_get_bool_option("MESA_NO_SHADER_REPLACEMENT", false)) {
       const char *process_name = util_get_process_name();
 
@@ -2031,6 +2039,7 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source,
          return load_shader_replacement(&shader_replacements[i]);
       }
    }
+#endif
 
    if (!path_exists)
       return NULL;
