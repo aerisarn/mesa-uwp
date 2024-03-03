@@ -1352,6 +1352,11 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
    d3d12_shader *new_variant = compile_nir(ctx, sel, &key, new_nir_variant);
    assert(new_variant);
 
+#if defined(_XBOX_UWP) || defined(_XBOX_UWP) 
+//from here on we don't need the cloned instructions, so clean em to save space
+   nir_sweep_body(new_nir_variant);
+#endif
+
    /* keep track of polygon stipple texture binding */
    new_variant->pstipple_binding = pstipple_binding;
 

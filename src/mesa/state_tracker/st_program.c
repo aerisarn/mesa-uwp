@@ -1342,7 +1342,10 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
    }
 
    /* Always create the default variant of the program. */
+   /* Not in XBOX UWP where RAM is an issue*/
+#if !defined _XBOX_UWP && !defined _XBOX_UWP_TEST 
    st_precompile_shader_variant(st, prog);
+#endif
 }
 
 /**

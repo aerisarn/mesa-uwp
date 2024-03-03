@@ -1429,7 +1429,14 @@ link_program(struct gl_context *ctx, struct gl_shader_program *shProg,
    _mesa_update_vertex_processing_mode(ctx);
    _mesa_update_valid_to_render_state(ctx);
 
+#if defined(_XBOX_UWP) || defined(_XBOX_UWP_TEST)
+   //safe as much as we can
    shProg->BinaryRetrievableHint = shProg->BinaryRetrievableHintPending;
+   for (GLuint i = 0; i < shProg->NumShaders; i++) {
+      free((void *) shProg->Shaders[i]->Source);
+      shProg->Shaders[i]->Source = NULL;
+   }
+#endif
 
    /* debug code */
    if (0) {

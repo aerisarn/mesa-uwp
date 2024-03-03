@@ -548,7 +548,12 @@ ralloc_vasprintf_rewrite_tail(char **str, size_t *start, const char *fmt,
 #define NUM_FREELIST_BUCKETS (MAX_FREELIST_SIZE / FREELIST_ALIGNMENT)
 
 /* The size of a slab. */
+#if defined(_XBOX_UWP) || defined(_XBOX_UWP_TEST)
+//this was wating GB of memory for XBOX
+#define SLAB_SIZE (512 + 256)
+#else
 #define SLAB_SIZE (32 * 1024)
+#endif
 
 #define GC_CONTEXT_CANARY 0xAF6B6C83
 #define GC_CANARY 0xAF6B5B72
