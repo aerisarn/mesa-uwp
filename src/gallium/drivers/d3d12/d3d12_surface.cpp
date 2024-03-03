@@ -160,6 +160,20 @@ initialize_rtv(struct pipe_context *pctx,
 
    D3D12_RENDER_TARGET_VIEW_DESC desc;
    desc.Format = dxgi_format;
+   
+         ///*D3D12 ERROR: ID3D12Device::CreateRenderTargetView: The resource format (R16_FLOAT) and view format (R16_UINT)
+   /// differ in float vs non-float component interpretation - this type of format casting is not supported. [
+   /// STATE_CREATION ERROR #38: CREATERENDERTARGETVIEW_INVALIDFORMAT]*/
+   // if (res_desc.Format == DXGI_FORMAT_R16_FLOAT && desc.Format == DXGI_FORMAT_R16_UINT) {
+   //    desc.Format = DXGI_FORMAT_R16_FLOAT;
+   // }
+   //DEBUG
+   if (res->dxgi_format == DXGI_FORMAT_R11G11B10_FLOAT && desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM) {
+      desc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
+   }
+   if (res->dxgi_format == DXGI_FORMAT_R16_FLOAT && desc.Format == DXGI_FORMAT_R16_UINT) {
+      desc.Format = DXGI_FORMAT_R16_FLOAT;
+   }
 
    desc.ViewDimension = view_rtv_dimension(pres->target, pres->nr_samples);
    switch (desc.ViewDimension) {
@@ -222,6 +236,8 @@ initialize_rtv(struct pipe_context *pctx,
    mtx_lock(&screen->descriptor_pool_mutex);
    d3d12_descriptor_pool_alloc_handle(screen->rtv_pool, handle);
    mtx_unlock(&screen->descriptor_pool_mutex);
+
+
 
    screen->dev->CreateRenderTargetView(d3d12_resource_resource(res), &desc,
                                        handle->cpu_handle);

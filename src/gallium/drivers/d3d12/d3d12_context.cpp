@@ -854,6 +854,21 @@ component_mapping(enum pipe_swizzle swizzle)
    }
 }
 
+bool
+banned(DXGI_FORMAT f)
+{
+   if (f == DXGI_FORMAT_R16G16B16A16_UNORM || f == DXGI_FORMAT_R16G16B16A16_SNORM || f == DXGI_FORMAT_R32G32_FLOAT ||
+       f == DXGI_FORMAT_R32G32_UINT || f == DXGI_FORMAT_R32G32_SINT || f == DXGI_FORMAT_R10G10B10A2_UNORM ||
+       f == DXGI_FORMAT_R10G10B10A2_UINT || f == DXGI_FORMAT_R11G11B10_FLOAT || f == DXGI_FORMAT_R8G8B8A8_SNORM ||
+       f == DXGI_FORMAT_R16G16_FLOAT || f == DXGI_FORMAT_R16G16_UNORM || f == DXGI_FORMAT_R16G16_UINT ||
+       f == DXGI_FORMAT_R16G16_SNORM || f == DXGI_FORMAT_R16G16_SINT || f == DXGI_FORMAT_R8G8_UNORM ||
+       f == DXGI_FORMAT_R8G8_UINT || f == DXGI_FORMAT_R8G8_SNORM || f == DXGI_FORMAT_R8G8_SINT ||
+       f == DXGI_FORMAT_R16_UNORM || f == DXGI_FORMAT_R16_SNORM || f == DXGI_FORMAT_R8_SNORM) {
+   return true;
+   }
+   return false;
+}
+
 void
 d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
 {
@@ -886,6 +901,33 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
    uint64_t offset = 0;
    ID3D12Resource *d3d12_res = d3d12_resource_underlying(res, &offset);
    assert(offset == 0 || res->base.b.target == PIPE_BUFFER);
+
+   // DEBUG
+   D3D12_RESOURCE_DESC res_desc = d3d12_res->GetDesc();
+   if (res_desc.Format == DXGI_FORMAT_R16_TYPELESS && desc.Format == DXGI_FORMAT_R8G8_UNORM)
+   {
+      desc.Format = DXGI_FORMAT_R16_UINT;
+   }
+   if (res_desc.Format == DXGI_FORMAT_R8G8_TYPELESS && desc.Format == DXGI_FORMAT_R16_UINT) {
+      desc.Format = DXGI_FORMAT_R8G8_UINT;
+   }
+   if (res_desc.Format == DXGI_FORMAT_R11G11B10_FLOAT && desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM) {
+      desc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
+   }
+   //The Format(0x31, R8G8_UNORM) is invalid when creating a View;
+   //it is not a fully qualified format within the same family as the Format of the Resource(0x36, R16_FLOAT)
+   //   .[STATE_CREATION ERROR #28:CREATESHADERRESOURCEVIEW_INVALIDFORMAT]
+   if (res_desc.Format == DXGI_FORMAT_R16_FLOAT && desc.Format == DXGI_FORMAT_R8G8_UNORM) {
+      desc.Format = DXGI_FORMAT_R16_FLOAT;
+   }
+   /*D3D12 ERROR: ID3D12Device::CreateShaderResourceView: The Format (0x39, R16_UINT) is invalid when creating a View; it is not a fully qualified format within the same family as the Format of the Resource (0x31, R8G8_UNORM). [ STATE_CREATION ERROR #28: CREATESHADERRESOURCEVIEW_INVALIDFORMAT]*/
+   if (res_desc.Format == DXGI_FORMAT_R8G8_UNORM && desc.Format == DXGI_FORMAT_R16_UINT) {
+      desc.Format = DXGI_FORMAT_R8G8_UNORM;
+   }
+   ///*D3D12 ERROR: ID3D12Device::CreateRenderTargetView: The resource format (R16_FLOAT) and view format (R16_UINT) differ in float vs non-float component interpretation - this type of format casting is not supported. [ STATE_CREATION ERROR #38: CREATERENDERTARGETVIEW_INVALIDFORMAT]*/
+   //if (res_desc.Format == DXGI_FORMAT_R16_FLOAT && desc.Format == DXGI_FORMAT_R16_UINT) {
+   //   desc.Format = DXGI_FORMAT_R16_FLOAT;
+   //}
 
    unsigned array_size = state->u.tex.last_layer - state->u.tex.first_layer + 1;
    switch (desc.ViewDimension) {
@@ -973,9 +1015,10 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
    default:
       unreachable("Invalid SRV dimension");
    }
-
-   screen->dev->CreateShaderResourceView(d3d12_res, &desc,
-      sampler_view->handle.cpu_handle);
+   
+   if (desc.ViewDimension != D3D12_SRV_DIMENSION_UNKNOWN) {
+      screen->dev->CreateShaderResourceView(d3d12_res, &desc, sampler_view->handle.cpu_handle);
+   }
 }
 
 static struct pipe_sampler_view *
@@ -2660,6 +2703,10 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          d3d12_replace_buffer_storage,
          NULL,
          &ctx->threaded_context);
+
+#ifdef ENABLE_SHADER_CACHE
+
+#endif
 
    return &ctx->base;
 }
