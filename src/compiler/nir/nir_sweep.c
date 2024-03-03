@@ -182,3 +182,43 @@ nir_sweep(nir_shader *nir)
    gc_sweep_end(nir->gctx);
    ralloc_free(rubbish);
 }
+
+void
+nir_sweep_body(nir_shader *nir)
+{
+   void *rubbish = ralloc_context(NULL);
+
+   struct list_head instr_gc_list;
+   list_inithead(&instr_gc_list);
+
+   /* First, move ownership of all the memory to a temporary context; assume dead. */
+   ralloc_adopt(rubbish, nir);
+
+   /* Start sweeping */
+   gc_sweep_start(nir->gctx);
+
+   ralloc_steal(nir, nir->gctx);
+   ralloc_steal(nir, (char *)nir->info.name);
+   if (nir->info.label)
+      ralloc_steal(nir, (char *)nir->info.label);
+
+   /* Variables are not dead.  Steal them back. */
+   steal_list(nir, nir_variable, &nir->variables);
+
+   /* Recurse into functions, stealing their contents back. */
+   //foreach_list_typed(nir_function, func, node, &nir->functions) {
+   //   sweep_function(nir, func);
+   //}
+
+   ralloc_steal(nir, nir->constant_data);
+   ralloc_steal(nir, nir->xfb_info);
+   ralloc_steal(nir, nir->printf_info);
+   for (int i = 0; i < nir->printf_info_count; i++) {
+      ralloc_steal(nir, nir->printf_info[i].arg_sizes);
+      ralloc_steal(nir, nir->printf_info[i].strings);
+   }
+
+   /* Free everything we didn't steal back. */
+   gc_sweep_end(nir->gctx);
+   ralloc_free(rubbish);
+}

@@ -6389,6 +6389,8 @@ bool nir_opt_reuse_constants(nir_shader *shader);
 
 void nir_sweep(nir_shader *shader);
 
+void nir_sweep_body(nir_shader *shader);
+
 void nir_remap_dual_slot_attributes(nir_shader *shader,
                                     uint64_t *dual_slot_inputs);
 uint64_t nir_get_single_slot_attribs_mask(uint64_t attribs, uint64_t dual_slot);
