@@ -586,6 +586,13 @@ option(
 )
 
 option(
+  'xbox-swap',
+  type : 'boolean',
+  value : true,
+  description : 'Enable NIR Compiler memory backend xbox-swap. Useful only on xbox dev mode malloc limitations. Default: false'
+)
+
+option(
   'datasources',
   type : 'array',
   value : ['auto'],

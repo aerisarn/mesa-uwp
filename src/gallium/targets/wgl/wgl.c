@@ -75,6 +75,10 @@ static bool use_d3d12 = false;
 static bool use_zink = false;
 #endif
 
+#ifdef _XBOX_FMALLOC
+#include <fmalloc.h>
+#endif
+
 static const char *created_driver_name = NULL;
 
 static struct pipe_screen *
@@ -272,10 +276,24 @@ static const struct stw_winsys stw_winsys = {
    &wgl_get_name,
 };
 
+#ifdef _XBOX_FMALLOC
+void fmalloc_swap_cache_init()
+{
+   char *path = getenv("MESA_FMALLOC_CACHE_FILE");
+   if (path) {
+        fmalloc_init(path, 16ull * 1024 * 1024 * 1024);  
+   }
+}
+
+void fmalloc_swap_cache_cleanup()
+{
+   fmalloc_close();
+}
+
+#endif
 
 EXTERN_C BOOL WINAPI
 DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
-
 
 BOOL WINAPI
 DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -284,6 +302,9 @@ DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
    case DLL_PROCESS_ATTACH:
       stw_init(&stw_winsys);
       stw_init_thread();
+#ifdef _XBOX_FMALLOC
+      fmalloc_swap_cache_init();
+#endif
       break;
 
    case DLL_THREAD_ATTACH:
@@ -299,6 +320,9 @@ DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
          // We're being unloaded from the process.
          stw_cleanup_thread();
          stw_cleanup();
+#ifdef _XBOX_FMALLOC
+         fmalloc_swap_cache_cleanup();
+#endif
       } else {
          // Process itself is terminating, and all threads and modules are
          // being detached.

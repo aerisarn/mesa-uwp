@@ -43,6 +43,16 @@
 #define HEADER_ALIGN 8
 #endif
 
+#ifdef _XBOX_FMALLOC
+#include <fmalloc.h>
+
+#define malloc fmalloc
+#define free ffree
+#define realloc frealloc
+
+#endif
+
+
 /* Align the header's size so that ralloc() allocations will return with the
  * same alignment as a libc malloc would have (8 on 32-bit GLIBC, 16 on
  * 64-bit), avoiding performance penalities on x86 and alignment faults on
@@ -549,7 +559,7 @@ ralloc_vasprintf_rewrite_tail(char **str, size_t *start, const char *fmt,
 
 /* The size of a slab. */
 #if defined(_XBOX_UWP) || defined(_XBOX_UWP_TEST)
-//this was wating GB of memory for XBOX
+//this was wasting GB of memory for XBOX
 #define SLAB_SIZE (512 + 256)
 #else
 #define SLAB_SIZE (32 * 1024)

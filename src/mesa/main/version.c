@@ -370,7 +370,11 @@ compute_version(const struct gl_extensions *extensions,
                          extensions->ARB_stencil_texturing &&
                          extensions->ARB_texture_buffer_range &&
                          extensions->ARB_texture_query_levels &&
+   #ifdef _XBOX_UWP_TEST
+                         1);
+   #else
                          extensions->ARB_texture_view);
+   #endif
    const bool ver_4_4 = (ver_4_3 &&
                          consts->GLSLVersion >= 440 &&
                          consts->MaxVertexAttribStride >= 2048 &&

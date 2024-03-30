@@ -71,6 +71,14 @@ with_vulkan_overlay_layer = get_option('vulkan-layers').contains('overlay')
 with_vulkan_device_select_layer = get_option('vulkan-layers').contains('device-select')
 with_tools = get_option('tools')
 with_uwp = get_option('uwp')
+with_xbox_swap = get_option('xbox-swap')
+dep_xbox_swap = null_dep
+if with_xbox_swap
+	cmake   = import('cmake')
+	opt_var = cmake.subproject_options()
+	xbox_swap = cmake.subproject('xbox-swap', options: opt_var)
+	dep_xbox_swap = xbox_swap.dependency('xbox-fmalloc')
+endif
 if with_tools.contains('all')
   with_tools = [
     'drm-shim',

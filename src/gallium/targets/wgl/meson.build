@@ -60,6 +60,6 @@ libgallium_wgl = shared_library(
   ],
   link_args : gallium_wgl_link_args,
   name_prefix : '',
-  install : true,
+  install : true
 )
 libgallium_wgl_build_dir = meson.current_build_dir()

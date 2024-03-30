@@ -234,6 +234,10 @@ deps_for_libmesa_util = [
   idep_mesautilc11
 ]
 
+if with_xbox_swap
+  deps_for_libmesa_util += dep_xbox_swap
+endif
+
 if with_platform_android
   deps_for_libmesa_util += dep_android
   files_debug_stack = files('u_debug_stack_android.cpp')
